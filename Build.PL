@@ -12,6 +12,7 @@ Bob->new( {
       'perl'             => 5.010,
       'version'          => 0.77,
       'Class::Usul'      => q(0.9.0),
+      'DBIx::Class'      => 0.08126,
       'File::DataClass'  => q(0.12.0),
    },
    recommends            => {
@@ -25,8 +26,8 @@ Bob->new( {
 } )->create_build_script; # Goal!
 
 # Local Variables:
-# tab-title: App::MCP
 # eval: (load-project-state "app-mcp")
 # mode: perl
+# tab-title: MCP
 # tab-width: 3
 # End:
