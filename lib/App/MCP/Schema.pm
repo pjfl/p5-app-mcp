@@ -6,6 +6,8 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
+use App::MCP::Schema::Authentication;
+use App::MCP::Schema::Schedule;
 
 extends qw(CatalystX::Usul::Schema);
 

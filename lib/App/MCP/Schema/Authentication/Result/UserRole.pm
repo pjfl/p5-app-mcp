@@ -3,29 +3,27 @@
 package App::MCP::Schema::Authentication::Result::UserRole;
 
 use strict;
+use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use parent qw(App::MCP::Schema::Base);
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
 
-extends qw(App::MCP::Schema::Base);
+my $schema = 'App::MCP::Schema::Authentication';
 
 __PACKAGE__->table( 'user_role' );
-__PACKAGE__->add_columns( 'user_id', { data_type         => 'MEDIUMINT',
-                                       default_value     => undef,
-                                       is_nullable       => FALSE,
-                                       size              => 8, },
-                          'role_id', { data_type         => 'MEDIUMINT',
-                                       default_value     => undef,
-                                       is_nullable       => FALSE,
-                                       size              => 8, } );
+__PACKAGE__->add_columns
+   ( 'user_id', { data_type         => 'integer',
+                  default_value     => undef,
+                  extra             => { unsigned => TRUE },
+                  is_nullable       => FALSE, },
+     'role_id', { data_type         => 'integer',
+                  default_value     => undef,
+                  extra             => { unsigned => TRUE },
+                  is_nullable       => FALSE, } );
 __PACKAGE__->set_primary_key( qw(user_id role_id) );
-__PACKAGE__->belongs_to(
-   user_rel => 'App::MCP::Schema::Authentication::Result::User', 'user_id' );
-__PACKAGE__->belongs_to(
-   role_rel => 'App::MCP::Schema::Authentication::Result::Role', 'role_id' );
-
-__PACKAGE__->meta->make_immutable;
+__PACKAGE__->belongs_to( user_rel => "${schema}::Result::User", 'user_id' );
+__PACKAGE__->belongs_to( role_rel => "${schema}::Result::Role", 'role_id' );
 
 1;
 

@@ -1,0 +1,161 @@
+#!/usr/bin/env perl
+# @(#)$Id$
+# I blame t0m for this
+
+# If you have a $LOCAL_LIB directory then this script will set it up for
+# you as it executes
+
+# If used like /usr/bin/env then it will run other commands based on
+# your current path settings (with a local::lib environment if present)
+
+#  e.g. use FindBin qw( $Bin );
+#       BEGIN { do catfile( $Bin, q(<appname>_localenv) ) or croak $EVAL_ERROR }
+
+# The local::lib behavior can be explicitly enabled or disabled by setting
+# the <APPNAME>_LOCAL_LIB enviromnent variable to true or false.
+
+use strict;
+use warnings;
+use lib;
+
+use Config;
+use Cwd                   qw(abs_path);
+use English               qw(-no_match_vars);
+use File::Basename        qw(basename dirname);
+use File::Spec::Functions qw(catdir catfile);
+
+my $LOCAL_LIB  = q(local);
+
+my $was_called = caller() ? 1 : 0;
+my $our_path   = $was_called ? (caller())[ 1 ] : $PROGRAM_NAME;
+my $bindir     = abs_path( dirname( $our_path ) );
+my $basedir    = -f catfile( $bindir, q(Build.PL) )
+              || -f catfile( $bindir, q(Makefile.PL) )
+               ? $bindir : dirname( $bindir );
+my $libdir     = catdir( $basedir, q(lib) );
+my $local_lib  = catdir( $basedir, $LOCAL_LIB );
+my $appname    = (split m{ [\-_] }mx, basename( $our_path, qw(.pl) ))[ 0 ];
+my $active_key = (uc $appname).q(_LOCAL_LIB);
+my $path_sep   = $Config::Config{path_sep};
+my $active     = -d $local_lib;
+
+exists $ENV{ $active_key } and defined $ENV{ $active_key }
+   and $active = !! $ENV{ $active_key };
+
+if ($active) {
+   not -d $local_lib and warn "Path ${local_lib} not found from ${our_path}\n";
+
+   # So we can find local::lib when fully self contained
+   lib->import( catdir( $local_lib, qw(lib perl5) ) );
+
+   require local::lib; local::lib->import( $local_lib );
+
+   $ENV{PERL_MM_OPT} .= ' INSTALLMAN1DIR=none INSTALLMAN3DIR=none';
+   $ENV{PERL5LIB   }  = $libdir.$path_sep.$ENV{PERL5LIB};
+}
+
+lib->import( $libdir );
+
+$ENV{PATH} = $bindir.$path_sep.$ENV{PATH};
+
+not $was_called and @ARGV and exec @ARGV;
+
+1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+mcp-localenv - I<One line abstract describing the programs purpose>
+
+=head1 SYNOPSIS
+
+=over 3
+
+=item B<mcp-localenv> B<> I<>
+
+I<Command line description>
+
+=item B<mcp-localenv> B<-H> | B<-h> I<[method]> | B<-?>
+
+Display man page / method help  / usage strings
+
+=item B<mcp-localenv> B<list_methods>
+
+Lists the methods available in this program
+
+=back
+
+=head1 VERSION
+
+This documents version v0.1.$Rev$ of L<App::MCP>
+
+=head1 DESCRIPTION
+
+I<Program description>
+
+=head1 REQUIRED ARGUMENTS
+
+=over 3
+
+=item I<>
+
+=back
+
+=head1 OPTIONS
+
+=over 3
+
+=item B<-D>
+
+Turn debugging on
+
+=back
+
+=head1 DIAGNOSTICS
+
+Prints errors to stderr
+
+=head1 EXIT STATUS
+
+Returns zero on success, non zero on failure
+
+=head1 CONFIGURATION
+
+Uses the constructor's C<appclass> attribute to locate a configuration file
+
+=head1 DEPENDENCIES
+
+=over 3
+
+=item L<Class::Usul>
+
+=back
+
+=head1 INCOMPATIBILITIES
+
+None
+
+=head1 BUGS AND LIMITATIONS
+
+Send reports to address below
+
+=head1 AUTHOR
+
+Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright (c) 2012 Peter Flanigan
+
+This is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
+
+# Local Variables:
+# mode: perl
+# tab-width: 3
+# End:

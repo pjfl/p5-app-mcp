@@ -4,14 +4,9 @@ package App::MCP::Schema::Base;
 
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use parent q(DBIx::Class::Core);
 
-use Class::Usul::Moose;
-
-extends qw(DBIx::Class::Core);
-
-#__PACKAGE__->load_components( qw() );
-
-__PACKAGE__->meta->make_immutable;
+__PACKAGE__->load_components( qw(TimeStamp) );
 
 1;
 

@@ -1,0 +1,12 @@
+{
+   "credentials" : {
+      "schedule" : {
+         "driver" : "mysql",
+         "host" : "localhost",
+         "name" : "schedule",
+         "password" : "{Twofish}U2FsdGVkX1/xcBKZB1giOdQkIt8EFgfNDFGm/C+fZTs=",
+         "port" : "3306",
+         "user" : "mcp"
+      }
+   }
+}

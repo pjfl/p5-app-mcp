@@ -1,6 +1,6 @@
 # @(#)$Id$
 
-package App::MCP::Schema::Authentication::Result::Role;
+package App::MCP::Schema::Schedule::Result::Event;
 
 use strict;
 use warnings;
@@ -9,21 +9,31 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-__PACKAGE__->table( 'role' );
+__PACKAGE__->table( 'event' );
 __PACKAGE__->add_columns
-   ( 'id',   { data_type         => 'integer',
-               default_value     => undef,
-               extra             => { unsigned => TRUE },
-               is_auto_increment => TRUE,
-               is_nullable       => FALSE, },
-     'desc', { data_type         => 'varchar',
-               default_value     => NUL,
-               is_nullable       => FALSE,
-               size              => 255, } );
+   ( id        => { data_type         => 'integer',
+                    default_value     => undef,
+                    extra             => { unsigned => TRUE },
+                    is_auto_increment => TRUE,
+                    is_nullable       => FALSE, },
+     pid       => { data_type         => 'smallint',
+                    default_value     => undef,
+                    is_nullable       => FALSE, },
+     runid     => { data_type         => 'varchar',
+                    default_value     => undef,
+                    is_nullable       => FALSE,
+                    size              => 20, },
+     status    => { data_type         => 'smallint',
+                    default_value     => undef,
+                    is_nullable       => FALSE, },
+     t_created => { data_type         => 'datetime',
+                    set_on_create     => 1, },
+     desc      => { data_type         => 'varchar',
+                    default_value     => NUL,
+                    is_nullable       => FALSE,
+                    size              => 255, }, );
 __PACKAGE__->set_primary_key( 'id' );
 __PACKAGE__->add_unique_constraint( [ 'desc' ] );
-__PACKAGE__->has_many(
-   users => 'App::MCP::Schema::Authentication::Result::UserRole', 'role_id' );
 
 1;
 
@@ -33,7 +43,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Authentication::Result::Role - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::Result::Event - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -41,7 +51,7 @@ App::MCP::Schema::Authentication::Result::Role - <One-line description of module
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Authentication::Result::Role;
+   use App::MCP::Schema::Schedule::Result::Event;
    # Brief but working code examples
 
 =head1 Description

@@ -9,11 +9,12 @@ Bob->new( {
    module     => q(App::MCP),
    home_page  => q(http://www.roxsoft.co.uk),
    requires   => {
-      'perl'             => 5.010,
-      'version'          => 0.77,
-      'Class::Usul'      => q(0.9.0),
-      'DBIx::Class'      => 0.08126,
-      'File::DataClass'  => q(0.12.0),
+      'perl'                   => 5.010,
+      'version'                => 0.77,
+      'Class::Usul'            => q(0.9.0),
+      'DBIx::Class'            => 0.08126,
+      'DBIx::Class::TimeStamp' => 0.14,
+      'File::DataClass'        => q(0.12.0),
    },
    recommends            => {
       'App::cpanminus'   => 1.4004 },

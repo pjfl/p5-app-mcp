@@ -3,12 +3,12 @@
 package App::MCP::Schema::Schedule;
 
 use strict;
+use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use parent q(DBIx::Class::Schema);
 
-use Class::Usul::Moose;
 use File::Spec::Functions qw(catfile);
-
-extends qw(DBIx::Class::Schema);
+use Scalar::Util          qw(blessed);
 
 __PACKAGE__->load_classes;
 
@@ -22,8 +22,6 @@ sub ddl_filename {
     $preversion and $version = "${preversion}-${version}";
     return catfile( $dir, "${filename}-${version}-${type}.sql" );
 }
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
