@@ -1,27 +1,19 @@
 # @(#)$Id$
 
-package App::MCP::Schema::Schedule;
+package App::MCP::Schema::Schedule::Result::EventArchive;
 
 use strict;
 use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
-use parent q(DBIx::Class::Schema);
+use parent qw(App::MCP::Schema::Base);
 
-use File::Spec::Functions qw(catfile);
-use Scalar::Util          qw(blessed);
+use Class::Usul::Constants;
 
-__PACKAGE__->load_namespaces;
+my $class = __PACKAGE__;
 
-sub ddl_filename {
-    my ($self, $type, $version, $dir, $preversion) = @_;
-
-    ($dir, $version) = ($version, $dir) if ($DBIx::Class::VERSION < 0.08100);
-
-    (my $filename = (blessed $self || $self)) =~ s{ :: }{-}gmx;
-    $version = join q(.), (split m{ [.] }mx, $version)[ 0, 1 ];
-    $preversion and $version = "${preversion}-${version}";
-    return catfile( $dir, "${filename}-${version}-${type}.sql" );
-}
+$class->table( 'event_archive' );
+$class->add_columns( id => $class->serial_data_type, );
+$class->set_primary_key( 'id' );
 
 1;
 
@@ -31,7 +23,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Schedule - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::Result::EventArchive - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -39,7 +31,7 @@ App::MCP::Schema::Schedule - <One-line description of module's purpose>
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule;
+   use App::MCP::Schema::Schedule::Result::EventArchive;
    # Brief but working code examples
 
 =head1 Description

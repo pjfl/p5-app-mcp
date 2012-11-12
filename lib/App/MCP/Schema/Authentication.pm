@@ -10,7 +10,7 @@ use parent q(DBIx::Class::Schema);
 use File::Spec::Functions qw(catfile);
 use Scalar::Util          qw(blessed);
 
-__PACKAGE__->load_classes;
+__PACKAGE__->load_namespaces;
 
 sub ddl_filename {
     my ($self, $type, $version, $dir, $preversion) = @_;

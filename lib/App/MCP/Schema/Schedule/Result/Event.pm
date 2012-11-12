@@ -9,13 +9,28 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-__PACKAGE__->table( 'event' );
-__PACKAGE__->add_columns
-   ( id        => { data_type         => 'integer',
+my $class = __PACKAGE__;
+my $types = [ qw(status_update job_start) ];
+
+$class->table( 'event' );
+$class->add_columns
+   ( id        => $class->serial_data_type,
+     command   => { data_type         => 'varchar',
                     default_value     => undef,
-                    extra             => { unsigned => TRUE },
-                    is_auto_increment => TRUE,
-                    is_nullable       => FALSE, },
+                    is_nullable       => TRUE,
+                    size              => 255, },
+     created   => { data_type         => 'datetime',
+                    set_on_create     => 1, },
+     directory => { data_type         => 'varchar',
+                    default_value     => undef,
+                    is_nullable       => TRUE,
+                    size              => 255, },
+     happened  => { data_type         => 'datetime',
+                    is_nullable       => TRUE, },
+     host      => { data_type         => 'varchar',
+                    default_value     => 'localhost',
+                    is_nullable       => FALSE,
+                    size              => 64, },
      pid       => { data_type         => 'smallint',
                     default_value     => undef,
                     is_nullable       => FALSE, },
@@ -23,17 +38,20 @@ __PACKAGE__->add_columns
                     default_value     => undef,
                     is_nullable       => FALSE,
                     size              => 20, },
+     rv        => { data_type         => 'smallint',
+                    default_value     => undef,
+                    is_nullable       => FALSE, },
      status    => { data_type         => 'smallint',
                     default_value     => undef,
                     is_nullable       => FALSE, },
-     t_created => { data_type         => 'datetime',
-                    set_on_create     => 1, },
-     desc      => { data_type         => 'varchar',
-                    default_value     => NUL,
-                    is_nullable       => FALSE,
-                    size              => 255, }, );
-__PACKAGE__->set_primary_key( 'id' );
-__PACKAGE__->add_unique_constraint( [ 'desc' ] );
+     type      => { data_type         => 'enum',
+                    extra             => { list => $types },
+                    is_enum           => TRUE, },
+     user      => { data_type         => 'varchar',
+                    default_value     => undef,
+                    is_nullable       => TRUE,
+                    size              => 32, }, );
+$class->set_primary_key( 'id' );
 
 1;
 

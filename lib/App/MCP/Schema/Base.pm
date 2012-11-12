@@ -6,7 +6,17 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent q(DBIx::Class::Core);
 
-__PACKAGE__->load_components( qw(TimeStamp) );
+use CatalystX::Usul::Constants;
+
+__PACKAGE__->load_components( qw(InflateColumn::Object::Enum TimeStamp) );
+
+sub serial_data_type {
+   return { data_type         => 'integer',
+            default_value     => undef,
+            extra             => { unsigned => TRUE },
+            is_auto_increment => TRUE,
+            is_nullable       => FALSE, };
+}
 
 1;
 

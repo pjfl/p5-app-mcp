@@ -1,27 +1,14 @@
 # @(#)$Id$
 
-package App::MCP::Schema::Schedule;
+package App::MCP::SSHLibrary;
 
 use strict;
-use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
-use parent q(DBIx::Class::Schema);
 
-use File::Spec::Functions qw(catfile);
-use Scalar::Util          qw(blessed);
+use App::MCP::Worker;
+use IPC::PerlSSH::Library;
 
-__PACKAGE__->load_namespaces;
-
-sub ddl_filename {
-    my ($self, $type, $version, $dir, $preversion) = @_;
-
-    ($dir, $version) = ($version, $dir) if ($DBIx::Class::VERSION < 0.08100);
-
-    (my $filename = (blessed $self || $self)) =~ s{ :: }{-}gmx;
-    $version = join q(.), (split m{ [.] }mx, $version)[ 0, 1 ];
-    $preversion and $version = "${preversion}-${version}";
-    return catfile( $dir, "${filename}-${version}-${type}.sql" );
-}
+func 'run' => 'return App::MCP::Worker->new( $_[ 0 ] )->run';
 
 1;
 
@@ -31,7 +18,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Schedule - <One-line description of module's purpose>
+App::MCP::SSHLibrary - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -39,7 +26,7 @@ App::MCP::Schema::Schedule - <One-line description of module's purpose>
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule;
+   use App::MCP::SSHLibrary;
    # Brief but working code examples
 
 =head1 Description

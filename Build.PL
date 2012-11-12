@@ -12,6 +12,7 @@ Bob->new( {
       'perl'                   => 5.010,
       'version'                => 0.77,
       'Class::Usul'            => q(0.9.0),
+      'Daemon::Control'        => 0.000009,
       'DBIx::Class'            => 0.08126,
       'DBIx::Class::TimeStamp' => 0.14,
       'File::DataClass'        => q(0.12.0),
