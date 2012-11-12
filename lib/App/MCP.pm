@@ -9,6 +9,8 @@ use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(throw);
 
+#TODO: Class::Workflow - dbic example
+
 __PACKAGE__->meta->make_immutable;
 
 1;
