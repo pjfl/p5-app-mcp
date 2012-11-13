@@ -9,21 +9,26 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
+my $class  = __PACKAGE__;
 my $schema = 'App::MCP::Schema::Authentication';
 
-__PACKAGE__->table( 'user_role' );
-__PACKAGE__->add_columns
-   ( 'user_id', { data_type         => 'integer',
-                  default_value     => undef,
-                  extra             => { unsigned => TRUE },
-                  is_nullable       => FALSE, },
-     'role_id', { data_type         => 'integer',
-                  default_value     => undef,
-                  extra             => { unsigned => TRUE },
-                  is_nullable       => FALSE, } );
-__PACKAGE__->set_primary_key( qw(user_id role_id) );
-__PACKAGE__->belongs_to( user_rel => "${schema}::Result::User", 'user_id' );
-__PACKAGE__->belongs_to( role_rel => "${schema}::Result::Role", 'role_id' );
+$class->table( 'user_role' );
+
+$class->add_columns
+   ( user_id => { data_type     => 'integer',
+                  default_value => undef,
+                  extra         => { unsigned => TRUE },
+                  is_nullable   => FALSE, },
+     role_id => { data_type     => 'integer',
+                  default_value => undef,
+                  extra         => { unsigned => TRUE },
+                  is_nullable   => FALSE, }, );
+
+$class->set_primary_key( qw(user_id role_id) );
+
+$class->belongs_to( user_rel => "${schema}::Result::User", 'user_id' );
+
+$class->belongs_to( role_rel => "${schema}::Result::Role", 'role_id' );
 
 1;
 

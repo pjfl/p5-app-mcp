@@ -16,36 +16,10 @@ BEGIN {
 
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use App::MCP::Boss;
-use Class::Usul::Constants;
-use Daemon::Control;
+use App::MCP::Daemon;
 
-my $class   = 'App::MCP';
-my $prog    = App::MCP::Boss->new_with_options
-   ( appclass => $class, nodebug => TRUE );
-my $tempdir = $prog->file->tempdir;
-my $config  = $prog->config;
-my $name    = $config->name;
-my $code    = sub { shift; unshift @{ $prog->extra_argv }, @_; $prog->run };
-
-Daemon::Control->new( {
-   name         => "${class} Daemon",
-   lsb_start    => '$syslog $remote_fs',
-   lsb_stop     => '$syslog',
-   lsb_sdesc    => 'Master Control Program',
-   lsb_desc     => 'Boss controls the Master Control Program daemon.',
-   path         => $config->pathname,
-
-   directory    => $config->appldir,
-   program      => $code,
-   program_args => [ $name ],
-
-   pid_file     => $config->rundir->catfile( "${name}.pid" ),
-   stderr_file  => $tempdir->catfile( "${name}.err" ),
-   stdout_file  => $tempdir->catfile( "${name}.out" ),
-} )->run;
-
-exit OK;
+exit App::MCP::Daemon->new_with_options
+   ( appclass => 'App::MCP', nodebug => 1 )->run;
 
 __END__
 
@@ -53,21 +27,21 @@ __END__
 
 =head1 NAME
 
-mcp-boss - I<One line abstract describing the programs purpose>
+mcp-daemon - I<Control the event processing daemon>
 
 =head1 SYNOPSIS
 
 =over 3
 
-=item B<mcp-boss> B<> I<>
+=item B<mcp-daemon> I<start | stop | restart | status | show_warnings>
 
-I<Command line description>
+Start / stop the event processing daemon
 
-=item B<mcp-boss> B<-H> | B<-h> I<[method]> | B<-?>
+=item B<mcp-daemon> B<-H> | B<-h> I<[method]> | B<-?>
 
 Display man page / method help  / usage strings
 
-=item B<mcp-boss> B<list_methods>
+=item B<mcp-daemon> B<list_methods>
 
 Lists the methods available in this program
 
@@ -79,13 +53,13 @@ This documents version v0.1.$Rev$ of L<App::MCP>
 
 =head1 DESCRIPTION
 
-I<Program description>
+Control the event processing daemon
 
 =head1 REQUIRED ARGUMENTS
 
 =over 3
 
-=item I<>
+=item I<A command to perform>
 
 =back
 
@@ -115,7 +89,7 @@ Uses the constructor's C<appclass> attribute to locate a configuration file
 
 =over 3
 
-=item L<Class::Usul>
+=item L<App::MCP::Daemon>
 
 =back
 

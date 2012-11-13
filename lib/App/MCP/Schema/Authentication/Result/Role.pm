@@ -9,21 +9,19 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-__PACKAGE__->table( 'role' );
-__PACKAGE__->add_columns
-   ( 'id',   { data_type         => 'integer',
-               default_value     => undef,
-               extra             => { unsigned => TRUE },
-               is_auto_increment => TRUE,
-               is_nullable       => FALSE, },
-     'desc', { data_type         => 'varchar',
-               default_value     => NUL,
-               is_nullable       => FALSE,
-               size              => 255, } );
-__PACKAGE__->set_primary_key( 'id' );
-__PACKAGE__->add_unique_constraint( [ 'desc' ] );
-__PACKAGE__->has_many(
-   users => 'App::MCP::Schema::Authentication::Result::UserRole', 'role_id' );
+my $class  = __PACKAGE__;
+my $schema = 'App::MCP::Schema::Authentication';
+
+$class->table( 'role' );
+
+$class->add_columns( id    => $class->serial_data_type,
+                     desc  => $class->varchar_data_type( 255, NUL ), );
+
+$class->set_primary_key( 'id' );
+
+$class->add_unique_constraint( [ 'desc' ] );
+
+$class->has_many( users => "${schema}::Result::UserRole", 'role_id' );
 
 1;
 

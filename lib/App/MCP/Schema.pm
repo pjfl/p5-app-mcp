@@ -21,6 +21,14 @@ has '+schema_classes' => default => sub { {
 
 has '+schema_version' => default => $schema_version;
 
+has '_schedule'         => is => 'lazy', isa => Object, reader => 'schedule';
+
+sub _build__schedule {
+   my $class = $_[ 0 ]->schema_classes->{schedule};
+
+   return $class->connect( @{ $_[ 0 ]->connect_info } );
+}
+
 __PACKAGE__->meta->make_immutable;
 
 1;

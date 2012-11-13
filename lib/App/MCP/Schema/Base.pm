@@ -6,9 +6,27 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent q(DBIx::Class::Core);
 
-use CatalystX::Usul::Constants;
+use Class::Usul::Constants;
 
 __PACKAGE__->load_components( qw(InflateColumn::Object::Enum TimeStamp) );
+
+sub event_type_enum {
+   return [ qw(status_update job_start) ];
+}
+
+sub job_type_enum {
+   return [ qw(box job) ];
+}
+
+sub state_enum {
+   return [ qw(finished started starting terminated) ];
+}
+
+sub numerical_id_data_type {
+   return { data_type         => 'smallint',
+            default_value     => $_[ 1 ],
+            is_nullable       => FALSE, };
+}
 
 sub serial_data_type {
    return { data_type         => 'integer',
@@ -16,6 +34,20 @@ sub serial_data_type {
             extra             => { unsigned => TRUE },
             is_auto_increment => TRUE,
             is_nullable       => FALSE, };
+}
+
+sub varchar_data_type {
+   return { data_type         => 'varchar',
+            default_value     => $_[ 2 ],
+            is_nullable       => FALSE,
+            size              => $_[ 1 ] || 255, }
+}
+
+sub nullable_varchar_data_type {
+   return { data_type         => 'varchar',
+            default_value     => $_[ 2 ],
+            is_nullable       => TRUE,
+            size              => $_[ 1 ] || 255, }
 }
 
 1;

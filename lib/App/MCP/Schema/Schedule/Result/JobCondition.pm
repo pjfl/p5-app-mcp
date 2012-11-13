@@ -12,7 +12,9 @@ use Class::Usul::Constants;
 my $class = __PACKAGE__;
 
 $class->table( 'job_condition' );
+
 $class->add_columns( id => $class->serial_data_type, );
+
 $class->set_primary_key( 'id' );
 
 1;

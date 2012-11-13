@@ -9,49 +9,32 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-my $class = __PACKAGE__;
-my $types = [ qw(status_update job_start) ];
+my $class  = __PACKAGE__;
+my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'event' );
+
 $class->add_columns
-   ( id        => $class->serial_data_type,
-     command   => { data_type         => 'varchar',
-                    default_value     => undef,
-                    is_nullable       => TRUE,
-                    size              => 255, },
-     created   => { data_type         => 'datetime',
-                    set_on_create     => 1, },
-     directory => { data_type         => 'varchar',
-                    default_value     => undef,
-                    is_nullable       => TRUE,
-                    size              => 255, },
-     happened  => { data_type         => 'datetime',
-                    is_nullable       => TRUE, },
-     host      => { data_type         => 'varchar',
-                    default_value     => 'localhost',
-                    is_nullable       => FALSE,
-                    size              => 64, },
-     pid       => { data_type         => 'smallint',
-                    default_value     => undef,
-                    is_nullable       => FALSE, },
-     runid     => { data_type         => 'varchar',
-                    default_value     => undef,
-                    is_nullable       => FALSE,
-                    size              => 20, },
-     rv        => { data_type         => 'smallint',
-                    default_value     => undef,
-                    is_nullable       => FALSE, },
-     status    => { data_type         => 'smallint',
-                    default_value     => undef,
-                    is_nullable       => FALSE, },
-     type      => { data_type         => 'enum',
-                    extra             => { list => $types },
-                    is_enum           => TRUE, },
-     user      => { data_type         => 'varchar',
-                    default_value     => undef,
-                    is_nullable       => TRUE,
-                    size              => 32, }, );
+   ( id       => $class->serial_data_type,
+     created  => { data_type     => 'datetime', set_on_create => TRUE, },
+     happened => { data_type     => 'datetime', is_nullable   => TRUE, },
+     job_id   => { data_type     => 'integer',
+                   default_value => undef,
+                   extra         => { unsigned => TRUE },
+                   is_nullable   => FALSE, },
+     pid      => $class->numerical_id_data_type,
+     runid    => $class->varchar_data_type( 20 ),
+     rv       => $class->numerical_id_data_type,
+     state    => { data_type     => 'enum',
+                   extra         => { list => $class->state_enum },
+                   is_enum       => TRUE, },
+     type     => { data_type     => 'enum',
+                   extra         => { list => $class->event_type_enum },
+                   is_enum       => TRUE, }, );
+
 $class->set_primary_key( 'id' );
+
+$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
 1;
 

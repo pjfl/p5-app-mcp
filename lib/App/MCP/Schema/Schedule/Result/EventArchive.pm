@@ -9,11 +9,33 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-my $class = __PACKAGE__;
+my $class  = __PACKAGE__;
+my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'event_archive' );
-$class->add_columns( id => $class->serial_data_type, );
+
+$class->add_columns
+   ( id       => $class->serial_data_type,
+     archived => { data_type     => 'datetime', set_on_create => TRUE, },
+     created  => { data_type     => 'datetime', },
+     happened => { data_type     => 'datetime', is_nullable   => TRUE, },
+     job_id   => { data_type     => 'integer',
+                   default_value => undef,
+                   extra         => { unsigned => TRUE },
+                   is_nullable   => FALSE, },
+     pid      => $class->numerical_id_data_type,
+     runid    => $class->varchar_data_type( 20 ),
+     rv       => $class->numerical_id_data_type,
+     state    => { data_type     => 'enum',
+                   extra         => { list => $class->state_enum },
+                   is_enum       => TRUE, },
+     type     => { data_type     => 'enum',
+                   extra         => { list => $class->event_type_enum },
+                   is_enum       => TRUE, }, );
+
 $class->set_primary_key( 'id' );
+
+$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
 1;
 
