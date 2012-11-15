@@ -170,6 +170,8 @@ App::MCP::MaterialisedPath - <One-line description of module's purpose>
 
 =head1 Subroutines/Methods
 
+=head2 insert
+
 =head1 Diagnostics
 
 =head1 Dependencies

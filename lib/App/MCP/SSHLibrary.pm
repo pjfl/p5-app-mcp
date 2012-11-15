@@ -5,10 +5,11 @@ package App::MCP::SSHLibrary;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use App::MCP::Worker;
 use IPC::PerlSSH::Library;
 
-func 'run' => 'return App::MCP::Worker->new( $_[ 0 ] )->run';
+my $class = 'App::MCP::Worker';
+
+func 'run' => "use ${class}; return ${class}->new( \$_[ 0 ] )->run";
 
 1;
 

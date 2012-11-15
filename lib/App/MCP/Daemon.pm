@@ -8,23 +8,33 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
+use Class::Usul::Functions       qw(bson64id throw);
 use Daemon::Control;
+use File::DataClass::Constraints qw(File);
 use IO::Async::Loop;
+use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
+use IPC::PerlSSH::Async;
 
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
 
-has 'database'     => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation   => 'The database to connect to',
-   default         => 'schedule';
+has 'database'      => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation    => 'The database to connect to',
+   default          => 'schedule';
 
-has '_schema'      => is => 'lazy', isa => Object, reader => 'schema';
+has 'identity_file' => is => 'ro',   isa => File, coerce => TRUE,
+   documentation    => 'Path to private SSH key',
+   default          => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
 
-has 'schema_class' => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   documentation   => 'Classname of the schema to load',
-   default         => sub { 'App::MCP::Schema::Schedule' };
+has '_loop'         => is => 'lazy', isa => Object, reader => 'loop',
+   default          => sub { IO::Async::Loop->new };
+
+has '_schema'       => is => 'lazy', isa => Object, reader => 'schema';
+
+has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   documentation    => 'Classname of the schema to load',
+   default          => sub { 'App::MCP::Schema::Schedule' };
 
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
@@ -33,9 +43,9 @@ around 'run' => sub {
 };
 
 sub void : method {
-   my ($self, $method) = @_; my $config  = $self->config;
+   my ($self, $method) = @_; @ARGV = @{ $self->extra_argv };
 
-   my $name = $config->name; my $tempdir = $self->file->tempdir;
+   my $config = $self->config; my $name = $config->name;
 
    Daemon::Control->new( {
       name         => blessed $self || $self,
@@ -46,12 +56,12 @@ sub void : method {
       path         => $config->pathname,
 
       directory    => $config->appldir,
-      program      => sub { shift; $self->loop( @_ ) },
+      program      => sub { shift; $self->looper( @_ ) },
       program_args => [],
 
       pid_file     => $config->rundir->catfile( "${name}.pid" ),
-      stderr_file  => $tempdir->catfile( "${name}.err" ),
-      stdout_file  => $tempdir->catfile( "${name}.out" ),
+      stderr_file  => $self->_stdio_file( 'err' ),
+      stdout_file  => $self->_stdio_file( 'out' ),
 
       fork         => 2,
    } )->run;
@@ -59,17 +69,23 @@ sub void : method {
    return; # Never reached
 }
 
-sub loop {
+sub looper {
    my $self = shift;
-   my $loop = IO::Async::Loop->new;
    my $oevt = IO::Async::Timer::Periodic->new
       ( interval   => 3,
         on_tick    => sub { $self->_output_event_handler },
         reschedule => 'drift', );
+   my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
+      $self->loop->remove( $hndl ); $oevt->stop;
+      $self->log->info( 'Stopping event loop' );
+      return;
+   } );
 
-   $loop->add( $oevt );
+   $self->log->info( 'Starting event loop' );
+   $self->loop->add( $hndl );
+   $self->loop->add( $oevt );
    $oevt->start;
-   $loop->run;
+   $self->loop->run;
    return; # Never reached
 }
 
@@ -84,11 +100,77 @@ sub _build__schema {
 
 sub _output_event_handler {
    my $self   = shift;
-   my $rs     = $self->schema->resultset( 'Event' );
-   my $events = $rs->search( { type => 'job_start' } );
+   my $ev_rs  = $self->schema->resultset( 'Event' );
+   my $arc_rs = $self->schema->resultset( 'EventArchive' );
+   my $events = $ev_rs->search
+      ( { 'state'    => 'starting',
+          'me.type'  => 'job_start' },
+        { '+columns' => [ qw(job_rel.command job_rel.host job_rel.user) ],
+          'join'     => 'job_rel', } );
 
-   state $i //= 0; $self->log->info( 'Handler '.$i++.' '.$events->count );
+   $self->_start_job( $arc_rs, $_ ) for ($events->all);
+
+   state $tick //= 0; $self->log->debug( 'OEHTICK['.$tick++.']' );
    return;
+}
+
+sub _get_ipsa {
+   my ($self, $args) = @_;
+
+   my $errfile = $self->_stdio_file( 'err' ); my $host = $args->{host};
+
+   my $ipsa = IPC::PerlSSH::Async->new
+      ( Host         => $host,
+        User         => $args->{user},
+        SshOptions   => [ '-i', $self->identity_file ],
+        on_exception => sub { $self->log->error( $_[ 0 ] ) },
+        on_exit      => sub {
+           my $rv = $_[ 1 ] >> 8; $rv > 0
+              and $self->log->error( "SSH[${host}]: See ${errfile} - rv ${rv}");
+        }, );
+
+   $self->loop->add( $ipsa );
+
+   return $ipsa;
+}
+
+sub _start_job {
+   my ($self, $arc_rs, $event) = @_;
+
+   my $runid = bson64id;
+   my $user  = $event->job_rel->user;
+   my $host  = $event->job_rel->host;
+   my $cmd   = $event->job_rel->command;
+   my $ipsa  = $self->_get_ipsa( { host => $host, user => $user } );
+   my $args  = { command => $cmd, runid => $runid };
+   my $cols  = { $event->get_inflated_columns };
+
+   $self->log->info( "START[${runid}]: ${user}\@${host} ${cmd}" );
+
+   $ipsa->use_library
+      ( library              => 'App::MCP::SSHLibrary',
+        funcs                => [ 'run' ],
+        on_exception         => sub {
+           $self->log->error( "STOREPKG[$runid]: ".$_[ 0 ] ) },
+        on_loaded            => sub {
+           $ipsa->call
+              ( name         => 'run',
+                args         => [ $args ],
+                on_result    => sub {
+                   $self->log->info( "CALL[${runid}]: ".$_[ 0 ] ) },
+                on_exception => sub {
+                   $self->log->error( "CALL[${runid}]: ".$_[ 0 ] ) }, );
+        }, );
+
+   $cols->{runid} = $runid; $arc_rs->create( $cols ); $event->delete;
+
+   return;
+}
+
+sub _stdio_file {
+   my ($self, $extn) = @_; my $name = $self->config->name;
+
+   return $self->file->tempdir->catfile( "${name}.${extn}" );
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -117,6 +199,10 @@ App::MCP::Boss - <One-line description of module's purpose>
 =head1 Configuration and Environment
 
 =head1 Subroutines/Methods
+
+=head2 looper
+
+=head2 void
 
 =head1 Diagnostics
 

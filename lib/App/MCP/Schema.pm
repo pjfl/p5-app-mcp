@@ -6,6 +6,7 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
+use CatalystX::Usul::Constants;
 use App::MCP::Schema::Authentication;
 use App::MCP::Schema::Schedule;
 
@@ -21,7 +22,15 @@ has '+schema_classes' => default => sub { {
 
 has '+schema_version' => default => $schema_version;
 
-has '_schedule'         => is => 'lazy', isa => Object, reader => 'schedule';
+has '_schedule'       => is => 'lazy', isa => Object, reader => 'schedule';
+
+sub create_event : method {
+   my $self = shift;
+
+   return OK;
+}
+
+# Private methods
 
 sub _build__schedule {
    my $class = $_[ 0 ]->schema_classes->{schedule};
@@ -55,6 +64,8 @@ App::MCP::Schema - <One-line description of module's purpose>
 =head1 Configuration and Environment
 
 =head1 Subroutines/Methods
+
+=head2 create_event
 
 =head1 Diagnostics
 

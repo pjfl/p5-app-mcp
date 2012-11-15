@@ -6,12 +6,22 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent q(DBIx::Class::Core);
 
-use Class::Usul::Constants;
+use CatalystX::Usul::Constants;
+use Data::Validation;
 
 __PACKAGE__->load_components( qw(InflateColumn::Object::Enum TimeStamp) );
 
+sub get_validation_attributes {
+   return {};
+}
+
+sub varchar_max_size {
+   return 255;
+}
+
+
 sub event_type_enum {
-   return [ qw(status_update job_start) ];
+   return [ qw(box_start job_start status_update) ];
 }
 
 sub job_type_enum {
@@ -19,7 +29,15 @@ sub job_type_enum {
 }
 
 sub state_enum {
-   return [ qw(finished started starting terminated) ];
+   return [ qw(active hold finished inactive running starting terminated) ];
+}
+
+
+sub nullable_varchar_data_type {
+   return { data_type         => 'varchar',
+            default_value     => $_[ 2 ],
+            is_nullable       => TRUE,
+            size              => $_[ 1 ] || $_[ 0 ]->varchar_max_size, }
 }
 
 sub numerical_id_data_type {
@@ -40,14 +58,28 @@ sub varchar_data_type {
    return { data_type         => 'varchar',
             default_value     => $_[ 2 ],
             is_nullable       => FALSE,
-            size              => $_[ 1 ] || 255, }
+            size              => $_[ 1 ] || $_[ 0 ]->varchar_max_size, }
 }
 
-sub nullable_varchar_data_type {
-   return { data_type         => 'varchar',
-            default_value     => $_[ 2 ],
-            is_nullable       => TRUE,
-            size              => $_[ 1 ] || 255, }
+# Private methods
+
+sub _validate {
+   my $self = shift; my $attr = $self->get_validation_attributes;
+
+   defined $attr->{fields} or return; $attr->{exception} = EXCEPTION_CLASS;
+
+   my $columns = { $self->get_inflated_columns };
+
+   for my $field (keys %{ $attr->{fields} }) {
+      my $valids =  $attr->{fields}->{ $field }->{validate} or next;
+         $valids =~ m{ isMandatory }msx and $columns->{ $field } //= undef;
+   }
+
+   $columns = Data::Validation->new( $attr )->check_form( NUL, $columns );
+
+   $self->set_inflated_columns( $columns );
+
+   return;
 }
 
 1;
@@ -74,6 +106,24 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 =head1 Configuration and Environment
 
 =head1 Subroutines/Methods
+
+=head2 event_type_enum
+
+=head2 get_validation_attributes
+
+=head2 job_type_enum
+
+=head2 nullable_varchar_data_type
+
+=head2 numerical_id_data_type
+
+=head2 serial_data_type
+
+=head2 state_enum
+
+=head2 varchar_data_type
+
+=head2 varchar_max_size
 
 =head1 Diagnostics
 
