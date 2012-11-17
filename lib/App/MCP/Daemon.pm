@@ -31,6 +31,9 @@ has 'identity_file' => is => 'ro',   isa => File, coerce => TRUE,
 has '_loop'         => is => 'lazy', isa => Object, reader => 'loop',
    default          => sub { IO::Async::Loop->new };
 
+has 'port'          => is => 'ro',   isa => PositiveInt, default => 2012,
+   documentation    => 'Port number for the input event listener';
+
 has '_schema'       => is => 'lazy', isa => Object, reader => 'schema';
 
 has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
@@ -119,13 +122,13 @@ sub _output_event_handler {
 }
 
 sub _get_ipsa {
-   my ($self, $args) = @_;
+   my ($self, $args) = @_; my $errfile = $self->_stdio_file( 'err' );
 
-   my $errfile = $self->_stdio_file( 'err' ); my $host = $args->{host};
+   my $host = $args->{host}; my $user = $args->{user};
 
    my $ipsa = IPC::PerlSSH::Async->new
       ( Host         => $host,
-        User         => $args->{user},
+        User         => $user,
         SshOptions   => [ '-i', $self->identity_file ],
         on_exception => sub { $self->log->error( $_[ 0 ] ) },
         on_exit      => sub {
@@ -133,7 +136,11 @@ sub _get_ipsa {
               and $self->log->error( "SSH[${host}]: See ${errfile} - rv ${rv}");
         }, );
 
-   $self->loop->add( $ipsa );
+   $self->loop->add( $ipsa ); state $cache //= {};
+
+   my $key = "${user}\@${host}"; $cache->{ $key } and return $ipsa;
+
+   $self->_provision_account( $ipsa, $key ); $cache->{ $key } = TRUE;
 
    return $ipsa;
 }
@@ -150,29 +157,25 @@ sub _start_job {
    my $servers = join SPC, @{ $self->servers };
    my $ipsa    = $self->_get_ipsa( { host => $host, user => $user } );
    my $args    = { appclass => $class,         command  => $cmd,
-                   job_id   => $event->job_id, runid    => $runid,
+                   debug    => $self->debug,   job_id   => $event->job_id,
+                   port     => $self->port,    runid    => $runid,
                    servers  => $servers,       token    => $token };
    my $cols    = { $event->get_inflated_columns };
 
-   $self->log->info( "START[${runid}]: ${user}\@${host} ${cmd}" );
+   $self->log->debug( "START[${runid}]: ${user}\@${host} ${cmd}" );
 
-   $ipsa->use_library
-      ( library              => 'App::MCP::SSHLibrary',
-        funcs                => [ 'dispatch' ],
-        on_exception         => sub {
-           $self->log->error( "STOREPKG[$runid]: ".$_[ 0 ] ) },
-        on_loaded            => sub {
-           $ipsa->call
-              ( name         => 'dispatch',
-                args         => [ %{ $args } ],
-                on_result    => sub {
-                   $self->log->info( " CALL[${runid}]: ".$_[ 0 ] ) },
-                on_exception => sub {
-                   $self->log->error( "CALL[${runid}]: ".$_[ 0 ] ) }, );
-        }, );
+   $self->_use_library( $ipsa, 'dispatch', $runid, [ %{ $args } ] );
 
    $cols->{runid} = $runid; $cols->{token} = $token; $arc_rs->create( $cols );
    $event->delete;
+   return;
+}
+
+sub _provision_account {
+   my ($self, $ipsa, $key) = @_;
+
+   $self->_use_library( $ipsa, 'provision', $key, [ $self->config->appclass ] );
+
    return;
 }
 
@@ -180,6 +183,27 @@ sub _stdio_file {
    my ($self, $extn) = @_; my $name = $self->config->name;
 
    return $self->file->tempdir->catfile( "${name}.${extn}" );
+}
+
+sub _use_library {
+   my ($self, $ipsa, $func, $key, $args) = @_;
+
+   $ipsa->use_library
+      ( library              => 'App::MCP::SSHLibrary',
+        funcs                => [ $func ],
+        on_exception         => sub {
+           $self->log->error( "STOREPKG[${key}]: ".$_[ 0 ] ) },
+        on_loaded            => sub {
+           $ipsa->call
+              ( name         => $func,
+                args         => $args,
+                on_result    => sub {
+                   $self->log->debug( " CALL[${key}]: ".$_[ 0 ] ) },
+                on_exception => sub {
+                   $self->log->error( "CALL[${key}]: ".$_[ 0 ] ) }, );
+        }, );
+
+   return;
 }
 
 __PACKAGE__->meta->make_immutable;

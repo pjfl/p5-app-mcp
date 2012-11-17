@@ -5,10 +5,13 @@ package App::MCP::Schema;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
+use Class::Usul::Crypt qw(decrypt);
 use Class::Usul::Moose;
 use CatalystX::Usul::Constants;
 use App::MCP::Schema::Authentication;
 use App::MCP::Schema::Schedule;
+use Storable           qw(thaw);
+use TryCatch;
 
 extends qw(CatalystX::Usul::Schema);
 
@@ -24,10 +27,19 @@ has '+schema_version' => default => $schema_version;
 
 has '_schedule'       => is => 'lazy', isa => Object, reader => 'schedule';
 
-sub create_event : method {
-   my $self = shift;
+sub create_event {
+   my ($self, $runid, $params) = @_; my $schema = $self->schedule;
 
-   return OK;
+   my $rs = $schema->resultset( 'EventArchive' )->search( { runid => $runid } );
+
+   my $event = $rs->first or return (404, 'Not found');
+
+   $rs = $schema->resultset( 'Event' );
+
+   try        { $rs->create( thaw decrypt $event->token, $params->{event} ) }
+   catch ($e) { $self->log->error( $e ); return (400, $e) }
+
+   return (204);
 }
 
 # Private methods

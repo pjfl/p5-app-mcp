@@ -1,19 +1,36 @@
 # @(#)$Id$
 
-package App::MCP::SSHLibrary;
+package App::MCP::Listener;
 
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use IPC::PerlSSH::Library;
+use App::MCP::Schema;
+use Web::Simple;
 
-init q{
-   use App::MCP::Worker;
-};
+has 'appclass' => is => 'ro', required => 1;
 
-func 'dispatch'  => q{ return App::MCP::Worker->new( @_ )->dispatch };
+has 'schema'   => is => 'lazy';
 
-func 'provision' => q{ return App::MCP::Worker::provision( @_ ) };
+sub dispatch_request {
+   sub (POST + /api/event + ?runid= + %*) {
+      my ($code, $msg) = shift->schema->create_event( @_ );
+
+      return [ $code, [ 'Content-type', 'text/plain' ], [ $msg ] ];
+   },
+   sub (GET) {
+      [ 404, [ 'Content-type', 'text/plain' ], [ 'Not found' ] ]
+   },
+   sub {
+      [ 405, [ 'Content-type', 'text/plain' ], [ 'Method not allowed' ] ]
+   };
+}
+
+sub _build_schema {
+   return App::MCP::Schema->new
+      ( config  => { appclass => $_[ 0 ]->appclass, name => 'listener', },
+        nodebug => 1, );
+}
 
 1;
 
@@ -23,7 +40,7 @@ __END__
 
 =head1 Name
 
-App::MCP::SSHLibrary - <One-line description of module's purpose>
+App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -31,7 +48,7 @@ App::MCP::SSHLibrary - <One-line description of module's purpose>
 
 =head1 Synopsis
 
-   use App::MCP::SSHLibrary;
+   use App::MCP::Listener;
    # Brief but working code examples
 
 =head1 Description
