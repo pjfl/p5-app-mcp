@@ -8,22 +8,17 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
 
-my $class  = __PACKAGE__;
-my $schema = 'App::MCP::Schema::Schedule';
+my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'event' );
 
 $class->add_columns
    ( id        => $class->serial_data_type,
 
-     created   => { data_type     => 'datetime', set_on_create => TRUE, },
+     created   => { data_type => 'datetime', set_on_create => TRUE, },
 
-     job_id    => { data_type     => 'integer',
-                    default_value => undef,
-                    extra         => { unsigned => TRUE },
-                    is_nullable   => FALSE, },
+     job_id    => $class->foreign_key_data_type,
 
      pid       => $class->numerical_id_data_type,
 
@@ -31,13 +26,9 @@ $class->add_columns
 
      rv        => $class->numerical_id_data_type,
 
-     state     => { data_type     => 'enum',
-                    extra         => { list => $class->state_enum },
-                    is_enum       => TRUE, },
+     state     => $class->enumerated_data_type( 'state_enum' ),
 
-     type      => { data_type     => 'enum',
-                    extra         => { list => $class->event_type_enum },
-                    is_enum       => TRUE, }, );
+     type      => $class->enumerated_data_type( 'event_type_enum' ), );
 
 $class->set_primary_key( 'id' );
 
@@ -47,6 +38,7 @@ sub get_validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       fields    => {
          job_id => { validate => 'isMandatory isValidInteger' },
+         pid    => { validate => 'isValidInteger' },
          state  => { validate => 'isMandatory isValidIdentifier' },
          type   => { validate => 'isMandatory isValidIdentifier' }, }, };
 }

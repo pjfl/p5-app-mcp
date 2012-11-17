@@ -7,9 +7,13 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use IPC::PerlSSH::Library;
 
-my $class = 'App::MCP::Worker';
+init q{
+   use App::MCP::Worker;
+};
 
-func 'run' => "use ${class}; return ${class}->new( \$_[ 0 ] )->run";
+func 'dispatch'  => q{ return App::MCP::Worker->new( @_ )->dispatch };
+
+func 'provision' => q{ return App::MCP::Worker->provision( @_ ) };
 
 1;
 

@@ -21,7 +21,7 @@ sub varchar_max_size {
 
 
 sub event_type_enum {
-   return [ qw(box_start job_start status_update) ];
+   return [ qw(box_start job_start state_update) ];
 }
 
 sub job_type_enum {
@@ -33,11 +33,27 @@ sub state_enum {
 }
 
 
+sub enumerated_data_type {
+   my ($self, $enum, $default) = @_;
+
+   return { data_type         => 'enum',
+            default_value     => $default,
+            extra             => { list => $self->$enum() },
+            is_enum           => TRUE, };
+}
+
+sub foreign_key_data_type {
+   return { data_type         => 'integer',
+            default_value     => undef,
+            extra             => { unsigned => TRUE },
+            is_nullable       => $_[ 1 ] eq 'nullable' ? TRUE : FALSE, };
+}
+
 sub nullable_varchar_data_type {
    return { data_type         => 'varchar',
             default_value     => $_[ 2 ],
             is_nullable       => TRUE,
-            size              => $_[ 1 ] || $_[ 0 ]->varchar_max_size, }
+            size              => $_[ 1 ] || $_[ 0 ]->varchar_max_size, };
 }
 
 sub numerical_id_data_type {
@@ -58,7 +74,7 @@ sub varchar_data_type {
    return { data_type         => 'varchar',
             default_value     => $_[ 2 ],
             is_nullable       => FALSE,
-            size              => $_[ 1 ] || $_[ 0 ]->varchar_max_size, }
+            size              => $_[ 1 ] || $_[ 0 ]->varchar_max_size, };
 }
 
 # Private methods

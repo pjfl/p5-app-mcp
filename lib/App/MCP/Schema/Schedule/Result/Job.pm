@@ -9,10 +9,8 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent  qw(App::MCP::Schema::Base);
 
 use CatalystX::Usul::Constants;
-use CatalystX::Usul::Functions qw(is_hashref throw);
 
-my $class  = __PACKAGE__;
-my $schema = 'App::MCP::Schema::Schedule';
+my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'job' );
 
@@ -25,30 +23,24 @@ $class->add_columns
 
      condition   => $class->varchar_data_type,
 
-     created     => { data_type     => 'datetime', set_on_create => TRUE, },
+     created     => { data_type   => 'datetime', set_on_create => TRUE, },
 
      directory   => $class->varchar_data_type,
 
-     fqjn        => { data_type     => 'varchar',
-                      accessor      => '_fqjn',
-                      is_nullable   => FALSE,
-                      size          => $class->varchar_max_size, },
+     fqjn        => { data_type   => 'varchar',
+                      accessor    => '_fqjn',
+                      is_nullable => FALSE,
+                      size        => $class->varchar_max_size, },
 
      host        => $class->varchar_data_type( 64, 'localhost' ),
 
      name        => $class->varchar_data_type( 126, undef ),
 
-     parent_id   => { data_type     => 'integer',
-                      default_value => undef,
-                      extra         => { unsigned => TRUE },
-                      is_nullable   => TRUE, },
+     parent_id   => $class->foreign_key_data_type( 'nullable' ),
 
      parent_path => $class->nullable_varchar_data_type,
 
-     type        => { data_type     => 'enum',
-                      default_value => 'box',
-                      extra         => { list => $class->job_type_enum },
-                      is_enum       => TRUE, },
+     type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
 
      user        => $class->varchar_data_type( 32 ), );
 

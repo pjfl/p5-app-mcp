@@ -8,8 +8,9 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(bson64id throw);
+use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
 use Daemon::Control;
+use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File);
 use IO::Async::Loop;
 use IO::Async::Signal;
@@ -36,14 +37,17 @@ has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    documentation    => 'Classname of the schema to load',
    default          => sub { 'App::MCP::Schema::Schedule' };
 
+has '_servers'      => is => 'ro',   isa => ArrayRef,
+   default          => sub { [ fqdn ] }, reader => 'servers';
+
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
 
    return $self->$next( @args );
 };
 
-sub void : method {
-   my ($self, $method) = @_; @ARGV = @{ $self->extra_argv };
+around 'run_chain' => sub {
+   my ($next, $self, @args) = @_; @ARGV = @{ $self->extra_argv };
 
    my $config = $self->config; my $name = $config->name;
 
@@ -66,8 +70,8 @@ sub void : method {
       fork         => 2,
    } )->run;
 
-   return; # Never reached
-}
+   return $self->$next( @args ); # Never reached
+};
 
 sub looper {
    my $self = shift;
@@ -77,11 +81,11 @@ sub looper {
         reschedule => 'drift', );
    my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
       $self->loop->remove( $hndl ); $oevt->stop;
-      $self->log->info( 'Stopping event loop' );
+      $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
       return;
    } );
 
-   $self->log->info( 'Starting event loop' );
+   $self->log->info( "DAEMON[${PID}]: Starting event loop" );
    $self->loop->add( $hndl );
    $self->loop->add( $oevt );
    $oevt->start;
@@ -137,33 +141,38 @@ sub _get_ipsa {
 sub _start_job {
    my ($self, $arc_rs, $event) = @_;
 
-   my $runid = bson64id;
-   my $user  = $event->job_rel->user;
-   my $host  = $event->job_rel->host;
-   my $cmd   = $event->job_rel->command;
-   my $ipsa  = $self->_get_ipsa( { host => $host, user => $user } );
-   my $args  = { command => $cmd, runid => $runid };
-   my $cols  = { $event->get_inflated_columns };
+   my $runid   = bson64id;
+   my $user    = $event->job_rel->user;
+   my $host    = $event->job_rel->host;
+   my $cmd     = $event->job_rel->command;
+   my $class   = $self->config->appclass;
+   my $token   = substr create_token, 0, 32;
+   my $servers = join SPC, @{ $self->servers };
+   my $ipsa    = $self->_get_ipsa( { host => $host, user => $user } );
+   my $args    = { appclass => $class,         command  => $cmd,
+                   job_id   => $event->job_id, runid    => $runid,
+                   servers  => $servers,       token    => $token };
+   my $cols    = { $event->get_inflated_columns };
 
    $self->log->info( "START[${runid}]: ${user}\@${host} ${cmd}" );
 
    $ipsa->use_library
       ( library              => 'App::MCP::SSHLibrary',
-        funcs                => [ 'run' ],
+        funcs                => [ 'dispatch' ],
         on_exception         => sub {
            $self->log->error( "STOREPKG[$runid]: ".$_[ 0 ] ) },
         on_loaded            => sub {
            $ipsa->call
-              ( name         => 'run',
-                args         => [ $args ],
+              ( name         => 'dispatch',
+                args         => [ %{ $args } ],
                 on_result    => sub {
-                   $self->log->info( "CALL[${runid}]: ".$_[ 0 ] ) },
+                   $self->log->info( " CALL[${runid}]: ".$_[ 0 ] ) },
                 on_exception => sub {
                    $self->log->error( "CALL[${runid}]: ".$_[ 0 ] ) }, );
         }, );
 
-   $cols->{runid} = $runid; $arc_rs->create( $cols ); $event->delete;
-
+   $cols->{runid} = $runid; $cols->{token} = $token; $arc_rs->create( $cols );
+   $event->delete;
    return;
 }
 

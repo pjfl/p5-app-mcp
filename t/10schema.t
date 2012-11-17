@@ -89,6 +89,10 @@ eval { $event = $rs->create( { job_id => $job->id,
 
 $e = $@; $@ = undef;
 
+$e and unlike $e, qr{ validation \s+ errors }imsx, 'Event validation errors';
+
+if ($e) { warn $_.' '.$_->args->[ 0 ] for (@{ $e->args }) }
+
 $event and is $event->job_id, $job->id, 'Creates an event';
 
 #$e and warn "$e\n";

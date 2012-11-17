@@ -1,3 +1,4 @@
+
 # @(#)$Id$
 
 package App::MCP::Schema::Schedule::Result::EventArchive;
@@ -36,6 +37,8 @@ $class->add_columns
                     extra         => { list => $class->state_enum },
                     is_enum       => TRUE, },
 
+     token     => $class->varchar_data_type( 32 ),
+
      type      => { data_type     => 'enum',
                     extra         => { list => $class->event_type_enum },
                     is_enum       => TRUE, }, );
@@ -43,6 +46,15 @@ $class->add_columns
 $class->set_primary_key( 'id' );
 
 $class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
+
+sub sqlt_deploy_hook {
+  my ($self, $sqlt_table) = @_;
+
+  $sqlt_table->add_index( name   => 'event_archive_runid',
+                          fields => [ 'runid' ] );
+
+  return;
+}
 
 1;
 
