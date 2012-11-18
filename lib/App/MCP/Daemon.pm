@@ -43,6 +43,9 @@ has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    documentation    => 'Classname of the schema to load',
    default          => sub { 'App::MCP::Schema::Schedule' };
 
+has 'server'        => is => 'ro',   isa => NonEmptySimpleStr,
+   default          => 'Twiggy';
+
 has '_servers'      => is => 'ro',   isa => ArrayRef,
    default          => sub { [ fqdn ] }, reader => 'servers';
 
@@ -66,7 +69,7 @@ around 'run_chain' => sub {
       path         => $config->pathname,
 
       directory    => $config->appldir,
-      program      => sub { shift; $self->looper( @_ ) },
+      program      => sub { shift; $self->daemon( @_ ) },
       program_args => [],
 
       pid_file     => $config->rundir->catfile( "${name}.pid" ),
@@ -79,7 +82,7 @@ around 'run_chain' => sub {
    return $self->$next( @args ); # Never reached
 };
 
-sub looper {
+sub daemon {
    my $self = shift; my $loop = $self->loop;
 
    $self->log->info( "DAEMON[${PID}]: Starting event loop" );
@@ -117,11 +120,9 @@ sub _build__schema {
 }
 
 sub _get_ipsa {
-   my ($self, $user, $host) = @_; my $ipsa;
+   my ($self, $user, $host) = @_; my $errfile = $self->_stdio_file( 'err' );
 
-   my $errfile = $self->_stdio_file( 'err' );
-
-   $ipsa = IPC::PerlSSH::Async->new
+   my $ipsa; $ipsa = IPC::PerlSSH::Async->new
       ( Host         => $host,
         User         => $user,
         SshOptions   => [ '-i', $self->identity_file ],
@@ -141,19 +142,19 @@ sub _get_ipsa {
 sub _get_listener_args {
    my $self   = shift;
    my $config = $self->config;
-   my @args   = (
-      '--port',       $self->port,
-      '--server',     'Twiggy',
-      '--access-log', $config->logsdir->catfile( 'listener.log' ),
-      '--app',        $config->binsdir->catfile( 'mcp-listener' ), );
+   my $args   = {
+      '--port'       => $self->port,
+      '--server'     => $self->server,
+      '--access-log' => $config->logsdir->catfile( 'listener.log' ),
+      '--app'        => $config->binsdir->catfile( 'mcp-listener' ), };
 
-   return @args;
+   return %{ $args };
 }
 
 sub _output_event_handler {
    my $self   = shift;
    my $ev_rs  = $self->schema->resultset( 'Event' );
-   my $arc_rs = $self->schema->resultset( 'EventArchive' );
+   my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
    my $events = $ev_rs->search
       ( { 'state'    => 'starting', 'me.type' => 'job_start' },
         { '+columns' => [ qw(job_rel.command job_rel.directory
@@ -168,7 +169,7 @@ sub _output_event_handler {
 
       $cols->{runid} = $runid; $cols->{token} = $token;
 
-      $arc_rs->create( $cols ); $event->delete;
+      $pev_rs->create( $cols ); $event->delete;
    }
 
    state $tick //= 0; $self->log->debug( 'OTICK['.$tick++.']' );
