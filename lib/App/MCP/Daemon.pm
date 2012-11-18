@@ -18,7 +18,7 @@ use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
 use IPC::PerlSSH::Async;
 use Plack::Runner;
-use POSIX                        qw( WEXITSTATUS );
+use POSIX                        qw(WEXITSTATUS);
 
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
@@ -84,14 +84,9 @@ sub looper {
 
    $self->log->info( "DAEMON[${PID}]: Starting event loop" );
 
-   my $recv = $loop->spawn_child
-      ( code    => sub {
-           Plack::Runner->run( $self->_get_reciever_args ); return TRUE },
-        on_exit => sub {
-           my ($pid, $status, $bang, $at) = @_; my $rv = WEXITSTATUS( $status );
+   my $listener = $self->_start_listener;
 
-           $rv != OK and $self->log->error( "${at} - ${rv}" );
-        }, );
+   $self->log->info( "LISTEN[${listener}]: Starting listener" );
 
    my $oevt = IO::Async::Timer::Periodic->new
       ( interval   => 3,
@@ -99,7 +94,8 @@ sub looper {
         reschedule => 'drift', );
 
    my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
-      $loop->remove( $hndl ); $oevt->stop; kill 15, $recv;
+      $loop->remove( $hndl ); $oevt->stop; kill 15, $listener;
+      $self->log->info( "LISTEN[${listener}]: Stopping listener" );
       $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
       return;
    } );
@@ -142,7 +138,7 @@ sub _get_ipsa {
    return $ipsa;
 }
 
-sub _get_reciever_args {
+sub _get_listener_args {
    my $self   = shift;
    my $config = $self->config;
    my @args   = (
@@ -179,29 +175,22 @@ sub _output_event_handler {
    return;
 }
 
-sub _reciever_errors {
-   my ($self, $error) = @_; $self->log->error( "Reciever: ${error}" ); return;
-}
-
-sub _receiver_returns {
-   my $self = shift; $self->log->info( 'Reciever shutting down' ); return;
-}
-
 sub _run_remote_command {
-   my ($self, $ipsa, $key, $args) = @_;
+   my ($self, $ipsa, $key, $runid, $args) = @_; state $provisioned //= {};
 
    my $logger = sub {
       my ($method, $cmd, $msg) = @_;
 
-      $self->log->$method( "${cmd}[${key}]: ${msg}" );
+      $self->log->$method( "${cmd}[${runid}]: ${msg}" );
    };
 
    my $loaded = sub {
-      $ipsa->call
+      $provisioned->{ $key } or $ipsa->call
          ( name         => 'provision',
            args         => [ $self->config->appclass ],
            on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
            on_exception => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) } );
+      $provisioned->{ $key } = TRUE;
       $ipsa->call
          ( name         => 'dispatch',
            args         => $args,
@@ -230,6 +219,7 @@ sub _start_job {
    my $user    = $job->user;
    my $host    = $job->host;
    my $cmd     = $job->command;
+   my $key     = "${user}\@${host}";
    my $class   = $self->config->appclass;
    my $token   = substr create_token, 0, 32;
    my $servers = join SPC, @{ $self->servers };
@@ -240,11 +230,24 @@ sub _start_job {
                    runid     => $runid,         servers   => $servers,
                    token     => $token };
 
-   $self->log->debug( "START[${runid}]: ${user}\@${host} ${cmd}" );
+   $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
 
-   $self->_run_remote_command( $ipsa, $runid, [ %{ $args } ] );
+   $self->_run_remote_command( $ipsa, $key, $runid, [ %{ $args } ] );
 
    return ($runid, $token);
+}
+
+sub _start_listener {
+   my $self = shift;
+
+   return $self->loop->spawn_child
+      ( code    => sub {
+           Plack::Runner->run( $self->_get_listener_args ); return TRUE },
+        on_exit => sub {
+           my ($pid, $status, $bang, $e) = @_; my $rv = WEXITSTATUS( $status );
+
+           $e and $self->log->error( "${e} - ${rv}" );
+        }, );
 }
 
 sub _stdio_file {
