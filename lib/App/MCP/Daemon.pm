@@ -13,9 +13,12 @@ use Daemon::Control;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File);
 use IO::Async::Loop;
+use IO::Async::Function;
 use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
 use IPC::PerlSSH::Async;
+use Plack::Runner;
+use POSIX                        qw( WEXITSTATUS );
 
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
@@ -77,19 +80,30 @@ around 'run_chain' => sub {
 };
 
 sub looper {
-   my $self = shift;
-   my $loop = $self->loop;
+   my $self = shift; my $loop = $self->loop;
+
+   $self->log->info( "DAEMON[${PID}]: Starting event loop" );
+
+   my $recv = $loop->spawn_child
+      ( code    => sub {
+           Plack::Runner->run( $self->_get_reciever_args ); return TRUE },
+        on_exit => sub {
+           my ($pid, $status, $bang, $at) = @_; my $rv = WEXITSTATUS( $status );
+
+           $rv != OK and $self->log->error( "${at} - ${rv}" );
+        }, );
+
    my $oevt = IO::Async::Timer::Periodic->new
       ( interval   => 3,
         on_tick    => sub { $self->_output_event_handler },
         reschedule => 'drift', );
+
    my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
-      $loop->remove( $hndl ); $oevt->stop;
+      $loop->remove( $hndl ); $oevt->stop; kill 15, $recv;
       $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
       return;
    } );
 
-   $self->log->info( "DAEMON[${PID}]: Starting event loop" );
    $loop->add( $hndl );
    $loop->add( $oevt );
    $oevt->start;
@@ -104,6 +118,40 @@ sub _build__schema {
    my $info = $self->get_connect_info( $self, { database => $self->database } );
 
    return $self->schema_class->connect( @{ $info } );
+}
+
+sub _get_ipsa {
+   my ($self, $user, $host) = @_; my $ipsa;
+
+   my $errfile = $self->_stdio_file( 'err' );
+
+   $ipsa = IPC::PerlSSH::Async->new
+      ( Host         => $host,
+        User         => $user,
+        SshOptions   => [ '-i', $self->identity_file ],
+        on_exception => sub {
+           $self->log->error( $_[ 0 ] ); $self->loop->remove( $ipsa );
+        },
+        on_exit      => sub {
+           my $rv = $_[ 1 ] >> 8; $rv > 0
+              and $self->log->error( "SSH[${host}]: See ${errfile} - rv ${rv}");
+           $self->loop->remove( $ipsa );
+        }, );
+
+   $self->loop->add( $ipsa );
+   return $ipsa;
+}
+
+sub _get_reciever_args {
+   my $self   = shift;
+   my $config = $self->config;
+   my @args   = (
+      '--port',       $self->port,
+      '--server',     'Twiggy',
+      '--access-log', $config->logsdir->catfile( 'listener.log' ),
+      '--app',        $config->binsdir->catfile( 'mcp-listener' ), );
+
+   return @args;
 }
 
 sub _output_event_handler {
@@ -131,32 +179,46 @@ sub _output_event_handler {
    return;
 }
 
-sub _get_ipsa {
-   my ($self, $user, $host) = @_; my $errfile = $self->_stdio_file( 'err' );
-
-   my $ipsa = IPC::PerlSSH::Async->new
-      ( Host         => $host,
-        User         => $user,
-        SshOptions   => [ '-i', $self->identity_file ],
-        on_exception => sub { $self->log->error( $_[ 0 ] ) },
-        on_exit      => sub {
-           my $rv = $_[ 1 ] >> 8; $rv > 0
-              and $self->log->error( "SSH[${host}]: See ${errfile} - rv ${rv}");
-        }, );
-
-   $self->loop->add( $ipsa ); state $cache //= {};
-
-   my $key = "${user}\@${host}"; $cache->{ $key } and return $ipsa;
-
-   $self->_provision_account( $ipsa, $key ); $cache->{ $key } = TRUE;
-
-   return $ipsa;
+sub _reciever_errors {
+   my ($self, $error) = @_; $self->log->error( "Reciever: ${error}" ); return;
 }
 
-sub _provision_account {
-   my ($self, $ipsa, $key) = @_;
+sub _receiver_returns {
+   my $self = shift; $self->log->info( 'Reciever shutting down' ); return;
+}
 
-   $self->_use_library( $ipsa, 'provision', $key, [ $self->config->appclass ] );
+sub _run_remote_command {
+   my ($self, $ipsa, $key, $args) = @_;
+
+   my $logger = sub {
+      my ($method, $cmd, $msg) = @_;
+
+      $self->log->$method( "${cmd}[${key}]: ${msg}" );
+   };
+
+   my $loaded = sub {
+      $ipsa->call
+         ( name         => 'provision',
+           args         => [ $self->config->appclass ],
+           on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
+           on_exception => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) } );
+      $ipsa->call
+         ( name         => 'dispatch',
+           args         => $args,
+           on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
+           on_exception => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) } );
+      $ipsa->call
+         ( name         => 'exit',
+           args         => [],
+           on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
+           on_exception => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) } );
+   };
+
+   $ipsa->use_library
+      ( library         => 'App::MCP::SSHLibrary',
+        funcs           => [ qw(dispatch exit provision) ],
+        on_exception    => sub { $logger->( 'error', 'STORE', $_[ 0 ] ) },
+        on_loaded       => $loaded, );
 
    return;
 }
@@ -180,7 +242,7 @@ sub _start_job {
 
    $self->log->debug( "START[${runid}]: ${user}\@${host} ${cmd}" );
 
-   $self->_use_library( $ipsa, 'dispatch', $runid, [ %{ $args } ] );
+   $self->_run_remote_command( $ipsa, $runid, [ %{ $args } ] );
 
    return ($runid, $token);
 }
@@ -189,27 +251,6 @@ sub _stdio_file {
    my ($self, $extn) = @_; my $name = $self->config->name;
 
    return $self->file->tempdir->catfile( "${name}.${extn}" );
-}
-
-sub _use_library {
-   my ($self, $ipsa, $func, $key, $args) = @_;
-
-   $ipsa->use_library
-      ( library              => 'App::MCP::SSHLibrary',
-        funcs                => [ $func ],
-        on_exception         => sub {
-           $self->log->error( "STORE[${key}]: ".$_[ 0 ] ) },
-        on_loaded            => sub {
-           $ipsa->call
-              ( name         => $func,
-                args         => $args,
-                on_result    => sub {
-                   $self->log->debug( " CALL[${key}]: ".$_[ 0 ] ) },
-                on_exception => sub {
-                   $self->log->error( " CALL[${key}]: ".$_[ 0 ] ) }, );
-        }, );
-
-   return;
 }
 
 __PACKAGE__->meta->make_immutable;

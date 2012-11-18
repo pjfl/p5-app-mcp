@@ -11,6 +11,8 @@ init q{
    use App::MCP::Worker;
 };
 
+func 'exit'      => q{ exit 0 };
+
 func 'dispatch'  => q{ return App::MCP::Worker->new( @_ )->dispatch };
 
 func 'provision' => q{ return App::MCP::Worker::provision( @_ ) };

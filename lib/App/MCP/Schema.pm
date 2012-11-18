@@ -39,7 +39,7 @@ sub create_event {
    try        { $rs->create( thaw decrypt $event->token, $params->{event} ) }
    catch ($e) { $self->log->error( $e ); return (400, $e) }
 
-   return (204);
+   return (204, NUL);
 }
 
 # Private methods
