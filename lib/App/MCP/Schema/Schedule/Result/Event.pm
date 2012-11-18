@@ -15,19 +15,12 @@ $class->table( 'event' );
 
 $class->add_columns
    ( id        => $class->serial_data_type,
-
-     created   => { data_type => 'datetime', set_on_create => TRUE, },
-
+     created   => $class->set_on_create_datetime_data_type,
      job_id    => $class->foreign_key_data_type,
-
      pid       => $class->numerical_id_data_type,
-
      runid     => $class->varchar_data_type( 20 ),
-
      rv        => $class->numerical_id_data_type,
-
      state     => $class->enumerated_data_type( 'state_enum' ),
-
      type      => $class->enumerated_data_type( 'event_type_enum' ), );
 
 $class->set_primary_key( 'id' );

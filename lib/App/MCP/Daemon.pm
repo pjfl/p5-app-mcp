@@ -78,21 +78,22 @@ around 'run_chain' => sub {
 
 sub looper {
    my $self = shift;
+   my $loop = $self->loop;
    my $oevt = IO::Async::Timer::Periodic->new
       ( interval   => 3,
         on_tick    => sub { $self->_output_event_handler },
         reschedule => 'drift', );
    my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
-      $self->loop->remove( $hndl ); $oevt->stop;
+      $loop->remove( $hndl ); $oevt->stop;
       $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
       return;
    } );
 
    $self->log->info( "DAEMON[${PID}]: Starting event loop" );
-   $self->loop->add( $hndl );
-   $self->loop->add( $oevt );
+   $loop->add( $hndl );
+   $loop->add( $oevt );
    $oevt->start;
-   $self->loop->run;
+   $loop->run;
    return; # Never reached
 }
 
@@ -110,21 +111,28 @@ sub _output_event_handler {
    my $ev_rs  = $self->schema->resultset( 'Event' );
    my $arc_rs = $self->schema->resultset( 'EventArchive' );
    my $events = $ev_rs->search
-      ( { 'state'    => 'starting',
-          'me.type'  => 'job_start' },
-        { '+columns' => [ qw(job_rel.command job_rel.host job_rel.user) ],
+      ( { 'state'    => 'starting', 'me.type' => 'job_start' },
+        { '+columns' => [ qw(job_rel.command job_rel.directory
+                             job_rel.host    job_rel.id
+                             job_rel.user) ],
           'join'     => 'job_rel', } );
 
-   $self->_start_job( $arc_rs, $_ ) for ($events->all);
+   for my $event ($events->all) {
+      my ($runid, $token) = $self->_start_job( $event->job_rel );
 
-   state $tick //= 0; $self->log->debug( 'OEHTICK['.$tick++.']' );
+      my $cols = { $event->get_inflated_columns };
+
+      $cols->{runid} = $runid; $cols->{token} = $token;
+
+      $arc_rs->create( $cols ); $event->delete;
+   }
+
+   state $tick //= 0; $self->log->debug( 'OTICK['.$tick++.']' );
    return;
 }
 
 sub _get_ipsa {
-   my ($self, $args) = @_; my $errfile = $self->_stdio_file( 'err' );
-
-   my $host = $args->{host}; my $user = $args->{user};
+   my ($self, $user, $host) = @_; my $errfile = $self->_stdio_file( 'err' );
 
    my $ipsa = IPC::PerlSSH::Async->new
       ( Host         => $host,
@@ -145,38 +153,36 @@ sub _get_ipsa {
    return $ipsa;
 }
 
-sub _start_job {
-   my ($self, $arc_rs, $event) = @_;
-
-   my $runid   = bson64id;
-   my $user    = $event->job_rel->user;
-   my $host    = $event->job_rel->host;
-   my $cmd     = $event->job_rel->command;
-   my $class   = $self->config->appclass;
-   my $token   = substr create_token, 0, 32;
-   my $servers = join SPC, @{ $self->servers };
-   my $ipsa    = $self->_get_ipsa( { host => $host, user => $user } );
-   my $args    = { appclass => $class,         command  => $cmd,
-                   debug    => $self->debug,   job_id   => $event->job_id,
-                   port     => $self->port,    runid    => $runid,
-                   servers  => $servers,       token    => $token };
-   my $cols    = { $event->get_inflated_columns };
-
-   $self->log->debug( "START[${runid}]: ${user}\@${host} ${cmd}" );
-
-   $self->_use_library( $ipsa, 'dispatch', $runid, [ %{ $args } ] );
-
-   $cols->{runid} = $runid; $cols->{token} = $token; $arc_rs->create( $cols );
-   $event->delete;
-   return;
-}
-
 sub _provision_account {
    my ($self, $ipsa, $key) = @_;
 
    $self->_use_library( $ipsa, 'provision', $key, [ $self->config->appclass ] );
 
    return;
+}
+
+sub _start_job {
+   my ($self, $job) = @_;
+
+   my $runid   = bson64id;
+   my $user    = $job->user;
+   my $host    = $job->host;
+   my $cmd     = $job->command;
+   my $class   = $self->config->appclass;
+   my $token   = substr create_token, 0, 32;
+   my $servers = join SPC, @{ $self->servers };
+   my $ipsa    = $self->_get_ipsa( $user, $host );
+   my $args    = { appclass  => $class,         command   => $cmd,
+                   debug     => $self->debug,   directory => $job->directory,
+                   job_id    => $job->id,       port      => $self->port,
+                   runid     => $runid,         servers   => $servers,
+                   token     => $token };
+
+   $self->log->debug( "START[${runid}]: ${user}\@${host} ${cmd}" );
+
+   $self->_use_library( $ipsa, 'dispatch', $runid, [ %{ $args } ] );
+
+   return ($runid, $token);
 }
 
 sub _stdio_file {
@@ -192,7 +198,7 @@ sub _use_library {
       ( library              => 'App::MCP::SSHLibrary',
         funcs                => [ $func ],
         on_exception         => sub {
-           $self->log->error( "STOREPKG[${key}]: ".$_[ 0 ] ) },
+           $self->log->error( "STORE[${key}]: ".$_[ 0 ] ) },
         on_loaded            => sub {
            $ipsa->call
               ( name         => $func,
@@ -200,7 +206,7 @@ sub _use_library {
                 on_result    => sub {
                    $self->log->debug( " CALL[${key}]: ".$_[ 0 ] ) },
                 on_exception => sub {
-                   $self->log->error( "CALL[${key}]: ".$_[ 0 ] ) }, );
+                   $self->log->error( " CALL[${key}]: ".$_[ 0 ] ) }, );
         }, );
 
    return;

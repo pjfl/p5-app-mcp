@@ -18,13 +18,9 @@ $class->load_components( '+App::MCP::MaterialisedPath' );
 
 $class->add_columns
    ( id          => $class->serial_data_type,
-
      command     => $class->varchar_data_type,
-
      condition   => $class->varchar_data_type,
-
-     created     => { data_type   => 'datetime', set_on_create => TRUE, },
-
+     created     => $class->set_on_create_datetime_data_type,
      directory   => $class->varchar_data_type,
 
      fqjn        => { data_type   => 'varchar',
@@ -33,15 +29,10 @@ $class->add_columns
                       size        => $class->varchar_max_size, },
 
      host        => $class->varchar_data_type( 64, 'localhost' ),
-
      name        => $class->varchar_data_type( 126, undef ),
-
-     parent_id   => $class->foreign_key_data_type( 'nullable' ),
-
+     parent_id   => $class->nullable_foreign_key_data_type,
      parent_path => $class->nullable_varchar_data_type,
-
      type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
-
      user        => $class->varchar_data_type( 32 ), );
 
 $class->set_primary_key( 'id' );
@@ -68,7 +59,7 @@ sub new {
 sub fqjn { # Fully qualified job name
    my $self = shift; my $fqjn = $self->_fqjn; $fqjn and return $fqjn;
 
-   return $self->_fqjn( $self->namespace.'::'.($self->name || 'void') );
+   return $self->_fqjn( $self->_namespace.'::'.($self->name || 'void') );
 }
 
 sub get_validation_attributes {
@@ -101,26 +92,27 @@ sub materialised_path_columns {
    };
 }
 
-sub namespace {
-   my $self = shift; my $path = $self->parent_path; my $sep = __separator();
-
-   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ]; state $cache //= {};
-
-   my $ns; $id and $ns = $cache->{ $id }; $ns and return $ns;
-
-   my $name = $self->name;
-   my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
-      $ns   = $root ? $root->name ne $name ? $root->name : 'main' : 'main';
-
-   return $id ? $cache->{ $id } = $ns : $ns;
-}
-
 sub update {
    my ($self, $columns) = @_;
 
    $self->set_inflated_columns( %{ $columns } ); $self->_validate;
 
    return $self->next::method;
+}
+
+# Private methods
+
+sub _namespace {
+   my $self = shift; my $path = $self->parent_path; my $sep = __separator();
+
+   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ]; state $cache //= {};
+
+   my $ns; $id and $ns = $cache->{ $id }; $ns and return $ns;
+
+   my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
+      $ns   = $root ? $root->id != $id ? $root->name : 'main' : 'main';
+
+   return $root ? $cache->{ $id } = $ns : $ns;
 }
 
 # Private functions
@@ -164,9 +156,9 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head2 materialised_path_columns
 
-=head2 namespace
-
 =head2 update
+
+=head2 _namespace
 
 =head1 Diagnostics
 

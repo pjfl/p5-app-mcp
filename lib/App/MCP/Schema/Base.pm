@@ -46,7 +46,14 @@ sub foreign_key_data_type {
    return { data_type         => 'integer',
             default_value     => undef,
             extra             => { unsigned => TRUE },
-            is_nullable       => $_[ 1 ] eq 'nullable' ? TRUE : FALSE, };
+            is_nullable       => FALSE, };
+}
+
+sub nullable_foreign_key_data_type {
+   return { data_type         => 'integer',
+            default_value     => undef,
+            extra             => { unsigned => TRUE },
+            is_nullable       => TRUE, };
 }
 
 sub nullable_varchar_data_type {
@@ -68,6 +75,11 @@ sub serial_data_type {
             extra             => { unsigned => TRUE },
             is_auto_increment => TRUE,
             is_nullable       => FALSE, };
+}
+
+sub set_on_create_datetime_data_type {
+   return { data_type         => 'datetime',
+            set_on_create     => TRUE, };
 }
 
 sub varchar_data_type {
