@@ -18,15 +18,16 @@ $class->load_components( '+App::MCP::MaterialisedPath' );
 
 $class->add_columns
    ( id          => $class->serial_data_type,
+     created     => $class->set_on_create_datetime_data_type,
      command     => $class->varchar_data_type,
      condition   => $class->varchar_data_type,
-     created     => $class->set_on_create_datetime_data_type,
      directory   => $class->varchar_data_type,
+     expected_rv => $class->numerical_id_data_type( 0 ),
 
-     fqjn        => { data_type   => 'varchar',
-                      accessor    => '_fqjn',
-                      is_nullable => FALSE,
-                      size        => $class->varchar_max_size, },
+     fqjn        => { data_type     => 'varchar',
+                      accessor      => '_fqjn',
+                      is_nullable   => FALSE,
+                      size          => $class->varchar_max_size, },
 
      host        => $class->varchar_data_type( 64, 'localhost' ),
      name        => $class->varchar_data_type( 126, undef ),
@@ -45,7 +46,7 @@ $class->has_many  ( child_categories => "${schema}::Result::Job", 'parent_id' );
 
 $class->has_many  ( events           => "${schema}::Result::Event",  'job_id' );
 
-$class->has_many  ( archived_events  => "${schema}::Result::EventArchive",
+$class->has_many  ( processed_events => "${schema}::Result::ProcessedEvent",
                     'job_id' );
 
 sub new {

@@ -1,6 +1,6 @@
 # @(#)$Id$
 
-package App::MCP::Schema::Schedule::Result::JobStatus;
+package App::MCP::Schema::Schedule::Result::ProcessedEvent;
 
 use strict;
 use warnings;
@@ -9,13 +9,34 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-my $class = __PACKAGE__;
+my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
-$class->table( 'job_status' );
+$class->table( 'processed_event' );
 
-$class->add_columns( id => $class->serial_data_type, );
+$class->add_columns
+   ( id        => $class->serial_data_type,
+     created   => { data_type => 'datetime' },
+     processed => $class->set_on_create_datetime_data_type,
+     job_id    => $class->foreign_key_data_type,
+     pid       => $class->numerical_id_data_type,
+     runid     => $class->varchar_data_type( 20 ),
+     rv        => $class->numerical_id_data_type,
+     state     => $class->enumerated_data_type( 'state_enum' ),
+     token     => $class->varchar_data_type( 32 ),
+     type      => $class->enumerated_data_type( 'event_type_enum' ), );
 
 $class->set_primary_key( 'id' );
+
+$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
+
+sub sqlt_deploy_hook {
+  my ($self, $sqlt_table) = @_;
+
+  $sqlt_table->add_index( name   => 'processed_event_runid',
+                          fields => [ 'runid' ] );
+
+  return;
+}
 
 1;
 
@@ -25,7 +46,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Schedule::Result::JobStatus - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::Result::ProcessedEvent - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -33,7 +54,7 @@ App::MCP::Schema::Schedule::Result::JobStatus - <One-line description of module'
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::Result::JobStatus;
+   use App::MCP::Schema::Schedule::Result::ProcessedEvent;
    # Brief but working code examples
 
 =head1 Description

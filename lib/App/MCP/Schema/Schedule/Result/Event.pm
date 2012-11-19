@@ -25,7 +25,9 @@ $class->add_columns
 
 $class->set_primary_key( 'id' );
 
-$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
+$class->belongs_to( job_rel   => "${schema}::Result::Job",      'job_id' );
+
+$class->might_have( state_rel => "${schema}::Result::JobState", 'job_id' );
 
 sub get_validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)

@@ -1,16 +1,27 @@
 # @(#)$Id$
 
-package App::MCP::Schema::Schedule::ResultSet::JobState;
+package App::MCP::Schema::Schedule::Result::JobState;
 
 use strict;
+use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use parent qw(App::MCP::Schema::Base);
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
 
+my $class = __PACKAGE__;
 
-__PACKAGE__->meta->make_immutable;
+$class->table( 'job_state' );
+
+$class->add_columns
+   ( id        => $class->serial_data_type,
+
+     updated   => { data_type => 'datetime', },
+
+     job_id    => $class->foreign_key_data_type,
+     name      => $class->enumerated_data_type( 'state_enum' ), );
+
+$class->set_primary_key( 'id' );
 
 1;
 
@@ -20,7 +31,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::Result::JobStatus - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -28,7 +39,7 @@ App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of modul
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::ResultSet::JobState;
+   use App::MCP::Schema::Schedule::Result::JobStatus;
    # Brief but working code examples
 
 =head1 Description
