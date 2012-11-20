@@ -39,7 +39,7 @@ Start / stop the event processing daemon
 
 =item B<mcp-daemon> B<-H> | B<-h> I<[method]> | B<-?>
 
-Display man page / method help  / usage strings
+Display man page / method help / usage strings
 
 =item B<mcp-daemon> B<list_methods>
 

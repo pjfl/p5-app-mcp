@@ -14,28 +14,24 @@ my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 $class->table( 'event' );
 
 $class->add_columns
-   ( id        => $class->serial_data_type,
-     created   => $class->set_on_create_datetime_data_type,
-     job_id    => $class->foreign_key_data_type,
-     pid       => $class->numerical_id_data_type,
-     runid     => $class->varchar_data_type( 20 ),
-     rv        => $class->numerical_id_data_type,
-     state     => $class->enumerated_data_type( 'state_enum' ),
-     type      => $class->enumerated_data_type( 'event_type_enum' ), );
+   ( id         => $class->serial_data_type,
+     created    => $class->set_on_create_datetime_data_type,
+     job_id     => $class->foreign_key_data_type,
+     pid        => $class->numerical_id_data_type,
+     runid      => $class->varchar_data_type( 20 ),
+     rv         => $class->numerical_id_data_type,
+     transition => $class->enumerated_data_type( 'transition_enum' ), );
 
 $class->set_primary_key( 'id' );
 
-$class->belongs_to( job_rel   => "${schema}::Result::Job",      'job_id' );
-
-$class->might_have( state_rel => "${schema}::Result::JobState", 'job_id' );
+$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
 sub get_validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
-      fields    => {
-         job_id => { validate => 'isMandatory isValidInteger' },
-         pid    => { validate => 'isValidInteger' },
-         state  => { validate => 'isMandatory isValidIdentifier' },
-         type   => { validate => 'isMandatory isValidIdentifier' }, }, };
+      fields        => {
+         job_id     => { validate => 'isMandatory isValidInteger' },
+         pid        => { validate => 'isValidInteger' },
+         transition => { validate => 'isMandatory isValidIdentifier' }, }, };
 }
 
 sub insert {

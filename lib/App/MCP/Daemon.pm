@@ -9,7 +9,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
-use App::MCP::Workflow::JSON;
+use App::MCP::Workflow;
 use Daemon::Control;
 use DateTime;
 use English                      qw(-no_match_vars);
@@ -59,10 +59,8 @@ has 'server'         => is => 'ro',   isa => NonEmptySimpleStr,
 has '_servers'       => is => 'ro',   isa => ArrayRef,
    default           => sub { [ fqdn ] }, reader => 'servers';
 
-has '_workflow'      => is => 'lazy', isa => Object, reader => 'workflow';
-
-has '_workflow_path' => is => 'lazy',   isa => Path, coerce => TRUE,
-   reader            => 'workflow_path';
+has '_workflow'      => is => 'lazy', isa => Object, reader => 'workflow',
+   default           => sub { App::MCP::Workflow->new };
 
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
@@ -141,18 +139,38 @@ sub _build__schema {
    return $self->schema_class->connect( @{ $info } );
 }
 
-sub _build__workflow {
-   my $self = shift; my $class = 'App::MCP::Workflow::JSON';
+sub _create_or_update_jobstate {
+   my ($self, $js_rs, $event) = @_;
 
-   return $class->new( path => $self->workflow_path )->load_file;
+   my $job      = $event->job_rel;
+   my $tv       = $event->transition->value;
+   my $state    = $self->_find_or_create_jobstate( $js_rs, $job );
+   my $wf_state = $self->workflow->state( $state->name->value );
+   my $wf_i     = $self->workflow->new_instance( state => $wf_state );
+
+   $tv eq 'finish' and $event->rv > $job->expected_rv
+      and $event->transition->set_fail;
+
+   my $transition; $wf_state = $wf_i->state;
+
+   unless ($transition = $wf_state->get_transition( $tv )) {
+      my $msg  = "Transition ${tv} not allowed from ".$wf_state->name;
+         $msg .= ' for job '.$job->id;
+
+      $self->log->error( $msg ); return FALSE;
+   }
+
+   $wf_i = $transition->apply( $wf_i );
+
+   $state->name( $wf_i->state->name ); $state->updated( DateTime->now );
+   $state->update;
+   return TRUE;
 }
 
-sub _build__workflow_path {
-   return $_[ 0 ]->config->ctrldir->catfile( 'workflow.json' );
-}
+sub _find_or_create_jobstate {
+   my ($self, $js_rs, $job) = @_; $job->state and return $job->state;
 
-sub _create_jobstate {
-   my ($self, $js_rs, $job) = @_; my $parent_state = 'active';
+   my $parent_state = 'active';
 
    if ($job->parent_id and $job->id != $job->parent_id) {
       $parent_state = $js_rs->find( $job->parent_id )
@@ -165,34 +183,9 @@ sub _create_jobstate {
                      or $parent_state eq 'starting')
                      ?  'active' : 'inactive';
 
-   return $js_rs->create( { job_id  => $job->id,
+   return $js_rs->create( { id      => $job->id,
                             name    => $initial_state,
                             updated => DateTime->now } );
-}
-
-sub _create_or_update_jobstate {
-   my ($self, $js_rs, $event) = @_; my $transition;
-
-   my $job = $event->job_rel; my $state = $event->state_rel;
-
-   $state or $state = $self->_create_jobstate( $js_rs, $job );
-
-   my $wi = $self->workflow->new_instance( state => $state->name );
-
-   my $current_state = $wi->state; my $new_state = $event->state;
-
-   $new_state eq 'finished' and $event->rv > $job->expected_rv
-      and $new_state = 'failed';
-
-   unless ($transition = $current_state->get_transition( $new_state )) {
-      $self->log->error( "Transition ${new_state} not allowed" ); return FALSE;
-   }
-
-   $wi = $transition->apply( $wi );
-
-   $state->name( $wi->state->name ); $state->updated( DateTime->now );
-   $state->update;
-   return TRUE;
 }
 
 sub _get_ipsa {
@@ -233,11 +226,8 @@ sub _input_event_handler {
    my $js_rs  = $self->schema->resultset( 'JobState' );
    my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
    my $events = $ev_rs->search
-      ( { 'me.type'  => 'state_update' },
-        { '+columns' => [ qw(job_rel.expected_rv job_rel.id
-                             job_rel.parent_id   job_rel.type
-                             state_rel.name) ],
-          'join'     => [ qw(job_rel state_rel) ], } );
+      ( { 'transition' => [ qw(finish started terminate) ] },
+        { 'prefetch'   => { 'job_rel' => 'state' }, } );
 
    for my $event ($events->all) {
       $self->_create_or_update_jobstate( $js_rs, $event ) or next;
@@ -287,14 +277,8 @@ sub _output_event_handler {
    my $ev_rs  = $self->schema->resultset( 'Event' );
    my $js_rs  = $self->schema->resultset( 'JobState' );
    my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
-   my $events = $ev_rs->search
-      ( { 'state'    => 'starting', 'me.type' => 'job_start' },
-        { '+columns' => [ qw(job_rel.command     job_rel.directory
-                             job_rel.expected_rv job_rel.host
-                             job_rel.id          job_rel.parent_id
-                             job_rel.type        job_rel.user
-                             state_rel.name) ],
-          'join'     => [ qw(job_rel state_rel) ], } );
+   my $events = $ev_rs->search( { 'transition' => 'start' },
+                                { 'prefetch'   => { 'job_rel' => 'state' }, } );
 
    for my $event ($events->all) {
       $self->_create_or_update_jobstate( $js_rs, $event ) or next;

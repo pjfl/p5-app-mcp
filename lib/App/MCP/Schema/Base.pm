@@ -20,10 +20,6 @@ sub varchar_max_size {
 }
 
 
-sub event_type_enum {
-   return [ qw(box_start job_start state_update) ];
-}
-
 sub job_type_enum {
    return [ qw(box job) ];
 }
@@ -32,6 +28,12 @@ sub state_enum {
    return [ qw(active hold failed finished
                inactive running starting terminated) ];
 }
+
+sub transition_enum {
+   return [ qw(activate fail finish off_hold on_hold start started terminate) ];
+}
+
+
 
 
 sub enumerated_data_type {

@@ -71,21 +71,11 @@ $event and $event->delete; $event = undef;
 
 eval { $event = $rs->create( { job_id => $job->id } ) }; $e = $@; $@ = undef;
 
-like $e && $e->args->[ 0 ], qr{ eMandatory }msx, 'Event state mandatory';
+like $e && $e->args->[ 0 ], qr{ eMandatory }msx, 'Event transition mandatory';
 
 $event and $event->delete; $event = undef;
 
-eval { $event = $rs->create( { job_id => $job->id, state => 'starting' } ) };
-
-$e = $@; $@ = undef;
-
-like $e && $e->args->[ 0 ], qr{ eMandatory }msx, 'Event type mandatory';
-
-$event and $event->delete; $event = undef;
-
-eval { $event = $rs->create( { job_id => $job->id,
-                               state  => 'starting',
-                               type   => 'job_start' } ) };
+eval { $event = $rs->create( { job_id => $job->id, transition => 'start' } ) };
 
 $e = $@; $@ = undef;
 

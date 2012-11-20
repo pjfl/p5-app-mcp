@@ -14,16 +14,15 @@ my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 $class->table( 'processed_event' );
 
 $class->add_columns
-   ( id        => $class->serial_data_type,
-     created   => { data_type => 'datetime' },
-     processed => $class->set_on_create_datetime_data_type,
-     job_id    => $class->foreign_key_data_type,
-     pid       => $class->numerical_id_data_type,
-     runid     => $class->varchar_data_type( 20 ),
-     rv        => $class->numerical_id_data_type,
-     state     => $class->enumerated_data_type( 'state_enum' ),
-     token     => $class->varchar_data_type( 32 ),
-     type      => $class->enumerated_data_type( 'event_type_enum' ), );
+   ( id         => $class->serial_data_type,
+     created    => { data_type => 'datetime' },
+     processed  => $class->set_on_create_datetime_data_type,
+     job_id     => $class->foreign_key_data_type,
+     pid        => $class->numerical_id_data_type,
+     runid      => $class->varchar_data_type( 20 ),
+     rv         => $class->numerical_id_data_type,
+     token      => $class->varchar_data_type( 32 ),
+     transition => $class->enumerated_data_type( 'transition_enum' ), );
 
 $class->set_primary_key( 'id' );
 
