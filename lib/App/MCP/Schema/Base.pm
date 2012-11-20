@@ -29,7 +29,8 @@ sub job_type_enum {
 }
 
 sub state_enum {
-   return [ qw(active hold finished inactive running starting terminated) ];
+   return [ qw(active hold failed finished
+               inactive running starting terminated) ];
 }
 
 

@@ -9,9 +9,11 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
+use App::MCP::Workflow::JSON;
 use Daemon::Control;
+use DateTime;
 use English                      qw(-no_match_vars);
-use File::DataClass::Constraints qw(File);
+use File::DataClass::Constraints qw(File Path);
 use IO::Async::Loop;
 use IO::Async::Function;
 use IO::Async::Signal;
@@ -23,31 +25,44 @@ use POSIX                        qw(WEXITSTATUS);
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
 
-has 'database'      => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation    => 'The database to connect to',
-   default          => 'schedule';
+has 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation     => 'The database to connect to',
+   default           => 'schedule';
 
-has 'identity_file' => is => 'ro',   isa => File, coerce => TRUE,
-   documentation    => 'Path to private SSH key',
-   default          => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
+has 'identity_file'  => is => 'ro',   isa => File, coerce => TRUE,
+   documentation     => 'Path to private SSH key',
+   default           => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
 
-has '_loop'         => is => 'lazy', isa => Object, reader => 'loop',
-   default          => sub { IO::Async::Loop->new };
+has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
+   default           => 'App::MCP::SSHLibrary', reader => 'library_class';
 
-has 'port'          => is => 'ro',   isa => PositiveInt, default => 2012,
-   documentation    => 'Port number for the input event listener';
+has '_library_funcs' => is => 'ro',   isa => ArrayRef,
+   default           => sub { [ qw(dispatch exit provision) ] },
+   reader            => 'library_functions';
 
-has '_schema'       => is => 'lazy', isa => Object, reader => 'schema';
+has '_loop'          => is => 'lazy', isa => Object, reader => 'loop',
+   default           => sub { IO::Async::Loop->new };
 
-has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   documentation    => 'Classname of the schema to load',
-   default          => sub { 'App::MCP::Schema::Schedule' };
+has 'port'           => is => 'ro',   isa => PositiveInt, default => 2012,
+   documentation     => 'Port number for the input event listener';
 
-has 'server'        => is => 'ro',   isa => NonEmptySimpleStr,
-   default          => 'Twiggy';
+has '_schema'        => is => 'lazy', isa => Object, reader => 'schema';
 
-has '_servers'      => is => 'ro',   isa => ArrayRef,
-   default          => sub { [ fqdn ] }, reader => 'servers';
+has 'schema_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   documentation     => 'Classname of the schema to load',
+   default           => sub { 'App::MCP::Schema::Schedule' };
+
+has 'server'         => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation     => 'Plack server class used for the event listener',
+   default           => 'Twiggy';
+
+has '_servers'       => is => 'ro',   isa => ArrayRef,
+   default           => sub { [ fqdn ] }, reader => 'servers';
+
+has '_workflow'      => is => 'lazy', isa => Object, reader => 'workflow';
+
+has '_workflow_path' => is => 'lazy',   isa => Path, coerce => TRUE,
+   reader            => 'workflow_path';
 
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
@@ -91,20 +106,27 @@ sub daemon {
 
    $self->log->info( "LISTEN[${listener}]: Starting listener" );
 
+   my $ievt = IO::Async::Timer::Periodic->new
+      ( interval   => 3,
+        on_tick    => sub { $self->_input_event_handler },
+        reschedule => 'drift', );
+
    my $oevt = IO::Async::Timer::Periodic->new
       ( interval   => 3,
         on_tick    => sub { $self->_output_event_handler },
         reschedule => 'drift', );
 
    my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
-      $loop->remove( $hndl ); $oevt->stop; kill 15, $listener;
+      $loop->remove( $hndl ); $ievt->stop; $oevt->stop; kill 15, $listener;
       $self->log->info( "LISTEN[${listener}]: Stopping listener" );
       $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
       return;
    } );
 
    $loop->add( $hndl );
+   $loop->add( $ievt );
    $loop->add( $oevt );
+   $ievt->start;
    $oevt->start;
    $loop->run;
    return; # Never reached
@@ -117,6 +139,60 @@ sub _build__schema {
    my $info = $self->get_connect_info( $self, { database => $self->database } );
 
    return $self->schema_class->connect( @{ $info } );
+}
+
+sub _build__workflow {
+   my $self = shift; my $class = 'App::MCP::Workflow::JSON';
+
+   return $class->new( path => $self->workflow_path )->load_file;
+}
+
+sub _build__workflow_path {
+   return $_[ 0 ]->config->ctrldir->catfile( 'workflow.json' );
+}
+
+sub _create_jobstate {
+   my ($self, $js_rs, $job) = @_; my $parent_state = 'active';
+
+   if ($job->parent_id and $job->id != $job->parent_id) {
+      $parent_state = $js_rs->find( $job->parent_id )
+         or $self->log->error( 'Job '.$job->parent_id.' has no state' );
+      $parent_state and $parent_state = $parent_state->name;
+   }
+
+   my $initial_state = ($parent_state eq 'active'
+                     or $parent_state eq 'running'
+                     or $parent_state eq 'starting')
+                     ?  'active' : 'inactive';
+
+   return $js_rs->create( { job_id  => $job->id,
+                            name    => $initial_state,
+                            updated => DateTime->now } );
+}
+
+sub _create_or_update_jobstate {
+   my ($self, $js_rs, $event) = @_; my $transition;
+
+   my $job = $event->job_rel; my $state = $event->state_rel;
+
+   $state or $state = $self->_create_jobstate( $js_rs, $job );
+
+   my $wi = $self->workflow->new_instance( state => $state->name );
+
+   my $current_state = $wi->state; my $new_state = $event->state;
+
+   $new_state eq 'finished' and $event->rv > $job->expected_rv
+      and $new_state = 'failed';
+
+   unless ($transition = $current_state->get_transition( $new_state )) {
+      $self->log->error( "Transition ${new_state} not allowed" ); return FALSE;
+   }
+
+   $wi = $transition->apply( $wi );
+
+   $state->name( $wi->state->name ); $state->updated( DateTime->now );
+   $state->update;
+   return TRUE;
 }
 
 sub _get_ipsa {
@@ -151,24 +227,82 @@ sub _get_listener_args {
    return %{ $args };
 }
 
+sub _input_event_handler {
+   my $self   = shift;
+   my $ev_rs  = $self->schema->resultset( 'Event' );
+   my $js_rs  = $self->schema->resultset( 'JobState' );
+   my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
+   my $events = $ev_rs->search
+      ( { 'me.type'  => 'state_update' },
+        { '+columns' => [ qw(job_rel.expected_rv job_rel.id
+                             job_rel.parent_id   job_rel.type
+                             state_rel.name) ],
+          'join'     => [ qw(job_rel state_rel) ], } );
+
+   for my $event ($events->all) {
+      $self->_create_or_update_jobstate( $js_rs, $event ) or next;
+      $pev_rs->create( { $event->get_inflated_columns } ); $event->delete;
+   }
+
+   state $tick //= 0; $self->log->debug( 'ITICK['.$tick++.']' );
+   return;
+}
+
+sub _make_remote_calls {
+   my ($self, $ipsa, $runid, $calls) = @_;
+
+   my $logger    = sub {
+      my ($level, $cmd, $msg) = @_;
+
+      $self->log->$level( "${cmd}[${runid}]: ${msg}" );
+   };
+   my $debug     = sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) };
+   my $error     = sub { $logger->( 'error', ' CALL', $_[ 0 ] ) };
+   my $builder   = sub {
+      my ($name, $args, $cb) = @_;
+
+      return sub {
+         $_[ 0 ] and $debug->( $_[ 0 ] );
+         $ipsa->call( name         => $name,
+                      args         => $args,
+                      on_result    => $cb || $debug,
+                      on_exception => $cb ? $error : $debug );
+      };
+   };
+   my $loaded    = sub {
+      my $cb; $cb = $builder->( @{ $_ }, $cb ) for (@{ $calls }); $cb->();
+   };
+
+   $ipsa->use_library
+      ( library      => $self->library_class,
+        funcs        => $self->library_functions,
+        on_exception => sub { $logger->( 'error', 'STORE', $_[ 0 ] ) },
+        on_loaded    => $loaded, );
+
+   return;
+}
+
 sub _output_event_handler {
    my $self   = shift;
    my $ev_rs  = $self->schema->resultset( 'Event' );
+   my $js_rs  = $self->schema->resultset( 'JobState' );
    my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
    my $events = $ev_rs->search
       ( { 'state'    => 'starting', 'me.type' => 'job_start' },
-        { '+columns' => [ qw(job_rel.command job_rel.directory
-                             job_rel.host    job_rel.id
-                             job_rel.user) ],
-          'join'     => 'job_rel', } );
+        { '+columns' => [ qw(job_rel.command     job_rel.directory
+                             job_rel.expected_rv job_rel.host
+                             job_rel.id          job_rel.parent_id
+                             job_rel.type        job_rel.user
+                             state_rel.name) ],
+          'join'     => [ qw(job_rel state_rel) ], } );
 
    for my $event ($events->all) {
-      my ($runid, $token) = $self->_start_job( $event->job_rel );
+      $self->_create_or_update_jobstate( $js_rs, $event ) or next;
 
-      my $cols = { $event->get_inflated_columns };
+      my ($runid, $token) = $self->_start_job( $event->job_rel );
+      my $cols            = { $event->get_inflated_columns };
 
       $cols->{runid} = $runid; $cols->{token} = $token;
-
       $pev_rs->create( $cols ); $event->delete;
    }
 
@@ -176,45 +310,8 @@ sub _output_event_handler {
    return;
 }
 
-sub _run_remote_command {
-   my ($self, $ipsa, $key, $runid, $args) = @_; state $provisioned //= {};
-
-   my $logger = sub {
-      my ($method, $cmd, $msg) = @_;
-
-      $self->log->$method( "${cmd}[${runid}]: ${msg}" );
-   };
-
-   my $loaded = sub {
-      $provisioned->{ $key } or $ipsa->call
-         ( name         => 'provision',
-           args         => [ $self->config->appclass ],
-           on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
-           on_exception => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) } );
-      $provisioned->{ $key } = TRUE;
-      $ipsa->call
-         ( name         => 'dispatch',
-           args         => $args,
-           on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
-           on_exception => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) } );
-      $ipsa->call
-         ( name         => 'exit',
-           args         => [],
-           on_result    => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) },
-           on_exception => sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) } );
-   };
-
-   $ipsa->use_library
-      ( library         => 'App::MCP::SSHLibrary',
-        funcs           => [ qw(dispatch exit provision) ],
-        on_exception    => sub { $logger->( 'error', 'STORE', $_[ 0 ] ) },
-        on_loaded       => $loaded, );
-
-   return;
-}
-
 sub _start_job {
-   my ($self, $job) = @_;
+   my ($self, $job) = @_; state $provisioned //= {};
 
    my $runid   = bson64id;
    my $user    = $job->user;
@@ -230,11 +327,13 @@ sub _start_job {
                    job_id    => $job->id,       port      => $self->port,
                    runid     => $runid,         servers   => $servers,
                    token     => $token };
+   my $calls   = [ [ 'exit',     [] ],
+                   [ 'dispatch', [ %{ $args } ] ] ];
 
+   $provisioned->{ $key } or push @{ $calls }, [ 'provision', [ $class ] ];
    $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
-
-   $self->_run_remote_command( $ipsa, $key, $runid, [ %{ $args } ] );
-
+   $self->_make_remote_calls( $ipsa, $runid, $calls );
+   $provisioned->{ $key } = TRUE;
    return ($runid, $token);
 }
 

@@ -9,7 +9,7 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-my $class = __PACKAGE__;
+my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'job_state' );
 
@@ -20,6 +20,8 @@ $class->add_columns
 
      job_id    => $class->foreign_key_data_type,
      name      => $class->enumerated_data_type( 'state_enum' ), );
+
+$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
 $class->set_primary_key( 'id' );
 

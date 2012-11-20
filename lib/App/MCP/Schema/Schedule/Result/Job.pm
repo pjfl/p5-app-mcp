@@ -46,6 +46,9 @@ $class->has_many  ( child_categories => "${schema}::Result::Job", 'parent_id' );
 
 $class->has_many  ( events           => "${schema}::Result::Event",  'job_id' );
 
+$class->might_have( state            => "${schema}::Result::JobState",
+                    'job_id' );
+
 $class->has_many  ( processed_events => "${schema}::Result::ProcessedEvent",
                     'job_id' );
 
