@@ -5,14 +5,6 @@ package App::MCP;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
-use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
-
-#TODO: Class::Workflow - dbic example
-
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -21,7 +13,7 @@ __END__
 
 =head1 Name
 
-App::MCP - <One-line description of module's purpose>
+App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
@@ -29,8 +21,10 @@ App::MCP - <One-line description of module's purpose>
 
 =head1 Synopsis
 
-   use App::MCP;
-   # Brief but working code examples
+   use App::MCP::Daemon;
+
+   exit App::MCP::Daemon->new_with_options
+      ( appclass => 'App::MCP', nodebug => 1 )->run;
 
 =head1 Description
 

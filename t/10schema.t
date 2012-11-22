@@ -59,6 +59,16 @@ ok $job->id > 0, 'Creates a job';
 
 is $job->fqjn, 'main::test', 'Sets fully qualified job name';
 
+my $job1 = $rs->search( { fqjn => 'main::test1' } )->first;
+
+$job1 and $job1->delete; # Left over job and event from previous run
+
+$job1 = $rs->create( { condition => 'finished( test )',
+                       command   => 'sleep 1', name => 'test1',
+                       type      => 'job',     user => 'mcp' } );
+
+is $job1->fqjn, 'main::test1', 'Creates job with condition';
+
 # Event
 
 $rs = $schema->resultset( 'Event' ); my $event;

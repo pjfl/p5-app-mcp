@@ -48,7 +48,9 @@ sub create_event {
 sub _build__schedule {
    my $class = $_[ 0 ]->schema_classes->{schedule};
 
-   return $class->connect( @{ $_[ 0 ]->connect_info } );
+   my $params = { quote_names => TRUE };
+
+   return $class->connect( @{ $_[ 0 ]->connect_info }, $params );
 }
 
 __PACKAGE__->meta->make_immutable;

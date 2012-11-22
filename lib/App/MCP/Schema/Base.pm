@@ -34,8 +34,6 @@ sub transition_enum {
 }
 
 
-
-
 sub enumerated_data_type {
    my ($self, $enum, $default) = @_;
 

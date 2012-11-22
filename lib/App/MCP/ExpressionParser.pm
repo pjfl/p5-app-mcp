@@ -13,13 +13,14 @@ use Marpa::R2;
 sub new {
    my ($self, @args) = @_; my $attr = arg_list @args;
 
-   return bless { debug    => $attr->{debug},
-                  external => $attr->{external},
-                  tokens   => __tokens( $attr ), }, ref $self || $self;
+   return bless {
+      debug     => $attr->{debug},
+      external  => $attr->{external},
+      tokens    => __tokens( $attr->{predicates} ), }, ref $self || $self;
 }
 
 sub parse {
-   my ($self, $line) = @_; my $identifiers = {}; my $last = 0;
+   my ($self, $line, $ns) = @_; my $identifiers = {}; my $last = 0;
 
    my $line_length = length $line; my $pos = 0; my $recog = $self->_recogniser;
 
@@ -33,23 +34,28 @@ sub parse {
       for my $token (@matching_tokens) {
          $pos += $token->[ 2 ]; $token->[ 0 ] eq 'SP' and next;
 
-         $token->[ 0 ] eq 'IDENTIFIER' and $identifiers->{ $token->[ 1 ] } = 1;
+         if ($token->[ 0 ] eq 'IDENTIFIER') {
+            my $name    = $token->[ 1 ];
+            my $qualify = $ns && $name !~ m{ :: }msx ? 1 : 0;
+
+            $identifiers->{ $qualify ? "${ns}::${name}" : $name } = 1;
+         }
 
          $recog->read( @{ $token } );
       }
 
       $pos == $last
-         and throw error => 'Expression [_1] parse error - byte [_2]',
+         and throw error => 'Expression [_1] parse error - char [_2]',
                    args  => [ $line, $pos ];
       $last = $pos;
    }
 
-   $recog->end_input; my $value_ref = $recog->value;
+   $recog->end_input; my $expr_value_ref = $recog->value;
 
-   $value_ref or throw error => 'Expression [_1] does not evaluate',
-                       args  => [ $line ];
+   $expr_value_ref or throw error => 'Expression [_1] has no value',
+                            args  => [ $line ];
 
-   return [ ${ $value_ref }, [ keys %{ $identifiers } ] ];
+   return [ ${ $expr_value_ref }, [ keys %{ $identifiers } ] ];
 }
 
 # Private methods
@@ -80,12 +86,12 @@ sub _grammar {
 sub _lex {
    my ($self, $input, $pos, $expected) = @_; my @matches;
 
- TOKEN: for my $token_name ('SP', @{ $expected }) {
+   for my $token_name ('SP', @{ $expected }) {
       my $token = $self->{tokens}->{ $token_name }
          or throw error => 'Token [_1] unknown', args => [ $token_name ];
       my $rule  = $token->[ 0 ];
 
-      pos( ${ $input } ) = $pos; ${ $input } =~ $rule or next TOKEN;
+      pos( ${ $input } ) = $pos; ${ $input } =~ $rule or next;
 
       my $matched_len = $+[ 0 ] - $-[ 0 ]; my $matched_value = undef;
 
@@ -123,7 +129,7 @@ sub _recogniser {
 # Private functions
 
 sub __tokens {
-   my $attr = shift; my $predicates = join '|', @{ $attr->{predicates} };
+   my $predicates = shift; $predicates = join '|', @{ $predicates };
 
    return {
       'LP'         => [ qr{ \G [\(]                }msx      ],
@@ -132,7 +138,7 @@ sub __tokens {
       'NOT'        => [ qr{ \G [\!]                }msx      ],
       'OPERATOR'   => [ qr{ \G (\&|\|)             }msx      ],
       'PREDICATE'  => [ qr{ \G ($predicates)       }msx      ],
-      'IDENTIFIER' => [ qr{ \G ([a-zA-Z0-9_\-\+]+) }msx      ],
+      'IDENTIFIER' => [ qr{ \G ([a-zA-Z0-9_\-+:]+) }msx      ],
    };
 }
 

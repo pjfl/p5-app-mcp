@@ -1,32 +1,50 @@
 # @(#)$Id$
 
-package App::MCP::Schema::Schedule::Result::JobCondition;
+package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use strict;
-use warnings;
+use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
-use parent qw(App::MCP::Schema::Base);
+use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Constants;
+use Class::Usul::Functions qw(throw);
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
+sub finished {
+   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
-$class->table( 'job_condition' );
+   return $state eq 'finished' ? TRUE : FALSE ;
+}
 
-$class->add_columns( id         => $class->foreign_key_data_type,
-                     reverse_id => $class->foreign_key_data_type, );
+sub predicates {
+   return [ qw(finished running terminated) ];
+}
 
-$class->set_primary_key( 'id' );
+sub running {
+   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
-$class->belongs_to( job => "${schema}::Result::Job", 'id' );
+   return $state eq 'running' ? TRUE : FALSE
+}
 
-sub sqlt_deploy_hook {
-  my ($self, $sqlt_table) = @_;
+sub terminated {
+   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
-  $sqlt_table->add_index( name   => 'job_condition_reverse_id_index',
-                          fields => [ 'reverse_id' ] );
+   return $state eq 'terminated' ? TRUE : FALSE;
+}
 
-  return;
+# Private methods
+
+sub _get_job_state {
+   my ($self, $fqjn) = @_;
+
+   state $job_rs //= $self->result_source->schema->resultset( 'Job' );
+
+   my $jobs   = $job_rs->search( { fqjn => $fqjn } );
+   my $job    = $jobs->first or throw error => 'Job [_1] unknown',
+                                      args  => [ $fqjn ];
+   my $state  = $self->find( $job->id );
+
+   return $state ? $state->name : 'inactive';
 }
 
 1;
@@ -37,7 +55,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Schedule::Result::JobCondition - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -45,7 +63,7 @@ App::MCP::Schema::Schedule::Result::JobCondition - <One-line description of modu
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::Result::JobCondition;
+   use App::MCP::Schema::Schedule::ResultSet::JobState;
    # Brief but working code examples
 
 =head1 Description

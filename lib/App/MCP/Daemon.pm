@@ -15,12 +15,12 @@ use DateTime;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IO::Async::Loop;
-use IO::Async::Function;
 use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
 use IPC::PerlSSH::Async;
 use Plack::Runner;
 use POSIX                        qw(WEXITSTATUS);
+use TryCatch;
 
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
@@ -78,7 +78,7 @@ around 'run_chain' => sub {
       lsb_start    => '$syslog $remote_fs',
       lsb_stop     => '$syslog',
       lsb_sdesc    => 'Master Control Program',
-      lsb_desc     => 'Controls the Master Control Program daemon.',
+      lsb_desc     => 'Controls the Master Control Program daemon',
       path         => $config->pathname,
 
       directory    => $config->appldir,
@@ -96,7 +96,7 @@ around 'run_chain' => sub {
 };
 
 sub daemon {
-   my $self = shift; my $loop = $self->loop;
+   my $self = shift; my $loop = $self->loop; my $quit; my $term;
 
    $self->log->info( "DAEMON[${PID}]: Starting event loop" );
 
@@ -104,30 +104,30 @@ sub daemon {
 
    $self->log->info( "LISTEN[${listener}]: Starting listener" );
 
-   my $ievt = IO::Async::Timer::Periodic->new
-      ( interval   => 3,
-        on_tick    => sub { $self->_input_event_handler },
-        reschedule => 'drift', );
+   my $ievt = IO::Async::Timer::Periodic->new( on_tick => sub {
+      $self->_input_event_handler  }, interval => 3, reschedule => 'drift', );
 
-   my $oevt = IO::Async::Timer::Periodic->new
-      ( interval   => 3,
-        on_tick    => sub { $self->_output_event_handler },
-        reschedule => 'drift', );
+   my $oevt = IO::Async::Timer::Periodic->new( on_tick => sub {
+      $self->_output_event_handler }, interval => 3, reschedule => 'drift', );
 
-   my $hndl; $hndl = IO::Async::Signal->new( name => 'TERM', on_receipt => sub {
-      $loop->remove( $hndl ); $ievt->stop; $oevt->stop; kill 15, $listener;
+   my $stop = sub {
+      $loop->remove( $quit ); $loop->remove( $term );
+      $ievt->stop; $oevt->stop; kill 'TERM', $listener;
       $self->log->info( "LISTEN[${listener}]: Stopping listener" );
       $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
       return;
-   } );
+   };
 
-   $loop->add( $hndl );
-   $loop->add( $ievt );
-   $loop->add( $oevt );
-   $ievt->start;
-   $oevt->start;
-   $loop->run;
-   return; # Never reached
+   $quit = IO::Async::Signal->new( name => 'QUIT', on_receipt => $stop );
+   $term = IO::Async::Signal->new( name => 'TERM', on_receipt => $stop );
+
+   $loop->add( $quit ); $loop->add( $term );
+   $loop->add( $ievt ); $loop->add( $oevt );
+   $ievt->start;        $oevt->start;
+
+   try { $loop->run } catch ($e) { $stop->() }
+
+   exit 0;
 }
 
 # Private methods
@@ -139,44 +139,43 @@ sub _build__schema {
    return $self->schema_class->connect( @{ $info } );
 }
 
-sub _create_or_update_jobstate {
+sub _create_and_or_update_jobstate {
    my ($self, $js_rs, $event) = @_;
 
    my $job      = $event->job_rel;
-   my $tv       = $event->transition->value;
-   my $state    = $self->_find_or_create_jobstate( $js_rs, $job );
-   my $wf_state = $self->workflow->state( $state->name->value );
-   my $wf_i     = $self->workflow->new_instance( state => $wf_state );
+   my $jobstate = $job->state || $self->_create_jobstate( $js_rs, $job );
+   my $wf_state = $self->workflow->state( $jobstate->name->value );
+   my $wf_inst  = $self->workflow->new_instance( state => $wf_state );
+   my $ev_t     = $event->transition;
 
-   $tv eq 'finish' and $event->rv > $job->expected_rv
-      and $event->transition->set_fail;
+   $ev_t->value eq 'finish' and $event->rv > $job->expected_rv
+      and $ev_t->set_fail;
 
-   my $transition; $wf_state = $wf_i->state;
+   my $transition; $wf_state = $wf_inst->state;
 
-   unless ($transition = $wf_state->get_transition( $tv )) {
-      my $msg  = "Transition ${tv} not allowed from ".$wf_state->name;
-         $msg .= ' for job '.$job->id;
+   unless ($transition = $wf_state->get_transition( $ev_t->value )) {
+      my $msg  = 'Transition '.$ev_t->value.' not allowed from ';
+         $msg .= $wf_state->name.' for job '.$job->fqdn;
 
       $self->log->error( $msg ); return FALSE;
    }
 
-   $wf_i = $transition->apply( $wf_i );
-
-   $state->name( $wf_i->state->name ); $state->updated( DateTime->now );
-   $state->update;
+   $wf_inst = $transition->apply( $wf_inst );
+   $jobstate->name( $wf_inst->state->name );
+   $jobstate->updated( DateTime->now );
+   $jobstate->update;
    return TRUE;
 }
 
-sub _find_or_create_jobstate {
-   my ($self, $js_rs, $job) = @_; $job->state and return $job->state;
-
-   my $parent_state = 'active';
+sub _create_jobstate {
+   my ($self, $js_rs, $job) = @_; my $parent_state = 'inactive';
 
    if ($job->parent_id and $job->id != $job->parent_id) {
       $parent_state = $js_rs->find( $job->parent_id )
          or $self->log->error( 'Job '.$job->parent_id.' has no state' );
       $parent_state and $parent_state = $parent_state->name;
    }
+   else { $parent_state = 'active' }
 
    my $initial_state = ($parent_state eq 'active'
                      or $parent_state eq 'running'
@@ -230,7 +229,7 @@ sub _input_event_handler {
         { 'prefetch'   => { 'job_rel' => 'state' }, } );
 
    for my $event ($events->all) {
-      $self->_create_or_update_jobstate( $js_rs, $event ) or next;
+      $self->_create_and_or_update_jobstate( $js_rs, $event ) or next;
       $pev_rs->create( { $event->get_inflated_columns } ); $event->delete;
    }
 
@@ -281,7 +280,7 @@ sub _output_event_handler {
                                 { 'prefetch'   => { 'job_rel' => 'state' }, } );
 
    for my $event ($events->all) {
-      $self->_create_or_update_jobstate( $js_rs, $event ) or next;
+      $self->_create_and_or_update_jobstate( $js_rs, $event ) or next;
 
       my ($runid, $token) = $self->_start_job( $event->job_rel );
       my $cols            = { $event->get_inflated_columns };
