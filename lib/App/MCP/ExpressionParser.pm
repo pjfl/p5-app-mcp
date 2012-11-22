@@ -7,23 +7,24 @@ use warnings;
 use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use CatalystX::Usul::Functions qw(arg_list throw);
+use Class::Usul::Functions qw(arg_list throw);
 use Marpa::R2;
 
 sub new {
    my ($self, @args) = @_; my $attr = arg_list @args;
 
-   return bless { external => $attr->{external},
+   return bless { debug    => $attr->{debug},
+                  external => $attr->{external},
                   tokens   => __tokens( $attr ), }, ref $self || $self;
 }
 
 sub parse {
    my ($self, $line) = @_; my $identifiers = {}; my $last = 0;
 
-   my $line_length = length $line; my $pos = 0; my $rec = $self->_recogniser;
+   my $line_length = length $line; my $pos = 0; my $recog = $self->_recogniser;
 
    while ($pos < $line_length) {
-      my $expected_tokens = $rec->terminals_expected;
+      my $expected_tokens = $recog->terminals_expected;
 
       scalar @{ $expected_tokens } or next;
 
@@ -34,7 +35,7 @@ sub parse {
 
          $token->[ 0 ] eq 'IDENTIFIER' and $identifiers->{ $token->[ 1 ] } = 1;
 
-         $rec->read( @{ $token } );
+         $recog->read( @{ $token } );
       }
 
       $pos == $last
@@ -43,9 +44,9 @@ sub parse {
       $last = $pos;
    }
 
-   $rec->end_input; my $value_ref = $rec->value;
+   $recog->end_input; my $value_ref = $recog->value;
 
-   $value_ref or throw error => 'Expression [_1] does not parse',
+   $value_ref or throw error => 'Expression [_1] does not evaluate',
                        args  => [ $line ];
 
    return [ ${ $value_ref }, [ keys %{ $identifiers } ] ];
@@ -80,12 +81,9 @@ sub _lex {
    my ($self, $input, $pos, $expected) = @_; my @matches;
 
  TOKEN: for my $token_name ('SP', @{ $expected }) {
-      my $token = $self->{tokens}->{ $token_name };
-
-      defined $token
+      my $token = $self->{tokens}->{ $token_name }
          or throw error => 'Token [_1] unknown', args => [ $token_name ];
-
-      my $rule = $token->[ 0 ];
+      my $rule  = $token->[ 0 ];
 
       pos( ${ $input } ) = $pos; ${ $input } =~ $rule or next TOKEN;
 
@@ -107,15 +105,19 @@ sub _lex {
 
 sub _recogniser {
    my $self = shift;
+   my $attr = {
+      closures       => { 'external::new' => sub { $self->{external} } },
+      grammar        => $self->_grammar,
+      ranking_method => 'rule',
+   };
 
-   return Marpa::R2::Recognizer->new( {
-      closures        => { 'external::new' => sub { $self->{external} } },
-      grammar         => $self->_grammar,
-      ranking_method  => 'rule',
-     trace_terminals => 2,
-     trace_values    => 1,
-     trace_actions   => 1,
-   } );
+   if ($self->{debug}) {
+      $attr->{trace_terminals} = 2;
+      $attr->{trace_values   } = 1;
+      $attr->{trace_actions  } = 1;
+   }
+
+   return Marpa::R2::Recognizer->new( $attr );
 }
 
 # Private functions
