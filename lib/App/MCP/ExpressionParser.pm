@@ -14,9 +14,9 @@ sub new {
    my ($self, @args) = @_; my $attr = arg_list @args;
 
    return bless {
-      debug     => $attr->{debug},
-      external  => $attr->{external},
-      tokens    => __tokens( $attr->{predicates} ), }, ref $self || $self;
+      debug    => $attr->{debug},
+      external => $attr->{external},
+      tokens   => __tokens( $attr->{predicates} ), }, ref $self || $self;
 }
 
 sub parse {
@@ -29,16 +29,14 @@ sub parse {
 
       scalar @{ $expected_tokens } or next;
 
-      my @matching_tokens = $self->_lex( \$line, $pos, $expected_tokens );
-
-      for my $token (@matching_tokens) {
+      for my $token ($self->_lex( \$line, $pos, $expected_tokens )) {
          $pos += $token->[ 2 ]; $token->[ 0 ] eq 'SP' and next;
 
          if ($token->[ 0 ] eq 'IDENTIFIER') {
-            my $name    = $token->[ 1 ];
-            my $qualify = $ns && $name !~ m{ :: }msx ? 1 : 0;
+            my $name = $token->[ 1 ];
+            my $fqjn = $ns && $name !~ m{ :: }msx ? "${ns}::${name}" : $name;
 
-            $identifiers->{ $qualify ? "${ns}::${name}" : $name } = 1;
+            $identifiers->{ $token->[ 1 ] = $fqjn } = 1;
          }
 
          $recog->read( @{ $token } );
