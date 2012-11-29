@@ -13,17 +13,17 @@ my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'job_condition' );
 
-$class->add_columns( id         => $class->foreign_key_data_type,
+$class->add_columns( job_id     => $class->foreign_key_data_type,
                      reverse_id => $class->foreign_key_data_type, );
 
-$class->set_primary_key( 'id' );
+$class->set_primary_key( qw(job_id reverse_id) );
 
-$class->belongs_to( job => "${schema}::Result::Job", 'id' );
+$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
-  $sqlt_table->add_index( name   => 'job_condition_reverse_id_index',
+  $sqlt_table->add_index( name   => 'job_condition_idx_reverse_id',
                           fields => [ 'reverse_id' ] );
 
   return;

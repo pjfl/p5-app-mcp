@@ -14,15 +14,13 @@ my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 $class->table( 'job_state' );
 
 $class->add_columns
-   ( id        => $class->foreign_key_data_type,
-
+   ( job_id    => $class->foreign_key_data_type,
      updated   => { data_type => 'datetime', },
-
      name      => $class->enumerated_data_type( 'state_enum' ), );
 
-$class->set_primary_key( 'id' );
+$class->set_primary_key( 'job_id' );
 
-$class->belongs_to( job_rel   => "${schema}::Result::Job", 'id' );
+$class->belongs_to( job_rel   => "${schema}::Result::Job",   'job_id' );
 
 $class->has_many  ( event_rel => "${schema}::Result::Event", 'job_id' );
 

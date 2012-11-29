@@ -9,8 +9,7 @@ use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
 
-my $class  = __PACKAGE__;
-my $schema = 'App::MCP::Schema::Authentication';
+my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Authentication';
 
 $class->table( 'user_role' );
 

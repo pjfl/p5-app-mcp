@@ -27,19 +27,10 @@ sub parse {
    while ($pos < $line_length) {
       my $expected_tokens = $recog->terminals_expected;
 
-      scalar @{ $expected_tokens } or next;
-
-      for my $token ($self->_lex( \$line, $pos, $expected_tokens )) {
-         $pos += $token->[ 2 ]; $token->[ 0 ] eq 'SP' and next;
-
-         if ($token->[ 0 ] eq 'IDENTIFIER') {
-            my $name = $token->[ 1 ];
-            my $fqjn = $ns && $name !~ m{ :: }msx ? "${ns}::${name}" : $name;
-
-            $identifiers->{ $token->[ 1 ] = $fqjn } = 1;
+      if (scalar @{ $expected_tokens }) {
+         for my $token ($self->_lex( \$line, $pos, $expected_tokens )) {
+            $pos += $self->_read_skip_ws( $token, $ns, $identifiers, $recog );
          }
-
-         $recog->read( @{ $token } );
       }
 
       $pos == $last
@@ -53,7 +44,11 @@ sub parse {
    $expr_value_ref or throw error => 'Expression [_1] has no value',
                             args  => [ $line ];
 
-   return [ ${ $expr_value_ref }, [ keys %{ $identifiers } ] ];
+   my $expr_value = ${ $expr_value_ref };
+
+   ref $expr_value eq 'CODE' and $expr_value = $expr_value->();
+
+   return [ $expr_value, [ keys %{ $identifiers } ] ];
 }
 
 # Private methods
@@ -107,6 +102,23 @@ sub _lex {
    return @matches;
 }
 
+sub _read_skip_ws {
+   my ($self, $token, $ns, $identifiers, $recogniser) = @_;
+
+   $token->[ 0 ] eq 'SP' and return $token->[ 2 ];
+
+   if ($token->[ 0 ] eq 'IDENTIFIER') {
+      my $name = $token->[ 1 ];
+      my $fqjn = $ns && $name !~ m{ :: }msx ? "${ns}::${name}" : $name;
+
+      $identifiers->{ $token->[ 1 ] = $fqjn } = 1;
+   }
+
+   $recogniser->read( @{ $token } );
+
+   return $token->[ 2 ];
+}
+
 sub _recogniser {
    my $self = shift;
    my $attr = {
@@ -144,15 +156,21 @@ package # Hide from indexer
    App::MCP::ExpressionParser::Actions;
 
 sub callfunc {
-   my $func = $_[ 1 ]; return $_[ 0 ]->$func( $_[ 3 ] );
+   my ($self, $func, undef, $job) = @_; return sub { $self->$func( $job ) };
 }
 
 sub negate {
-   return $_[ 2 ] ? 0 : 1;
+   return (ref $_[ 2 ] eq 'CODE' ? $_[ 2 ]->() : $_[ 2 ]) ? 0 : 1;
 }
 
 sub operate {
-   return $_[ 2 ] eq '&' ? $_[ 1 ] && $_[ 3 ] : $_[ 1 ] || $_[ 3 ];
+   my $lhs = ref $_[ 1 ] eq 'CODE' ? $_[ 1 ]->() : $_[ 1 ];
+
+   if ($_[ 2 ] eq '&') {
+      $lhs or return 0; return ref $_[ 3 ] eq 'CODE' ? $_[ 3 ]->() : $_[ 3 ];
+   }
+
+   $lhs and return 1; return ref $_[ 3 ] eq 'CODE' ? $_[ 3 ]->() : $_[ 3 ];
 }
 
 sub subrule1 {
@@ -171,7 +189,7 @@ __END__
 
 =head1 Name
 
-App::MCP::ExpressionParser - <One-line description of module's purpose>
+App::MCP::ExpressionParser - Evaluate the condition field of the Job table
 
 =head1 Version
 

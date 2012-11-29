@@ -45,13 +45,14 @@ $class->has_many  ( child_categories => "${schema}::Result::Job", 'parent_id' );
 
 $class->has_many  ( events           => "${schema}::Result::Event",  'job_id' );
 
-$class->might_have( state            => "${schema}::Result::JobState",   'id' );
+$class->might_have( state            => "${schema}::Result::JobState",
+                    'job_id' );
 
 $class->has_many  ( processed_events => "${schema}::Result::ProcessedEvent",
                     'job_id' );
 
 $class->has_many  ( dependents       => "${schema}::Result::JobCondition",
-                    'id' );
+                    'job_id' );
 
 sub new {
    my ($class, $attr) = @_; my $new = $class->next::method( $attr );
@@ -59,6 +60,10 @@ sub new {
    $new->fqjn; # Force the attribute to take on a value
 
    return $new;
+}
+
+sub crontab {
+   return FALSE;
 }
 
 sub delete {
@@ -70,7 +75,7 @@ sub delete {
 sub fqjn { # Fully qualified job name
    my $self = shift; my $fqjn = $self->_fqjn; $fqjn and return $fqjn;
 
-   return $self->_fqjn( $self->_namespace.'::'.($self->name || 'void') );
+   return $self->_fqjn( $self->namespace.'::'.($self->name || 'void') );
 }
 
 sub get_validation_attributes {
@@ -107,10 +112,23 @@ sub materialised_path_columns {
    };
 }
 
+sub namespace {
+   my $self = shift; my $path = $self->parent_path; my $sep = __separator();
+
+   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ]; state $cache //= {};
+
+   my $ns; $id and $ns = $cache->{ $id }; $ns and return $ns;
+
+   my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
+      $ns   = $root ? $root->id != $id ? $root->name : 'main' : 'main';
+
+   return $root ? $cache->{ $id } = $ns : $ns;
+}
+
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
-  $sqlt_table->add_index( name => 'job_fqjn_index', fields => [ 'fqjn' ] );
+  $sqlt_table->add_index( name => 'job_idx_fqjn', fields => [ 'fqjn' ] );
 
   return;
 }
@@ -135,30 +153,13 @@ sub _delete_condition {
 }
 
 sub _insert_condition {
-   my ($self, $id) = @_; my $rs = $self->_job_condition_rs;
-
-   $rs->create_dependents( $id, $self->condition, $self->_namespace );
-
-   return;
+   $_[ 0 ]->_job_condition_rs->create_dependents( @_ ); return;
 }
 
 sub _job_condition_rs {
    state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobCondition' );
 
    return $rs;
-}
-
-sub _namespace {
-   my $self = shift; my $path = $self->parent_path; my $sep = __separator();
-
-   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ]; state $cache //= {};
-
-   my $ns; $id and $ns = $cache->{ $id }; $ns and return $ns;
-
-   my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
-      $ns   = $root ? $root->id != $id ? $root->name : 'main' : 'main';
-
-   return $root ? $cache->{ $id } = $ns : $ns;
 }
 
 sub _update_condition {
@@ -215,7 +216,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head2 update
 
-=head2 _namespace
+=head2 namespace
 
 =head1 Diagnostics
 

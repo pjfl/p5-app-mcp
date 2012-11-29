@@ -17,6 +17,7 @@ $class->add_columns
    ( id         => $class->serial_data_type,
      created    => { data_type => 'datetime' },
      processed  => $class->set_on_create_datetime_data_type,
+     error      => $class->varchar_data_type( 16 ),
      job_id     => $class->foreign_key_data_type,
      pid        => $class->numerical_id_data_type,
      runid      => $class->varchar_data_type( 20 ),
@@ -31,7 +32,7 @@ $class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
-  $sqlt_table->add_index( name   => 'processed_event_runid',
+  $sqlt_table->add_index( name   => 'processed_event_idx_runid',
                           fields => [ 'runid' ] );
 
   return;

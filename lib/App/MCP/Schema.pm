@@ -5,8 +5,8 @@ package App::MCP::Schema;
 use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
-use Class::Usul::Crypt qw(decrypt);
 use Class::Usul::Moose;
+use Class::Usul::Crypt qw(decrypt);
 use CatalystX::Usul::Constants;
 use App::MCP::Schema::Authentication;
 use App::MCP::Schema::Schedule;
@@ -25,7 +25,7 @@ has '+schema_classes' => default => sub { {
 
 has '+schema_version' => default => $schema_version;
 
-has '_schedule'       => is => 'lazy', isa => Object, reader => 'schedule';
+has '_schedule'       => is => 'lazy', isa => 'Object', reader => 'schedule';
 
 sub create_event {
    my ($self, $runid, $params) = @_; my $schema = $self->schedule;
@@ -46,11 +46,11 @@ sub create_event {
 # Private methods
 
 sub _build__schedule {
-   my $class = $_[ 0 ]->schema_classes->{schedule};
+   my $self = shift; my $class = $self->schema_classes->{schedule};
 
    my $params = { quote_names => TRUE };
 
-   return $class->connect( @{ $_[ 0 ]->connect_info }, $params );
+   return $class->connect( @{ $self->connect_info }, $params );
 }
 
 __PACKAGE__->meta->make_immutable;

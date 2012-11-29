@@ -7,19 +7,17 @@ use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
-use Class::Usul::Constants;
 use Class::Usul::Functions qw(throw);
-use App::MCP::ExpressionParser;
 
 sub create_dependents {
-   my ($self, $id, $condition, $namespace) = @_; my $job_rs = $self->_job_rs;
+   my ($self, $job, $id) = @_; my $job_rs = $self->_job_rs;
 
-   for my $fqjn (@{ $self->_parse( $condition, $namespace )->[ 1 ] }) {
+   for my $fqjn (@{ $self->_js_rs->eval_condition( $job )->[ 1 ] }) {
       my $jobs = $job_rs->search( { fqjn => $fqjn } );
       my $job  = $jobs->first or throw error => 'Job [_1] unknown',
                                        args  => [ $fqjn ];
 
-      $self->create( { id => $job->id, reverse_id => $id } );
+      $self->create( { job_id => $job->id, reverse_id => $id } );
    }
 
    return;
@@ -35,17 +33,10 @@ sub _job_rs {
    state $rs //= $_[ 0 ]->result_source->schema->resultset( 'Job' ); return $rs;
 }
 
-sub _parse {
-   my ($self, $condition, $namespace) = @_;
+sub _js_rs {
+   state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobState' );
 
-   state $parser; unless ($parser) {
-      my $js_rs = $self->result_source->schema->resultset( 'JobState' );
-
-      $parser = App::MCP::ExpressionParser->new
-         ( external => $js_rs, predicates => $js_rs->predicates );
-   }
-
-   return $parser->parse( $condition, $namespace );
+   return $rs;
 }
 
 1;

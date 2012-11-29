@@ -6,32 +6,108 @@ use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
+use CatalystX::Usul::Constants;
+use CatalystX::Usul::Functions qw(throw);
+use App::MCP::Workflow::Transition;
+use TryCatch;
 
 extends qw(Class::Workflow);
+
+around 'BUILDARGS' => sub {
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+
+   $attr->{transition_class} = __PACKAGE__.'::Transition';
+
+   return $attr;
+};
 
 sub BUILD {
    my $self = shift;
 
    $self->initial_state( 'inactive' );
-   $self->state( name => 'active',     transitions => [ qw(on_hold start) ] );
-   $self->state( name => 'hold',       transitions => [ qw(off_hold) ] );
-   $self->state( name => 'failed',     transitions => [ qw(activate) ] );
-   $self->state( name => 'finished',   transitions => [ qw(activate) ] );
-   $self->state( name => 'inactive',   transitions => [ qw(activate) ] );
-   $self->state( name => 'running',
-                 transitions => [ qw(fail finish terminate) ] );
-   $self->state( name => 'starting',   transitions => [ qw(started)  ] );
-   $self->state( name => 'terminated', transitions => [ qw(activate) ] );
 
-   $self->transition( name => 'activate',  to_state => 'active'     );
-   $self->transition( name => 'fail',      to_state => 'failed'     );
-   $self->transition( name => 'finish',    to_state => 'finished'   );
-   $self->transition( name => 'off_hold',  to_state => 'active'     );
-   $self->transition( name => 'on_hold',   to_state => 'hold'       );
-   $self->transition( name => 'start',     to_state => 'starting'   );
-   $self->transition( name => 'started',   to_state => 'running'    );
-   $self->transition( name => 'terminate', to_state => 'terminated' );
+   $self->state( 'active',     transitions => [ qw(on_hold start) ] );
+
+   $self->state( 'hold',       transitions => [ qw(off_hold) ] );
+
+   $self->state( 'failed',     transitions => [ qw(activate) ] );
+
+   $self->state( 'finished',   transitions => [ qw(activate) ] );
+
+   $self->state( 'inactive',   transitions => [ qw(activate) ] );
+
+   $self->state( 'running',    transitions => [ qw(fail finish terminate) ] );
+
+   $self->state( 'starting',   transitions => [ qw(started)  ] );
+
+   $self->state( 'terminated', transitions => [ qw(activate) ] );
+
+
+   $self->transition( 'activate',  to_state => 'active' );
+
+   $self->transition( 'fail',      to_state => 'failed' );
+
+   $self->transition( 'finish',    to_state => 'finished', validators => [
+      sub {
+         my ($self, $instance, $event) = @_; my $job = $event->job_rel;
+
+         $event->rv <= $job->expected_rv and return;
+         $event->transition->set_fail;
+         throw error => 'Rv [_1] greater than expected [_2]',
+               args  => [ $event->rv, $job->expected_rv ], class => 'Retry';
+      }, ] );
+
+   $self->transition( 'off_hold',  to_state => 'active' );
+
+   $self->transition( 'on_hold',   to_state => 'hold' );
+
+   $self->transition( 'start',     to_state => 'starting', validators => [
+      sub {
+         my ($self, $instance, $event) = @_; my $job = $event->job_rel;
+
+         $job->condition or $job->crontab or return;
+
+         my $js_rs = $event->result_source->schema->resultset( 'JobState' );
+
+         $job->crontab and ($js_rs->should_start_now( $job )
+            or throw error => 'Not at this time', class => 'Crontab');
+
+         $job->condition and ($js_rs->eval_condition( $job )->[ 0 ]
+            or throw error => 'Condition not true', class => 'Condition');
+
+         return;
+      }, ] );
+
+   $self->transition( 'started',   to_state => 'running' );
+
+   $self->transition( 'terminate', to_state => 'terminated' );
    return;
+}
+
+sub process_event {
+   my ($self, $state_name, $event) = @_;
+
+ RETRY:
+   try {
+      my $ev_t       = $event->transition;
+      my $state      = $self->state( $state_name );
+      my $instance   = $self->new_instance( state => $state );
+      my $transition = $instance->state->get_transition( $ev_t->value )
+         or throw error => 'Transition [_1] from state [_2] illegal',
+                  args  => [ $ev_t->value, $state_name ], class => 'Illegal';
+
+      $instance   = $transition->apply( $instance, $event );
+      $state_name = $instance->state->name;
+   }
+   catch ($e) {
+      my $class = blessed $e && $e->can( 'class' ) ? $e->class : 'Unknown';
+
+      $class eq 'Retry' and goto RETRY; $class ne 'Unknown' and throw $e;
+
+      throw error => $e, class => $class;
+   }
+
+   return $state_name;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -9,9 +9,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
-use App::MCP::Workflow;
 use Daemon::Control;
-use DateTime;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IO::Async::Loop;
@@ -33,20 +31,9 @@ has 'identity_file'  => is => 'ro',   isa => File, coerce => TRUE,
    documentation     => 'Path to private SSH key',
    default           => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
 
-has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
-   default           => 'App::MCP::SSHLibrary', reader => 'library_class';
-
-has '_library_funcs' => is => 'ro',   isa => ArrayRef,
-   default           => sub { [ qw(dispatch exit provision) ] },
-   reader            => 'library_functions';
-
-has '_loop'          => is => 'lazy', isa => Object, reader => 'loop',
-   default           => sub { IO::Async::Loop->new };
-
-has 'port'           => is => 'ro',   isa => PositiveInt, default => 2012,
-   documentation     => 'Port number for the input event listener';
-
-has '_schema'        => is => 'lazy', isa => Object, reader => 'schema';
+has 'port'           => is => 'ro',   isa => PositiveInt,
+   documentation     => 'Port number for the input event listener',
+   default           => 2012;
 
 has 'schema_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    documentation     => 'Classname of the schema to load',
@@ -56,11 +43,21 @@ has 'server'         => is => 'ro',   isa => NonEmptySimpleStr,
    documentation     => 'Plack server class used for the event listener',
    default           => 'Twiggy';
 
+
+has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
+   default           => 'App::MCP::SSHLibrary', reader => 'library_class';
+
+has '_library_funcs' => is => 'ro',   isa => ArrayRef,
+   default           => sub { [ qw(dispatch exit provision) ] },
+   reader            => 'library_functions';
+
+has '_loop'          => is => 'lazy', isa => Object,
+   default           => sub { IO::Async::Loop->new }, reader => 'loop';
+
+has '_schema'        => is => 'lazy', isa => Object,  reader => 'schema';
+
 has '_servers'       => is => 'ro',   isa => ArrayRef,
    default           => sub { [ fqdn ] }, reader => 'servers';
-
-has '_workflow'      => is => 'lazy', isa => Object, reader => 'workflow',
-   default           => sub { App::MCP::Workflow->new };
 
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
@@ -102,7 +99,7 @@ sub daemon {
 
    my $listener = $self->_start_listener;
 
-   $self->log->info( "LISTEN[${listener}]: Starting listener" );
+   $self->log->info( "LISTEN[${listener}]: Started listener" );
 
    my $ievt = IO::Async::Timer::Periodic->new( on_tick => sub {
       $self->_input_event_handler  }, interval => 3, reschedule => 'drift', );
@@ -112,20 +109,21 @@ sub daemon {
 
    my $stop = sub {
       $loop->remove( $quit ); $loop->remove( $term );
-      $ievt->stop; $oevt->stop; kill 'TERM', $listener;
       $self->log->info( "LISTEN[${listener}]: Stopping listener" );
+      kill 'TERM', $listener;
       $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
+      $ievt->stop; $oevt->stop;
       return;
    };
 
    $quit = IO::Async::Signal->new( name => 'QUIT', on_receipt => $stop );
    $term = IO::Async::Signal->new( name => 'TERM', on_receipt => $stop );
 
-   $loop->add( $quit ); $loop->add( $term );
    $loop->add( $ievt ); $loop->add( $oevt );
+   $loop->add( $quit ); $loop->add( $term );
    $ievt->start;        $oevt->start;
 
-   try { $loop->run } catch ($e) { $stop->() }
+   try { $loop->run } catch ($e) { $self->log->error( $e ); $stop->() }
 
    exit 0;
 }
@@ -135,56 +133,10 @@ sub daemon {
 sub _build__schema {
    my $self = shift;
    my $info = $self->get_connect_info( $self, { database => $self->database } );
+   # TODO: Fix me
+   my $params = { quote_names => TRUE };
 
-   return $self->schema_class->connect( @{ $info } );
-}
-
-sub _create_and_or_update_jobstate {
-   my ($self, $js_rs, $event) = @_;
-
-   my $job      = $event->job_rel;
-   my $jobstate = $job->state || $self->_create_jobstate( $js_rs, $job );
-   my $wf_state = $self->workflow->state( $jobstate->name->value );
-   my $wf_inst  = $self->workflow->new_instance( state => $wf_state );
-   my $ev_t     = $event->transition;
-
-   $ev_t->value eq 'finish' and $event->rv > $job->expected_rv
-      and $ev_t->set_fail;
-
-   my $transition; $wf_state = $wf_inst->state;
-
-   unless ($transition = $wf_state->get_transition( $ev_t->value )) {
-      my $msg  = 'Transition '.$ev_t->value.' not allowed from ';
-         $msg .= $wf_state->name.' for job '.$job->fqdn;
-
-      $self->log->error( $msg ); return FALSE;
-   }
-
-   $wf_inst = $transition->apply( $wf_inst );
-   $jobstate->name( $wf_inst->state->name );
-   $jobstate->updated( DateTime->now );
-   $jobstate->update;
-   return TRUE;
-}
-
-sub _create_jobstate {
-   my ($self, $js_rs, $job) = @_; my $parent_state = 'inactive';
-
-   if ($job->parent_id and $job->id != $job->parent_id) {
-      $parent_state = $js_rs->find( $job->parent_id )
-         or $self->log->error( 'Job '.$job->parent_id.' has no state' );
-      $parent_state and $parent_state = $parent_state->name;
-   }
-   else { $parent_state = 'active' }
-
-   my $initial_state = ($parent_state eq 'active'
-                     or $parent_state eq 'running'
-                     or $parent_state eq 'starting')
-                     ?  'active' : 'inactive';
-
-   return $js_rs->create( { id      => $job->id,
-                            name    => $initial_state,
-                            updated => DateTime->now } );
+   return $self->schema_class->connect( @{ $info }, $params );
 }
 
 sub _get_ipsa {
@@ -221,19 +173,37 @@ sub _get_listener_args {
 
 sub _input_event_handler {
    my $self   = shift;
-   my $ev_rs  = $self->schema->resultset( 'Event' );
-   my $js_rs  = $self->schema->resultset( 'JobState' );
-   my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
-   my $events = $ev_rs->search
-      ( { 'transition' => [ qw(finish started terminate) ] },
-        { 'prefetch'   => { 'job_rel' => 'state' }, } );
-
-   for my $event ($events->all) {
-      $self->_create_and_or_update_jobstate( $js_rs, $event ) or next;
-      $pev_rs->create( { $event->get_inflated_columns } ); $event->delete;
-   }
+   my $schema = $self->schema;
+   my $ev_rs  = $schema->resultset( 'Event' );
+   my $js_rs  = $schema->resultset( 'JobState' );
+   my $pev_rs = $schema->resultset( 'ProcessedEvent' );
 
    state $tick //= 0; $self->log->debug( 'ITICK['.$tick++.']' );
+
+   my $events = $ev_rs->search
+      ( { 'transition' => [ qw(finish started terminate) ] },
+        { 'prefetch'   => 'job_rel' } );
+
+   for my $event ($events->all) {
+      $schema->txn_do( sub {
+         my $cols = { $event->get_inflated_columns }; my $error;
+
+         if ($error = $js_rs->create_and_or_update( $event )) {
+            $self->_log_debug_tuple( $error );
+            $cols->{error} = $error->[ 2 ]->class;
+         }
+
+         $pev_rs->create( $cols ); $event->delete;
+      } );
+   }
+
+   return;
+}
+
+sub _log_debug_tuple {
+   my ($self, $t) = @_;
+
+   $self->log->debug( (uc $t->[ 0 ]).'['.$t->[ 1 ].'] '.$t->[ 2 ] );
    return;
 }
 
@@ -273,24 +243,38 @@ sub _make_remote_calls {
 
 sub _output_event_handler {
    my $self   = shift;
-   my $ev_rs  = $self->schema->resultset( 'Event' );
-   my $js_rs  = $self->schema->resultset( 'JobState' );
-   my $pev_rs = $self->schema->resultset( 'ProcessedEvent' );
-   my $events = $ev_rs->search( { 'transition' => 'start' },
-                                { 'prefetch'   => { 'job_rel' => 'state' }, } );
-
-   for my $event ($events->all) {
-      $self->_create_and_or_update_jobstate( $js_rs, $event ) or next;
-
-      my ($runid, $token) = $self->_start_job( $event->job_rel );
-      my $cols            = { $event->get_inflated_columns };
-
-      $cols->{runid} = $runid; $cols->{token} = $token;
-      $pev_rs->create( $cols ); $event->delete;
-   }
+   my $schema = $self->schema;
+   my $ev_rs  = $schema->resultset( 'Event' );
+   my $js_rs  = $schema->resultset( 'JobState' );
+   my $pev_rs = $schema->resultset( 'ProcessedEvent' );
 
    state $tick //= 0; $self->log->debug( 'OTICK['.$tick++.']' );
+
+   my $events = $ev_rs->search( { 'transition' => 'start' },
+                                { 'prefetch'   => 'job_rel' } );
+
+   for my $event ($events->all) {
+      $schema->txn_do( sub {
+         $pev_rs->create( $self->_process_output_event( $js_rs, $event ) );
+         $event->delete;
+      } );
+   }
+
    return;
+}
+
+sub _process_output_event {
+   my ($self, $js_rs, $event) = @_; my ($runid, $token) = (NUL, NUL);
+
+   my $cols = { $event->get_inflated_columns }; my $error;
+
+   if ($error = $js_rs->create_and_or_update( $event )) {
+      $self->_log_debug_tuple( $error ); $cols->{error} = $error->[ 2 ]->class;
+   }
+   else { ($runid, $token) = $self->_start_job( $event->job_rel ) }
+
+   $cols->{runid} = $runid; $cols->{token} = $token;
+   return $cols;
 }
 
 sub _start_job {

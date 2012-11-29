@@ -11,6 +11,7 @@ Bob->new( {
    requires   => {
       'perl'                     => 5.010,
       'version'                  => 0.77,
+      'Algorithm::Cron'          => 0.04,
       'CatalystX::Usul'          => q(0.8.0),
       'Class::C3::Componentised' => 1.001000,
       'Class::Workflow'          => 0.11,

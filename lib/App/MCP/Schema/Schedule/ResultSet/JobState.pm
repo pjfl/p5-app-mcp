@@ -8,7 +8,46 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
+use Class::Usul::Functions qw(exception throw);
+use Algorithm::Cron;
+use App::MCP::ExpressionParser;
+use App::MCP::Workflow;
+use DateTime;
+use Scalar::Util           qw(blessed);
+use TryCatch;
+
+sub create_and_or_update {
+   my ($self, $event) = @_;
+
+   my $job        = $event->job_rel;
+   my $job_state  = $self->_find_or_create( $job );
+   my $state_name = $job_state->name->value;
+
+   try {
+      $state_name = $self->_workflow->process_event( $state_name, $event );
+   }
+   catch ($e) {
+      (blessed $e and $e->can( 'class' ))
+         or $e = exception error => $e, class => 'Unknown';
+
+      return [ $event->transition->value, $job->fqjn, $e ];
+   }
+
+   $job_state->name( $state_name );
+   $job_state->updated( DateTime->now );
+   $job_state->update;
+   $self->_trigger_update_cascade( $event );
+   return;
+}
+
+sub eval_condition {
+   my ($self, $job) = @_;
+
+   state $parser //= App::MCP::ExpressionParser->new
+      ( external => $self, predicates => $self->predicates );
+
+   return $parser->parse( $job->condition, $job->namespace );
+}
 
 sub finished {
    my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
@@ -26,6 +65,17 @@ sub running {
    return $state eq 'running' ? TRUE : FALSE
 }
 
+sub should_start_now {
+   my ($self, $job) = @_;
+
+   my $crontab   = $job->crontab;
+   my $last_time = $job->state ? $job->state->updated->epoch : 0;
+   my $cron      = Algorithm::Cron->new( base => 'utc', crontab => $crontab );
+   my $time      = $cron->next_time( $last_time );
+
+   return time > $time ? TRUE : FALSE;
+}
+
 sub terminated {
    my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
@@ -34,17 +84,54 @@ sub terminated {
 
 # Private methods
 
+sub _find_or_create {
+   my ($self, $job) = @_; my $parent_state = 'inactive';
+
+   my $job_state; $job_state = $self->find( $job->id ) and return $job_state;
+
+   if ($job->parent_id and $job->id != $job->parent_id) {
+      $parent_state = $self->find( $job->parent_id );
+      $parent_state and $parent_state = $parent_state->name;
+   }
+   else { $parent_state = 'active' }
+
+   my $initial_state = ($parent_state eq 'active'
+                     or $parent_state eq 'running'
+                     or $parent_state eq 'starting')
+                     ?  'active' : 'inactive';
+
+   return $self->create( { job_id  => $job->id,
+                           name    => $initial_state,
+                           updated => DateTime->now } );
+}
+
 sub _get_job_state {
    my ($self, $fqjn) = @_;
 
-   state $job_rs //= $self->result_source->schema->resultset( 'Job' );
+   state $rs //= $self->result_source->schema->resultset( 'Job' );
 
-   my $jobs   = $job_rs->search( { fqjn => $fqjn } );
-   my $job    = $jobs->first or throw error => 'Job [_1] unknown',
-                                      args  => [ $fqjn ];
-   my $state  = $self->find( $job->id );
+   my $jobs = $rs->search( { fqjn => $fqjn }, { prefetch => 'state' } );
+   my $job  = $jobs->first or throw error => 'Job [_1] unknown',
+                                    args  => [ $fqjn ];
 
-   return $state ? $state->name : 'inactive';
+   return $job->state ? $job->state->name : 'inactive';
+}
+
+sub _trigger_update_cascade {
+   my ($self, $event) = @_; my $schema = $self->result_source->schema;
+
+   state $ev_rs //= $schema->resultset( 'Event' );
+   state $jc_rs //= $schema->resultset( 'JobCondition' );
+
+   for ($jc_rs->search( { job_id => $event->job_rel->id } )->all) {
+      $ev_rs->create( { job_id => $_->reverse_id, transition => 'start' } );
+   }
+
+   return;
+}
+
+sub _workflow {
+   state $wf //= App::MCP::Workflow->new; return $wf;
 }
 
 1;
