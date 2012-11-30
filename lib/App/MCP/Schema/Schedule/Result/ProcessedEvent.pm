@@ -17,13 +17,13 @@ $class->add_columns
    ( id         => $class->serial_data_type,
      created    => { data_type => 'datetime' },
      processed  => $class->set_on_create_datetime_data_type,
-     error      => $class->varchar_data_type( 16 ),
      job_id     => $class->foreign_key_data_type,
-     pid        => $class->numerical_id_data_type,
+     transition => $class->enumerated_data_type( 'transition_enum' ),
+     rejected   => $class->varchar_data_type( 16 ),
      runid      => $class->varchar_data_type( 20 ),
-     rv         => $class->numerical_id_data_type,
      token      => $class->varchar_data_type( 32 ),
-     transition => $class->enumerated_data_type( 'transition_enum' ), );
+     pid        => $class->numerical_id_data_type,
+     rv         => $class->numerical_id_data_type, );
 
 $class->set_primary_key( 'id' );
 

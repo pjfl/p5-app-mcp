@@ -27,7 +27,7 @@ has 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    documentation     => 'The database to connect to',
    default           => 'schedule';
 
-has 'identity_file'  => is => 'ro',   isa => File, coerce => TRUE,
+has 'identity_file'  => is => 'lazy', isa => File, coerce => TRUE,
    documentation     => 'Path to private SSH key',
    default           => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
 
@@ -56,7 +56,7 @@ has '_loop'          => is => 'lazy', isa => Object,
 
 has '_schema'        => is => 'lazy', isa => Object,  reader => 'schema';
 
-has '_servers'       => is => 'ro',   isa => ArrayRef,
+has '_servers'       => is => 'ro',   isa => ArrayRef, auto_deref => TRUE,
    default           => sub { [ fqdn ] }, reader => 'servers';
 
 around 'run' => sub {
@@ -125,7 +125,7 @@ sub daemon {
 
    try { $loop->run } catch ($e) { $self->log->error( $e ); $stop->() }
 
-   exit 0;
+   exit OK;
 }
 
 # Private methods
@@ -133,8 +133,8 @@ sub daemon {
 sub _build__schema {
    my $self = shift;
    my $info = $self->get_connect_info( $self, { database => $self->database } );
-   # TODO: Fix me
-   my $params = { quote_names => TRUE };
+
+   my $params = { quote_names => TRUE }; # TODO: Fix me
 
    return $self->schema_class->connect( @{ $info }, $params );
 }
@@ -186,11 +186,11 @@ sub _input_event_handler {
 
    for my $event ($events->all) {
       $schema->txn_do( sub {
-         my $cols = { $event->get_inflated_columns }; my $error;
+         my $cols = { $event->get_inflated_columns }; my $rejected;
 
-         if ($error = $js_rs->create_and_or_update( $event )) {
-            $self->_log_debug_tuple( $error );
-            $cols->{error} = $error->[ 2 ]->class;
+         if ($rejected = $js_rs->create_and_or_update( $event )) {
+            $cols->{rejected} = $rejected->[ 2 ]->class;
+            $self->_log_debug_tuple( $rejected );
          }
 
          $pev_rs->create( $cols ); $event->delete;
@@ -229,7 +229,9 @@ sub _make_remote_calls {
       };
    };
    my $loaded    = sub {
-      my $cb; $cb = $builder->( @{ $_ }, $cb ) for (@{ $calls }); $cb->();
+      my $cb; $cb = $builder->( @{ $_ }, $cb ) for (reverse @{ $calls });
+
+      $cb->();
    };
 
    $ipsa->use_library
@@ -266,10 +268,11 @@ sub _output_event_handler {
 sub _process_output_event {
    my ($self, $js_rs, $event) = @_; my ($runid, $token) = (NUL, NUL);
 
-   my $cols = { $event->get_inflated_columns }; my $error;
+   my $cols = { $event->get_inflated_columns }; my $rejected;
 
-   if ($error = $js_rs->create_and_or_update( $event )) {
-      $self->_log_debug_tuple( $error ); $cols->{error} = $error->[ 2 ]->class;
+   if ($rejected = $js_rs->create_and_or_update( $event )) {
+      $cols->{rejected} = $rejected->[ 2 ]->class;
+      $self->_log_debug_tuple( $rejected );
    }
    else { ($runid, $token) = $self->_start_job( $event->job_rel ) }
 
@@ -278,26 +281,27 @@ sub _process_output_event {
 }
 
 sub _start_job {
-   my ($self, $job) = @_; state $provisioned //= {};
+   my ($self, $job) = @_; state $provisioned //= {}; my $host; my $user;
 
-   my $runid   = bson64id;
-   my $user    = $job->user;
-   my $host    = $job->host;
-   my $cmd     = $job->command;
-   my $key     = "${user}\@${host}";
-   my $class   = $self->config->appclass;
-   my $token   = substr create_token, 0, 32;
-   my $servers = join SPC, @{ $self->servers };
-   my $ipsa    = $self->_get_ipsa( $user, $host );
-   my $args    = { appclass  => $class,         command   => $cmd,
-                   debug     => $self->debug,   directory => $job->directory,
-                   job_id    => $job->id,       port      => $self->port,
-                   runid     => $runid,         servers   => $servers,
-                   token     => $token };
-   my $calls   = [ [ 'exit',     [] ],
-                   [ 'dispatch', [ %{ $args } ] ] ];
+   my $runid = bson64id;
+   my $cmd   = $job->command;
+   my $class = $self->config->appclass;
+   my $token = substr create_token, 0, 32;
+   my $ipsa  = $self->_get_ipsa( $user = $job->user, $host = $job->host );
+   my $args  = { appclass  => $class,
+                 command   => $cmd,
+                 debug     => $self->debug,
+                 directory => $job->directory,
+                 job_id    => $job->id,
+                 port      => $self->port,
+                 runid     => $runid,
+                 servers   => (join SPC, $self->servers),
+                 token     => $token };
+   my $calls = [ [ 'dispatch', [ %{ $args } ] ],
+                 [ 'exit',     [] ], ];
+   my $key   = "${user}\@${host}";
 
-   $provisioned->{ $key } or push @{ $calls }, [ 'provision', [ $class ] ];
+   $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
    $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
    $self->_make_remote_calls( $ipsa, $runid, $calls );
    $provisioned->{ $key } = TRUE;

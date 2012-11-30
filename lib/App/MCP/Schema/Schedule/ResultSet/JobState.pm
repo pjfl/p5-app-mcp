@@ -7,10 +7,7 @@ use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
-use Class::Usul::Constants;
-use Class::Usul::Functions qw(exception throw);
-use Algorithm::Cron;
-use App::MCP::ExpressionParser;
+use Class::Usul::Functions qw(exception);
 use App::MCP::Workflow;
 use DateTime;
 use Scalar::Util           qw(blessed);
@@ -40,48 +37,6 @@ sub create_and_or_update {
    return;
 }
 
-sub eval_condition {
-   my ($self, $job) = @_;
-
-   state $parser //= App::MCP::ExpressionParser->new
-      ( external => $self, predicates => $self->predicates );
-
-   return $parser->parse( $job->condition, $job->namespace );
-}
-
-sub finished {
-   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
-
-   return $state eq 'finished' ? TRUE : FALSE ;
-}
-
-sub predicates {
-   return [ qw(finished running terminated) ];
-}
-
-sub running {
-   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
-
-   return $state eq 'running' ? TRUE : FALSE
-}
-
-sub should_start_now {
-   my ($self, $job) = @_;
-
-   my $crontab   = $job->crontab;
-   my $last_time = $job->state ? $job->state->updated->epoch : 0;
-   my $cron      = Algorithm::Cron->new( base => 'utc', crontab => $crontab );
-   my $time      = $cron->next_time( $last_time );
-
-   return time > $time ? TRUE : FALSE;
-}
-
-sub terminated {
-   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
-
-   return $state eq 'terminated' ? TRUE : FALSE;
-}
-
 # Private methods
 
 sub _find_or_create {
@@ -103,18 +58,6 @@ sub _find_or_create {
    return $self->create( { job_id  => $job->id,
                            name    => $initial_state,
                            updated => DateTime->now } );
-}
-
-sub _get_job_state {
-   my ($self, $fqjn) = @_;
-
-   state $rs //= $self->result_source->schema->resultset( 'Job' );
-
-   my $jobs = $rs->search( { fqjn => $fqjn }, { prefetch => 'state' } );
-   my $job  = $jobs->first or throw error => 'Job [_1] unknown',
-                                    args  => [ $fqjn ];
-
-   return $job->state ? $job->state->name : 'inactive';
 }
 
 sub _trigger_update_cascade {

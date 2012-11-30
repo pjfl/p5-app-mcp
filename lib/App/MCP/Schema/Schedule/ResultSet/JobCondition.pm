@@ -3,17 +3,16 @@
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
 use strict;
-use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Functions qw(throw);
 
 sub create_dependents {
-   my ($self, $job, $id) = @_; my $job_rs = $self->_job_rs;
+   my ($self, $job, $id) = @_; my $rs = $job->result_source->resultset;
 
-   for my $fqjn (@{ $self->_js_rs->eval_condition( $job )->[ 1 ] }) {
-      my $jobs = $job_rs->search( { fqjn => $fqjn } );
+   for my $fqjn (@{ $rs->eval_condition( $job )->[ 1 ] }) {
+      my $jobs = $rs->search( { fqjn => $fqjn } );
       my $job  = $jobs->first or throw error => 'Job [_1] unknown',
                                        args  => [ $fqjn ];
 
@@ -25,18 +24,6 @@ sub create_dependents {
 
 sub delete_dependents {
    my ($self, $id) = @_; $self->search( { reverse_id => $id } )->delete; return;
-}
-
-# Private methods
-
-sub _job_rs {
-   state $rs //= $_[ 0 ]->result_source->schema->resultset( 'Job' ); return $rs;
-}
-
-sub _js_rs {
-   state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobState' );
-
-   return $rs;
 }
 
 1;

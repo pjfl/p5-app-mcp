@@ -67,12 +67,12 @@ sub BUILD {
 
          $job->condition or $job->crontab or return;
 
-         my $js_rs = $event->result_source->schema->resultset( 'JobState' );
+         my $job_rs = $job->result_source->resultset;
 
-         $job->crontab and ($js_rs->should_start_now( $job )
+         $job->crontab and ($job_rs->should_start_now( $job )
             or throw error => 'Not at this time', class => 'Crontab');
 
-         $job->condition and ($js_rs->eval_condition( $job )->[ 0 ]
+         $job->condition and ($job_rs->eval_condition( $job )->[ 0 ]
             or throw error => 'Condition not true', class => 'Condition');
 
          return;

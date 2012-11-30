@@ -31,7 +31,7 @@ sub create_event {
    my ($self, $runid, $params) = @_; my $schema = $self->schedule;
 
    my $rs = $schema->resultset( 'ProcessedEvent' )
-                   ->search( { runid => $runid } );
+                   ->search( { runid => $runid }, { columns => [ 'token' ] } );
 
    my $event = $rs->first or return (404, 'Not found');
 

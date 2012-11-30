@@ -75,12 +75,11 @@ sub _install_full_path_rel {
       my $like      = [ $args->{foreign_alias}.".${mp} ${concat} ?",
                         [ {} => "${separator}%" ] ];
 
-      return # TODO: Add stupid storage mapping
+      return
          ( [ { $args->{self_alias}.".${mp}" => { -like => \$like, } }, @me ],
            $args->{self_rowobj} && {
               $args->{foreign_alias}.".${fk}" => {
-                 -in => [ # TODO: Should we use accessor instead of direct $mp?
-                          grep   { $path_info->{include_self_in_path}
+                 -in => [ grep   { $path_info->{include_self_in_path}
                                    || $_ ne $args->{self_rowobj}->$fk }
                           split m{ \Q$separator\E }msx,
                           $args->{self_rowobj}->get_column( $mp ) ],

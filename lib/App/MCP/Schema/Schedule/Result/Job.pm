@@ -11,7 +11,7 @@ use parent  qw(App::MCP::Schema::Base);
 use CatalystX::Usul::Constants;
 use CatalystX::Usul::Functions qw(throw);
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
+my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
 $class->table( 'job' );
 
@@ -39,20 +39,17 @@ $class->set_primary_key( 'id' );
 
 $class->add_unique_constraint( [ 'fqjn' ] );
 
-$class->belongs_to( parent_category  => "${schema}::Result::Job", 'parent_id' );
+$class->belongs_to( parent_category  => "${result}::Job",         'parent_id' );
 
-$class->has_many  ( child_categories => "${schema}::Result::Job", 'parent_id' );
+$class->has_many  ( child_categories => "${result}::Job",         'parent_id' );
 
-$class->has_many  ( events           => "${schema}::Result::Event",  'job_id' );
+$class->has_many  ( dependents       => "${result}::JobCondition",   'job_id' );
 
-$class->might_have( state            => "${schema}::Result::JobState",
-                    'job_id' );
+$class->has_many  ( events           => "${result}::Event",          'job_id' );
 
-$class->has_many  ( processed_events => "${schema}::Result::ProcessedEvent",
-                    'job_id' );
+$class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
-$class->has_many  ( dependents       => "${schema}::Result::JobCondition",
-                    'job_id' );
+$class->might_have( state            => "${result}::JobState",       'job_id' );
 
 sub new {
    my ($class, $attr) = @_; my $new = $class->next::method( $attr );

@@ -8,14 +8,44 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use IPC::PerlSSH::Library;
 
 init q{
-   use App::MCP::Worker;
+   use File::Path            qw(mkpath);
+   use File::Spec::Functions qw(catdir catfile);
 };
 
 func 'exit'      => q{ exit 0 };
 
-func 'dispatch'  => q{ return App::MCP::Worker->new( @_ )->dispatch };
+func 'dispatch'  => q{
+   require App::MCP::Worker; return App::MCP::Worker->new( @_ )->dispatch;
+};
 
-func 'provision' => q{ return App::MCP::Worker::provision( @_ ) };
+# TODO: Add installer
+
+func 'provision' => q{
+   my $appclass  =  shift; $appclass or die 'No appclass';
+  (my $prefix    =  lc $appclass) =~ s{ :: }{_}gmsx;
+   my $home      =  exists $ENV{HOME} && defined $ENV{HOME} && -d $ENV{HOME}
+                 ?  $ENV{HOME} : (getpwuid $<)[ 7 ];
+     ($home and -d  $home) or die 'No home';
+   my $appldir   =  catdir ( $home,    ".${prefix}" );
+   -d $appldir  or  mkpath ( $appldir, { mode => 0750 } );
+   my $logsdir   =  catdir ( $appldir, 'logs' );
+   -d $logsdir  or  mkpath ( $logsdir, { mode => 0750 } );
+   my $tempdir   =  catdir ( $appldir, 'tmp' );
+   -d $tempdir  or  mkpath ( $tempdir, { mode => 0750 } );
+   my $cfgfile   =  catfile( $appldir, "${prefix}.json" );
+
+   unless (-f $cfgfile) {
+      my $config =  "{\n   \"name\" : \"worker\"\n}\n";
+
+      open( my $fh, '>', $cfgfile ) or die "Path ${cfgfile} cannot open - $!";
+      print $fh $config or die "Path ${cfgfile} cannot write - $!"; close $fh;
+      chmod 0640, $cfgfile or die "Path ${cfgfile} cannot chmod - $!";
+   }
+
+   eval { require App::MCP::Worker; 1; } and return "Provisioned ${appldir}";
+
+   return "Provisioned ${appldir} - App::MCP::Worker missing";
+};
 
 1;
 
