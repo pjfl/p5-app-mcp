@@ -13,11 +13,12 @@ use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IO::Async::Loop::EV;
 use IO::Async::Channel;
+use IO::Async::Function;
 use IO::Async::Process;
 use IO::Async::Routine;
 use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
-use IPC::PerlSSH::Async;
+use IPC::PerlSSH;
 use Plack::Runner;
 use POSIX                        qw(WEXITSTATUS);
 use TryCatch;
@@ -50,12 +51,10 @@ has '_clock_tick'    => is => 'lazy', isa => Object, reader => 'clock_tick';
 
 has '_ip_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
+has '_ipc_ssh'       => is => 'lazy', isa => Object, reader => 'ipc_ssh';
+
 has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
    default           => 'App::MCP::SSHLibrary', reader => 'library_class';
-
-has '_library_funcs' => is => 'ro',   isa => ArrayRef,
-   default           => sub { [ qw(dispatch exit provision) ] },
-   reader            => 'library_functions';
 
 has '_listener'      => is => 'lazy', isa => Object, reader => 'listener';
 
@@ -159,21 +158,41 @@ sub _build__ip_ev_hndlr {
    return $routine;
 }
 
+sub _build__ipc_ssh {
+   my $self = shift; my $log = $self->log; my $workers;
+
+   my $function = IO::Async::Function->new
+      (  code        => sub { $self->_make_remote_calls( @_ ) },
+         exit_on_die => TRUE,
+         max_workers => 3,
+         setup       => [ $log->fh, [ 'keep' ] ], );
+
+   $self->loop->add( $function ); $workers = $function->workers;
+
+   $log->info( "IPCSSH[${workers}]: Started ipc ssh workers" );
+
+   return $function;
+}
+
 sub _build__listener {
-   my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
+   my $self = shift; my $log = $self->log; my $daemon_pid = $PID;
 
-   my $process = IO::Async::Process->new( code => sub {
-         $ENV{MCP_DAEMON_PID} = $daemon_pid;
-         Plack::Runner->run( $self->_get_listener_args );
-      },
-      on_exception => sub { $log->error( join ' - ', @_ ) },
-      on_finish    => sub { $log->info( "LISTEN[${pid}]: Listener stopped" ) });
+   my $pid  = $self->loop->spawn_child
+      (  code    => sub {
+            $ENV{MCP_DAEMON_PID} = $daemon_pid;
+            Plack::Runner->run( $self->_get_listener_args );
+            return TRUE;
+         },
+         on_exit => sub {
+            my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-   $self->loop->add( $process ); $pid = $process->pid;
+            $log->info( "LISTEN[${pid}]: Exited ${rv} - ".$_[ 1 ].' '.$_[ 0 ] );
+         },
+         setup   => [ $log->fh, [ 'keep' ] ], );
 
    $log->info( "LISTEN[${pid}]: Started listener" );
 
-   return $process;
+   return App::MCP::Process->new( pid => $pid );
 }
 
 sub _build__op_ev_hndlr {
@@ -212,28 +231,6 @@ sub _clock_tick_handler {
    state $tick //= 0; $self->log->debug( ' TICK['.$tick++.']' );
    kill 'USR1', $PID;
    return;
-}
-
-sub _get_ipsa {
-   my ($self, $user, $host) = @_; my $loop = $self->loop;
-
-   my $errfile = $self->_stdio_file( 'err' ); my $log = $self->log;
-
-   my $ipsa; $ipsa = IPC::PerlSSH::Async->new
-      ( Host         => $host,
-        User         => $user,
-        SshOptions   => [ '-i', $self->identity_file ],
-        on_exception => sub { $log->error( $_[ 0 ] ); $loop->remove( $ipsa ) },
-        on_exit      => sub {
-           my $rv = $_[ 1 ] >> 8;
-
-           $rv > 0 and $log->error( "SSH[${host}]: See ${errfile} - rv ${rv}" );
-           $rv < 1 and $log->debug( "SSH[${host}]: Exiting" );
-           $loop->remove( $ipsa );
-        }, );
-
-   $loop->add( $ipsa );
-   return $ipsa;
 }
 
 sub _get_listener_args {
@@ -300,36 +297,29 @@ sub _log_debug_tuple {
 sub _make_remote_calls {
    my ($self, $user, $host, $runid, $calls) = @_;
 
-   my $ipsa    = $self->_get_ipsa( $user, $host );
-   my $logger  = sub {
-      my ($level, $cmd, $msg) = @_;
-
-      $self->log->$level( "${cmd}[${runid}]: ${msg}" );
-   };
-   my $debug   = sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) };
-   my $error   = sub { $logger->( 'error', ' CALL', $_[ 0 ] ) };
-   my $builder = sub {
-      my ($name, $args, $cb) = @_;
-
-      return sub {
-         $_[ 0 ] and $debug->( $_[ 0 ] );
-         $ipsa->call( name         => $name,
-                      args         => $args,
-                      on_result    => $cb || $debug,
-                      on_exception => $cb ? $error : $debug );
-      };
-   };
-   my $loaded  = sub {
-      my $cb; $cb = $builder->( @{ $_ }, $cb ) for (reverse @{ $calls });
-
-      $cb->();
+   my $log    = $self->log;
+   my $ips    = IPC::PerlSSH->new
+      ( Host       => $host,
+        User       => $user,
+        SshOptions => [ '-i', $self->identity_file ], );
+   my $logger = sub {
+      my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
    };
 
-   $ipsa->use_library
-      ( library      => $self->library_class,
-        funcs        => $self->library_functions,
-        on_exception => sub { $logger->( 'error', 'STORE', $_[ 0 ] ) },
-        on_loaded    => $loaded, );
+   try        { $ips->use_library( $self->library_class ) }
+   catch ($e) { $logger->( 'error', 'STORE', $e ); return }
+
+   for my $call (@{ $calls }) {
+      my $call_name = $call->[ 0 ]; my $result;
+
+      try { $result = join "\n", $ips->call( $call_name, @{ $call->[ 1 ] } ) }
+      catch ($e) {
+         $logger->( $call_name eq 'exit' ? 'debug' : 'error', ' CALL', $e );
+         return;
+      }
+
+      $logger->( 'debug', ' CALL', $result );
+   }
 
    return;
 }
@@ -382,31 +372,40 @@ sub _process_output_event {
 }
 
 sub _start_job {
-   my ($self, $job) = @_; state $provisioned //= {};
+   my ($self, $job) = @_; my $log = $self->log; state $provisioned //= {};
 
-   my $runid = bson64id;
-   my $host  = $job->host;
-   my $user  = $job->user;
-   my $cmd   = $job->command;
-   my $class = $self->config->appclass;
-   my $token = substr create_token, 0, 32;
-   my $args  = { appclass  => $class,
-                 command   => $cmd,
-                 debug     => $self->debug,
-                 directory => $job->directory,
-                 job_id    => $job->id,
-                 port      => $self->port,
-                 runid     => $runid,
-                 servers   => (join SPC, $self->servers),
-                 token     => $token };
-   my $calls = [ [ 'dispatch', [ %{ $args } ] ],
-                 [ 'exit',     [] ], ];
-   my $key   = "${user}\@${host}";
+   my $runid  = bson64id;
+   my $host   = $job->host;
+   my $user   = $job->user;
+   my $cmd    = $job->command;
+   my $class  = $self->config->appclass;
+   my $token  = substr create_token, 0, 32;
+   my $args   = { appclass  => $class,
+                  command   => $cmd,
+                  debug     => $self->debug,
+                  directory => $job->directory,
+                  job_id    => $job->id,
+                  port      => $self->port,
+                  runid     => $runid,
+                  servers   => (join SPC, $self->servers),
+                  token     => $token };
+   my $calls  = [ [ 'dispatch', [ %{ $args } ] ],
+                  [ 'exit',     [] ], ];
+   my $key    = "${user}\@${host}";
+   my $logger = sub {
+      my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
+   };
 
-   $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
+   $logger->( 'debug', 'START', "${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
-   $self->_make_remote_calls( $user, $host, $runid, $calls );
-   $provisioned->{ $key } = TRUE;
+   $self->ipc_ssh->call
+      (  args      => [ $user, $host, $runid, $calls ],
+         on_return => sub {
+            $logger->( 'debug', ' CALL', 'Complete' );
+            $provisioned->{ $key } = TRUE;
+         },
+         on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) }, );
+
    return ($runid, $token);
 }
 
@@ -440,6 +439,25 @@ sub _stdio_file {
 }
 
 __PACKAGE__->meta->make_immutable;
+
+package # Hide from indexer
+   App::MCP::Process;
+
+sub new {
+   my $self = shift; return bless { @_ }, ref $self || $self;
+}
+
+sub is_running {
+   return kill 0, $_[ 0 ]->pid;
+}
+
+sub kill {
+   kill $_[ 1 ], $_[ 0 ]->pid;
+}
+
+sub pid {
+   return $_[ 0 ]->{pid};
+}
 
 1;
 
