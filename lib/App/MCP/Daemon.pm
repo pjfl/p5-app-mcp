@@ -175,17 +175,24 @@ sub _build__ipc_ssh {
 }
 
 sub _build__listener {
-   my $self = shift; my $log = $self->log; my $daemon_pid = $PID;
+   my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
 
-   my $r = $self->run_cmd( [ sub {
-      $ENV{MCP_DAEMON_PID} = $daemon_pid;
-      Plack::Runner->run( $self->_get_listener_args );
-      return OK;
-   } ], { async => 1 } );
+   my $process = App::MCP::Process->new
+      (  builder => $self,
+         code    => sub {
+            $ENV{MCP_DAEMON_PID} = $daemon_pid;
+            Plack::Runner->run( $self->_get_listener_args );
+            return OK;
+         },
+         on_exit => sub {
+            my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-   my $pid = $r->pid; $log->info( "LISTEN[${pid}]: Started listener" );
+            $log->info( "LISTEN[${pid}]: Listener stopped ${rv}" );
+         }, );
 
-   return App::MCP::Process->new( pid => $pid );
+   $pid = $process->pid; $log->info( "LISTEN[${pid}]: Started listener" );
+
+   return $process;
 }
 
 sub _build__op_ev_hndlr {
@@ -270,7 +277,7 @@ sub _ip_code {
    my ($self, $input, $daemon_pid) = @_;
 
    while ($input->recv) {
-      my $once = TRUE; $self->log->debug( 'ip_code' );
+      my $once = TRUE;
 
       while ($self->_input_handler) { $once = FALSE; kill 'USR2', $daemon_pid }
 
@@ -321,7 +328,7 @@ sub _op_code {
    my ($self, $input) = @_;
 
    while ($input->recv) {
-      $self->log->debug( 'op_code' ); while ($self->_output_handler) { TRUE }
+      while ($self->_output_handler) { TRUE }
    }
 
    return;
@@ -421,7 +428,6 @@ sub _stop_everything {
    $process->is_running and $process->kill( 'TERM' );
 
    $log->info( "DAEMON[${PID}]: Stopping event loop" );
-   wait;
    return;
 }
 
@@ -437,7 +443,14 @@ package # Hide from indexer
    App::MCP::Process;
 
 sub new {
-   my $self = shift; return bless { @_ }, ref $self || $self;
+   my $self = shift; my $new = bless { @_ }, ref $self || $self;
+
+   my $builder = delete $new->{builder};
+   my $r       = $builder->run_cmd( [ $new->{code} ], { async => 1 } );
+
+   $builder->loop->watch_child( $new->{pid} = $r->{pid}, $new->{on_exit} );
+
+   return $new;
 }
 
 sub is_running {
