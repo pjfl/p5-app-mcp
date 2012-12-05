@@ -49,6 +49,9 @@ has 'server'         => is => 'ro',   isa => NonEmptySimpleStr,
 
 has '_clock_tick'    => is => 'lazy', isa => Object, reader => 'clock_tick';
 
+has '_interval'      => is => 'ro',   isa => PositiveInt,
+   default           => 3,         reader => 'interval';
+
 has '_ip_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
 has '_ipc_ssh'       => is => 'lazy', isa => Object, reader => 'ipc_ssh';
@@ -129,8 +132,10 @@ sub daemon {
 
 sub _build__clock_tick {
    my $self = shift;
-   my $tick = IO::Async::Timer::Periodic->new( on_tick => sub {
-      $self->_clock_tick_handler  }, interval => 3, reschedule => 'drift', );
+   my $tick = IO::Async::Timer::Periodic->new
+      (  on_tick    => sub { $self->_clock_tick_handler  },
+         interval   => $self->interval,
+         reschedule => 'drift', );
 
    $tick->start; $self->loop->add( $tick );
 
@@ -140,7 +145,6 @@ sub _build__clock_tick {
 sub _build__ip_ev_hndlr {
    my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
 
-   my $loop    = $self->loop;
    my $input   = IO::Async::Channel->new;
    my $routine = IO::Async::Routine->new
       (  channels_in  => [ $input ],
@@ -198,7 +202,6 @@ sub _build__listener {
 sub _build__op_ev_hndlr {
    my $self = shift; my $log = $self->log; my $pid;
 
-   my $loop    = $self->loop;
    my $input   = IO::Async::Channel->new;
    my $routine = IO::Async::Routine->new
       (  channels_in  => [ $input ],
@@ -226,10 +229,10 @@ sub _build__schema {
 }
 
 sub _clock_tick_handler {
-   my $self = shift;
+   my $self = shift; state $tick //= 0; my $elapsed = $tick * $self->interval;
 
-   state $tick //= 0; $self->log->debug( ' TICK['.$tick++.']' );
-   kill 'USR1', $PID;
+   $self->log->debug( " TICK[${elapsed}]" ); $tick++; kill 'USR1', $PID;
+
    return;
 }
 
@@ -410,7 +413,7 @@ sub _start_job {
 }
 
 sub _stop_everything {
-   my $self = shift; my $log = $self->log; my $loop = $self->loop;
+   my $self = shift; my $log = $self->log;
 
    $self->clock_tick->stop;
 
