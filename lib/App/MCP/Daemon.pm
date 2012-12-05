@@ -132,7 +132,7 @@ sub _build__clock_tick {
    my $tick = IO::Async::Timer::Periodic->new( on_tick => sub {
       $self->_clock_tick_handler  }, interval => 3, reschedule => 'drift', );
 
-   $self->loop->add( $tick ); $tick->start;
+   $tick->start; $self->loop->add( $tick );
 
    return $tick;
 }
@@ -189,6 +189,8 @@ sub _build__listener {
             $log->info( "LISTEN[${pid}]: Exited ${rv} - ".$_[ 1 ].' '.$_[ 0 ] );
          },
          setup   => [ stdin    => [ "open", "<", "/dev/null" ],
+                      stdout   => [ "open", ">", $self->_stdio_file( 'out', 'listener' ) ],
+                      stderr   => [ "open", ">", $self->_stdio_file( 'err', 'listener' ) ],
                       $log->fh => [ 'keep' ] ], );
 
    $log->info( "LISTEN[${pid}]: Started listener" );
