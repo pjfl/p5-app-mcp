@@ -188,7 +188,8 @@ sub _build__listener {
 
             $log->info( "LISTEN[${pid}]: Exited ${rv} - ".$_[ 1 ].' '.$_[ 0 ] );
          },
-         setup   => [ $log->fh, [ 'keep' ] ], );
+         setup   => [ stdin    => [ "open", "<", "/dev/null" ],
+                      $log->fh => [ 'keep' ] ], );
 
    $log->info( "LISTEN[${pid}]: Started listener" );
 
