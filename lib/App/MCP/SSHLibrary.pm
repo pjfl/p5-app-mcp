@@ -18,8 +18,6 @@ func 'dispatch'  => q{
    require App::MCP::Worker; return App::MCP::Worker->new( @_ )->dispatch;
 };
 
-# TODO: Add installer
-
 func 'provision' => q{
    my $appclass  =  shift; $appclass or die 'No appclass';
   (my $prefix    =  lc $appclass) =~ s{ :: }{_}gmsx;

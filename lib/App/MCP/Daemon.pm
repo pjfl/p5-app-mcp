@@ -3,7 +3,6 @@
 package App::MCP::Daemon;
 
 use strict;
-use feature qw(state);
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
@@ -12,7 +11,10 @@ use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
 use Daemon::Control;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
-use IO::Async::Loop;
+use IO::Async::Loop::EV;
+use IO::Async::Channel;
+use IO::Async::Process;
+use IO::Async::Routine;
 use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
 use IPC::PerlSSH::Async;
@@ -44,6 +46,10 @@ has 'server'         => is => 'ro',   isa => NonEmptySimpleStr,
    default           => 'Twiggy';
 
 
+has '_clock_tick'    => is => 'lazy', isa => Object, reader => 'clock_tick';
+
+has '_ip_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
+
 has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
    default           => 'App::MCP::SSHLibrary', reader => 'library_class';
 
@@ -51,8 +57,12 @@ has '_library_funcs' => is => 'ro',   isa => ArrayRef,
    default           => sub { [ qw(dispatch exit provision) ] },
    reader            => 'library_functions';
 
+has '_listener'      => is => 'lazy', isa => Object, reader => 'listener';
+
 has '_loop'          => is => 'lazy', isa => Object,
-   default           => sub { IO::Async::Loop->new }, reader => 'loop';
+   default           => sub { IO::Async::Loop::EV->new }, reader => 'loop';
+
+has '_op_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
 has '_schema'        => is => 'lazy', isa => Object,  reader => 'schema';
 
@@ -93,42 +103,99 @@ around 'run_chain' => sub {
 };
 
 sub daemon {
-   my $self = shift; my $loop = $self->loop; my $quit; my $term;
+   my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
-   $self->log->info( "DAEMON[${PID}]: Starting event loop" );
+   $log->info( "DAEMON[${PID}]: Starting event loop" );
 
-   my $listener = $self->_start_listener;
-
-   $self->log->info( "LISTEN[${listener}]: Started listener" );
-
-   my $ievt = IO::Async::Timer::Periodic->new( on_tick => sub {
-      $self->_input_event_handler  }, interval => 3, reschedule => 'drift', );
-
-   my $oevt = IO::Async::Timer::Periodic->new( on_tick => sub {
-      $self->_output_event_handler }, interval => 3, reschedule => 'drift', );
+   $self->listener; $self->clock_tick;
 
    my $stop = sub {
-      $loop->remove( $quit ); $loop->remove( $term );
-      $self->log->info( "LISTEN[${listener}]: Stopping listener" );
-      kill 'TERM', $listener;
-      $self->log->info( "DAEMON[${PID}]: Stopping event loop" );
-      $ievt->stop; $oevt->stop;
-      return;
+      $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
+      $self->_stop_everything;
    };
 
-   $quit = IO::Async::Signal->new( name => 'QUIT', on_receipt => $stop );
-   $term = IO::Async::Signal->new( name => 'TERM', on_receipt => $stop );
+   $loop->watch_signal( QUIT => $stop );
+   $loop->watch_signal( TERM => $stop );
+   $loop->watch_signal( USR1 => sub {
+      $self->ip_ev_hndlr->{channels_in}->[ 0 ]->send( [] ) } );
+   $loop->watch_signal( USR2 => sub {
+      $self->op_ev_hndlr->{channels_in}->[ 0 ]->send( [] ) } );
 
-   $loop->add( $ievt ); $loop->add( $oevt );
-   $loop->add( $quit ); $loop->add( $term );
-   $ievt->start;        $oevt->start;
-
-   try { $loop->run } catch ($e) { $self->log->error( $e ); $stop->() }
+   try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
 
    exit OK;
 }
 
 # Private methods
+
+sub _build__clock_tick {
+   my $self = shift;
+   my $tick = IO::Async::Timer::Periodic->new( on_tick => sub {
+      $self->_clock_tick_handler  }, interval => 3, reschedule => 'drift', );
+
+   $self->loop->add( $tick ); $tick->start;
+
+   return $tick;
+}
+
+sub _build__ip_ev_hndlr {
+   my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
+
+   my $loop    = $self->loop;
+   my $input   = IO::Async::Channel->new;
+   my $routine = IO::Async::Routine->new
+      (  channels_in  => [ $input ],
+         code         => sub { $self->_ip_code( $input, $daemon_pid ) },
+         on_exception => sub { $log->error( join ' - ', @_ ) },
+         on_finish    => sub {
+            $log->info( " INPUT[${pid}]: Input event handler stopped" );
+         },
+         setup        => [ $log->fh, [ 'keep' ] ], );
+
+   $self->loop->add( $routine ); $pid = $routine->pid;
+
+   $log->info( " INPUT[${pid}]: Started input event handler" );
+
+   return $routine;
+}
+
+sub _build__listener {
+   my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
+
+   my $process = IO::Async::Process->new( code => sub {
+         $ENV{MCP_DAEMON_PID} = $daemon_pid;
+         Plack::Runner->run( $self->_get_listener_args );
+      },
+      on_exception => sub { $log->error( join ' - ', @_ ) },
+      on_finish    => sub { $log->info( "LISTEN[${pid}]: Listener stopped" ) });
+
+   $self->loop->add( $process ); $pid = $process->pid;
+
+   $log->info( "LISTEN[${pid}]: Started listener" );
+
+   return $process;
+}
+
+sub _build__op_ev_hndlr {
+   my $self = shift; my $log = $self->log; my $pid;
+
+   my $loop    = $self->loop;
+   my $input   = IO::Async::Channel->new;
+   my $routine = IO::Async::Routine->new
+      (  channels_in  => [ $input ],
+         code         => sub { $self->_op_code( $input ) },
+         on_exception => sub { $log->error( join ' - ', @_ ) },
+         on_finish    => sub {
+            $log->info( "OUTPUT[${pid}]: Output event handler stopped" );
+         },
+         setup        => [ $log->fh, [ 'keep' ] ], );
+
+   $self->loop->add( $routine ); $pid = $routine->pid;
+
+   $log->info( "OUTPUT[${pid}]: Started output event handler" );
+
+   return $routine;
+}
 
 sub _build__schema {
    my $self = shift;
@@ -139,23 +206,33 @@ sub _build__schema {
    return $self->schema_class->connect( @{ $info }, $params );
 }
 
+sub _clock_tick_handler {
+   my $self = shift;
+
+   state $tick //= 0; $self->log->debug( ' TICK['.$tick++.']' );
+   kill 'USR1', $PID;
+   return;
+}
+
 sub _get_ipsa {
-   my ($self, $user, $host) = @_; my $errfile = $self->_stdio_file( 'err' );
+   my ($self, $user, $host) = @_; my $loop = $self->loop;
+
+   my $errfile = $self->_stdio_file( 'err' ); my $log = $self->log;
 
    my $ipsa; $ipsa = IPC::PerlSSH::Async->new
       ( Host         => $host,
         User         => $user,
         SshOptions   => [ '-i', $self->identity_file ],
-        on_exception => sub {
-           $self->log->error( $_[ 0 ] ); $self->loop->remove( $ipsa );
-        },
+        on_exception => sub { $log->error( $_[ 0 ] ); $loop->remove( $ipsa ) },
         on_exit      => sub {
-           my $rv = $_[ 1 ] >> 8; $rv > 0
-              and $self->log->error( "SSH[${host}]: See ${errfile} - rv ${rv}");
-           $self->loop->remove( $ipsa );
+           my $rv = $_[ 1 ] >> 8;
+
+           $rv > 0 and $log->error( "SSH[${host}]: See ${errfile} - rv ${rv}" );
+           $rv < 1 and $log->debug( "SSH[${host}]: Exiting" );
+           $loop->remove( $ipsa );
         }, );
 
-   $self->loop->add( $ipsa );
+   $loop->add( $ipsa );
    return $ipsa;
 }
 
@@ -171,18 +248,16 @@ sub _get_listener_args {
    return %{ $args };
 }
 
-sub _input_event_handler {
-   my $self   = shift;
-   my $schema = $self->schema;
-   my $ev_rs  = $schema->resultset( 'Event' );
-   my $js_rs  = $schema->resultset( 'JobState' );
-   my $pev_rs = $schema->resultset( 'ProcessedEvent' );
-
-   state $tick //= 0; $self->log->debug( 'ITICK['.$tick++.']' );
-
-   my $events = $ev_rs->search
+sub _input_handler {
+   my $self    = shift;
+   my $trigger = FALSE;
+   my $schema  = $self->schema;
+   my $ev_rs   = $schema->resultset( 'Event' );
+   my $js_rs   = $schema->resultset( 'JobState' );
+   my $pev_rs  = $schema->resultset( 'ProcessedEvent' );
+   my $events  = $ev_rs->search
       ( { 'transition' => [ qw(finish started terminate) ] },
-        { 'prefetch'   => 'job_rel' } );
+        { 'order_by'   => { -asc => 'me.id' }, 'prefetch' => 'job_rel' } );
 
    for my $event ($events->all) {
       $schema->txn_do( sub {
@@ -192,9 +267,24 @@ sub _input_event_handler {
             $cols->{rejected} = $rejected->[ 2 ]->class;
             $self->_log_debug_tuple( $rejected );
          }
+         else { $trigger = TRUE }
 
          $pev_rs->create( $cols ); $event->delete;
       } );
+   }
+
+   return $trigger;
+}
+
+sub _ip_code {
+   my ($self, $input, $daemon_pid) = @_;
+
+   while ($input->recv) {
+      my $once = TRUE; $self->log->debug( 'ip_code' );
+
+      while ($self->_input_handler) { $once = FALSE; kill 'USR2', $daemon_pid }
+
+      $once and kill 'USR2', $daemon_pid;;
    }
 
    return;
@@ -208,16 +298,17 @@ sub _log_debug_tuple {
 }
 
 sub _make_remote_calls {
-   my ($self, $ipsa, $runid, $calls) = @_;
+   my ($self, $user, $host, $runid, $calls) = @_;
 
-   my $logger    = sub {
+   my $ipsa    = $self->_get_ipsa( $user, $host );
+   my $logger  = sub {
       my ($level, $cmd, $msg) = @_;
 
       $self->log->$level( "${cmd}[${runid}]: ${msg}" );
    };
-   my $debug     = sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) };
-   my $error     = sub { $logger->( 'error', ' CALL', $_[ 0 ] ) };
-   my $builder   = sub {
+   my $debug   = sub { $logger->( 'debug', ' CALL', $_[ 0 ] ) };
+   my $error   = sub { $logger->( 'error', ' CALL', $_[ 0 ] ) };
+   my $builder = sub {
       my ($name, $args, $cb) = @_;
 
       return sub {
@@ -228,7 +319,7 @@ sub _make_remote_calls {
                       on_exception => $cb ? $error : $debug );
       };
    };
-   my $loaded    = sub {
+   my $loaded  = sub {
       my $cb; $cb = $builder->( @{ $_ }, $cb ) for (reverse @{ $calls });
 
       $cb->();
@@ -243,26 +334,36 @@ sub _make_remote_calls {
    return;
 }
 
-sub _output_event_handler {
-   my $self   = shift;
-   my $schema = $self->schema;
-   my $ev_rs  = $schema->resultset( 'Event' );
-   my $js_rs  = $schema->resultset( 'JobState' );
-   my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+sub _op_code {
+   my ($self, $input) = @_;
 
-   state $tick //= 0; $self->log->debug( 'OTICK['.$tick++.']' );
-
-   my $events = $ev_rs->search( { 'transition' => 'start' },
-                                { 'prefetch'   => 'job_rel' } );
-
-   for my $event ($events->all) {
-      $schema->txn_do( sub {
-         $pev_rs->create( $self->_process_output_event( $js_rs, $event ) );
-         $event->delete;
-      } );
+   while ($input->recv) {
+      $self->log->debug( 'op_code' ); while ($self->_output_handler) { TRUE }
    }
 
    return;
+}
+
+sub _output_handler {
+   my $self    = shift;
+   my $trigger = FALSE;
+   my $schema  = $self->schema;
+   my $ev_rs   = $schema->resultset( 'Event' );
+   my $js_rs   = $schema->resultset( 'JobState' );
+   my $pev_rs  = $schema->resultset( 'ProcessedEvent' );
+   my $events  = $ev_rs->search( { 'transition' => 'start' },
+                                 { 'prefetch'   => 'job_rel' } );
+
+   for my $event ($events->all) {
+      $schema->txn_do( sub {
+         my $cols = $self->_process_output_event( $js_rs, $event );
+
+         $pev_rs->create( $cols ); $event->delete;
+         $cols->{runid} and $trigger = TRUE;
+      } );
+   }
+
+   return $trigger;
 }
 
 sub _process_output_event {
@@ -281,13 +382,14 @@ sub _process_output_event {
 }
 
 sub _start_job {
-   my ($self, $job) = @_; state $provisioned //= {}; my $host; my $user;
+   my ($self, $job) = @_; state $provisioned //= {};
 
    my $runid = bson64id;
+   my $host  = $job->host;
+   my $user  = $job->user;
    my $cmd   = $job->command;
    my $class = $self->config->appclass;
    my $token = substr create_token, 0, 32;
-   my $ipsa  = $self->_get_ipsa( $user = $job->user, $host = $job->host );
    my $args  = { appclass  => $class,
                  command   => $cmd,
                  debug     => $self->debug,
@@ -301,28 +403,38 @@ sub _start_job {
                  [ 'exit',     [] ], ];
    my $key   = "${user}\@${host}";
 
-   $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
    $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
-   $self->_make_remote_calls( $ipsa, $runid, $calls );
+   $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
+   $self->_make_remote_calls( $user, $host, $runid, $calls );
    $provisioned->{ $key } = TRUE;
    return ($runid, $token);
 }
 
-sub _start_listener {
-   my $self = shift;
+sub _stop_everything {
+   my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
-   return $self->loop->spawn_child
-      ( code    => sub {
-           Plack::Runner->run( $self->_get_listener_args ); return TRUE },
-        on_exit => sub {
-           my ($pid, $status, $bang, $e) = @_; my $rv = WEXITSTATUS( $status );
+   $self->clock_tick->stop;
 
-           $e and $self->log->error( "${e} - ${rv}" );
-        }, );
+   my $process = $self->listener; my $pid = $process->pid;
+
+   $log->info( "LISTEN[${pid}]: Stopping listener" );
+   $process->is_running and $process->kill( 'TERM' );
+
+   $process = $self->ip_ev_hndlr; $pid = $process->pid;
+   $log->info( " INPUT[${pid}]: Stopping input event handler" );
+   $process->is_running and $process->kill( 'TERM' );
+
+   $process = $self->op_ev_hndlr; $pid = $process->pid;
+   $log->info( "OUTPUT[${pid}]: Stopping output event handler" );
+   $process->is_running and $process->kill( 'TERM' );
+
+   $log->info( "DAEMON[${PID}]: Stopping event loop" );
+   wait;
+   return;
 }
 
 sub _stdio_file {
-   my ($self, $extn) = @_; my $name = $self->config->name;
+   my ($self, $extn, $name) = @_; $name ||= $self->config->name;
 
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 }

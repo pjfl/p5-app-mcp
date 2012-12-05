@@ -33,12 +33,15 @@ sub create_event {
    my $rs = $schema->resultset( 'ProcessedEvent' )
                    ->search( { runid => $runid }, { columns => [ 'token' ] } );
 
-   my $event = $rs->first or return (404, 'Not found');
+   my $event  = $rs->first or return (404, 'Not found');
+   my $passwd = { salt => $event->token, seed => NUL };
 
    $rs = $schema->resultset( 'Event' );
 
-   try        { $rs->create( thaw decrypt $event->token, $params->{event} ) }
+   try        { $rs->create( thaw decrypt $passwd, $params->{event} ) }
    catch ($e) { $self->log->error( $e ); return (400, $e) }
+
+   my $pid = $ENV{MCP_DAEMON_PID}; $pid and kill 'USR1', $pid;
 
    return (204, NUL);
 }
