@@ -177,23 +177,13 @@ sub _build__ipc_ssh {
 sub _build__listener {
    my $self = shift; my $log = $self->log; my $daemon_pid = $PID;
 
-   my $pid  = $self->loop->spawn_child
-      (  code    => sub {
-            $ENV{MCP_DAEMON_PID} = $daemon_pid;
-            Plack::Runner->run( $self->_get_listener_args );
-            return TRUE;
-         },
-         on_exit => sub {
-            my $pid = shift; my $rv = WEXITSTATUS( shift );
+   my $r = $self->run_cmd( [ sub {
+      $ENV{MCP_DAEMON_PID} = $daemon_pid;
+      Plack::Runner->run( $self->_get_listener_args );
+      return OK;
+   } ], { async => 1 } );
 
-            $log->info( "LISTEN[${pid}]: Exited ${rv} - ".$_[ 1 ].' '.$_[ 0 ] );
-         },
-         setup   => [ stdin    => [ "open", "<", "/dev/null" ],
-                      stdout   => [ "open", ">", $self->_stdio_file( 'out', 'listener' ) ],
-                      stderr   => [ "open", ">", $self->_stdio_file( 'err', 'listener' ) ],
-                      $log->fh => [ 'keep' ] ], );
-
-   $log->info( "LISTEN[${pid}]: Started listener" );
+   my $pid = $r->pid; $log->info( "LISTEN[${pid}]: Started listener" );
 
    return App::MCP::Process->new( pid => $pid );
 }
