@@ -26,50 +26,54 @@ use TryCatch;
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
 
-has 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation     => 'The database to connect to',
-   default           => 'schedule';
+has 'database'        => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation      => 'The database to connect to',
+   default            => 'schedule';
 
-has 'identity_file'  => is => 'lazy', isa => File, coerce => TRUE,
-   documentation     => 'Path to private SSH key',
-   default           => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
+has 'identity_file'   => is => 'lazy', isa => File, coerce => TRUE,
+   documentation      => 'Path to private SSH key',
+   default            => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
 
-has 'port'           => is => 'ro',   isa => PositiveInt,
-   documentation     => 'Port number for the input event listener',
-   default           => 2012;
+has 'max_ssh_workers' => is => 'ro',   isa => PositiveInt,
+   documentation      => 'Maximum number of SSH worker processes',
+   default            => 3;
 
-has 'schema_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   documentation     => 'Classname of the schema to load',
-   default           => sub { 'App::MCP::Schema::Schedule' };
+has 'port'            => is => 'ro',   isa => PositiveInt,
+   documentation      => 'Port number for the input event listener',
+   default            => 2012;
 
-has 'server'         => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation     => 'Plack server class used for the event listener',
-   default           => 'Twiggy';
+has 'schema_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   documentation      => 'Classname of the schema to load',
+   default            => sub { 'App::MCP::Schema::Schedule' };
+
+has 'server'          => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation      => 'Plack server class used for the event listener',
+   default            => 'Twiggy';
 
 
-has '_clock_tick'    => is => 'lazy', isa => Object, reader => 'clock_tick';
+has '_clock_tick'     => is => 'lazy', isa => Object, reader => 'clock_tick';
 
-has '_interval'      => is => 'ro',   isa => PositiveInt,
-   default           => 3,         reader => 'interval';
+has '_interval'       => is => 'ro',   isa => PositiveInt,
+   default            => 3,         reader => 'interval';
 
-has '_ip_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
+has '_ip_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
-has '_ipc_ssh'       => is => 'lazy', isa => Object, reader => 'ipc_ssh';
+has '_ipc_ssh'        => is => 'lazy', isa => Object, reader => 'ipc_ssh';
 
-has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
-   default           => 'App::MCP::SSHLibrary', reader => 'library_class';
+has '_library_class'  => is => 'ro',   isa => NonEmptySimpleStr,
+   default            => 'App::MCP::SSHLibrary', reader => 'library_class';
 
-has '_listener'      => is => 'lazy', isa => Object, reader => 'listener';
+has '_listener'       => is => 'lazy', isa => Object, reader => 'listener';
 
-has '_loop'          => is => 'lazy', isa => Object,
-   default           => sub { IO::Async::Loop::EV->new }, reader => 'loop';
+has '_loop'           => is => 'lazy', isa => Object,
+   default            => sub { IO::Async::Loop::EV->new }, reader => 'loop';
 
-has '_op_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
+has '_op_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
-has '_schema'        => is => 'lazy', isa => Object,  reader => 'schema';
+has '_schema'         => is => 'lazy', isa => Object,  reader => 'schema';
 
-has '_servers'       => is => 'ro',   isa => ArrayRef, auto_deref => TRUE,
-   default           => sub { [ fqdn ] }, reader => 'servers';
+has '_servers'        => is => 'ro',   isa => ArrayRef, auto_deref => TRUE,
+   default            => sub { [ fqdn ] }, reader => 'servers';
 
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
@@ -133,7 +137,7 @@ sub daemon {
 sub _build__clock_tick {
    my $self = shift;
    my $tick = IO::Async::Timer::Periodic->new
-      (  on_tick    => sub { $self->_clock_tick_handler  },
+      (  on_tick    => sub { $self->_clock_tick_handler },
          interval   => $self->interval,
          reschedule => 'drift', );
 
@@ -148,7 +152,7 @@ sub _build__ip_ev_hndlr {
    my $input   = IO::Async::Channel->new;
    my $routine = IO::Async::Routine->new
       (  channels_in  => [ $input ],
-         code         => sub { $self->_ip_code( $input, $daemon_pid ) },
+         code         => sub { $self->_input_handler( $input, $daemon_pid ) },
          on_exception => sub { $log->error( join ' - ', @_ ) },
          on_finish    => sub {
             $log->info( " INPUT[${pid}]: Input event handler stopped" );
@@ -166,9 +170,9 @@ sub _build__ipc_ssh {
    my $self = shift; my $log = $self->log; my $workers;
 
    my $function = IO::Async::Function->new
-      (  code        => sub { $self->_make_remote_calls( @_ ) },
+      (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
          exit_on_die => TRUE,
-         max_workers => 3,
+         max_workers => $self->max_ssh_workers,
          setup       => [ $log->fh, [ 'keep' ] ], );
 
    $self->loop->add( $function ); $workers = $function->workers;
@@ -205,7 +209,7 @@ sub _build__op_ev_hndlr {
    my $input   = IO::Async::Channel->new;
    my $routine = IO::Async::Routine->new
       (  channels_in  => [ $input ],
-         code         => sub { $self->_op_code( $input ) },
+         code         => sub { $self->_output_handler( $input ) },
          on_exception => sub { $log->error( join ' - ', @_ ) },
          on_finish    => sub {
             $log->info( "OUTPUT[${pid}]: Output event handler stopped" );
@@ -249,55 +253,42 @@ sub _get_listener_args {
 }
 
 sub _input_handler {
-   my $self    = shift;
-   my $trigger = FALSE;
-   my $schema  = $self->schema;
-   my $ev_rs   = $schema->resultset( 'Event' );
-   my $js_rs   = $schema->resultset( 'JobState' );
-   my $pev_rs  = $schema->resultset( 'ProcessedEvent' );
-   my $events  = $ev_rs->search
-      ( { 'transition' => [ qw(finish started terminate) ] },
-        { 'order_by'   => { -asc => 'me.id' }, 'prefetch' => 'job_rel' } );
-
-   for my $event ($events->all) {
-      $schema->txn_do( sub {
-         my $cols = { $event->get_inflated_columns }; my $rejected;
-
-         if ($rejected = $js_rs->create_and_or_update( $event )) {
-            $cols->{rejected} = $rejected->[ 2 ]->class;
-            $self->_log_debug_tuple( $rejected );
-         }
-         else { $trigger = TRUE }
-
-         $pev_rs->create( $cols ); $event->delete;
-      } );
-   }
-
-   return $trigger;
-}
-
-sub _ip_code {
    my ($self, $input, $daemon_pid) = @_;
 
    while ($input->recv) {
-      my $once = TRUE;
+      my $trigger = TRUE;
 
-      while ($self->_input_handler) { $once = FALSE; kill 'USR2', $daemon_pid }
+      while ($trigger) {
+         $trigger = FALSE;
 
-      $once and kill 'USR2', $daemon_pid;;
+         my $schema = $self->schema;
+         my $ev_rs  = $schema->resultset( 'Event' );
+         my $js_rs  = $schema->resultset( 'JobState' );
+         my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+         my $events = $ev_rs->search
+            ( { 'transition' => [ qw(finish started terminate) ] },
+              { 'order_by'   => { -asc => 'me.id' },
+                'prefetch'   => 'job_rel' } );
+
+         for my $event ($events->all) {
+            $schema->txn_do( sub {
+               my $cols = $self->_process_event( $js_rs, $event );
+
+               not $cols->{rejected} and $trigger = TRUE;
+               $pev_rs->create( $cols ); $event->delete;
+            } );
+         }
+
+         $trigger and kill 'USR2', $daemon_pid;
+      }
+
+      kill 'USR2', $daemon_pid;
    }
 
    return;
 }
 
-sub _log_debug_tuple {
-   my ($self, $t) = @_;
-
-   $self->log->debug( (uc $t->[ 0 ]).'['.$t->[ 1 ].'] '.$t->[ 2 ] );
-   return;
-}
-
-sub _make_remote_calls {
+sub _ipc_ssh_handler {
    my ($self, $user, $host, $runid, $calls) = @_;
 
    my $log    = $self->log;
@@ -327,50 +318,52 @@ sub _make_remote_calls {
    return;
 }
 
-sub _op_code {
+sub _output_handler {
    my ($self, $input) = @_;
 
    while ($input->recv) {
-      while ($self->_output_handler) { TRUE }
+      my $trigger = TRUE;
+
+      while ($trigger) {
+         $trigger = FALSE;
+
+         my $schema = $self->schema;
+         my $ev_rs  = $schema->resultset( 'Event' );
+         my $js_rs  = $schema->resultset( 'JobState' );
+         my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+         my $events = $ev_rs->search( { 'transition' => 'start' },
+                                      { 'prefetch'   => 'job_rel' } );
+
+         for my $event ($events->all) {
+            $schema->txn_do( sub {
+               my $cols = $self->_process_event( $js_rs, $event );
+
+               unless ($cols->{rejected}) {
+                  my ($runid, $token) = $self->_start_job( $event->job_rel );
+
+                  $cols->{runid} = $runid; $cols->{token} = $token;
+                  $trigger = TRUE;
+               }
+
+               $pev_rs->create( $cols ); $event->delete;
+            } );
+         }
+      }
    }
 
    return;
 }
 
-sub _output_handler {
-   my $self    = shift;
-   my $trigger = FALSE;
-   my $schema  = $self->schema;
-   my $ev_rs   = $schema->resultset( 'Event' );
-   my $js_rs   = $schema->resultset( 'JobState' );
-   my $pev_rs  = $schema->resultset( 'ProcessedEvent' );
-   my $events  = $ev_rs->search( { 'transition' => 'start' },
-                                 { 'prefetch'   => 'job_rel' } );
+sub _process_event {
+   my ($self, $js_rs, $event) = @_; my $r;
 
-   for my $event ($events->all) {
-      $schema->txn_do( sub {
-         my $cols = $self->_process_output_event( $js_rs, $event );
+   my $cols = { $event->get_inflated_columns };
 
-         $pev_rs->create( $cols ); $event->delete;
-         $cols->{runid} and $trigger = TRUE;
-      } );
+   if ($r = $js_rs->create_and_or_update( $event )) {
+      $self->log->debug( (uc $r->[ 0 ]).'['.$r->[ 1 ].'] '.$r->[ 2 ] );
+      $cols->{rejected} = $r->[ 2 ]->class;
    }
 
-   return $trigger;
-}
-
-sub _process_output_event {
-   my ($self, $js_rs, $event) = @_; my ($runid, $token) = (NUL, NUL);
-
-   my $cols = { $event->get_inflated_columns }; my $rejected;
-
-   if ($rejected = $js_rs->create_and_or_update( $event )) {
-      $cols->{rejected} = $rejected->[ 2 ]->class;
-      $self->_log_debug_tuple( $rejected );
-   }
-   else { ($runid, $token) = $self->_start_job( $event->job_rel ) }
-
-   $cols->{runid} = $runid; $cols->{token} = $token;
    return $cols;
 }
 
@@ -399,16 +392,13 @@ sub _start_job {
       my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
    };
 
-   $logger->( 'debug', 'START', "${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
+   $logger->( 'debug', 'START', "${key} ${cmd}" );
    $self->ipc_ssh->call
       (  args      => [ $user, $host, $runid, $calls ],
-         on_return => sub {
-            $logger->( 'debug', ' CALL', 'Complete' );
-            $provisioned->{ $key } = TRUE;
-         },
-         on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ] ) }, );
-
+         on_return => sub { $logger->( 'debug', ' CALL', 'Complete' ) },
+         on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ]    ) }, );
+   $provisioned->{ $key } = TRUE;
    return ($runid, $token);
 }
 
@@ -446,8 +436,9 @@ package # Hide from indexer
    App::MCP::Process;
 
 sub new {
-   my $self = shift; my $new = bless { @_ }, ref $self || $self;
-
+   # Cannot get IO::Async::Process to plackup Twiggy, so this instead
+   my $self    = shift;
+   my $new     = bless { @_ }, ref $self || $self;
    my $builder = delete $new->{builder};
    my $r       = $builder->run_cmd( [ $new->{code} ], { async => 1 } );
 
