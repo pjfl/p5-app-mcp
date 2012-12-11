@@ -2,7 +2,6 @@
 
 package App::MCP::Daemon;
 
-use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
@@ -14,7 +13,6 @@ use File::DataClass::Constraints qw(File Path);
 use IO::Async::Loop::EV;
 use IO::Async::Channel;
 use IO::Async::Function;
-use IO::Async::Process;
 use IO::Async::Routine;
 use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
@@ -122,10 +120,8 @@ sub daemon {
 
    $loop->watch_signal( QUIT => $stop );
    $loop->watch_signal( TERM => $stop );
-   $loop->watch_signal( USR1 => sub {
-      $self->ip_ev_hndlr->{channels_in}->[ 0 ]->send( [] ) } );
-   $loop->watch_signal( USR2 => sub {
-      $self->op_ev_hndlr->{channels_in}->[ 0 ]->send( [] ) } );
+   $loop->watch_signal( USR1 => sub { $self->_trigger_input_handler  } );
+   $loop->watch_signal( USR2 => sub { $self->_trigger_output_handler } );
 
    try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
 
@@ -134,21 +130,31 @@ sub daemon {
 
 # Private methods
 
+sub _build__async_factory {
+   return App::MCP::AsyncFactory->new( builder => $_[ 0 ] );
+}
+
 sub _build__clock_tick {
-   my $self = shift;
-   my $tick = IO::Async::Timer::Periodic->new
-      (  on_tick    => sub { $self->_clock_tick_handler },
+   my $self  = shift; my $daemon_pid = $PID;
+
+   my $timer = IO::Async::Timer::Periodic->new
+      (  on_tick    => sub { $self->_clock_tick_handler( $daemon_pid ) },
          interval   => $self->interval,
          reschedule => 'drift', );
 
-   $tick->start; $self->loop->add( $tick );
+   $timer->start; $self->loop->add( $timer );
 
-   return $tick;
+   return $timer;
 }
 
 sub _build__ip_ev_hndlr {
    my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
 
+#   return $self->async_factory->new_notifier
+#      ( code => sub { $self->_input_handler( shift, $daemon_pid ) },
+#        desc => 'input event handler',
+#        key  => ' INPUT',
+#        type => 'routine' );
    my $input   = IO::Async::Channel->new;
    my $routine = IO::Async::Routine->new
       (  channels_in  => [ $input ],
@@ -233,10 +239,13 @@ sub _build__schema {
 }
 
 sub _clock_tick_handler {
-   my $self = shift; state $tick //= 0; my $elapsed = $tick * $self->interval;
+   my ($self, $daemon_pid) = @_;
 
-   $self->log->debug( " TICK[${elapsed}]" ); $tick++; kill 'USR1', $PID;
+   state $tick //= 0; my $elapsed = $tick++ * $self->interval;
 
+   $self->log->debug( " TICK[${elapsed}]" );
+   $self->_start_cron_jobs;
+   kill 'USR2', $daemon_pid;
    return;
 }
 
@@ -256,7 +265,7 @@ sub _input_handler {
    my ($self, $input, $daemon_pid) = @_;
 
    while ($input->recv) {
-      my $trigger = TRUE;
+      my $trigger = TRUE; #__drain( $input );
 
       while ($trigger) {
          $trigger = FALSE;
@@ -266,16 +275,16 @@ sub _input_handler {
          my $js_rs  = $schema->resultset( 'JobState' );
          my $pev_rs = $schema->resultset( 'ProcessedEvent' );
          my $events = $ev_rs->search
-            ( { 'transition' => [ qw(finish started terminate) ] },
-              { 'order_by'   => { -asc => 'me.id' },
-                'prefetch'   => 'job_rel' } );
+            ( { transition => [ qw(finish started terminate) ] },
+              { order_by   => { -asc => 'me.id' },
+                prefetch   => 'job_rel' } );
 
          for my $event ($events->all) {
             $schema->txn_do( sub {
-               my $cols = $self->_process_event( $js_rs, $event );
+               my $p_ev = $self->_process_event( $js_rs, $event );
 
-               not $cols->{rejected} and $trigger = TRUE;
-               $pev_rs->create( $cols ); $event->delete;
+               $p_ev->{rejected} or $trigger = TRUE;
+               $pev_rs->create( $p_ev ); $event->delete;
             } );
          }
 
@@ -322,7 +331,7 @@ sub _output_handler {
    my ($self, $input) = @_;
 
    while ($input->recv) {
-      my $trigger = TRUE;
+      my $trigger = TRUE; #__drain( $input );
 
       while ($trigger) {
          $trigger = FALSE;
@@ -331,21 +340,21 @@ sub _output_handler {
          my $ev_rs  = $schema->resultset( 'Event' );
          my $js_rs  = $schema->resultset( 'JobState' );
          my $pev_rs = $schema->resultset( 'ProcessedEvent' );
-         my $events = $ev_rs->search( { 'transition' => 'start' },
-                                      { 'prefetch'   => 'job_rel' } );
+         my $events = $ev_rs->search( { transition => 'start' },
+                                      { prefetch   => 'job_rel' } );
 
          for my $event ($events->all) {
             $schema->txn_do( sub {
-               my $cols = $self->_process_event( $js_rs, $event );
+               my $p_ev = $self->_process_event( $js_rs, $event );
 
-               unless ($cols->{rejected}) {
+               unless ($p_ev->{rejected}) {
                   my ($runid, $token) = $self->_start_job( $event->job_rel );
 
-                  $cols->{runid} = $runid; $cols->{token} = $token;
+                  $p_ev->{runid} = $runid; $p_ev->{token} = $token;
                   $trigger = TRUE;
                }
 
-               $pev_rs->create( $cols ); $event->delete;
+               $pev_rs->create( $p_ev ); $event->delete;
             } );
          }
       }
@@ -365,6 +374,25 @@ sub _process_event {
    }
 
    return $cols;
+}
+
+sub _start_cron_jobs {
+   my $self   = shift;
+   my $schema = $self->schema;
+   my $job_rs = $schema->resultset( 'Job' );
+   my $ev_rs  = $schema->resultset( 'Event' );
+   my $jobs   = $job_rs->search( {
+      'state.name'       => 'active',
+      'crontab'          => { '!=' => undef   }, }, {
+         'join'          => 'state' } )->search_related( 'events', {
+            'transition' => { '!=' => 'start' } } );
+
+   for my $job (grep { $job_rs->should_start_now( $_ ) } $jobs->all) {
+      (not $job->condition or $job_rs->eval_condition( $job )->[ 0 ])
+         and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
+   }
+
+   return;
 }
 
 sub _start_job {
@@ -430,13 +458,30 @@ sub _stdio_file {
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 }
 
+sub _trigger_input_handler {
+   return $_[ 0 ]->ip_ev_hndlr->{channels_in}->[ 0 ]->send( [] );
+}
+
+sub _trigger_output_handler {
+   return $_[ 0 ]->op_ev_hndlr->{channels_in}->[ 0 ]->send( [] );
+}
+
+# Private functions
+
+sub __drain {
+   return __read_all_from( $_[ 0 ]->{fh} );
+}
+
+sub __read_all_from {
+   my $fh = shift; local $RS = undef; return <$fh>;
+}
+
 __PACKAGE__->meta->make_immutable;
 
 package # Hide from indexer
    App::MCP::Process;
 
-sub new {
-   # Cannot get IO::Async::Process to plackup Twiggy, so this instead
+sub new { # Cannot get IO::Async::Process to plackup Twiggy, so this instead
    my $self    = shift;
    my $new     = bless { @_ }, ref $self || $self;
    my $builder = delete $new->{builder};
@@ -457,6 +502,66 @@ sub kill {
 
 sub pid {
    return $_[ 0 ]->{pid};
+}
+
+package App::MCP::AsyncFactory;
+
+sub new {
+   my $self = shift; my $new = bless { @_ }, ref $self || $self;
+
+   weaken( $new->{builder} );
+
+   return $new;
+}
+
+sub new_notifier {
+   my ($self, %p) = @_; my $log = $self->{builder}->log;
+
+   my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
+
+   my $logger = sub {
+      my ($level, $pid, $msg) = @_; $log->$level( "${key}[${pid}]: ${msg}" );
+   };
+
+   my $notifier; my $pid;
+
+   if ($p{type} eq 'function') {
+      $notifier = IO::Async::Function->new
+         (  code        => $code,
+            exit_on_die => TRUE,
+            max_workers => $p{max_ssh_workers},
+            setup       => [ $log->fh, [ 'keep' ] ], );
+
+      $self->{builder}->loop->add( $notifier ); $pid = $notifier->workers;
+   }
+   elsif ($p{type} eq 'process') {
+      $notifier = App::MCP::Process->new
+         (  builder => $self->{builder},
+            code    => $code,
+            on_exit => sub {
+               my $pid = shift; my $rv = WEXITSTATUS( shift );
+
+               $logger->( 'info', $pid, (ucfirst $desc)." stopped ${rv}" );
+            }, );
+
+      $pid = $notifier->pid;
+   }
+   else {
+      my $input = IO::Async::Channel->new; my $msg = (ucfirst $desc).' stopped';
+
+      $notifier = IO::Async::Routine->new
+         (  channels_in  => [ $input ],
+            code         => sub { $code->( $input ) },
+            on_exception => sub { $logger->( 'error', $pid, join ' - ', @_ ) },
+            on_finish    => sub { $logger->( 'info',  $pid, $msg ) },
+            setup        => [ $log->fh, [ 'keep' ] ], );
+
+      $self->{builder}->loop->add( $notifier ); $pid = $notifier->pid;
+   }
+
+   $logger->( 'info', $pid, "Started ${desc}" );
+
+   return $notifier;
 }
 
 1;
