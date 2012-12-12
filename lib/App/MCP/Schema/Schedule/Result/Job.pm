@@ -9,7 +9,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use parent  qw(App::MCP::Schema::Base);
 
 use CatalystX::Usul::Constants;
-use CatalystX::Usul::Functions qw(throw);
+use CatalystX::Usul::Functions qw(is_arrayref is_hashref throw);
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -22,6 +22,10 @@ $class->add_columns
      created     => $class->set_on_create_datetime_data_type,
      command     => $class->varchar_data_type,
      condition   => $class->varchar_data_type,
+     crontab     => { data_type     => 'varchar',
+                      accessor      => '_crontab',
+                      is_nullable   => FALSE,
+                      size          => 127, },
      directory   => $class->varchar_data_type,
      expected_rv => $class->numerical_id_data_type( 0 ),
      fqjn        => { data_type     => 'varchar',
@@ -54,13 +58,44 @@ $class->might_have( state            => "${result}::JobState",       'job_id' );
 sub new {
    my ($class, $attr) = @_; my $new = $class->next::method( $attr );
 
-   $new->fqjn; # Force the attribute to take on a value
+   $new->crontab; $new->fqjn; # Force the attributes to take on a values
 
    return $new;
 }
 
 sub crontab {
-   return FALSE;
+   my ($self, $crontab) = @_; my @names  = qw(min hour mday mon wday); my $tmp;
+
+   is_hashref  $crontab and $tmp = $crontab
+           and $crontab = join SPC, map { $tmp->{ $names[ $_ ] } } 0 .. 4;
+   is_arrayref $crontab and $crontab = join SPC, @{ $crontab };
+
+   my @fields = split m{ \s+ }msx, $crontab ? $self->_crontab( $crontab )
+                                            : $self->_crontab || NUL;
+
+   $self->{ 'crontab_'.$names[ $_ ] } = $fields[ $_ ] for (0 .. 4);
+
+   return $crontab;
+}
+
+sub crontab_hour {
+   return $_[ 0 ]->{crontab_hour};
+}
+
+sub crontab_mday {
+   return $_[ 0 ]->{crontab_mday};
+}
+
+sub crontab_min {
+   return $_[ 0 ]->{crontab_min};
+}
+
+sub crontab_mon {
+   return $_[ 0 ]->{crontab_mon};
+}
+
+sub crontab_wday {
+   return $_[ 0 ]->{crontab_wday};
 }
 
 sub delete {

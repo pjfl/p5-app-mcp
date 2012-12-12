@@ -2,7 +2,6 @@
 
 package App::MCP::Workflow;
 
-use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;

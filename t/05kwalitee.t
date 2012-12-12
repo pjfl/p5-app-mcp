@@ -20,7 +20,8 @@ eval { require Test::Kwalitee; };
 
 plan skip_all => 'Test::Kwalitee not installed' if ($EVAL_ERROR);
 
-Test::Kwalitee->import();
+# Since we now use a custom Moose exporter this metric is no longer valid
+Test::Kwalitee->import( tests => [ qw(-use_strict) ] );
 
 unlink q(Debian_CPANTS.txt);
 

@@ -7,7 +7,7 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
-use Daemon::Control;
+use App::MCP::DaemonControl;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IO::Async::Loop::EV;
@@ -18,7 +18,6 @@ use IO::Async::Signal;
 use IO::Async::Timer::Periodic;
 use IPC::PerlSSH;
 use Plack::Runner;
-use POSIX                        qw(WEXITSTATUS);
 use TryCatch;
 
 extends q(Class::Usul::Programs);
@@ -48,6 +47,8 @@ has 'server'          => is => 'ro',   isa => NonEmptySimpleStr,
    documentation      => 'Plack server class used for the event listener',
    default            => 'Twiggy';
 
+
+has '_async_factory'  => is => 'lazy', isa => Object, reader => 'async_factory';
 
 has '_clock_tick'     => is => 'lazy', isa => Object, reader => 'clock_tick';
 
@@ -84,7 +85,7 @@ around 'run_chain' => sub {
 
    my $config = $self->config; my $name = $config->name;
 
-   Daemon::Control->new( {
+   App::MCP::DaemonControl->new( {
       name         => blessed $self || $self,
       lsb_start    => '$syslog $remote_fs',
       lsb_stop     => '$syslog',
@@ -101,6 +102,7 @@ around 'run_chain' => sub {
       stdout_file  => $self->_stdio_file( 'out' ),
 
       fork         => 2,
+      stop_signals => 'TERM,5,KILL,1',
    } )->run;
 
    return $self->$next( @args ); # Never reached
@@ -131,7 +133,7 @@ sub daemon {
 # Private methods
 
 sub _build__async_factory {
-   return App::MCP::AsyncFactory->new( builder => $_[ 0 ] );
+   return App::MCP::AsyncNotifierFactory->new( builder => $_[ 0 ] );
 }
 
 sub _build__clock_tick {
@@ -148,85 +150,48 @@ sub _build__clock_tick {
 }
 
 sub _build__ip_ev_hndlr {
-   my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
+   my $self = shift; my $daemon_pid = $PID;
 
-#   return $self->async_factory->new_notifier
-#      ( code => sub { $self->_input_handler( shift, $daemon_pid ) },
-#        desc => 'input event handler',
-#        key  => ' INPUT',
-#        type => 'routine' );
-   my $input   = IO::Async::Channel->new;
-   my $routine = IO::Async::Routine->new
-      (  channels_in  => [ $input ],
-         code         => sub { $self->_input_handler( $input, $daemon_pid ) },
-         on_exception => sub { $log->error( join ' - ', @_ ) },
-         on_finish    => sub {
-            $log->info( " INPUT[${pid}]: Input event handler stopped" );
-         },
-         setup        => [ $log->fh, [ 'keep' ] ], );
-
-   $self->loop->add( $routine ); $pid = $routine->pid;
-
-   $log->info( " INPUT[${pid}]: Started input event handler" );
-
-   return $routine;
+   return $self->async_factory->new_notifier
+      (  code => sub { $self->_input_handler( shift, $daemon_pid ) },
+         desc => 'input event handler',
+         key  => ' INPUT',
+         type => 'routine' );
 }
 
 sub _build__ipc_ssh {
-   my $self = shift; my $log = $self->log; my $workers;
+   my $self = shift;
 
-   my $function = IO::Async::Function->new
+   return $self->async_factory->new_notifier
       (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
-         exit_on_die => TRUE,
+         desc        => 'ipc ssh workers',
+         key         => 'IPCSSH',
          max_workers => $self->max_ssh_workers,
-         setup       => [ $log->fh, [ 'keep' ] ], );
-
-   $self->loop->add( $function ); $workers = $function->workers;
-
-   $log->info( "IPCSSH[${workers}]: Started ipc ssh workers" );
-
-   return $function;
+         type        => 'function' );
 }
 
 sub _build__listener {
-   my $self = shift; my $log = $self->log; my $daemon_pid = $PID; my $pid;
+   my $self = shift; my $daemon_pid = $PID;
 
-   my $process = App::MCP::Process->new
-      (  builder => $self,
-         code    => sub {
+   return $self->async_factory->new_notifier
+      (  code => sub {
             $ENV{MCP_DAEMON_PID} = $daemon_pid;
             Plack::Runner->run( $self->_get_listener_args );
             return OK;
          },
-         on_exit => sub {
-            my $pid = shift; my $rv = WEXITSTATUS( shift );
-
-            $log->info( "LISTEN[${pid}]: Listener stopped ${rv}" );
-         }, );
-
-   $pid = $process->pid; $log->info( "LISTEN[${pid}]: Started listener" );
-
-   return $process;
+         desc => 'listener',
+         key  => 'LISTEN',
+         type => 'process' );
 }
 
 sub _build__op_ev_hndlr {
-   my $self = shift; my $log = $self->log; my $pid;
+   my $self = shift;
 
-   my $input   = IO::Async::Channel->new;
-   my $routine = IO::Async::Routine->new
-      (  channels_in  => [ $input ],
-         code         => sub { $self->_output_handler( $input ) },
-         on_exception => sub { $log->error( join ' - ', @_ ) },
-         on_finish    => sub {
-            $log->info( "OUTPUT[${pid}]: Output event handler stopped" );
-         },
-         setup        => [ $log->fh, [ 'keep' ] ], );
-
-   $self->loop->add( $routine ); $pid = $routine->pid;
-
-   $log->info( "OUTPUT[${pid}]: Started output event handler" );
-
-   return $routine;
+   return $self->async_factory->new_notifier
+      (  code => sub { $self->_output_handler( shift ) },
+         desc => 'output event handler',
+         key  => 'OUTPUT',
+         type => 'routine' );
 }
 
 sub _build__schema {
@@ -314,12 +279,13 @@ sub _ipc_ssh_handler {
 
    for my $call (@{ $calls }) {
       my $call_name = $call->[ 0 ]; my $result;
+      $result = join "\n", $ips->call( $call_name, @{ $call->[ 1 ] } );
+#      try { }
+#      catch ($e) {
+#         $logger->( $call_name eq 'exit' ? 'debug' : 'error', ' CALL', $e );
 
-      try { $result = join "\n", $ips->call( $call_name, @{ $call->[ 1 ] } ) }
-      catch ($e) {
-         $logger->( $call_name eq 'exit' ? 'debug' : 'error', ' CALL', $e );
-         return;
-      }
+#         return $call_name eq 'exit' ? TRUE : FALSE;
+#      }
 
       $logger->( 'debug', ' CALL', $result );
    }
@@ -358,6 +324,11 @@ sub _output_handler {
             } );
          }
       }
+   }
+
+   # TODO: Fix me. Seriously fucked off with IO::Async
+   for (grep { $_->pid } $self->ipc_ssh->_worker_objects) {
+      $_->stop; kill 'KILL', $_->pid;
    }
 
    return;
@@ -431,7 +402,7 @@ sub _start_job {
 }
 
 sub _stop_everything {
-   my $self = shift; my $log = $self->log;
+   my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
    $self->clock_tick->stop;
 
@@ -442,13 +413,14 @@ sub _stop_everything {
 
    $process = $self->ip_ev_hndlr; $pid = $process->pid;
    $log->info( " INPUT[${pid}]: Stopping input event handler" );
-   $process->is_running and $process->kill( 'TERM' );
+   $process->is_running and $process->{channels_in}->[ 0 ]->close;
 
    $process = $self->op_ev_hndlr; $pid = $process->pid;
    $log->info( "OUTPUT[${pid}]: Stopping output event handler" );
-   $process->is_running and $process->kill( 'TERM' );
+   $process->is_running and $process->{channels_in}->[ 0 ]->close;
 
-   $log->info( "DAEMON[${PID}]: Stopping event loop" );
+   $log->info( "DAEMON[${PID}]: Event loop stopping" );
+   sleep 4; # TODO: Fix me. This is crap
    return;
 }
 
@@ -504,7 +476,11 @@ sub pid {
    return $_[ 0 ]->{pid};
 }
 
-package App::MCP::AsyncFactory;
+package # Hide from indexer
+   App::MCP::AsyncNotifierFactory;
+
+use POSIX        qw(WEXITSTATUS);
+use Scalar::Util qw(weaken);
 
 sub new {
    my $self = shift; my $new = bless { @_ }, ref $self || $self;
@@ -515,28 +491,28 @@ sub new {
 }
 
 sub new_notifier {
-   my ($self, %p) = @_; my $log = $self->{builder}->log;
+   my ($self, %p) = @_; my $builder = $self->{builder}; my $code = $p{code};
 
-   my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
+   my $desc = $p{desc}; my $key = $p{key}; my $log = $builder->log;
 
    my $logger = sub {
       my ($level, $pid, $msg) = @_; $log->$level( "${key}[${pid}]: ${msg}" );
    };
 
-   my $notifier; my $pid;
+   my $loop = $builder->loop; my $notifier; my $pid;
 
    if ($p{type} eq 'function') {
       $notifier = IO::Async::Function->new
          (  code        => $code,
-            exit_on_die => TRUE,
-            max_workers => $p{max_ssh_workers},
+            exit_on_die => 1,
+            max_workers => $p{max_workers},
             setup       => [ $log->fh, [ 'keep' ] ], );
 
-      $self->{builder}->loop->add( $notifier ); $pid = $notifier->workers;
+      $notifier->start; $loop->add( $notifier ); $pid = $notifier->workers;
    }
    elsif ($p{type} eq 'process') {
       $notifier = App::MCP::Process->new
-         (  builder => $self->{builder},
+         (  builder => $builder,
             code    => $code,
             on_exit => sub {
                my $pid = shift; my $rv = WEXITSTATUS( shift );
@@ -556,7 +532,7 @@ sub new_notifier {
             on_finish    => sub { $logger->( 'info',  $pid, $msg ) },
             setup        => [ $log->fh, [ 'keep' ] ], );
 
-      $self->{builder}->loop->add( $notifier ); $pid = $notifier->pid;
+      $loop->add( $notifier ); $pid = $notifier->pid;
    }
 
    $logger->( 'info', $pid, "Started ${desc}" );

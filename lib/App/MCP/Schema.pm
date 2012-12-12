@@ -2,7 +2,6 @@
 
 package App::MCP::Schema;
 
-use strict;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
@@ -13,7 +12,7 @@ use App::MCP::Schema::Schedule;
 use Storable           qw(thaw);
 use TryCatch;
 
-extends qw(CatalystX::Usul::Schema);
+extends q(CatalystX::Usul::Schema);
 
 my ($schema_version) = $VERSION =~ m{ (\d+\.\d+) }mx;
 
