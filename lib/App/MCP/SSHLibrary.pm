@@ -3,6 +3,7 @@
 package App::MCP::SSHLibrary;
 
 use strict;
+use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 
 use IPC::PerlSSH::Library;
@@ -11,8 +12,6 @@ init q{
    use File::Path            qw(mkpath);
    use File::Spec::Functions qw(catdir catfile);
 };
-
-func 'exit'      => q{ exit 0 };
 
 func 'dispatch'  => q{
    require App::MCP::Worker; return App::MCP::Worker->new( @_ )->dispatch;

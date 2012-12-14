@@ -7,16 +7,13 @@ use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
+use App::MCP::Async;
 use App::MCP::DaemonControl;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
-use IO::Async::Loop::EV;
-use IO::Async::Channel;
-use IO::Async::Function;
-use IO::Async::Routine;
-use IO::Async::Signal;
-use IO::Async::Timer::Periodic;
 use IPC::PerlSSH;
+use IPC::SysV                    qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
+use IPC::Semaphore;
 use Plack::Runner;
 use TryCatch;
 
@@ -65,11 +62,13 @@ has '_library_class'  => is => 'ro',   isa => NonEmptySimpleStr,
 has '_listener'       => is => 'lazy', isa => Object, reader => 'listener';
 
 has '_loop'           => is => 'lazy', isa => Object,
-   default            => sub { IO::Async::Loop::EV->new }, reader => 'loop';
+   default            => sub { $_[ 0 ]->async_factory->loop }, reader => 'loop';
 
 has '_op_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
-has '_schema'         => is => 'lazy', isa => Object,  reader => 'schema';
+has '_schema'         => is => 'lazy', isa => Object, reader => 'schema';
+
+has '_semaphore'      => is => 'lazy', isa => Object, reader => 'semaphore';
 
 has '_servers'        => is => 'ro',   isa => ArrayRef, auto_deref => TRUE,
    default            => sub { [ fqdn ] }, reader => 'servers';
@@ -113,17 +112,22 @@ sub daemon {
 
    $log->info( "DAEMON[${PID}]: Starting event loop" );
 
-   $self->listener; $self->clock_tick;
+   $self->semaphore; $self->listener;
 
-   my $stop = sub {
-      $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
+   $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
+
+   my $stop; $stop = sub {
+      $loop->detach_signal( QUIT => $stop );
+      $loop->detach_signal( TERM => $stop );
       $self->_stop_everything;
+      $loop->watch_child( 0, sub {} );
+      $self->semaphore->remove;
    };
 
-   $loop->watch_signal( QUIT => $stop );
-   $loop->watch_signal( TERM => $stop );
-   $loop->watch_signal( USR1 => sub { $self->_trigger_input_handler  } );
-   $loop->watch_signal( USR2 => sub { $self->_trigger_output_handler } );
+   $loop->attach_signal( QUIT => $stop );
+   $loop->attach_signal( TERM => $stop );
+   $loop->attach_signal( USR1 => sub { $self->_trigger_input_handler  } );
+   $loop->attach_signal( USR2 => sub { $self->_trigger_output_handler } );
 
    try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
 
@@ -133,27 +137,25 @@ sub daemon {
 # Private methods
 
 sub _build__async_factory {
-   return App::MCP::AsyncNotifierFactory->new( builder => $_[ 0 ] );
+   return App::MCP::Async->new( builder => $_[ 0 ] );
 }
 
 sub _build__clock_tick {
-   my $self  = shift; my $daemon_pid = $PID;
+   my $self = shift; my $daemon_pid = $PID;
 
-   my $timer = IO::Async::Timer::Periodic->new
-      (  on_tick    => sub { $self->_clock_tick_handler( $daemon_pid ) },
-         interval   => $self->interval,
-         reschedule => 'drift', );
-
-   $timer->start; $self->loop->add( $timer );
-
-   return $timer;
+   return $self->async_factory->new_notifier
+      (  code     => sub { $self->_clock_tick_handler( $daemon_pid ) },
+         interval => $self->interval,
+         desc     => 'clock tick handler',
+         key      => '  TICK',
+         type     => 'timer' );
 }
 
 sub _build__ip_ev_hndlr {
    my $self = shift; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
-      (  code => sub { $self->_input_handler( shift, $daemon_pid ) },
+      (  code => sub { $self->_input_handler( $daemon_pid ) },
          desc => 'input event handler',
          key  => ' INPUT',
          type => 'routine' );
@@ -188,7 +190,7 @@ sub _build__op_ev_hndlr {
    my $self = shift;
 
    return $self->async_factory->new_notifier
-      (  code => sub { $self->_output_handler( shift ) },
+      (  code => sub { $self->_output_handler },
          desc => 'output event handler',
          key  => 'OUTPUT',
          type => 'routine' );
@@ -201,6 +203,15 @@ sub _build__schema {
    my $params = { quote_names => TRUE }; # TODO: Fix me
 
    return $self->schema_class->connect( @{ $info }, $params );
+}
+
+sub _build__semaphore {
+   my $s = IPC::Semaphore->new( IPC_PRIVATE, 4, S_IRUSR | S_IWUSR | IPC_CREAT );
+
+   $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
+   $s->setval( 2, TRUE ); $s->setval( 3, FALSE );
+
+   return $s;
 }
 
 sub _clock_tick_handler {
@@ -227,10 +238,10 @@ sub _get_listener_args {
 }
 
 sub _input_handler {
-   my ($self, $input, $daemon_pid) = @_;
+   my ($self, $daemon_pid) = @_; my $semaphore = $self->semaphore;
 
-   while ($input->recv) {
-      my $trigger = TRUE; #__drain( $input );
+   while ($semaphore->getval( 0 )) {
+      $semaphore->op( 1, -1, 0 ); my $trigger = TRUE;
 
       while ($trigger) {
          $trigger = FALSE;
@@ -275,29 +286,35 @@ sub _ipc_ssh_handler {
    };
 
    try        { $ips->use_library( $self->library_class ) }
-   catch ($e) { $logger->( 'error', 'STORE', $e ); return }
+   catch ($e) { $logger->( 'error', 'STORE', $e ); return FALSE }
 
    for my $call (@{ $calls }) {
-      my $call_name = $call->[ 0 ]; my $result;
-      $result = join "\n", $ips->call( $call_name, @{ $call->[ 1 ] } );
-#      try { }
-#      catch ($e) {
-#         $logger->( $call_name eq 'exit' ? 'debug' : 'error', ' CALL', $e );
+      my $result;
 
-#         return $call_name eq 'exit' ? TRUE : FALSE;
-#      }
+      try        { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
+      catch ($e) { $logger->( 'error', ' CALL', $e ); return FALSE }
 
       $logger->( 'debug', ' CALL', $result );
+   }
+
+   return TRUE;
+}
+
+sub _ipc_ssh_stop { # TODO: Fix me. Seriously fucked off with IO::Async
+   my $self = shift;
+
+   for (grep { $_->pid } $self->ipc_ssh->_worker_objects) {
+      $_->stop; kill 'KILL', $_->pid;
    }
 
    return;
 }
 
 sub _output_handler {
-   my ($self, $input) = @_;
+   my $self = shift; my $semaphore = $self->semaphore;
 
-   while ($input->recv) {
-      my $trigger = TRUE; #__drain( $input );
+   while ($semaphore->getval( 2 )) {
+      $self->semaphore->op( 3, -1, 0 ); my $trigger = TRUE;
 
       while ($trigger) {
          $trigger = FALSE;
@@ -326,11 +343,7 @@ sub _output_handler {
       }
    }
 
-   # TODO: Fix me. Seriously fucked off with IO::Async
-   for (grep { $_->pid } $self->ipc_ssh->_worker_objects) {
-      $_->stop; kill 'KILL', $_->pid;
-   }
-
+   $self->_ipc_ssh_stop;
    return;
 }
 
@@ -384,8 +397,7 @@ sub _start_job {
                   runid     => $runid,
                   servers   => (join SPC, $self->servers),
                   token     => $token };
-   my $calls  = [ [ 'dispatch', [ %{ $args } ] ],
-                  [ 'exit',     [] ], ];
+   my $calls  = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $key    = "${user}\@${host}";
    my $logger = sub {
       my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
@@ -393,18 +405,19 @@ sub _start_job {
 
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
    $logger->( 'debug', 'START', "${key} ${cmd}" );
-   $self->ipc_ssh->call
+
+   my $task   = $self->ipc_ssh->call
       (  args      => [ $user, $host, $runid, $calls ],
          on_return => sub { $logger->( 'debug', ' CALL', 'Complete' ) },
          on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ]    ) }, );
+
    $provisioned->{ $key } = TRUE;
+
    return ($runid, $token);
 }
 
 sub _stop_everything {
-   my $self = shift; my $log = $self->log; my $loop = $self->loop;
-
-   $self->clock_tick->stop;
+   my $self = shift; my $log = $self->log; $self->clock_tick->stop;
 
    my $process = $self->listener; my $pid = $process->pid;
 
@@ -413,14 +426,13 @@ sub _stop_everything {
 
    $process = $self->ip_ev_hndlr; $pid = $process->pid;
    $log->info( " INPUT[${pid}]: Stopping input event handler" );
-   $process->is_running and $process->{channels_in}->[ 0 ]->close;
+   $process->is_running and $self->semaphore->setval( 0, FALSE );
 
    $process = $self->op_ev_hndlr; $pid = $process->pid;
    $log->info( "OUTPUT[${pid}]: Stopping output event handler" );
-   $process->is_running and $process->{channels_in}->[ 0 ]->close;
+   $process->is_running and $self->semaphore->setval( 2, FALSE );
 
    $log->info( "DAEMON[${PID}]: Event loop stopping" );
-   sleep 4; # TODO: Fix me. This is crap
    return;
 }
 
@@ -431,114 +443,22 @@ sub _stdio_file {
 }
 
 sub _trigger_input_handler {
-   return $_[ 0 ]->ip_ev_hndlr->{channels_in}->[ 0 ]->send( [] );
+   my $semaphore = $_[ 0 ]->semaphore;
+
+   $semaphore->getval( 1 ) < 1 and $semaphore->op( 1, 1, 0 );
+
+   return;
 }
 
 sub _trigger_output_handler {
-   return $_[ 0 ]->op_ev_hndlr->{channels_in}->[ 0 ]->send( [] );
-}
+   my $semaphore = $_[ 0 ]->semaphore;
 
-# Private functions
+   $semaphore->getval( 3 ) < 1 and $semaphore->op( 3, 1, 0 );
 
-sub __drain {
-   return __read_all_from( $_[ 0 ]->{fh} );
-}
-
-sub __read_all_from {
-   my $fh = shift; local $RS = undef; return <$fh>;
+   return;
 }
 
 __PACKAGE__->meta->make_immutable;
-
-package # Hide from indexer
-   App::MCP::Process;
-
-sub new { # Cannot get IO::Async::Process to plackup Twiggy, so this instead
-   my $self    = shift;
-   my $new     = bless { @_ }, ref $self || $self;
-   my $builder = delete $new->{builder};
-   my $r       = $builder->run_cmd( [ $new->{code} ], { async => 1 } );
-
-   $builder->loop->watch_child( $new->{pid} = $r->{pid}, $new->{on_exit} );
-
-   return $new;
-}
-
-sub is_running {
-   return kill 0, $_[ 0 ]->pid;
-}
-
-sub kill {
-   kill $_[ 1 ], $_[ 0 ]->pid;
-}
-
-sub pid {
-   return $_[ 0 ]->{pid};
-}
-
-package # Hide from indexer
-   App::MCP::AsyncNotifierFactory;
-
-use POSIX        qw(WEXITSTATUS);
-use Scalar::Util qw(weaken);
-
-sub new {
-   my $self = shift; my $new = bless { @_ }, ref $self || $self;
-
-   weaken( $new->{builder} );
-
-   return $new;
-}
-
-sub new_notifier {
-   my ($self, %p) = @_; my $builder = $self->{builder}; my $code = $p{code};
-
-   my $desc = $p{desc}; my $key = $p{key}; my $log = $builder->log;
-
-   my $logger = sub {
-      my ($level, $pid, $msg) = @_; $log->$level( "${key}[${pid}]: ${msg}" );
-   };
-
-   my $loop = $builder->loop; my $notifier; my $pid;
-
-   if ($p{type} eq 'function') {
-      $notifier = IO::Async::Function->new
-         (  code        => $code,
-            exit_on_die => 1,
-            max_workers => $p{max_workers},
-            setup       => [ $log->fh, [ 'keep' ] ], );
-
-      $notifier->start; $loop->add( $notifier ); $pid = $notifier->workers;
-   }
-   elsif ($p{type} eq 'process') {
-      $notifier = App::MCP::Process->new
-         (  builder => $builder,
-            code    => $code,
-            on_exit => sub {
-               my $pid = shift; my $rv = WEXITSTATUS( shift );
-
-               $logger->( 'info', $pid, (ucfirst $desc)." stopped ${rv}" );
-            }, );
-
-      $pid = $notifier->pid;
-   }
-   else {
-      my $input = IO::Async::Channel->new; my $msg = (ucfirst $desc).' stopped';
-
-      $notifier = IO::Async::Routine->new
-         (  channels_in  => [ $input ],
-            code         => sub { $code->( $input ) },
-            on_exception => sub { $logger->( 'error', $pid, join ' - ', @_ ) },
-            on_finish    => sub { $logger->( 'info',  $pid, $msg ) },
-            setup        => [ $log->fh, [ 'keep' ] ], );
-
-      $loop->add( $notifier ); $pid = $notifier->pid;
-   }
-
-   $logger->( 'info', $pid, "Started ${desc}" );
-
-   return $notifier;
-}
 
 1;
 
