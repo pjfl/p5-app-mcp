@@ -112,9 +112,9 @@ sub daemon {
 
    $log->info( "DAEMON[${PID}]: Starting event loop" );
 
-   $self->semaphore; $self->listener;
+   $self->semaphore; $self->listener; $self->ip_ev_hndlr;
 
-   $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
+   $self->op_ev_hndlr; $self->clock_tick;
 
    my $stop; $stop = sub {
       $loop->detach_signal( QUIT => $stop );
@@ -274,7 +274,7 @@ sub _input_handler {
 }
 
 sub _ipc_ssh_handler {
-   my ($self, $user, $host, $runid, $calls) = @_;
+   my ($self, $runid, $user, $host, $calls) = @_;
 
    my $log    = $self->log;
    my $ips    = IPC::PerlSSH->new
@@ -300,21 +300,11 @@ sub _ipc_ssh_handler {
    return TRUE;
 }
 
-sub _ipc_ssh_stop { # TODO: Fix me. Seriously fucked off with IO::Async
-   my $self = shift;
-
-   for (grep { $_->pid } $self->ipc_ssh->_worker_objects) {
-      $_->stop; kill 'KILL', $_->pid;
-   }
-
-   return;
-}
-
 sub _output_handler {
    my $self = shift; my $semaphore = $self->semaphore;
 
    while ($semaphore->getval( 2 )) {
-      $self->semaphore->op( 3, -1, 0 ); my $trigger = TRUE;
+      $semaphore->op( 3, -1, 0 ); my $trigger = TRUE;
 
       while ($trigger) {
          $trigger = FALSE;
@@ -343,7 +333,7 @@ sub _output_handler {
       }
    }
 
-   $self->_ipc_ssh_stop;
+   $self->ipc_ssh->stop;
    return;
 }
 
@@ -380,7 +370,7 @@ sub _start_cron_jobs {
 }
 
 sub _start_job {
-   my ($self, $job) = @_; my $log = $self->log; state $provisioned //= {};
+   my ($self, $job) = @_; state $provisioned //= {};
 
    my $runid  = bson64id;
    my $host   = $job->host;
@@ -399,20 +389,13 @@ sub _start_job {
                   token     => $token };
    my $calls  = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $key    = "${user}\@${host}";
-   my $logger = sub {
-      my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
-   };
 
+   $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
-   $logger->( 'debug', 'START', "${key} ${cmd}" );
 
-   my $task   = $self->ipc_ssh->call
-      (  args      => [ $user, $host, $runid, $calls ],
-         on_return => sub { $logger->( 'debug', ' CALL', 'Complete' ) },
-         on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ]    ) }, );
+   my $task   = $self->ipc_ssh->call( $runid, $user, $host, $calls );
 
    $provisioned->{ $key } = TRUE;
-
    return ($runid, $token);
 }
 

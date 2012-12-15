@@ -11,7 +11,6 @@ use English                qw(-no_match_vars);
 use POSIX                  qw(WEXITSTATUS);
 use IO::Async::Loop::EV;
 use IO::Async::Channel;
-use IO::Async::Function;
 use IO::Async::Routine;
 use IO::Async::Timer::Periodic;
 
@@ -32,9 +31,10 @@ sub new_notifier {
    my $notifier; my $pid;
 
    if ($p{type} eq 'function') {
-      $notifier = IO::Async::Function->new
+      $notifier = App::MCP::AsyncFunction->new
          (  code        => $code,
             exit_on_die => TRUE,
+            factory     => $self,
             max_workers => $p{max_workers},
             setup       => [ $log->fh, [ 'keep' ] ], );
 
@@ -42,8 +42,8 @@ sub new_notifier {
    }
    elsif ($p{type} eq 'process') {
       $notifier = App::MCP::AsyncProcess->new
-         (  factory => $self,
-            code    => $code,
+         (  code    => $code,
+            factory => $self,
             on_exit => sub {
                my $pid = shift; my $rv = WEXITSTATUS( shift );
 
@@ -79,6 +79,50 @@ sub new_notifier {
 }
 
 __PACKAGE__->meta->make_immutable;
+
+package # Hide from indexer
+   App::MCP::AsyncFunction;
+
+use Class::Usul::Functions qw(arg_list);
+
+use parent q(IO::Async::Function);
+
+sub new {
+   my $self = shift; my $attr = arg_list( @_ );
+
+   my $factory = delete $attr->{factory}; my $builder = $factory->builder;
+
+   my $new = $self->SUPER::new( %{ $attr } ); $new->{log} = $builder->log;
+
+   return $new;
+}
+
+sub call {
+   my ($self, $runid, @args) = @_; my $log = $self->log;
+
+   my $logger = sub {
+      my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
+   };
+
+   return $self->SUPER::call
+      (  args      => [ $runid, @args ],
+         on_return => sub { $logger->( 'debug', ' CALL', 'Complete' ) },
+         on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ]    ) }, );
+}
+
+sub log {
+   return $_[ 0 ]->{log};
+}
+
+sub stop { # TODO: Fix me. Seriously fucked off with IO::Async
+   my $self = shift;
+
+   for (grep { $_->pid } $self->_worker_objects) {
+      $_->stop; CORE::kill 'KILL', $_->pid;
+   }
+
+   return;
+}
 
 package # Hide from indexer
    App::MCP::AsyncProcess;
