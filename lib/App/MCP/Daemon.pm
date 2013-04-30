@@ -12,8 +12,6 @@ use App::MCP::DaemonControl;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IPC::PerlSSH;
-use IPC::SysV                    qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
-use IPC::Semaphore;
 use Plack::Runner;
 use TryCatch;
 
@@ -54,7 +52,7 @@ has '_interval'       => is => 'ro',   isa => PositiveInt,
 
 has '_ip_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
-has '_ipc_ssh'        => is => 'lazy', isa => Object, reader => 'ipc_ssh';
+#has '_ipc_ssh'        => is => 'lazy', isa => Object, reader => 'ipc_ssh';
 
 has '_library_class'  => is => 'ro',   isa => NonEmptySimpleStr,
    default            => 'App::MCP::SSHLibrary', reader => 'library_class';
@@ -67,8 +65,6 @@ has '_loop'           => is => 'lazy', isa => Object,
 has '_op_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
 has '_schema'         => is => 'lazy', isa => Object, reader => 'schema';
-
-has '_semaphore'      => is => 'lazy', isa => Object, reader => 'semaphore';
 
 has '_servers'        => is => 'ro',   isa => ArrayRef, auto_deref => TRUE,
    default            => sub { [ fqdn ] }, reader => 'servers';
@@ -112,22 +108,23 @@ sub daemon {
 
    $log->info( "DAEMON[${PID}]: Starting event loop" );
 
-   $self->semaphore; $self->listener; $self->ip_ev_hndlr;
-
-   $self->op_ev_hndlr; $self->clock_tick;
+   $self->listener; $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
 
    my $stop; $stop = sub {
       $loop->detach_signal( QUIT => $stop );
       $loop->detach_signal( TERM => $stop );
-      $self->_stop_everything;
+      $self->clock_tick->stop;
+      $self->op_ev_hndlr->stop;
+      $self->ip_ev_hndlr->stop;
+      $self->listener->stop;
+      $log->info( "DAEMON[${PID}]: Event loop stopping" );
       $loop->watch_child( 0, sub {} );
-      $self->semaphore->remove;
    };
 
    $loop->attach_signal( QUIT => $stop );
    $loop->attach_signal( TERM => $stop );
-   $loop->attach_signal( USR1 => sub { $self->_trigger_input_handler  } );
-   $loop->attach_signal( USR2 => sub { $self->_trigger_output_handler } );
+   $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
+   $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
 
    try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
 
@@ -155,22 +152,17 @@ sub _build__ip_ev_hndlr {
    my $self = shift; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
-      (  code => sub { $self->_input_handler( $daemon_pid ) },
+      (  code => sub { $self->_input_handler( $daemon_pid, @_ ) },
          desc => 'input event handler',
          key  => ' INPUT',
          type => 'routine' );
 }
 
-sub _build__ipc_ssh {
-   my $self = shift;
+#sub _build__ipc_ssh {
+#   my $self = shift;
 
-   return $self->async_factory->new_notifier
-      (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
-         desc        => 'ipc ssh workers',
-         key         => 'IPCSSH',
-         max_workers => $self->max_ssh_workers,
-         type        => 'function' );
-}
+#   return ;
+#}
 
 sub _build__listener {
    my $self = shift; my $daemon_pid = $PID;
@@ -187,10 +179,23 @@ sub _build__listener {
 }
 
 sub _build__op_ev_hndlr {
-   my $self = shift;
+   my $self = shift; my $factory = $self->async_factory;
 
-   return $self->async_factory->new_notifier
-      (  code => sub { $self->_output_handler },
+   return $factory->new_notifier
+      (  code => sub {
+            my ($notifier, $input) = @_;
+
+            my $ipc_ssh = $factory->new_notifier
+               (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
+                  desc        => 'ipc ssh workers',
+                  key         => 'IPCSSH',
+                  max_workers => $self->max_ssh_workers,
+                  parent      => $notifier,
+                  type        => 'function' );
+
+            $self->_output_handler( $ipc_ssh, @_ );
+            $ipc_ssh->stop;
+         },
          desc => 'output event handler',
          key  => 'OUTPUT',
          type => 'routine' );
@@ -205,15 +210,6 @@ sub _build__schema {
    return $self->schema_class->connect( @{ $info }, $params );
 }
 
-sub _build__semaphore {
-   my $s = IPC::Semaphore->new( IPC_PRIVATE, 4, S_IRUSR | S_IWUSR | IPC_CREAT );
-
-   $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
-   $s->setval( 2, TRUE ); $s->setval( 3, FALSE );
-
-   return $s;
-}
-
 sub _clock_tick_handler {
    my ($self, $daemon_pid) = @_;
 
@@ -221,7 +217,7 @@ sub _clock_tick_handler {
 
    $self->log->debug( " TICK[${elapsed}]" );
    $self->_start_cron_jobs;
-   kill 'USR2', $daemon_pid;
+   __trigger_output_handler( $daemon_pid );
    return;
 }
 
@@ -238,10 +234,10 @@ sub _get_listener_args {
 }
 
 sub _input_handler {
-   my ($self, $daemon_pid) = @_; my $semaphore = $self->semaphore;
+   my ($self, $daemon_pid, $notifier) = @_;
 
-   while ($semaphore->getval( 0 )) {
-      $semaphore->op( 1, -1, 0 ); my $trigger = TRUE;
+   while ($notifier->still_running) {
+      my $trigger = $notifier->await_trigger;
 
       while ($trigger) {
          $trigger = FALSE;
@@ -264,10 +260,10 @@ sub _input_handler {
             } );
          }
 
-         $trigger and kill 'USR2', $daemon_pid;
+         $trigger and __trigger_output_handler( $daemon_pid );
       }
 
-      kill 'USR2', $daemon_pid;
+      __trigger_output_handler( $daemon_pid );
    }
 
    return;
@@ -301,10 +297,10 @@ sub _ipc_ssh_handler {
 }
 
 sub _output_handler {
-   my $self = shift; my $semaphore = $self->semaphore;
+   my ($self, $ipc_ssh, $notifier) = @_;
 
-   while ($semaphore->getval( 2 )) {
-      $semaphore->op( 3, -1, 0 ); my $trigger = TRUE;
+   while ($notifier->still_running) {
+      my $trigger = $notifier->await_trigger;
 
       while ($trigger) {
          $trigger = FALSE;
@@ -321,7 +317,8 @@ sub _output_handler {
                my $p_ev = $self->_process_event( $js_rs, $event );
 
                unless ($p_ev->{rejected}) {
-                  my ($runid, $token) = $self->_start_job( $event->job_rel );
+                  my ($runid, $token)
+                     = $self->_start_job( $ipc_ssh, $event->job_rel );
 
                   $p_ev->{runid} = $runid; $p_ev->{token} = $token;
                   $trigger = TRUE;
@@ -333,7 +330,6 @@ sub _output_handler {
       }
    }
 
-   $self->ipc_ssh->stop;
    return;
 }
 
@@ -370,7 +366,7 @@ sub _start_cron_jobs {
 }
 
 sub _start_job {
-   my ($self, $job) = @_; state $provisioned //= {};
+   my ($self, $ipc_ssh, $job) = @_; state $provisioned //= {};
 
    my $runid  = bson64id;
    my $host   = $job->host;
@@ -393,30 +389,10 @@ sub _start_job {
    $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
 
-   my $task   = $self->ipc_ssh->call( $runid, $user, $host, $calls );
+   my $task   = $ipc_ssh->call( $runid, $user, $host, $calls );
 
    $provisioned->{ $key } = TRUE;
    return ($runid, $token);
-}
-
-sub _stop_everything {
-   my $self = shift; my $log = $self->log; $self->clock_tick->stop;
-
-   my $process = $self->listener; my $pid = $process->pid;
-
-   $log->info( "LISTEN[${pid}]: Stopping listener" );
-   $process->is_running and $process->kill( 'TERM' );
-
-   $process = $self->ip_ev_hndlr; $pid = $process->pid;
-   $log->info( " INPUT[${pid}]: Stopping input event handler" );
-   $process->is_running and $self->semaphore->setval( 0, FALSE );
-
-   $process = $self->op_ev_hndlr; $pid = $process->pid;
-   $log->info( "OUTPUT[${pid}]: Stopping output event handler" );
-   $process->is_running and $self->semaphore->setval( 2, FALSE );
-
-   $log->info( "DAEMON[${PID}]: Event loop stopping" );
-   return;
 }
 
 sub _stdio_file {
@@ -425,20 +401,8 @@ sub _stdio_file {
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 }
 
-sub _trigger_input_handler {
-   my $semaphore = $_[ 0 ]->semaphore;
-
-   $semaphore->getval( 1 ) < 1 and $semaphore->op( 1, 1, 0 );
-
-   return;
-}
-
-sub _trigger_output_handler {
-   my $semaphore = $_[ 0 ]->semaphore;
-
-   $semaphore->getval( 3 ) < 1 and $semaphore->op( 3, 1, 0 );
-
-   return;
+sub __trigger_output_handler {
+   my $pid = shift; return CORE::kill 'USR2', $pid;
 }
 
 __PACKAGE__->meta->make_immutable;

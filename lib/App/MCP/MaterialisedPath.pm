@@ -39,23 +39,24 @@ sub insert {
 sub _install_after_column_change {
    my ($self, $path_info) = @_;
 
+   my $method; $method = sub {
+      my $self = shift; my $rel = $path_info->{children_relationship};
+
+      $self->_set_materialised_path( $path_info );
+
+      $method->( $_ ) for $self->$rel->search( { # to avoid recursion
+         map +( "me.$_" => { '!=' => $self->get_column($_) }, ),
+            $self->result_source->primary_columns
+      } )->all
+   };
+
    for my $column (map $path_info->{ $_ },
                    qw(parent_column materialised_path_column)) {
       $self->after_column_change( $column => {
-         method   => sub { # XXX: is it worth installing this?
-            my $self = shift; my $rel = $path_info->{children_relationship};
-
-            $self->_set_materialised_path( $path_info );
-
-            $self->_install_after_column_change->( $_ )
-               for $self->$rel->search( { # to avoid recursion
-                  map +( "me.${_}" => { '!=' => $self->get_column( $_ ) }, ),
-                  $self->result_source->primary_columns } )->all;
-         },
-         txn_wrap => 1,
-      } );
+         method => $method, txn_wrap => 1, } );
    }
 
+   undef $method;
    return;
 }
 
@@ -164,6 +165,9 @@ App::MCP::MaterialisedPath - <One-line description of module's purpose>
    # Brief but working code examples
 
 =head1 Description
+
+Robbed from L<DBIx::Class::MaterializedPath>. This implementation works with
+Perl 5.10
 
 =head1 Configuration and Environment
 
