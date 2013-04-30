@@ -1,11 +1,11 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 package App::MCP::ExpressionParser;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Functions qw(arg_list throw);
 use Marpa::R2;
@@ -193,7 +193,7 @@ App::MCP::ExpressionParser - Evaluate the condition field of the Job table
 
 =head1 Version
 
-0.1.$Revision$
+0.1.$Revision: 1 $
 
 =head1 Synopsis
 

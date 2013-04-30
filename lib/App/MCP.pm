@@ -1,9 +1,9 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 package App::MCP;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 1;
 
@@ -17,7 +17,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-0.1.$Revision$
+0.1.$Revision: 1 $
 
 =head1 Synopsis
 

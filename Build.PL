@@ -1,9 +1,9 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 Bob->new( {
    module     => q(App::MCP),
@@ -16,7 +16,7 @@ Bob->new( {
       'Class::C3::Componentised' => 1.001000,
       'Class::Workflow'          => 0.11,
       'Class::Usul'              => q(0.9.0),
-      'Daemon::Control'          => 0.000009,
+      'Daemon::Control'          => q(0.000009),
       'Data::Validation'         => q(0.9.0),
       'DateTime'                 => 0.66,
       'DBIx::Class'              => 0.08126,

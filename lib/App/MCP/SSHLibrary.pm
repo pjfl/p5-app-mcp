@@ -1,10 +1,10 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 package App::MCP::SSHLibrary;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use IPC::PerlSSH::Library;
 
@@ -58,7 +58,7 @@ App::MCP::SSHLibrary - <One-line description of module's purpose>
 
 =head1 Version
 
-0.1.$Revision$
+0.1.$Revision: 1 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 package App::MCP::Schema::Schedule::Result::Event;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
@@ -58,7 +58,7 @@ App::MCP::Schema::Schedule::Result::Event - <One-line description of module's pu
 
 =head1 Version
 
-0.1.$Revision$
+0.1.$Revision: 1 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 package App::MCP::MaterialisedPath;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent 'DBIx::Class::Helper::Row::OnColumnChange';
 
 use Class::C3::Componentised::ApplyHooks
@@ -157,7 +157,7 @@ App::MCP::MaterialisedPath - <One-line description of module's purpose>
 
 =head1 Version
 
-0.1.$Revision$
+0.1.$Revision: 1 $
 
 =head1 Synopsis
 

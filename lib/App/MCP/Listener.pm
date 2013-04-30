@@ -1,9 +1,9 @@
-# @(#)$Id$
+# @(#)$Ident: ;
 
 package App::MCP::Listener;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev$ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use App::MCP::Schema;
 use Web::Simple;
@@ -44,7 +44,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-0.1.$Revision$
+0.1.$Revision: 1 $
 
 =head1 Synopsis
 

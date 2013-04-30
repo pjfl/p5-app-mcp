@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# @(#)$Id$
+# @(#)$Ident: mcp-localenv 2013-04-30 03:20 pjf ;
 # I blame t0m for this
 
 # If you have a $LOCAL_LIB directory then this script will set it up for
@@ -90,7 +90,7 @@ Lists the methods available in this program
 
 =head1 VERSION
 
-This documents version v0.1.$Rev$ of L<App::MCP>
+This documents version v0.1.$Rev: 1 $ of L<App::MCP>
 
 =head1 DESCRIPTION
 
