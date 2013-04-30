@@ -1,10 +1,10 @@
-# @(#)$Ident: ;
+# @(#)$Ident: JobCondition.pm 2013-04-30 23:37 pjf ;
 
 package App::MCP::Schema::Schedule::Result::JobCondition;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
@@ -41,7 +41,7 @@ App::MCP::Schema::Schedule::Result::JobCondition - <One-line description of modu
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: ;
+# @(#)$Ident: Job.pm 2013-04-30 23:38 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use strict;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Constants;
@@ -78,7 +78,7 @@ App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's p
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: ;
+# @(#)$Ident: ProcessedEvent.pm 2013-04-30 23:37 pjf ;
 
 package App::MCP::Schema::Schedule::Result::ProcessedEvent;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
@@ -50,7 +50,7 @@ App::MCP::Schema::Schedule::Result::ProcessedEvent - <One-line description of mo
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

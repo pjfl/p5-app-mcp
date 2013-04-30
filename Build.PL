@@ -1,9 +1,9 @@
-# @(#)$Ident: ;
+# @(#)$Ident: Build.PL 2013-04-30 23:27 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 Bob->new( {
    module     => q(App::MCP),
@@ -15,14 +15,14 @@ Bob->new( {
       'CatalystX::Usul'          => q(0.8.0),
       'Class::C3::Componentised' => 1.001000,
       'Class::Workflow'          => 0.11,
-      'Class::Usul'              => q(0.9.0),
+      'Class::Usul'              => q(0.17.0),
       'Daemon::Control'          => q(0.000009),
       'Data::Validation'         => q(0.9.0),
       'DateTime'                 => 0.66,
       'DBIx::Class'              => 0.08126,
       'DBIx::Class::Helpers'     => 2.016001,
       'DBIx::Class::TimeStamp'   => 0.14,
-      'File::DataClass'          => q(0.12.0),
+      'File::DataClass'          => q(0.18.0),
       'File::HomeDir'            => 0.93,
       'HTTP::Request::Common'    => 5.824,
       'IO::Async'                => 0.53,

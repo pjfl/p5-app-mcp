@@ -1,9 +1,9 @@
-# @(#)$Ident: ;
+# @(#)$Ident: JobCondition.pm 2013-04-30 23:38 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Functions qw(throw);
@@ -38,7 +38,7 @@ App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of m
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

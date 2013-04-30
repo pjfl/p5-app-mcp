@@ -1,9 +1,9 @@
-# @(#)$Ident: ;
+# @(#)$Ident: Async.pm 2013-04-30 23:33 pjf ;
 
 package App::MCP::Async;
 
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -264,7 +264,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

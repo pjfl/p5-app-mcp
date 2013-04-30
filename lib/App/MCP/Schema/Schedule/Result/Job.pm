@@ -1,11 +1,11 @@
-# @(#)$Ident: ;
+# @(#)$Ident: Job.pm 2013-04-30 23:29 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent  qw(App::MCP::Schema::Base);
 
 use CatalystX::Usul::Constants;
@@ -223,7 +223,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

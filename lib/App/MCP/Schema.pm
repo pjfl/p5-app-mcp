@@ -1,8 +1,8 @@
-# @(#)$Ident: ;
+# @(#)$Ident: Schema.pm 2013-04-30 23:30 pjf ;
 
 package App::MCP::Schema;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Crypt qw(decrypt);
@@ -69,7 +69,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 

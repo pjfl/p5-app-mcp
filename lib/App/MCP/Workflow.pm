@@ -1,8 +1,8 @@
-# @(#)$Ident: ;
+# @(#)$Ident: Workflow.pm 2013-04-30 23:36 pjf ;
 
 package App::MCP::Workflow;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use CatalystX::Usul::Constants;
@@ -123,7 +123,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-0.1.$Revision: 1 $
+This documents version v0.1.$Revision: 2 $
 
 =head1 Synopsis
 
