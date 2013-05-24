@@ -3,7 +3,7 @@
 package App::MCP::Schema::Base;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent q(DBIx::Class::Core);
 
 use CatalystX::Usul::Constants;
@@ -123,7 +123,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.1.$Revision: 2 $
+This documents version v0.2.$Rev: 1 $
 
 =head1 Synopsis
 

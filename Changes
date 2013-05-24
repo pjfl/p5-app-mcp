@@ -1,5 +1,8 @@
 Revision history for App::MCP
 
+0.2.1     2013-05-25 00:09:34
+          - IO::Async out AnyEvent in
+
 0.1.2     2013-05-01 00:39:20
           - Switched from SVN to Git
           - Created

@@ -4,7 +4,7 @@ package App::MCP::Schema::Schedule::Result::JobCondition;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent qw(App::MCP::Schema::Base);
 
 use Class::Usul::Constants;
@@ -41,7 +41,7 @@ App::MCP::Schema::Schedule::Result::JobCondition - <One-line description of modu
 
 =head1 Version
 
-This documents version v0.1.$Revision: 2 $
+This documents version v0.2.$Rev: 1 $
 
 =head1 Synopsis
 

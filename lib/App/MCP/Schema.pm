@@ -2,7 +2,7 @@
 
 package App::MCP::Schema;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Crypt qw(decrypt);
@@ -69,7 +69,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.1.$Revision: 2 $
+This documents version v0.2.$Rev: 1 $
 
 =head1 Synopsis
 

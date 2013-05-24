@@ -1,25 +1,22 @@
-# @(#)$Ident: Async.pm 2013-04-30 23:33 pjf ;
+# @(#)$Ident: Async.pm 2013-05-24 22:46 pjf ;
 
 package App::MCP::Async;
 
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use English qw(-no_match_vars);
-use IO::Async::Loop::EV;
-use IO::Async::Channel;
-use IO::Async::Timer::Periodic;
-use POSIX   qw(WEXITSTATUS);
+use Class::Usul::Functions qw(throw);
+use POSIX                  qw(WEXITSTATUS);
 
 has 'builder' => is => 'ro',   isa => Object, weak_ref => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
-   default    => sub { IO::Async::Loop::EV->new };
+   default    => sub { App::MCP::AsyncLoop->new };
 
 sub new_notifier {
-   my ($self, %p) = @_; my $log = $self->builder->log; my $loop = $self->loop;
+   my ($self, %p) = @_; my $log = $self->builder->log; my $notifier;
 
    my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
 
@@ -27,64 +24,55 @@ sub new_notifier {
       my ($level, $pid, $msg) = @_; $log->$level( "${key}[${pid}]: ${msg}" );
    };
 
-   my $notifier; my $pid;
-
    if ($p{type} eq 'function') {
       $notifier = App::MCP::AsyncFunction->new
-         (  code         => $code,
-            description  => $desc,
-            exit_on_die  => TRUE,
-            factory      => $self,
-            log_key      => $key,
-            max_workers  => $p{max_workers},
-            setup        => [ $log->fh, [ 'keep' ] ], );
-
-      $notifier->start;
-      $p{parent} ? $p{parent}->add_child( $notifier ) : $loop->add( $notifier );
-      $pid = $notifier->workers;
-   }
-   elsif ($p{type} eq 'process') {
-      $notifier = App::MCP::AsyncProcess->new
-         (  code         => $code,
-            description  => $desc,
-            factory      => $self,
-            log_key      => $key,
-            on_exit      => sub {
+         (  code        => $code,
+            description => $desc,
+            factory     => $self,
+            log_key     => $key,
+            max_workers => $p{max_workers},
+            on_exit     => sub {
                my $pid = shift; my $rv = WEXITSTATUS( shift );
 
                $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
             }, );
+   }
+   elsif ($p{type} eq 'periodical') {
+      $notifier = App::MCP::AsyncPeriodical->new
+         (  autostart   => TRUE,
+            code        => $code,
+            description => $desc,
+            factory     => $self,
+            log_key     => $key,
+            interval    => $p{interval} );
+   }
+   elsif ($p{type} eq 'process') {
+      $notifier = App::MCP::AsyncProcess->new
+         (  code        => $code,
+            description => $desc,
+            factory     => $self,
+            log_key     => $key,
+            on_exit     => sub {
+               my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-      $pid = $notifier->pid;
+               $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
+            }, );
    }
    elsif ($p{type} eq 'routine') {
-      my $input = IO::Async::Channel->new; my $msg = ucfirst "${desc} stopped";
-
       $notifier = App::MCP::AsyncRoutine->new
-         (  channels_in  => [ $input ],
-            code         => sub { $code->( $notifier, $input ) },
-            description  => $desc,
-            factory      => $self,
-            log_key      => $key,
-            on_exception => sub { $logger->( 'error', $pid, join ' - ', @_ ) },
-            on_finish    => sub { $logger->( 'info',  $pid, $msg ) },
-            setup        => [ $log->fh, [ 'keep' ] ], );
+         (  code        => $code,
+            description => $desc,
+            factory     => $self,
+            log_key     => $key,
+            on_exit     => sub {
+               my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-      $p{parent} ? $p{parent}->add_child( $notifier ) : $loop->add( $notifier );
-      $pid = $notifier->pid;
+               $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
+            }, );
    }
-   else {
-      $notifier = IO::Async::Timer::Periodic->new
-         (  on_tick    => $code,
-            interval   => $p{interval},
-            reschedule => 'drift', );
+   else { throw error => 'Notifier [_1] type unknown', args => [ $p{type} ] }
 
-      $notifier->start;
-      $p{parent} ? $p{parent}->add_child( $notifier ) : $loop->add( $notifier );
-      $pid = $PID;
-   }
-
-   $logger->( 'info', $pid, "Started ${desc}" );
+   $logger->( 'info', $notifier->pid, "Started ${desc}" );
 
    return $notifier;
 }
@@ -96,74 +84,90 @@ sub uuid {
 __PACKAGE__->meta->make_immutable;
 
 package # Hide from indexer
-   App::MCP::AsyncFunction;
+   App::MCP::AsyncLoop;
 
-use parent q(IO::Async::Function);
-
-use Class::Usul::Functions qw(arg_list);
+use AnyEvent;
+use Async::Interrupt;
+use Class::Usul::Constants;
+use Class::Usul::Functions qw(arg_list throw);
+use Scalar::Util           qw(blessed);
 
 sub new {
    my $self = shift; my $attr = arg_list( @_ );
 
-   my $factory = delete $attr->{factory};
-   my $desc    = delete $attr->{description};
-   my $key     = delete $attr->{log_key};
-   my $new     = $self->SUPER::new( %{ $attr } );
+   $attr->{cv} = AnyEvent->condvar;
 
-   $new->{description} = $desc;
-   $new->{log        } = $factory->builder->log;
-   $new->{log_key    } = $key;
-   return $new;
+   $attr->{signals} ||= {}; $attr->{timers} ||= {}; $attr->{watchers} ||= {};
+
+   return bless $attr, blessed $self || $self;
 }
 
-sub call {
-   my ($self, $runid, @args) = @_; my $log = $self->{log};
+sub attach_signal {
+   my ($self, $sig, $cb) = @_;
 
-   my $logger = sub {
-      my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
-   };
+   $self->{signals}->{ $sig } = AnyEvent->signal( signal => $sig, cb => $cb );
 
-   my $task = $self->SUPER::call
-      (  args      => [ $runid, @args ],
-         on_return => sub { $logger->( 'debug', ' CALL', 'Complete' ) },
-         on_error  => sub { $logger->( 'error', ' CALL', $_[ 0 ]    ) }, );
-
-   return $task;
+   return;
 }
 
-sub stop {
-   my $self = shift;
-   my $key  = $self->{log_key};
-   my $desc = $self->{description};
+sub detach_signal {
+   my ($self, $sig) = @_; delete $self->{signals}->{ $sig }; return;
+}
 
-   for my $worker ($self->_worker_objects) {
-      my $pid = $worker->pid;
+sub run {
+   my $self = shift; $self->{cv}->recv; return;
+}
 
-      $self->{log}->info( "${key}[${pid}]: Stopping ${desc}" );
-      $worker->stop;
+sub start_timer {
+   my ($self, $id, $cb, $period) = @_;
+
+   $self->{timers}->{ $id } = AnyEvent->timer
+      ( after => $period, cb => $cb, interval => $period );
+
+   return;
+}
+
+sub stop_timer {
+   my ($self, $id) = @_; delete $self->{timers}->{ $id }; return;
+}
+
+sub watch_child {
+   my ($self, $pid, $cb) = @_; my $w = $self->{watchers};
+
+   if ($pid == 0) {
+      $w->{condvars}->{ $_ }->recv for (keys %{ $w->{condvars} });
+
+      $self->{cv}->send;
+   }
+   else {
+      my $cv = $w->{condvars}->{ $pid } = AnyEvent->condvar;
+
+      $w->{children}->{ $pid } = AnyEvent->child( pid => $pid, cb => sub {
+         $cb->( @_ ); $cv->send } );
    }
 
    return;
 }
 
-package # Hide from indexer
-   App::MCP::AsyncProcess;
+package App::MCP::AsyncProcess;
 
 use Class::Usul::Functions qw(arg_list);
+use English                qw(-no_match_vars);
+use Scalar::Util           qw(blessed weaken);
+use Storable               qw(nfreeze);
 
-sub new { # Cannot get IO::Async::Process to plackup Twiggy, so this instead
-   my $self    = shift;
-   my $attr    = arg_list( @_ );
-   my $factory = delete $attr->{factory};
-   my $desc    = delete $attr->{description};
-   my $key     = delete $attr->{log_key};
-   my $new     = bless $attr, ref $self || $self;
+sub new {
+   my $self = shift; my $attr = arg_list( @_ );
 
-   $new->{description} = $desc;
-   $new->{log        } = $factory->builder->log;
-   $new->{log_key    } = $key;
+   my $factory = delete $attr->{factory}; my $pipe = delete $attr->{pipe};
 
-   my $r = $factory->builder->run_cmd( [ $new->{code} ], { async => 1 } );
+   $attr->{log} = $factory->builder->log;
+   $pipe and $attr->{hndl} = $pipe->[ 1 ];
+
+   my $new  = bless $attr, blessed $self || $self;
+   my $weak = $new; weaken( $weak );
+   my $code = sub { $new->{code}->( $weak ) };
+   my $r    = $factory->builder->run_cmd( [ $code ], { async => 1 } );
 
    $factory->loop->watch_child( $new->{pid} = $r->{pid}, $new->{on_exit} );
 
@@ -176,6 +180,18 @@ sub is_running {
 
 sub pid {
    return $_[ 0 ]->{pid};
+}
+
+sub send {
+   my ($self, @args) = @_; my $id = $args[ 0 ];
+
+   my $rec   = nfreeze [ @args ];
+   my $bytes = pack( 'I', length $rec ).$rec;
+   my $len   = $self->{hndl}->syswrite( $bytes, length $bytes );
+
+   defined $len or $self->{log}->error( " SEND[${id}]: ${OS_ERROR}" );
+
+   return;
 }
 
 sub stop {
@@ -191,9 +207,189 @@ sub stop {
 }
 
 package # Hide from indexer
+   App::MCP::AsyncFunction;
+
+use feature qw(state);
+
+use Class::Usul::Constants;
+use Class::Usul::Functions qw(arg_list throw);
+use English                qw(-no_match_vars);
+use Fcntl                  qw(F_SETFL O_NONBLOCK);
+use Scalar::Util           qw(blessed);
+use Storable               qw(thaw);
+
+sub new {
+   my $self    = shift;
+   my $args    = arg_list( @_ );
+   my $factory = $args->{factory};
+   my $attr    = { log            => $factory->builder->log,
+                   max_calls      => 0,
+                   max_workers    => delete $args->{max_workers} || 1,
+                   pid            => $factory->uuid,
+                   worker_args    => $args,
+                   worker_index   => [],
+                   worker_objects => {}, };
+
+   return bless $attr, blessed $self || $self;
+}
+
+sub call {
+   my ($self, @args) = @_; my $index = $self->_next_worker;
+
+   my $pid    = $self->{worker_index}->[ $index ] || 0;
+   my $worker = $self->{worker_objects}->{ $pid };
+
+   $worker or $worker = $self->_new_worker( $index, $args[ 0 ] );
+
+   $worker->send( @args );
+   return;
+}
+
+sub pid {
+   return $_[ 0 ]->{pid};
+}
+
+sub stop {
+   my $self = shift; my $workers = $self->{worker_objects};
+
+   $workers->{ $_ }->stop for (keys %{ $workers });
+
+   return;
+}
+
+sub _call_handler {
+   my ($self, $args, $id, $max_calls) = @_;
+
+   my $code = $args->{code}; my $count = 0; my $hndl = $args->{pipe}->[ 0 ];
+
+   my $log  = $self->{log}; my $readbuff = q();
+
+   return sub {
+      while (TRUE) {
+         my $red = __read_exactly( $hndl, my $lenbuffer, 4 ); my $rv;
+
+         defined ($rv = __log_on_error( $log, $id, $red )) and return $rv;
+
+         $red = __read_exactly( $hndl, my $rec, unpack( 'I', $lenbuffer ) );
+
+         defined ($rv = __log_on_error( $log, $id, $red )) and return $rv;
+
+         $code->( @{ thaw $rec } );
+
+         $max_calls and ++$count > $max_calls and return OK;
+      }
+   }
+}
+
+sub _new_worker {
+   my ($self, $index, $id) = @_; my $args = { %{ $self->{worker_args} } };
+
+   my $on_exit = delete $args->{on_exit}; my $workers = $self->{worker_objects};
+
+   $args->{pipe   } = __nonblocking_write_pipe_pair();
+   $args->{code   } = $self->_call_handler( $args, $id, $self->{max_calls} );
+   $args->{on_exit} = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ ) };
+
+   my $worker  = App::MCP::AsyncProcess->new( $args ); my $pid = $worker->pid;
+
+   $workers->{ $pid } = $worker; $self->{worker_index}->[ $index ] = $pid;
+
+   return $worker;
+}
+
+sub _next_worker {
+   my $self = shift; state $worker //= -1;
+
+   $worker++; $worker >= $self->{max_workers} and $worker = 0;
+
+   return $worker;
+}
+
+sub __log_on_error {
+   my ($log, $id, $red) = @_;
+
+   unless (defined $red) {
+      $log->error( " RECV[${id}]: ${OS_ERROR}" ); return FAILED;
+   }
+
+   unless (length $red) {
+      $log->info( " RECV[${id}]: EOF" ); return OK;
+   }
+
+   return;
+}
+
+sub __nonblocking_write_pipe_pair {
+   my ($r, $w);  pipe $r, $w or throw 'No pipe';
+
+   fcntl $w, F_SETFL, O_NONBLOCK; $w->autoflush( TRUE );
+
+   binmode $r; binmode $w;
+
+   return [ $r, $w ];
+}
+
+sub __read_exactly {
+   $_[ 1 ] = q();
+
+   while ((my $have = length $_[ 1 ]) < $_[ 2 ]) {
+      my $red = read( $_[ 0 ], $_[ 1 ], $_[ 2 ] - $have, $have );
+
+      defined $red or return; $red or return q();
+   }
+
+   return $_[ 2 ];
+}
+
+package # Hide from indexer
+   App::MCP::AsyncPeriodical;
+
+use Class::Usul::Functions qw(arg_list);
+use Scalar::Util           qw(blessed);
+
+sub new {
+   my $self    = shift;
+   my $attr    = arg_list( @_ );
+   my $factory = delete $attr->{factory};
+
+   $attr->{id  } = $factory->uuid;
+   $attr->{log } = $factory->builder->log;
+   $attr->{loop} = $factory->loop;
+
+   my $new     =  bless $attr, blessed $self || $self;
+
+   $new->{autostart} and $new->start;
+
+   return $new;
+}
+
+sub pid {
+   return $_[ 0 ]->{id};
+}
+
+sub start {
+   my $self = shift;
+
+   $self->{loop}->start_timer( $self->{id}, $self->{code}, $self->{interval} );
+
+   return;
+}
+
+sub stop {
+   my $self = shift;
+   my $desc = $self->{description};
+   my $key  = $self->{log_key};
+   my $id   = $self->{id};
+
+   $self->{log}->info( "${key}[${id}]: Stopping ${desc}" );
+   $self->{loop}->stop_timer( $id );
+   return;
+}
+
+package # Hide from indexer
    App::MCP::AsyncRoutine;
 
-use parent q(IO::Async::Routine);
+use base q(App::MCP::AsyncProcess);
 
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(arg_list);
@@ -201,26 +397,18 @@ use IPC::SysV              qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
 use IPC::Semaphore;
 
 sub new {
-   my $self = shift; my $attr = arg_list( @_ );
+   my $self = shift;
+   my $attr = arg_list( @_ );
+   my $id   = 1234 + $attr->{factory}->uuid;
+   my $s    = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
 
-   my $factory = delete $attr->{factory};
-   my $desc    = delete $attr->{description};
-   my $key     = delete $attr->{log_key};
-   my $new     = $self->SUPER::new( %{ $attr } );
-   my $id      = 1234 + $factory->uuid;
-   my $s       = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
+   $s->setval( 0, TRUE ); $s->setval( 1, FALSE ); $attr->{semaphore} = $s;
 
-   $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
-
-   $new->{description} = $desc;
-   $new->{log        } = $factory->builder->log;
-   $new->{log_key    } = $key;
-   $new->{semaphore  } = $s;
-   return $new;
+   return $self->SUPER::new( $attr );
 }
 
 sub DESTROY {
-   $_[ 0 ]->{semaphore}->remove; return;
+   defined $_[ 0 ]->{semaphore} and $_[ 0 ]->{semaphore}->remove; return;
 }
 
 sub await_trigger {
@@ -247,8 +435,9 @@ sub stop {
 sub trigger {
    my $self = shift; my $semaphore = $self->{semaphore};
 
-   $semaphore->getval( 1 ) < 1 and $semaphore->op( 1, 1, 0 );
+   my $val = $semaphore->getval( 1 ) // 0;
 
+   $val < 1 and $semaphore->op( 1, 1, 0 );
    return;
 }
 
@@ -264,7 +453,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.1.$Revision: 2 $
+This documents version v0.2.$Rev: 1 $
 
 =head1 Synopsis
 

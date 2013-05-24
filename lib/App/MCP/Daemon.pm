@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-04-30 23:29 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-24 20:39 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -52,7 +52,7 @@ has '_interval'       => is => 'ro',   isa => PositiveInt,
 
 has '_ip_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
-#has '_ipc_ssh'        => is => 'lazy', isa => Object, reader => 'ipc_ssh';
+has '_ipc_ssh'        => is => 'lazy', isa => Object, reader => 'ipc_ssh';
 
 has '_library_class'  => is => 'ro',   isa => NonEmptySimpleStr,
    default            => 'App::MCP::SSHLibrary', reader => 'library_class';
@@ -111,14 +111,14 @@ sub daemon {
    $self->listener; $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
 
    my $stop; $stop = sub {
-      $loop->detach_signal( QUIT => $stop );
-      $loop->detach_signal( TERM => $stop );
+      $loop->detach_signal( 'QUIT' );
+      $loop->detach_signal( 'TERM' );
       $self->clock_tick->stop;
       $self->op_ev_hndlr->stop;
       $self->ip_ev_hndlr->stop;
       $self->listener->stop;
       $log->info( "DAEMON[${PID}]: Event loop stopping" );
-      $loop->watch_child( 0, sub {} );
+      $loop->watch_child( 0 );
    };
 
    $loop->attach_signal( QUIT => $stop );
@@ -132,7 +132,6 @@ sub daemon {
 }
 
 # Private methods
-
 sub _build__async_factory {
    return App::MCP::Async->new( builder => $_[ 0 ] );
 }
@@ -145,7 +144,7 @@ sub _build__clock_tick {
          interval => $self->interval,
          desc     => 'clock tick handler',
          key      => '  TICK',
-         type     => 'timer' );
+         type     => 'periodical' );
 }
 
 sub _build__ip_ev_hndlr {
@@ -158,11 +157,16 @@ sub _build__ip_ev_hndlr {
          type => 'routine' );
 }
 
-#sub _build__ipc_ssh {
-#   my $self = shift;
+sub _build__ipc_ssh {
+   my $self = shift;
 
-#   return ;
-#}
+   return $self->async_factory->new_notifier
+      (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
+         desc        => 'ipc ssh workers',
+         key         => 'IPCSSH',
+         max_workers => $self->max_ssh_workers,
+         type        => 'function' );
+}
 
 sub _build__listener {
    my $self = shift; my $daemon_pid = $PID;
@@ -179,22 +183,11 @@ sub _build__listener {
 }
 
 sub _build__op_ev_hndlr {
-   my $self = shift; my $factory = $self->async_factory;
+   my $self = shift; my $ipc_ssh = $self->ipc_ssh;
 
-   return $factory->new_notifier
+   return $self->async_factory->new_notifier
       (  code => sub {
-            my ($notifier, $input) = @_;
-
-            my $ipc_ssh = $factory->new_notifier
-               (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
-                  desc        => 'ipc ssh workers',
-                  key         => 'IPCSSH',
-                  max_workers => $self->max_ssh_workers,
-                  parent      => $notifier,
-                  type        => 'function' );
-
-            $self->_output_handler( $ipc_ssh, @_ );
-            $ipc_ssh->stop;
+            $self->_output_handler( $ipc_ssh, @_ ); $ipc_ssh->stop;
          },
          desc => 'output event handler',
          key  => 'OUTPUT',
@@ -389,7 +382,7 @@ sub _start_job {
    $self->log->debug( "START[${runid}]: ${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
 
-   my $task   = $ipc_ssh->call( $runid, $user, $host, $calls );
+   $ipc_ssh->call( $runid, $user, $host, $calls );
 
    $provisioned->{ $key } = TRUE;
    return ($runid, $token);
@@ -419,7 +412,7 @@ App::MCP::Boss - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.1.$Revision: 2 $
+This documents version v0.2.$Rev: 1 $
 
 =head1 Synopsis
 

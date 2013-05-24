@@ -1,47 +1,48 @@
-# @(#)$Ident: Build.PL 2013-04-30 23:27 pjf ;
+# @(#)$Ident: Build.PL 2013-05-24 11:48 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 Bob->new( {
-   module     => q(App::MCP),
-   home_page  => q(http://www.roxsoft.co.uk),
-   requires   => {
-      'perl'                     => 5.010,
-      'version'                  => 0.77,
+   module    => q(App::MCP),
+   home_page => q(http://www.roxsoft.co.uk),
+   requires  => {
+      'perl'                     => 5.01,
+      'local::lib'               => 1.008004,
+      'parent'                   => 0.224,
       'Algorithm::Cron'          => 0.04,
+      'AnyEvent'                 => 7.01,
+      'Async::Interrupt'         => 1.1,
       'CatalystX::Usul'          => q(0.8.0),
       'Class::C3::Componentised' => 1.001000,
       'Class::Workflow'          => 0.11,
-      'Class::Usul'              => q(0.17.0),
+      'Class::Usul'              => q(0.21.0),
       'Daemon::Control'          => q(0.000009),
-      'Data::Validation'         => q(0.9.0),
+      'Data::Validation'         => q(0.11.0),
       'DateTime'                 => 0.66,
-      'DBIx::Class'              => 0.08126,
+      'DBIx::Class'              => 0.08204,
       'DBIx::Class::Helpers'     => 2.016001,
+      'DBIx::Class::InflateColumn::Object::Enum' => 0.04,
       'DBIx::Class::TimeStamp'   => 0.14,
-      'File::DataClass'          => q(0.18.0),
-      'File::HomeDir'            => 0.93,
-      'HTTP::Request::Common'    => 5.824,
-      'IO::Async'                => 0.53,
+      'File::DataClass'          => q(0.20.0),
+      'HTTP::Message'            => 6.06,
       'IPC::PerlSSH'             => 0.16,
-      'IPC::PerlSSH::Async'      => 0.07,
       'LWP'                      => 6.04,
-      'MooseX::Types'            => 0.25,
-      'Storable'                 => 2.39,
+      'Marpa::R2'                => 2.024000,
+      'Plack'                    => 1.0018,
       'TryCatch'                 => 1.003000,
       'Web::Simple'              => 0.020,
    },
-   recommends            => {
-      'App::cpanminus'   => 1.4004 },
-   configure_requires    => {
-      'version'          => 0.77,
-      'Module::Build'    => 0.38, },
-   build_requires        => {
-      'Exception::Class' => 1.23,
-      'Test::More'       => 0.74, },
+   recommends          => {
+      'App::cpanminus' => 1.6005 },
+   configure_requires  => {
+      'version'        => 0.88,
+      'Module::Build'  => 0.4004, },
+   build_requires      => {
+      'version'        => 0.88,
+      'Module::Build'  => 0.4004, },
 } )->create_build_script; # Goal!
 
 # Local Variables:
