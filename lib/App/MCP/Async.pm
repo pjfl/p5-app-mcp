@@ -1,13 +1,13 @@
-# @(#)$Ident: Async.pm 2013-05-24 22:46 pjf ;
+# @(#)$Ident: Async.pm 2013-05-25 11:45 pjf ;
 
 package App::MCP::Async;
 
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
+use Class::Usul::Functions qw(pad throw);
 use POSIX                  qw(WEXITSTATUS);
 
 has 'builder' => is => 'ro',   isa => Object, weak_ref => TRUE;
@@ -21,7 +21,9 @@ sub new_notifier {
    my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
 
    my $logger = sub {
-      my ($level, $pid, $msg) = @_; $log->$level( "${key}[${pid}]: ${msg}" );
+      my ($level, $pid, $msg) = @_; $pid = pad $pid, 5, 0, 'left';
+
+      $log->$level( "${key}[${pid}]: ${msg}" ); return;
    };
 
    if ($p{type} eq 'function') {
@@ -83,8 +85,7 @@ sub uuid {
 
 __PACKAGE__->meta->make_immutable;
 
-package # Hide from indexer
-   App::MCP::AsyncLoop;
+package App::MCP::AsyncLoop;
 
 use AnyEvent;
 use Async::Interrupt;
@@ -151,7 +152,7 @@ sub watch_child {
 
 package App::MCP::AsyncProcess;
 
-use Class::Usul::Functions qw(arg_list);
+use Class::Usul::Functions qw(arg_list pad);
 use English                qw(-no_match_vars);
 use Scalar::Util           qw(blessed weaken);
 use Storable               qw(nfreeze);
@@ -183,11 +184,13 @@ sub pid {
 }
 
 sub send {
-   my ($self, @args) = @_; my $id = $args[ 0 ];
+   my ($self, @args) = @_; my $id = pad $args[ 0 ], 5, 0, 'left';
 
+   my $hndl  = $self->{hndl}
+               or throw error => 'Process [_1] has no handle', args => [ $id ];
    my $rec   = nfreeze [ @args ];
    my $bytes = pack( 'I', length $rec ).$rec;
-   my $len   = $self->{hndl}->syswrite( $bytes, length $bytes );
+   my $len   = $hndl->syswrite( $bytes, length $bytes );
 
    defined $len or $self->{log}->error( " SEND[${id}]: ${OS_ERROR}" );
 
@@ -200,19 +203,19 @@ sub stop {
    my $desc = $self->{description};
    my $key  = $self->{log_key};
    my $pid  = $self->{pid};
+   my $did  = pad $pid, 5, 0, 'left';
 
-   $self->{log}->info( "${key}[${pid}]: Stopping ${desc}" );
+   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
    CORE::kill 'TERM', $pid;
    return;
 }
 
-package # Hide from indexer
-   App::MCP::AsyncFunction;
+package App::MCP::AsyncFunction;
 
 use feature qw(state);
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list throw);
+use Class::Usul::Functions qw(arg_list pad throw);
 use English                qw(-no_match_vars);
 use Fcntl                  qw(F_SETFL O_NONBLOCK);
 use Scalar::Util           qw(blessed);
@@ -258,11 +261,11 @@ sub stop {
 }
 
 sub _call_handler {
-   my ($self, $args, $id, $max_calls) = @_;
+   my ($self, $args, $id) = @_; my $code = $args->{code};
 
-   my $code = $args->{code}; my $count = 0; my $hndl = $args->{pipe}->[ 0 ];
+   my $count = 0; my $hndl = $args->{pipe}->[ 0 ]; my $log = $self->{log};
 
-   my $log  = $self->{log}; my $readbuff = q();
+   my $max_calls = $self->{max_calls}; my $readbuff = q();
 
    return sub {
       while (TRUE) {
@@ -274,7 +277,7 @@ sub _call_handler {
 
          defined ($rv = __log_on_error( $log, $id, $red )) and return $rv;
 
-         $code->( @{ thaw $rec } );
+         $code->( @{ thaw $rec } ) or return FAILED;
 
          $max_calls and ++$count > $max_calls and return OK;
       }
@@ -287,7 +290,7 @@ sub _new_worker {
    my $on_exit = delete $args->{on_exit}; my $workers = $self->{worker_objects};
 
    $args->{pipe   } = __nonblocking_write_pipe_pair();
-   $args->{code   } = $self->_call_handler( $args, $id, $self->{max_calls} );
+   $args->{code   } = $self->_call_handler( $args, $id );
    $args->{on_exit} = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ ) };
 
    my $worker  = App::MCP::AsyncProcess->new( $args ); my $pid = $worker->pid;
@@ -306,14 +309,14 @@ sub _next_worker {
 }
 
 sub __log_on_error {
-   my ($log, $id, $red) = @_;
+   my ($log, $id, $red) = @_; my $did = pad $id, 5, 0, 'left';
 
    unless (defined $red) {
-      $log->error( " RECV[${id}]: ${OS_ERROR}" ); return FAILED;
+      $log->error( " RECV[${did}]: ${OS_ERROR}" ); return FAILED;
    }
 
    unless (length $red) {
-      $log->info( " RECV[${id}]: EOF" ); return OK;
+      $log->info( " RECV[${did}]: EOF" ); return OK;
    }
 
    return;
@@ -341,10 +344,9 @@ sub __read_exactly {
    return $_[ 2 ];
 }
 
-package # Hide from indexer
-   App::MCP::AsyncPeriodical;
+package App::MCP::AsyncPeriodical;
 
-use Class::Usul::Functions qw(arg_list);
+use Class::Usul::Functions qw(arg_list pad);
 use Scalar::Util           qw(blessed);
 
 sub new {
@@ -380,19 +382,19 @@ sub stop {
    my $desc = $self->{description};
    my $key  = $self->{log_key};
    my $id   = $self->{id};
+   my $did  = pad $id, 5, 0, 'left';
 
-   $self->{log}->info( "${key}[${id}]: Stopping ${desc}" );
+   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
    $self->{loop}->stop_timer( $id );
    return;
 }
 
-package # Hide from indexer
-   App::MCP::AsyncRoutine;
+package App::MCP::AsyncRoutine;
 
 use base q(App::MCP::AsyncProcess);
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list);
+use Class::Usul::Functions qw(arg_list pad throw);
 use IPC::SysV              qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
 use IPC::Semaphore;
 
@@ -424,16 +426,16 @@ sub stop {
 
    my $desc = $self->{description};
    my $key  = $self->{log_key};
-   my $pid  = $self->{pid};
+   my $did  = pad $self->{pid}, 5, 0, 'left';
 
-   $self->{log}->info( "${key}[${pid}]: Stopping ${desc}" );
+   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
    $self->{semaphore}->setval( 0, FALSE );
    $self->trigger;
    return;
 }
 
 sub trigger {
-   my $self = shift; my $semaphore = $self->{semaphore};
+   my $self = shift; my $semaphore = $self->{semaphore} or throw 'No semaphore';
 
    my $val = $semaphore->getval( 1 ) // 0;
 
@@ -453,7 +455,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 1 $
+This documents version v0.2.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -496,7 +498,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2012 Peter Flanigan. All rights reserved
+Copyright (c) 2013 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

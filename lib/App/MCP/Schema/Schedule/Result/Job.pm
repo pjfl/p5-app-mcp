@@ -5,7 +5,7 @@ package App::MCP::Schema::Schedule::Result::Job;
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent  qw(App::MCP::Schema::Base);
 
 use CatalystX::Usul::Constants;
@@ -223,7 +223,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.2.$Rev: 1 $
+This documents version v0.2.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -280,7 +280,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2012 Peter Flanigan. All rights reserved
+Copyright (c) 2013 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

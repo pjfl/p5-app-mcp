@@ -1,10 +1,10 @@
-# @(#)$Ident: DaemonControl.pm 2013-04-30 23:32 pjf ;
+# @(#)$Ident: DaemonControl.pm 2013-05-25 02:32 pjf ;
 
 package App::MCP::DaemonControl;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent qw(Daemon::Control);
 
 sub new {
@@ -57,7 +57,7 @@ App::MCP::DaemonControl - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 1 $
+This documents version v0.2.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -77,6 +77,8 @@ This documents version v0.2.$Rev: 1 $
 =over 3
 
 =item L<Class::Usul>
+
+=item L<Daemon::Control>
 
 =back
 
@@ -100,7 +102,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2012 Peter Flanigan. All rights reserved
+Copyright (c) 2013 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

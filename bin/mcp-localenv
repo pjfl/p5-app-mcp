@@ -90,7 +90,7 @@ Lists the methods available in this program
 
 =head1 VERSION
 
-This documents version v0.2.$Rev: 1 $ of L<App::MCP>
+This documents version v0.2.$Rev: 2 $ of L<App::MCP>
 
 =head1 DESCRIPTION
 
@@ -148,7 +148,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (c) 2012 Peter Flanigan
+Copyright (c) 2013 Peter Flanigan
 
 This is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

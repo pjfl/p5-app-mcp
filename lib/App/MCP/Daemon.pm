@@ -1,12 +1,12 @@
-# @(#)$Ident: Daemon.pm 2013-05-24 20:39 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-25 09:52 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(create_token bson64id fqdn throw);
+use Class::Usul::Functions       qw(create_token bson64id fqdn pad throw);
 use App::MCP::Async;
 use App::MCP::DaemonControl;
 use English                      qw(-no_match_vars);
@@ -85,7 +85,7 @@ around 'run_chain' => sub {
       lsb_start    => '$syslog $remote_fs',
       lsb_stop     => '$syslog',
       lsb_sdesc    => 'Master Control Program',
-      lsb_desc     => 'Controls the Master Control Program daemon',
+      lsb_desc     => 'Manages the Master Control Program daemon',
       path         => $config->pathname,
 
       directory    => $config->appldir,
@@ -106,18 +106,18 @@ around 'run_chain' => sub {
 sub daemon {
    my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
-   $log->info( "DAEMON[${PID}]: Starting event loop" );
+   my $id = __pad5z( $PID ); $log->info( "DAEMON[${id}]: Starting event loop" );
 
    $self->listener; $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
 
    my $stop; $stop = sub {
       $loop->detach_signal( 'QUIT' );
       $loop->detach_signal( 'TERM' );
+      $log->info( "DAEMON[${id}]: Stopping event loop" );
       $self->clock_tick->stop;
       $self->op_ev_hndlr->stop;
       $self->ip_ev_hndlr->stop;
       $self->listener->stop;
-      $log->info( "DAEMON[${PID}]: Event loop stopping" );
       $loop->watch_child( 0 );
    };
 
@@ -128,6 +128,8 @@ sub daemon {
 
    try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
 
+   # TODO: Why is this disappering?
+   $log->info( "DAEMON[${id}]: Event loop stopped" );
    exit OK;
 }
 
@@ -140,10 +142,10 @@ sub _build__clock_tick {
    my $self = shift; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
-      (  code     => sub { $self->_clock_tick_handler( $daemon_pid ) },
+      (  code     => sub { $self->_clock_tick_handler( $daemon_pid, @_ ) },
          interval => $self->interval,
          desc     => 'clock tick handler',
-         key      => '  TICK',
+         key      => ' CLOCK',
          type     => 'periodical' );
 }
 
@@ -162,7 +164,7 @@ sub _build__ipc_ssh {
 
    return $self->async_factory->new_notifier
       (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
-         desc        => 'ipc ssh workers',
+         desc        => 'ssh worker pool',
          key         => 'IPCSSH',
          max_workers => $self->max_ssh_workers,
          type        => 'function' );
@@ -208,6 +210,7 @@ sub _clock_tick_handler {
 
    state $tick //= 0; my $elapsed = $tick++ * $self->interval;
 
+   $elapsed = __pad5z( $elapsed );
    $self->log->debug( " TICK[${elapsed}]" );
    $self->_start_cron_jobs;
    __trigger_output_handler( $daemon_pid );
@@ -394,6 +397,10 @@ sub _stdio_file {
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 }
 
+sub __pad5z {
+   return pad $_[ 0 ], 5, 0, 'left';
+}
+
 sub __trigger_output_handler {
    my $pid = shift; return CORE::kill 'USR2', $pid;
 }
@@ -408,15 +415,15 @@ __END__
 
 =head1 Name
 
-App::MCP::Boss - <One-line description of module's purpose>
+App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 1 $
+This documents version v0.2.$Rev: 2 $
 
 =head1 Synopsis
 
-   use App::MCP::Boss;
+   use App::MCP::Daemon;
    # Brief but working code examples
 
 =head1 Description
@@ -425,19 +432,31 @@ This documents version v0.2.$Rev: 1 $
 
 =head1 Subroutines/Methods
 
-=head2 looper
-
-=head2 void
+=head2 daemon
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
+=item L<App::MCP::Async>
+
+=item L<App::MCP::DaemonControl>
+
+=item L<CatalystX::Usul::TraitFor::ConnectInfo>
+
 =item L<Class::Usul>
 
-=item L<Daemon::Control>
+=item L<File::DataClass>
+
+=item L<IPC::PerlSSH>
+
+=item L<Plack::Runner>
+
+=item L<TryCatch>
 
 =back
 
@@ -461,7 +480,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2012 Peter Flanigan. All rights reserved
+Copyright (c) 2013 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
