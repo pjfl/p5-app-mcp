@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-05-25 09:52 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-25 12:31 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -106,7 +106,7 @@ around 'run_chain' => sub {
 sub daemon {
    my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
-   my $id = __pad5z( $PID ); $log->info( "DAEMON[${id}]: Starting event loop" );
+   my $id   = __pad5z(); $log->info( "DAEMON[${id}]: Starting event loop" );
 
    $self->listener; $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
 
@@ -398,7 +398,7 @@ sub _stdio_file {
 }
 
 sub __pad5z {
-   return pad $_[ 0 ], 5, 0, 'left';
+   my $x = shift; $x ||= $PID; return pad $x, 5, 0, 'left';
 }
 
 sub __trigger_output_handler {
@@ -419,7 +419,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 3 $
 
 =head1 Synopsis
 
