@@ -1,12 +1,12 @@
-# @(#)$Ident: Daemon.pm 2013-05-25 12:31 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-26 00:06 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(create_token bson64id fqdn pad throw);
+use Class::Usul::Functions       qw(create_token bson64id fqdn pad);
 use App::MCP::Async;
 use App::MCP::DaemonControl;
 use English                      qw(-no_match_vars);
@@ -166,6 +166,7 @@ sub _build__ipc_ssh {
       (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
          desc        => 'ssh worker pool',
          key         => 'IPCSSH',
+         max_calls   => 0,
          max_workers => $self->max_ssh_workers,
          type        => 'function' );
 }
@@ -206,14 +207,13 @@ sub _build__schema {
 }
 
 sub _clock_tick_handler {
-   my ($self, $daemon_pid) = @_;
+   my ($self, $daemon_pid) = @_; state $tick //= 0;
 
-   state $tick //= 0; my $elapsed = $tick++ * $self->interval;
+   my $elapsed = __pad5z( $tick++ * $self->interval );
 
-   $elapsed = __pad5z( $elapsed );
    $self->log->debug( " TICK[${elapsed}]" );
-   $self->_start_cron_jobs;
-   __trigger_output_handler( $daemon_pid );
+
+   $self->_start_cron_jobs and __trigger_output_handler( $daemon_pid );
    return;
 }
 
@@ -343,11 +343,12 @@ sub _process_event {
 }
 
 sub _start_cron_jobs {
-   my $self   = shift;
-   my $schema = $self->schema;
-   my $job_rs = $schema->resultset( 'Job' );
-   my $ev_rs  = $schema->resultset( 'Event' );
-   my $jobs   = $job_rs->search( {
+   my $self    = shift;
+   my $trigger = FALSE;
+   my $schema  = $self->schema;
+   my $job_rs  = $schema->resultset( 'Job' );
+   my $ev_rs   = $schema->resultset( 'Event' );
+   my $jobs    = $job_rs->search( {
       'state.name'       => 'active',
       'crontab'          => { '!=' => undef   }, }, {
          'join'          => 'state' } )->search_related( 'events', {
@@ -355,10 +356,11 @@ sub _start_cron_jobs {
 
    for my $job (grep { $job_rs->should_start_now( $_ ) } $jobs->all) {
       (not $job->condition or $job_rs->eval_condition( $job )->[ 0 ])
+         and $trigger = TRUE
          and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
    }
 
-   return;
+   return $trigger;
 }
 
 sub _start_job {
@@ -419,7 +421,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 3 $
+This documents version v0.2.$Rev: 4 $
 
 =head1 Synopsis
 

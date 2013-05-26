@@ -1,9 +1,9 @@
-# @(#)$Ident: Async.pm 2013-05-25 12:08 pjf ;
+# @(#)$Ident: Async.pm 2013-05-25 18:52 pjf ;
 
 package App::MCP::Async;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -32,18 +32,21 @@ sub new_notifier {
       $log->$level( "${key}[${pid}]: ${msg}" ); return;
    };
 
+   my $on_exit = sub {
+      my $pid = shift; my $rv = WEXITSTATUS( shift );
+
+      $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
+   };
+
    if ($p{type} eq 'function') {
       $notifier = App::MCP::Async::Function->new
          (  code        => $code,
             description => $desc,
             factory     => $self,
             log_key     => $key,
+            max_calls   => $p{max_calls},
             max_workers => $p{max_workers},
-            on_exit     => sub {
-               my $pid = shift; my $rv = WEXITSTATUS( shift );
-
-               $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
-            }, );
+            on_exit     => $on_exit, );
    }
    elsif ($p{type} eq 'periodical') {
       $notifier = App::MCP::Async::Periodical->new
@@ -60,11 +63,7 @@ sub new_notifier {
             description => $desc,
             factory     => $self,
             log_key     => $key,
-            on_exit     => sub {
-               my $pid = shift; my $rv = WEXITSTATUS( shift );
-
-               $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
-            }, );
+            on_exit     => $on_exit, );
    }
    elsif ($p{type} eq 'routine') {
       $notifier = App::MCP::Async::Routine->new
@@ -72,11 +71,7 @@ sub new_notifier {
             description => $desc,
             factory     => $self,
             log_key     => $key,
-            on_exit     => sub {
-               my $pid = shift; my $rv = WEXITSTATUS( shift );
-
-               $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
-            }, );
+            on_exit     => $on_exit, );
    }
    else { throw error => 'Notifier [_1] type unknown', args => [ $p{type} ] }
 
@@ -103,7 +98,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 3 $
+This documents version v0.2.$Rev: 4 $
 
 =head1 Synopsis
 

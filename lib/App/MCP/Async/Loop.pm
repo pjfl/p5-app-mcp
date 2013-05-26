@@ -1,21 +1,21 @@
-# @(#)Ident: Loop.pm 2013-05-25 11:52 pjf ;
+# @(#)Ident: Loop.pm 2013-05-26 00:37 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list throw);
+use Class::Usul::Functions qw(arg_list);
 use Scalar::Util           qw(blessed);
 
 sub new {
    my $self = shift; my $attr = arg_list( @_ );
 
-   $attr->{cv} = AnyEvent->condvar;
+   $attr->{cv} = AnyEvent->condvar; $attr->{handles} ||= {};
 
    $attr->{signals} ||= {}; $attr->{timers} ||= {}; $attr->{watchers} ||= {};
 
@@ -31,7 +31,7 @@ sub attach_signal {
 }
 
 sub detach_signal {
-   my ($self, $sig) = @_; delete $self->{signals}->{ $sig }; return;
+   my ($self, $sig) = @_; return delete $self->{signals}->{ $sig };
 }
 
 sub run {
@@ -48,7 +48,11 @@ sub start_timer {
 }
 
 sub stop_timer {
-   my ($self, $id) = @_; delete $self->{timers}->{ $id }; return;
+   my ($self, $id) = @_; return delete $self->{timers}->{ $id };
+}
+
+sub unwatch_read_handle {
+   my ($self, $id) = @_; return delete $self->{handles}->{ "r${id}" };
 }
 
 sub watch_child {
@@ -65,6 +69,15 @@ sub watch_child {
       $w->{children}->{ $pid } = AnyEvent->child( pid => $pid, cb => sub {
          $cb->( @_ ); $cv->send } );
    }
+
+   return;
+}
+
+sub watch_read_handle {
+   my ($self, $id, $fh, $cb) = @_;
+
+   $self->{handles}->{ "r${id}" }
+      = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
 
    return;
 }
@@ -88,7 +101,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 3 $ of L<App::MCP::Async::Loop>
+This documents version v0.1.$Rev: 4 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

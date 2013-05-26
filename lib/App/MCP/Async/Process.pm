@@ -1,28 +1,37 @@
-# @(#)Ident: Process.pm 2013-05-25 12:33 pjf ;
+# @(#)Ident: Process.pm 2013-05-26 01:01 pjf ;
 
 package App::MCP::Async::Process;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list pad throw);
-use English                qw(-no_match_vars);
-use Scalar::Util           qw(blessed weaken);
-use Storable               qw(nfreeze);
+use Class::Usul::Functions  qw(arg_list pad throw);
+use English                 qw(-no_match_vars);
+use Scalar::Util            qw(blessed weaken);
+use Storable                qw(nfreeze thaw);
+use TryCatch;
 
 sub new {
-   my $self = shift; my $attr = arg_list( @_ );
+   my $self      = shift; my $attr = arg_list( @_ );
 
-   my $factory = delete $attr->{factory}; $attr->{log} = $factory->builder->log;
-   my $pipe    = delete $attr->{pipe}; $pipe and $attr->{hndl} = $pipe->[ 1 ];
-   my $new     = bless  $attr, blessed $self || $self;
-   my $weak    = $new; weaken( $weak );
-   my $code    = sub { $new->{code}->( $weak ) };
-   my $r       = $factory->builder->run_cmd( [ $code ], { async => TRUE } );
+   my $factory   = delete $attr->{factory};
+   my $args_pipe = delete $attr->{args_pipe};
+   my $ret_pipe  = delete $attr->{ret_pipe};
+
+                  $attr->{log} = $factory->builder->log;
+   $args_pipe and $attr->{wtr} = $args_pipe->[ 1 ];
+   $ret_pipe  and $attr->{rdr} = $ret_pipe->[ 0 ];
+
+   my $new       = bless  $attr, blessed $self || $self;
+   my $weak      = $new; weaken( $weak );
+   my $code      = sub { $new->{code}->( $weak ) };
+   my $r         = $factory->builder->run_cmd( [ $code ], { async => TRUE } );
 
    $factory->loop->watch_child( $new->{pid} = $r->{pid}, $new->{on_exit} );
+
+   $new->{on_return} and $new->{rdr} and $new->_watch_read_handle( $factory );
 
    return $new;
 }
@@ -36,15 +45,15 @@ sub pid {
 }
 
 sub send {
-   my ($self, @args) = @_; my $id = pad $args[ 0 ], 5, 0, 'left';
+   my ($self, @args) = @_; my $did = pad $args[ 0 ], 5, 0, 'left';
 
-   my $hndl  = $self->{hndl}
-               or throw error => 'Process [_1] has no handle', args => [ $id ];
+   $self->{wtr} or throw error => 'Pid [_1] no write handle', args => [ $did ];
+
    my $rec   = nfreeze [ @args ];
    my $bytes = pack( 'I', length $rec ).$rec;
-   my $len   = $hndl->syswrite( $bytes, length $bytes );
+   my $len   = $self->{wtr}->syswrite( $bytes, length $bytes );
 
-   defined $len or $self->{log}->error( " SEND[${id}]: ${OS_ERROR}" );
+   defined $len or $self->{log}->error( " SEND[${did}]: ${OS_ERROR}" );
 
    return;
 }
@@ -59,6 +68,29 @@ sub stop {
 
    $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
    CORE::kill 'TERM', $pid;
+   return;
+}
+
+sub _watch_read_handle {
+   my ($self, $factory) = @_;
+
+   my $code = $self->{on_return}; my $did = pad $self->{pid}, 5, 0, 'left';
+
+   my $log  = $self->{log}; my $rdr = $self->{rdr};
+
+   $factory->loop->watch_read_handle( $self->{pid}, $rdr, sub {
+      my ($args, $rv); my $red = __read_exactly( $rdr, my $lenbuffer, 4 );
+
+      defined ($rv = __log_on_error( $log, $did, $red )) and return $rv;
+      $red = __read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
+      defined ($rv = __log_on_error( $log, $did, $red )) and return $rv;
+
+      try        { $code->( @{ $args ? thaw $args : [] } ) }
+      catch ($e) { $log->error( " RECV[${did}]: ${e}" ) }
+
+      return;
+   } );
+
    return;
 }
 
@@ -81,7 +113,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 3 $ of L<App::MCP::Async::Process>
+This documents version v0.1.$Rev: 4 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 
