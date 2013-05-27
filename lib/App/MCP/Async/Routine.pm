@@ -1,14 +1,15 @@
-# @(#)Ident: Routine.pm 2013-05-25 12:12 pjf ;
+# @(#)Ident: Routine.pm 2013-05-26 21:21 pjf ;
 
 package App::MCP::Async::Routine;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
 use parent 'App::MCP::Async::Process';
 
+use App::MCP::Functions    qw(pad5z);
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list pad throw);
+use Class::Usul::Functions qw(arg_list throw);
 use IPC::SysV              qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
 use IPC::Semaphore;
 
@@ -38,9 +39,9 @@ sub still_running {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $desc = $self->{description};
    my $key  = $self->{log_key};
-   my $did  = pad $self->{pid}, 5, 0, 'left';
+   my $did  = pad5z $self->{pid};
+   my $desc = $self->{description};
 
    $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
    $self->{semaphore}->setval( 0, FALSE );
@@ -49,7 +50,7 @@ sub stop {
 }
 
 sub trigger {
-   my $self = shift; my $semaphore = $self->{semaphore} or throw 'No semaphore';
+   my $self = shift; my $semaphore = $self->{semaphore} or return;
 
    my $val = $semaphore->getval( 1 ) // 0;
 
@@ -76,7 +77,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 3 $ of L<App::MCP::Async::Routine>
+This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

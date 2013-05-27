@@ -1,15 +1,16 @@
-# @(#)Ident: Function.pm 2013-05-25 19:47 pjf ;
+# @(#)Ident: Function.pm 2013-05-27 14:50 pjf ;
 
 package App::MCP::Async::Function;
 
 use strict;
 use warnings;
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
+use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use App::MCP::Async::Process;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(arg_list pad throw);
+use Class::Usul::Functions  qw(arg_list throw);
 use English                 qw(-no_match_vars);
 use Fcntl                   qw(F_SETFL O_NONBLOCK);
 use Scalar::Util            qw(blessed);
@@ -34,13 +35,13 @@ sub new {
 
 # Public methods
 sub call {
-   my ($self, @args) = @_; my $index = $self->_next_worker;
+   my ($self, @args) = @_;
 
+   my $index  = $self->_next_worker;
    my $pid    = $self->{worker_index}->[ $index ] || 0;
    my $worker = $self->{worker_objects}->{ $pid };
 
    $worker or $worker = $self->_new_worker( $index, @args );
-
    $worker->send( @args );
    return;
 }
@@ -68,17 +69,17 @@ sub _call_handler {
    my $wtr = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : undef;
 
    return sub {
-      my $count = 0; my $did = pad $id, 5, 0, 'left';
+      my $count = 0; my $did = pad5z $id;
 
       while (TRUE) {
          my $args = undef; my $rv = undef;
 
          if ($rdr) {
-            my $red = __read_exactly( $rdr, my $lenbuffer, 4 );
+            my $red = read_exactly( $rdr, my $lenbuffer, 4 );
 
-            defined ($rv = __log_on_error( $log, $did, $red )) and return $rv;
-            $red = __read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = __log_on_error( $log, $did, $red )) and return $rv;
+            defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
+            $red = read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
+            defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
          }
 
          try        { $rv = $code->( @{ $args ? thaw $args : [] } );
@@ -118,20 +119,6 @@ sub _next_worker {
 }
 
 # Private functions
-sub __log_on_error {
-   my ($log, $did, $red) = @_;
-
-   unless (defined $red) {
-      $log->error( " RECV[${did}]: ${OS_ERROR}" ); return FAILED;
-   }
-
-   unless (length $red) {
-      $log->info( " RECV[${did}]: EOF" ); return OK;
-   }
-
-   return;
-}
-
 sub __nonblocking_write_pipe_pair {
    my ($r, $w); pipe $r, $w or throw 'No pipe';
 
@@ -142,22 +129,10 @@ sub __nonblocking_write_pipe_pair {
    return [ $r, $w ];
 }
 
-sub __read_exactly {
-   $_[ 1 ] = q();
-
-   while ((my $have = length $_[ 1 ]) < $_[ 2 ]) {
-      my $red = read( $_[ 0 ], $_[ 1 ], $_[ 2 ] - $have, $have );
-
-      defined $red or return; $red or return q();
-   }
-
-   return $_[ 2 ];
-}
-
 sub __send_rv {
    my ($wtr, $log, @args) = @_;
 
-   my $did   = pad $args[ 0 ], 5, 0, 'left';
+   my $did   = pad5z $args[ 0 ];
    my $args  = nfreeze [ @args ];
    my $bytes = pack( 'I', length $args ).$args;
    my $len   = $wtr->syswrite( $bytes, length $bytes );
@@ -186,7 +161,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 4 $ of L<App::MCP::Async::Function>
+This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

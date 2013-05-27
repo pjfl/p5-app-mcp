@@ -1,14 +1,15 @@
-# @(#)$Ident: Daemon.pm 2013-05-26 00:06 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-27 14:37 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(create_token bson64id fqdn pad);
+use Class::Usul::Functions       qw(create_token bson64id);
 use App::MCP::Async;
 use App::MCP::DaemonControl;
+use App::MCP::Functions          qw(pad5z);
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IPC::PerlSSH;
@@ -18,37 +19,47 @@ use TryCatch;
 extends q(Class::Usul::Programs);
 with    q(CatalystX::Usul::TraitFor::ConnectInfo);
 
+# Override defaults in base class
+has '+config_class'   => default => 'App::MCP::Config';
+
+# Object attributes (public)
+#   Visible to the command line
+has 'autotrigger'     => is => 'ro',   isa => Bool,
+   documentation      => 'Trigger output event handler with each clock tick',
+   default            => FALSE;
+
 has 'database'        => is => 'ro',   isa => NonEmptySimpleStr,
    documentation      => 'The database to connect to',
-   default            => 'schedule';
+   default            => sub { $_[ 0 ]->config->database };
 
 has 'identity_file'   => is => 'lazy', isa => File, coerce => TRUE,
    documentation      => 'Path to private SSH key',
-   default            => sub { [ $_[ 0 ]->config->my_home, qw(.ssh id_rsa) ] };
+   default            => sub { $_[ 0 ]->config->identity_file };
 
 has 'max_ssh_workers' => is => 'ro',   isa => PositiveInt,
    documentation      => 'Maximum number of SSH worker processes',
-   default            => 3;
+   default            => sub { $_[ 0 ]->config->max_ssh_workers };
 
 has 'port'            => is => 'ro',   isa => PositiveInt,
    documentation      => 'Port number for the input event listener',
-   default            => 2012;
+   default            => sub { $_[ 0 ]->config->port };
 
 has 'schema_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
    documentation      => 'Classname of the schema to load',
-   default            => sub { 'App::MCP::Schema::Schedule' };
+   default            => sub { $_[ 0 ]->config->schema_class };
 
 has 'server'          => is => 'ro',   isa => NonEmptySimpleStr,
    documentation      => 'Plack server class used for the event listener',
-   default            => 'Twiggy';
+   default            => sub { $_[ 0 ]->config->server };
 
-
+#   Ingnored by the command line
 has '_async_factory'  => is => 'lazy', isa => Object, reader => 'async_factory';
 
 has '_clock_tick'     => is => 'lazy', isa => Object, reader => 'clock_tick';
 
-has '_interval'       => is => 'ro',   isa => PositiveInt,
-   default            => 3,         reader => 'interval';
+has '_interval'       => is => 'lazy', isa => PositiveInt,
+   default            => sub { $_[ 0 ]->config->clock_tick_interval },
+   reader             => 'interval';
 
 has '_ip_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
@@ -66,9 +77,10 @@ has '_op_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
 has '_schema'         => is => 'lazy', isa => Object, reader => 'schema';
 
-has '_servers'        => is => 'ro',   isa => ArrayRef, auto_deref => TRUE,
-   default            => sub { [ fqdn ] }, reader => 'servers';
+has '_servers'        => is => 'lazy', isa => ArrayRef, auto_deref => TRUE,
+   default            => sub { $_[ 0 ]->config->servers }, reader => 'servers';
 
+# Construction
 around 'run' => sub {
    my ($next, $self, @args) = @_; $self->quiet( TRUE );
 
@@ -103,17 +115,18 @@ around 'run_chain' => sub {
    return $self->$next( @args ); # Never reached
 };
 
+# Public methods
 sub daemon {
    my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
-   my $id   = __pad5z(); $log->info( "DAEMON[${id}]: Starting event loop" );
+   my $did  = pad5z(); $log->info( "DAEMON[${did}]: Starting event loop" );
 
    $self->listener; $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
 
    my $stop; $stop = sub {
       $loop->detach_signal( 'QUIT' );
       $loop->detach_signal( 'TERM' );
-      $log->info( "DAEMON[${id}]: Stopping event loop" );
+      $log->info( "DAEMON[${did}]: Stopping event loop" );
       $self->clock_tick->stop;
       $self->op_ev_hndlr->stop;
       $self->ip_ev_hndlr->stop;
@@ -129,7 +142,7 @@ sub daemon {
    try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
 
    # TODO: Why is this disappering?
-   $log->info( "DAEMON[${id}]: Event loop stopped" );
+   $log->info( "DAEMON[${did}]: Event loop stopped" );
    exit OK;
 }
 
@@ -166,7 +179,7 @@ sub _build__ipc_ssh {
       (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
          desc        => 'ssh worker pool',
          key         => 'IPCSSH',
-         max_calls   => 0,
+         max_calls   => $self->config->max_ssh_worker_calls,
          max_workers => $self->max_ssh_workers,
          type        => 'function' );
 }
@@ -207,13 +220,14 @@ sub _build__schema {
 }
 
 sub _clock_tick_handler {
-   my ($self, $daemon_pid) = @_; state $tick //= 0;
+   my ($self, $daemon_pid) = @_;
 
-   my $elapsed = __pad5z( $tick++ * $self->interval );
+   $self->lock->set( k => 'start_cron_jobs', t => 60, async => TRUE ) or return;
 
-   $self->log->debug( " TICK[${elapsed}]" );
+  ($self->_start_cron_jobs or $self->autotrigger)
+      and __trigger_output_handler( $daemon_pid );
 
-   $self->_start_cron_jobs and __trigger_output_handler( $daemon_pid );
+   $self->lock->reset( k => 'start_cron_jobs' );
    return;
 }
 
@@ -399,10 +413,6 @@ sub _stdio_file {
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 }
 
-sub __pad5z {
-   my $x = shift; $x ||= $PID; return pad $x, 5, 0, 'left';
-}
-
 sub __trigger_output_handler {
    my $pid = shift; return CORE::kill 'USR2', $pid;
 }
@@ -421,7 +431,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 4 $
+This documents version v0.2.$Rev: 5 $
 
 =head1 Synopsis
 

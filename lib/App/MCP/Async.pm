@@ -1,13 +1,14 @@
-# @(#)$Ident: Async.pm 2013-05-25 18:52 pjf ;
+# @(#)$Ident: Async.pm 2013-05-26 21:27 pjf ;
 
 package App::MCP::Async;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
+use App::MCP::Functions     qw(pad5z);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(pad throw);
+use Class::Usul::Functions  qw(throw);
 use POSIX                   qw(WEXITSTATUS);
 
 use App::MCP::Async::Loop;
@@ -27,9 +28,9 @@ sub new_notifier {
    my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
 
    my $logger = sub {
-      my ($level, $pid, $msg) = @_; $pid = pad $pid, 5, 0, 'left';
+      my ($level, $pid, $msg) = @_; my $did = pad5z $pid;
 
-      $log->$level( "${key}[${pid}]: ${msg}" ); return;
+      $log->$level( "${key}[${did}]: ${msg}" ); return;
    };
 
    my $on_exit = sub {
@@ -98,7 +99,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 4 $
+This documents version v0.2.$Rev: 5 $
 
 =head1 Synopsis
 

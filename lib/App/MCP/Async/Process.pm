@@ -1,11 +1,12 @@
-# @(#)Ident: Process.pm 2013-05-26 01:01 pjf ;
+# @(#)Ident: Process.pm 2013-05-27 14:45 pjf ;
 
 package App::MCP::Async::Process;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
+use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(arg_list pad throw);
 use English                 qw(-no_match_vars);
@@ -25,8 +26,8 @@ sub new {
    $ret_pipe  and $attr->{rdr} = $ret_pipe->[ 0 ];
 
    my $new       = bless  $attr, blessed $self || $self;
-   my $weak      = $new; weaken( $weak );
-   my $code      = sub { $new->{code}->( $weak ) };
+   my $weak_ref  = $new; weaken( $weak_ref );
+   my $code      = sub { $new->{code}->( $weak_ref ) };
    my $r         = $factory->builder->run_cmd( [ $code ], { async => TRUE } );
 
    $factory->loop->watch_child( $new->{pid} = $r->{pid}, $new->{on_exit} );
@@ -45,7 +46,7 @@ sub pid {
 }
 
 sub send {
-   my ($self, @args) = @_; my $did = pad $args[ 0 ], 5, 0, 'left';
+   my ($self, @args) = @_; my $did = pad5z $args[ 0 ];
 
    $self->{wtr} or throw error => 'Pid [_1] no write handle', args => [ $did ];
 
@@ -61,29 +62,28 @@ sub send {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $desc = $self->{description};
    my $key  = $self->{log_key};
-   my $pid  = $self->{pid};
-   my $did  = pad $pid, 5, 0, 'left';
+   my $did  = pad5z $self->{pid};
+   my $desc = $self->{description};
 
    $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
-   CORE::kill 'TERM', $pid;
+   CORE::kill 'TERM', $self->{pid};
    return;
 }
 
 sub _watch_read_handle {
    my ($self, $factory) = @_;
 
-   my $code = $self->{on_return}; my $did = pad $self->{pid}, 5, 0, 'left';
+   my $code = $self->{on_return}; my $did = pad5z $self->{pid};
 
    my $log  = $self->{log}; my $rdr = $self->{rdr};
 
    $factory->loop->watch_read_handle( $self->{pid}, $rdr, sub {
-      my ($args, $rv); my $red = __read_exactly( $rdr, my $lenbuffer, 4 );
+      my ($args, $rv); my $red = read_exactly( $rdr, my $lenbuffer, 4 );
 
-      defined ($rv = __log_on_error( $log, $did, $red )) and return $rv;
-      $red = __read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
-      defined ($rv = __log_on_error( $log, $did, $red )) and return $rv;
+      defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
+      $red = read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
+      defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
 
       try        { $code->( @{ $args ? thaw $args : [] } ) }
       catch ($e) { $log->error( " RECV[${did}]: ${e}" ) }
@@ -113,7 +113,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 4 $ of L<App::MCP::Async::Process>
+This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

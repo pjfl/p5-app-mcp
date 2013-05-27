@@ -1,53 +1,53 @@
-# @(#)Ident: Periodical.pm 2013-05-26 21:24 pjf ;
+# @(#)Ident: Functions.pm 2013-05-27 13:39 pjf ;
 
-package App::MCP::Async::Periodical;
+package App::MCP::Functions;
 
 use strict;
 use warnings;
 use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
-use App::MCP::Functions    qw(pad5z);
+my @_functions;
+
+BEGIN {
+   @_functions = ( qw(log_on_error pad5z read_exactly) );
+}
+
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list);
-use Scalar::Util           qw(blessed);
+use Class::Usul::Functions qw(pad);
+use English                qw(-no_match_vars);
 
-sub new {
-   my $self = shift; my $attr = arg_list( @_ );
+use Sub::Exporter::Progressive -setup => {
+   exports => [ @_functions ], groups => { default => [], },
+};
 
-   my $factory = delete $attr->{factory};
+sub log_on_error ($$$) {
+   my ($log, $did, $red) = @_;
 
-   $attr->{id  } = $factory->uuid;
-   $attr->{log } = $factory->builder->log;
-   $attr->{loop} = $factory->loop;
+   unless (defined $red) {
+      $log->error( " RECV[${did}]: ${OS_ERROR}" ); return FAILED;
+   }
 
-   my $new = bless $attr, blessed $self || $self;
-
-   $new->{autostart} and $new->start;
-
-   return $new;
-}
-
-sub pid {
-   return $_[ 0 ]->{id};
-}
-
-sub start {
-   my $self = shift;
-
-   $self->{loop}->start_timer( $self->{id}, $self->{code}, $self->{interval} );
+   unless (length $red) {
+      $log->info( " RECV[${did}]: EOF" ); return OK;
+   }
 
    return;
 }
 
-sub stop {
-   my $self = shift;
-   my $key  = $self->{log_key};
-   my $did  = pad5z $self->{id};
-   my $desc = $self->{description};
+sub pad5z (;$) {
+   my $x = shift; $x //= $PID; return pad $x, 5, 0, 'left';
+}
 
-   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
-   $self->{loop}->stop_timer( $self->{id} );
-   return;
+sub read_exactly ($$$) {
+   $_[ 1 ] = q();
+
+   while ((my $have = length $_[ 1 ]) < $_[ 2 ]) {
+      my $red = read( $_[ 0 ], $_[ 1 ], $_[ 2 ] - $have, $have );
+
+      defined $red or return; $red or return q();
+   }
+
+   return $_[ 2 ];
 }
 
 1;
@@ -60,16 +60,16 @@ __END__
 
 =head1 Name
 
-App::MCP::Async::Periodical - One-line description of the modules purpose
+App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Async::Periodical;
+   use App::MCP::Functions;
    # Brief but working code examples
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Periodical>
+This documents version v0.1.$Rev: 5 $ of L<App::MCP::Functions>
 
 =head1 Description
 
