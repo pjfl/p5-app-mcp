@@ -1,15 +1,15 @@
-# @(#)Ident: Routine.pm 2013-05-26 21:21 pjf ;
+# @(#)Ident: Routine.pm 2013-05-27 20:19 pjf ;
 
 package App::MCP::Async::Routine;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent 'App::MCP::Async::Process';
 
 use App::MCP::Functions    qw(pad5z);
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list throw);
+use Class::Usul::Functions qw(arg_list);
 use IPC::SysV              qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
 use IPC::Semaphore;
 
@@ -39,11 +39,9 @@ sub still_running {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $key  = $self->{log_key};
-   my $did  = pad5z $self->{pid};
-   my $desc = $self->{description};
+   my $key  = $self->{log_key}; my $did = pad5z $self->{pid};
 
-   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
+   $self->{log}->info( "${key}[${did}]: Stopping ".$self->{description} );
    $self->{semaphore}->setval( 0, FALSE );
    $self->trigger;
    return;
@@ -77,7 +75,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Routine>
+This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

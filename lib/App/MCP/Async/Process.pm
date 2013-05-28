@@ -1,10 +1,10 @@
-# @(#)Ident: Process.pm 2013-05-27 14:45 pjf ;
+# @(#)Ident: Process.pm 2013-05-27 20:09 pjf ;
 
 package App::MCP::Async::Process;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use Class::Usul::Constants;
@@ -17,22 +17,25 @@ use TryCatch;
 sub new {
    my $self      = shift; my $attr = arg_list( @_ );
 
-   my $factory   = delete $attr->{factory};
+   my $factory   = delete $attr->{factory  } or throw 'No factory';
    my $args_pipe = delete $attr->{args_pipe};
-   my $ret_pipe  = delete $attr->{ret_pipe};
+   my $on_exit   = delete $attr->{on_exit  };
+   my $on_return = delete $attr->{on_return};
+   my $ret_pipe  = delete $attr->{ret_pipe };
 
-                  $attr->{log} = $factory->builder->log;
-   $args_pipe and $attr->{wtr} = $args_pipe->[ 1 ];
-   $ret_pipe  and $attr->{rdr} = $ret_pipe->[ 0 ];
+   $attr->{code} or throw 'No code';
+   $attr->{log } = $factory->builder->log or throw 'No log';
+   $attr->{wtr } = $args_pipe->[ 1 ] if $args_pipe;
+   $attr->{rdr } = $ret_pipe->[ 0 ]  if $ret_pipe;
 
    my $new       = bless  $attr, blessed $self || $self;
    my $weak_ref  = $new; weaken( $weak_ref );
    my $code      = sub { $new->{code}->( $weak_ref ) };
    my $r         = $factory->builder->run_cmd( [ $code ], { async => TRUE } );
+   my $pid       = $new->{pid} = $r->{pid};
 
-   $factory->loop->watch_child( $new->{pid} = $r->{pid}, $new->{on_exit} );
-
-   $new->{on_return} and $new->{rdr} and $new->_watch_read_handle( $factory );
+   $on_exit   and $factory->loop->watch_child( $pid, $on_exit );
+   $on_return and $new->_watch_read_handle( $factory, $on_return );
 
    return $new;
 }
@@ -62,21 +65,17 @@ sub send {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $key  = $self->{log_key};
-   my $did  = pad5z $self->{pid};
-   my $desc = $self->{description};
+   my $key  = $self->{log_key}; my $did = pad5z $self->{pid};
 
-   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
+   $self->{log}->info( "${key}[${did}]: Stopping ".$self->{description} );
    CORE::kill 'TERM', $self->{pid};
    return;
 }
 
 sub _watch_read_handle {
-   my ($self, $factory) = @_;
+   my ($self, $factory, $code) = @_; my $rdr = $self->{rdr} or return;
 
-   my $code = $self->{on_return}; my $did = pad5z $self->{pid};
-
-   my $log  = $self->{log}; my $rdr = $self->{rdr};
+   my $did = pad5z $self->{pid}; my $log = $self->{log};
 
    $factory->loop->watch_read_handle( $self->{pid}, $rdr, sub {
       my ($args, $rv); my $red = read_exactly( $rdr, my $lenbuffer, 4 );
@@ -113,7 +112,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Process>
+This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

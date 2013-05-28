@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-05-27 14:37 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-28 10:19 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -109,7 +109,7 @@ around 'run_chain' => sub {
       stdout_file  => $self->_stdio_file( 'out' ),
 
       fork         => 2,
-      stop_signals => 'TERM,5,KILL,1',
+      stop_signals => 'TERM,10,KILL,1',
    } )->run;
 
    return $self->$next( @args ); # Never reached
@@ -121,17 +121,12 @@ sub daemon {
 
    my $did  = pad5z(); $log->info( "DAEMON[${did}]: Starting event loop" );
 
-   $self->listener; $self->ip_ev_hndlr; $self->op_ev_hndlr; $self->clock_tick;
+   $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
    my $stop; $stop = sub {
       $loop->detach_signal( 'QUIT' );
       $loop->detach_signal( 'TERM' );
-      $log->info( "DAEMON[${did}]: Stopping event loop" );
-      $self->clock_tick->stop;
-      $self->op_ev_hndlr->stop;
-      $self->ip_ev_hndlr->stop;
-      $self->listener->stop;
-      $loop->watch_child( 0 );
+      $loop->stop;
    };
 
    $loop->attach_signal( QUIT => $stop );
@@ -139,9 +134,14 @@ sub daemon {
    $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
    $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
 
-   try { $loop->run } catch ($e) { $log->error( $e ); $stop->() }
+   try { $loop->run } catch ($e) { $log->error( $e ) }
 
-   # TODO: Why is this disappering?
+   $log->info( "DAEMON[${did}]: Stopping event loop" );
+   $self->clock_tick->stop;
+   $self->listener->stop;
+   $self->ip_ev_hndlr->stop;
+   $self->op_ev_hndlr->stop;
+   $loop->watch_child( 0 );
    $log->info( "DAEMON[${did}]: Event loop stopped" );
    exit OK;
 }
@@ -177,7 +177,7 @@ sub _build__ipc_ssh {
 
    return $self->async_factory->new_notifier
       (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
-         desc        => 'ssh worker pool',
+         desc        => 'ipcssh worker',
          key         => 'IPCSSH',
          max_calls   => $self->config->max_ssh_worker_calls,
          max_workers => $self->max_ssh_workers,
@@ -431,7 +431,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 5 $
+This documents version v0.2.$Rev: 6 $
 
 =head1 Synopsis
 

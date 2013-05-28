@@ -1,9 +1,9 @@
-# @(#)$Ident: Async.pm 2013-05-26 21:27 pjf ;
+# @(#)$Ident: Async.pm 2013-05-27 20:03 pjf ;
 
 package App::MCP::Async;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(pad5z);
 use Class::Usul::Moose;
@@ -19,8 +19,8 @@ use App::MCP::Async::Routine;
 
 has 'builder' => is => 'ro',   isa => Object, weak_ref => TRUE;
 
-has 'loop'    => is => 'lazy', isa => Object,
-   default    => sub { App::MCP::Async::Loop->new };
+has 'loop'    => is => 'lazy', isa => Object, default  => sub {
+   App::MCP::Async::Loop->new( log => $_[ 0 ]->builder->log ) };
 
 sub new_notifier {
    my ($self, %p) = @_; my $log = $self->builder->log; my $notifier;
@@ -36,7 +36,7 @@ sub new_notifier {
    my $on_exit = sub {
       my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-      $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
+      $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" ); return;
    };
 
    if ($p{type} eq 'function') {
@@ -99,7 +99,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 5 $
+This documents version v0.2.$Rev: 6 $
 
 =head1 Synopsis
 

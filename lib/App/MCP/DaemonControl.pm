@@ -1,10 +1,10 @@
-# @(#)$Ident: DaemonControl.pm 2013-05-25 02:32 pjf ;
+# @(#)$Ident: DaemonControl.pm 2013-05-27 23:51 pjf ;
 
 package App::MCP::DaemonControl;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent qw(Daemon::Control);
 
 sub new {
@@ -12,7 +12,7 @@ sub new {
 
    my $new = $self->SUPER::new( $args );
 
-   $new->{stop_signals} = $stop_signals || 'TERM,1,TERM,1,INT,1,KILL,1';
+   $new->{stop_signals} = $stop_signals || 'TERM,0,TERM,0,INT,0,KILL,0';
 
    return $new;
 }
@@ -20,12 +20,22 @@ sub new {
 sub do_stop {
    my $self = shift; $self->read_pid;
 
+   my $kill_timeout = $self->can( 'kill_timeout' ) ? $self->kill_timeout : 1;
+
    if ($self->pid and $self->pid_running) {
       my @t = split m{ [,] }msx, $self->stop_signals; my $len = int (@t / 2);
 
       for my $i (0 .. $len) {
-         kill  $t[ 2 * $i ], $self->pid;
-         sleep $t[ 2 * $i + 1 ];
+         warn "do_stop ".$t[ 2 * $i ].' '.time."\n";
+         kill $t[ 2 * $i ], $self->pid;
+
+         my $timeout = $t[ 2 * $i + 1 ];
+            $timeout < 1 and $timeout = $kill_timeout;
+
+         for (1 .. $timeout) {
+            $self->pid_running or last; sleep 1;
+         }
+
          $self->pid_running or last;
       }
 
@@ -57,7 +67,7 @@ App::MCP::DaemonControl - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 6 $
 
 =head1 Synopsis
 

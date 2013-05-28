@@ -1,72 +1,77 @@
-# @(#)Ident: Loop.pm 2013-05-26 00:37 pjf ;
+# @(#)Ident: Loop.pm 2013-05-28 10:05 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(arg_list);
+use English                qw(-no_match_vars);
 use Scalar::Util           qw(blessed);
 
+my $handles = {}; my $signals = {}; my $timers = {}; my $watchers = {};
+
 sub new {
-   my $self = shift; my $attr = arg_list( @_ );
-
-   $attr->{cv} = AnyEvent->condvar; $attr->{handles} ||= {};
-
-   $attr->{signals} ||= {}; $attr->{timers} ||= {}; $attr->{watchers} ||= {};
-
-   return bless $attr, blessed $self || $self;
+   my $self = shift; return bless arg_list( @_ ), blessed $self || $self;
 }
 
 sub attach_signal {
    my ($self, $sig, $cb) = @_;
 
-   $self->{signals}->{ $sig } = AnyEvent->signal( signal => $sig, cb => $cb );
+   $signals->{ $PID }->{ $sig } = AnyEvent->signal( signal => $sig, cb => $cb );
 
    return;
 }
 
 sub detach_signal {
-   my ($self, $sig) = @_; return delete $self->{signals}->{ $sig };
+   my ($self, $sig) = @_; return delete $signals->{ $PID }->{ $sig };
 }
 
 sub run {
-   my $self = shift; $self->{cv}->recv; return;
+   my $self = shift; $self->{cv} = AnyEvent->condvar; $self->{cv}->recv; return;
 }
 
 sub start_timer {
    my ($self, $id, $cb, $period) = @_;
 
-   $self->{timers}->{ $id } = AnyEvent->timer
+   $timers->{ $PID }->{ $id } = AnyEvent->timer
       ( after => $period, cb => $cb, interval => $period );
 
    return;
 }
 
+sub stop {
+   $_[ 0 ]->{cv}->send; return;
+}
+
 sub stop_timer {
-   my ($self, $id) = @_; return delete $self->{timers}->{ $id };
+   my ($self, $id) = @_; return delete $timers->{ $PID }->{ $id };
 }
 
 sub unwatch_read_handle {
-   my ($self, $id) = @_; return delete $self->{handles}->{ "r${id}" };
+   my ($self, $id) = @_; return delete $handles->{ $PID }->{ "r${id}" };
 }
 
 sub watch_child {
-   my ($self, $pid, $cb) = @_; my $w = $self->{watchers};
+   my ($self, $pid, $cb) = @_; my $w = $watchers->{ $PID } ||= {};
+$self->{log}->info( "watch_child ${PID} ${pid}" );
 
    if ($pid == 0) {
-      $w->{condvars}->{ $_ }->recv for (keys %{ $w->{condvars} });
-
-      $self->{cv}->send;
+      for (sort { $a <=> $b } keys %{ $w }) {
+$self->{log}->info( "watch_child ${PID} ${_}" );
+         $w->{ $_ }->[ 0 ]->recv;
+$self->{log}->info( "watch_child ${PID} recv" );
+      }
+$self->{log}->info( "watch_child ${PID} ".($self->{cv} ? $self->{cv} : 'null') );
    }
    else {
-      my $cv = $w->{condvars}->{ $pid } = AnyEvent->condvar;
+      my $cv = $w->{ $pid }->[ 0 ] = AnyEvent->condvar;
 
-      $w->{children}->{ $pid } = AnyEvent->child( pid => $pid, cb => sub {
+      $w->{ $pid }->[ 1 ] = AnyEvent->child( pid => $pid, cb => sub {
          $cb->( @_ ); $cv->send } );
    }
 
@@ -74,10 +79,9 @@ sub watch_child {
 }
 
 sub watch_read_handle {
-   my ($self, $id, $fh, $cb) = @_;
+   my ($self, $id, $fh, $cb) = @_; my $h = $handles->{ $PID };
 
-   $self->{handles}->{ "r${id}" }
-      = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
+   $h->{ "r${id}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
 
    return;
 }
@@ -101,7 +105,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 4 $ of L<App::MCP::Async::Loop>
+This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

@@ -1,11 +1,11 @@
-# @(#)Ident: Function.pm 2013-05-27 14:50 pjf ;
+# @(#)Ident: Function.pm 2013-05-27 22:04 pjf ;
 
 package App::MCP::Async::Function;
 
 use strict;
 use warnings;
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use App::MCP::Async::Process;
@@ -22,7 +22,10 @@ sub new {
    my $self = shift; my $args = arg_list( @_ );
 
    my $attr = { channels       => delete $args->{channels   } || q(i),
+                description    => $args->{description}.' pool',
                 log            => $args->{factory}->builder->log,
+                log_key        => delete $args->{log_key},
+                loop           => $args->{factory}->loop,
                 max_calls      => delete $args->{max_calls  } || 0,
                 max_workers    => delete $args->{max_workers} || 1,
                 pid            => $args->{factory}->uuid,
@@ -53,8 +56,13 @@ sub pid {
 sub stop {
    my $self = shift; my $workers = $self->{worker_objects};
 
+   my $key  = $self->{log_key}; my $did = pad5z $self->{pid};
+
+   $self->{log}->info( "${key}[${did}]: Stopping ".$self->{description} );
+
    $workers->{ $_ }->stop for (keys %{ $workers });
 
+   $self->{loop}->watch_child( 0 );
    return;
 }
 
@@ -96,14 +104,16 @@ sub _new_worker {
 
    my $on_exit = delete $args->{on_exit}; my $workers = $self->{worker_objects};
 
-   $self->{channels} =~ m{ i }mx
+   $self->{channels   } =~ m{ i }mx
       and $args->{args_pipe} = __nonblocking_write_pipe_pair();
-   $self->{channels} =~ m{ o }mx
+   $self->{channels   } =~ m{ o }mx
       and $args->{ret_pipe } = __nonblocking_write_pipe_pair();
-   $args->{code    } = $self->_call_handler( $args, $id );
-   $args->{on_exit } = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ ) };
+   $args->{code       } = $self->_call_handler( $args, $id );
+   $args->{description} = (lc $self->{log_key})." worker ${index}";
+   $args->{log_key    } = 'WORKER';
+   $args->{on_exit    } = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ )};
 
-   my $worker  = App::MCP::Async::Process->new( $args ); my $pid = $worker->pid;
+   my $worker = App::MCP::Async::Process->new( $args ); my $pid = $worker->pid;
 
    $workers->{ $pid } = $worker; $self->{worker_index}->[ $index ] = $pid;
 
@@ -161,7 +171,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Function>
+This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 
