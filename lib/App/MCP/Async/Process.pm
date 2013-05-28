@@ -1,63 +1,80 @@
-# @(#)Ident: Process.pm 2013-05-27 20:09 pjf ;
+# @(#)Ident: Process.pm 2013-05-28 22:26 pjf ;
 
 package App::MCP::Async::Process;
 
-use strict;
-use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
+use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(arg_list pad throw);
+use Class::Usul::Functions  qw(throw);
 use English                 qw(-no_match_vars);
-use Scalar::Util            qw(blessed weaken);
+use Scalar::Util            qw(weaken);
 use Storable                qw(nfreeze thaw);
 use TryCatch;
 
-sub new {
-   my $self      = shift; my $attr = arg_list( @_ );
+# Public attributes
+has 'builder'     => is => 'ro',   isa => Object, handles => [ qw(log) ],
+   required       => TRUE;
 
-   my $factory   = delete $attr->{factory  } or throw 'No factory';
-   my $args_pipe = delete $attr->{args_pipe};
-   my $on_exit   = delete $attr->{on_exit  };
-   my $on_return = delete $attr->{on_return};
-   my $ret_pipe  = delete $attr->{ret_pipe };
+has 'code'        => is => 'ro',   isa => CodeRef, required => TRUE;
 
-   $attr->{code} or throw 'No code';
-   $attr->{log } = $factory->builder->log or throw 'No log';
-   $attr->{wtr } = $args_pipe->[ 1 ] if $args_pipe;
-   $attr->{rdr } = $ret_pipe->[ 0 ]  if $ret_pipe;
+has 'description' => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
-   my $new       = bless  $attr, blessed $self || $self;
-   my $weak_ref  = $new; weaken( $weak_ref );
-   my $code      = sub { $new->{code}->( $weak_ref ) };
-   my $r         = $factory->builder->run_cmd( [ $code ], { async => TRUE } );
-   my $pid       = $new->{pid} = $r->{pid};
+has 'log_key'     => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
-   $on_exit   and $factory->loop->watch_child( $pid, $on_exit );
-   $on_return and $new->_watch_read_handle( $factory, $on_return );
+has 'loop'        => is => 'ro',   isa => Object, required => TRUE;
 
-   return $new;
+has 'on_exit'     => is => 'ro',   isa => CodeRef | Undef;
+
+has 'on_return'   => is => 'ro',   isa => CodeRef | Undef;
+
+has 'reader'      => is => 'ro',   isa => FileHandle | Undef;
+
+has 'writer'      => is => 'ro',   isa => FileHandle | Undef;
+
+# Private attributes
+has '_pid'        => is => 'lazy', isa => PositiveInt, init_arg => undef,
+   reader         => 'pid';
+
+# Construction
+around 'BUILDARGS' => sub {
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+
+   my $factory      = $attr->{factory} or throw 'No factory';
+   my $args_pipe    = delete $attr->{args_pipe};
+   my $ret_pipe     = delete $attr->{ret_pipe };
+
+   $attr->{builder} = $factory->builder;
+   $attr->{loop   } = $factory->loop;
+   $attr->{reader } = $ret_pipe->[ 0 ]  if $ret_pipe;
+   $attr->{writer } = $args_pipe->[ 1 ] if $args_pipe;
+   return $attr;
+};
+
+sub BUILD {
+   my $self = shift;
+
+   $self->on_exit   and $self->loop->watch_child( $self->pid, $self->on_exit );
+   $self->on_return and $self->reader and $self->_watch_read_handle;
+   return;
 }
 
+# Public methods
 sub is_running {
-   return CORE::kill 0, $_[ 0 ]->{pid};
-}
-
-sub pid {
-   return $_[ 0 ]->{pid};
+   return CORE::kill 0, $_[ 0 ]->pid;
 }
 
 sub send {
    my ($self, @args) = @_; my $did = pad5z $args[ 0 ];
 
-   $self->{wtr} or throw error => 'Pid [_1] no write handle', args => [ $did ];
+   $self->writer or throw error => 'Process [_1] no writer', args => [ $did ];
 
    my $rec   = nfreeze [ @args ];
    my $bytes = pack( 'I', length $rec ).$rec;
-   my $len   = $self->{wtr}->syswrite( $bytes, length $bytes );
+   my $len   = $self->writer->syswrite( $bytes, length $bytes );
 
-   defined $len or $self->{log}->error( " SEND[${did}]: ${OS_ERROR}" );
+   defined $len or $self->log->error( " SEND[${did}]: ${OS_ERROR}" );
 
    return;
 }
@@ -65,23 +82,32 @@ sub send {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $key  = $self->{log_key}; my $did = pad5z $self->{pid};
+   my $key  = $self->log_key; my $did = pad5z $self->pid;
 
-   $self->{log}->info( "${key}[${did}]: Stopping ".$self->{description} );
-   CORE::kill 'TERM', $self->{pid};
+   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
+   CORE::kill 'TERM', $self->pid;
    return;
 }
 
+# Private methods
+sub _build__pid {
+   my $self     = shift;
+   my $weak_ref = $self; weaken( $weak_ref );
+   my $code     = sub { $weak_ref->code->( $weak_ref ) };
+
+   return $self->builder->run_cmd( [ $code ], { async => TRUE } )->pid;
+}
+
 sub _watch_read_handle {
-   my ($self, $factory, $code) = @_; my $rdr = $self->{rdr} or return;
+   my $self = shift; my $code = $self->on_return; my $did = pad5z $self->pid;
 
-   my $did = pad5z $self->{pid}; my $log = $self->{log};
+   my $log  = $self->log; my $reader = $self->reader;
 
-   $factory->loop->watch_read_handle( $self->{pid}, $rdr, sub {
-      my ($args, $rv); my $red = read_exactly( $rdr, my $lenbuffer, 4 );
+   $self->loop->watch_read_handle( $self->pid, $reader, sub {
+      my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
       defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
-      $red = read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
+      $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
       defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
 
       try        { $code->( @{ $args ? thaw $args : [] } ) }
@@ -92,6 +118,8 @@ sub _watch_read_handle {
 
    return;
 }
+
+__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -112,7 +140,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Process>
+This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

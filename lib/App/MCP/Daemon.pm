@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-05-28 10:19 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-28 21:16 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -109,7 +109,7 @@ around 'run_chain' => sub {
       stdout_file  => $self->_stdio_file( 'out' ),
 
       fork         => 2,
-      stop_signals => 'TERM,10,KILL,1',
+      stop_signals => $config->stop_signals,
    } )->run;
 
    return $self->$next( @args ); # Never reached
@@ -119,23 +119,17 @@ around 'run_chain' => sub {
 sub daemon {
    my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
+   my $stop = sub { $loop->detach_signal( 'TERM' ); $loop->stop };
+
    my $did  = pad5z(); $log->info( "DAEMON[${did}]: Starting event loop" );
 
    $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
-   my $stop; $stop = sub {
-      $loop->detach_signal( 'QUIT' );
-      $loop->detach_signal( 'TERM' );
-      $loop->stop;
-   };
-
-   $loop->attach_signal( QUIT => $stop );
    $loop->attach_signal( TERM => $stop );
    $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
    $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
-
-   try { $loop->run } catch ($e) { $log->error( $e ) }
-
+   $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
+   $loop->run; # Blocks here until loop stop is called
    $log->info( "DAEMON[${did}]: Stopping event loop" );
    $self->clock_tick->stop;
    $self->listener->stop;
@@ -241,6 +235,9 @@ sub _get_listener_args {
       '--app'        => $config->binsdir->catfile( 'mcp-listener' ), };
 
    return %{ $args };
+}
+
+sub _hangup_handler { # TODO: What should we do on reload?
 }
 
 sub _input_handler {
@@ -370,8 +367,8 @@ sub _start_cron_jobs {
 
    for my $job (grep { $job_rs->should_start_now( $_ ) } $jobs->all) {
       (not $job->condition or $job_rs->eval_condition( $job )->[ 0 ])
-         and $trigger = TRUE
-         and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
+       and $trigger = TRUE
+       and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
    }
 
    return $trigger;
@@ -431,7 +428,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 6 $
+This documents version v0.2.$Rev: 7 $
 
 =head1 Synopsis
 

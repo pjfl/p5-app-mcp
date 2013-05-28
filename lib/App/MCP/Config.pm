@@ -1,8 +1,8 @@
-# @(#)Ident: Config.pm 2013-05-26 22:34 pjf ;
+# @(#)Ident: Config.pm 2013-05-28 21:03 pjf ;
 
 package App::MCP::Config;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -38,6 +38,9 @@ has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
 has 'servers'              => is => 'ro',   isa => ArrayRef,
    default                 => sub { [ fqdn ] };
 
+has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'TERM,10,KILL,1';
+
 __PACKAGE__->meta->make_immutable;
 
 1;
@@ -59,7 +62,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Config>
+This documents version v0.1.$Rev: 7 $ of L<App::MCP::Config>
 
 =head1 Description
 

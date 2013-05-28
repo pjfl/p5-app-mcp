@@ -1,52 +1,61 @@
-# @(#)Ident: Periodical.pm 2013-05-26 21:24 pjf ;
+# @(#)Ident: Periodical.pm 2013-05-28 22:33 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use strict;
-use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use App::MCP::Functions    qw(pad5z);
+use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list);
-use Scalar::Util           qw(blessed);
+use Class::Usul::Functions qw(throw);
 
-sub new {
-   my $self = shift; my $attr = arg_list( @_ );
+# Public attributes
+has 'autostart'   => is => 'ro', isa => Bool, default => FALSE;
 
-   my $factory = delete $attr->{factory};
+has 'builder'     => is => 'ro', isa => Object, handles => [ qw(log) ],
+   required       => TRUE;
 
-   $attr->{id  } = $factory->uuid;
-   $attr->{log } = $factory->builder->log;
-   $attr->{loop} = $factory->loop;
+has 'code'        => is => 'ro', isa => CodeRef, required => TRUE;
 
-   my $new = bless $attr, blessed $self || $self;
+has 'description' => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
 
-   $new->{autostart} and $new->start;
+has 'interval'    => is => 'ro', isa => PositiveInt, default => 1;
 
-   return $new;
+has 'log_key'     => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
+
+has 'loop'        => is => 'ro', isa => Object, required => TRUE;
+
+has 'pid'         => is => 'ro', isa => PositiveInt, required => TRUE;
+
+# Construction
+around 'BUILDARGS' => sub {
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+
+   my $factory = delete $attr->{factory} or throw 'No factory';
+
+   $attr->{builder} = $factory->builder;
+   $attr->{loop   } = $factory->loop;
+   $attr->{pid    } = $factory->uuid;
+   return $attr;
+};
+
+sub BUILD {
+   my $self = shift; $self->autostart and $self->start; return;
 }
 
-sub pid {
-   return $_[ 0 ]->{id};
-}
-
+# Public methods
 sub start {
    my $self = shift;
 
-   $self->{loop}->start_timer( $self->{id}, $self->{code}, $self->{interval} );
-
+   $self->loop->start_timer( $self->pid, $self->code, $self->interval );
    return;
 }
 
 sub stop {
-   my $self = shift;
-   my $key  = $self->{log_key};
-   my $did  = pad5z $self->{id};
-   my $desc = $self->{description};
+   my $self = shift; my $key = $self->log_key; my $did = pad5z $self->pid;
 
-   $self->{log}->info( "${key}[${did}]: Stopping ${desc}" );
-   $self->{loop}->stop_timer( $self->{id} );
+   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
+   $self->loop->stop_timer( $self->pid );
    return;
 }
 
@@ -69,7 +78,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Async::Periodical>
+This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

@@ -1,9 +1,9 @@
-# @(#)$Ident: Async.pm 2013-05-27 20:03 pjf ;
+# @(#)$Ident: Async.pm 2013-05-28 22:27 pjf ;
 
 package App::MCP::Async;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(pad5z);
 use Class::Usul::Moose;
@@ -17,13 +17,14 @@ use App::MCP::Async::Function;
 use App::MCP::Async::Periodical;
 use App::MCP::Async::Routine;
 
-has 'builder' => is => 'ro',   isa => Object, weak_ref => TRUE;
+has 'builder' => is => 'ro',   isa => Object,
+   handles    => [ qw(log) ], weak_ref => TRUE;
 
-has 'loop'    => is => 'lazy', isa => Object, default  => sub {
-   App::MCP::Async::Loop->new( log => $_[ 0 ]->builder->log ) };
+has 'loop'    => is => 'lazy', isa => Object,
+   default    => sub { App::MCP::Async::Loop->new( log => $_[ 0 ]->log ) };
 
 sub new_notifier {
-   my ($self, %p) = @_; my $log = $self->builder->log; my $notifier;
+   my ($self, %p) = @_; my $log = $self->log; my $notifier;
 
    my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
 
@@ -51,7 +52,7 @@ sub new_notifier {
    }
    elsif ($p{type} eq 'periodical') {
       $notifier = App::MCP::Async::Periodical->new
-         (  autostart   => TRUE,
+         (  autostart   => $p{autostart} // TRUE,
             code        => $code,
             description => $desc,
             factory     => $self,
@@ -82,7 +83,7 @@ sub new_notifier {
 }
 
 sub uuid {
-   state $uuid //= 0; return $uuid++;
+   state $uuid //= 1; return $uuid++;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -99,7 +100,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 6 $
+This documents version v0.2.$Rev: 7 $
 
 =head1 Synopsis
 

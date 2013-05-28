@@ -1,60 +1,66 @@
-# @(#)Ident: Routine.pm 2013-05-27 20:19 pjf ;
+# @(#)Ident: Routine.pm 2013-05-28 19:18 pjf ;
 
 package App::MCP::Async::Routine;
 
-use strict;
-use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
-use parent 'App::MCP::Async::Process';
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use App::MCP::Functions    qw(pad5z);
+use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list);
 use IPC::SysV              qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
 use IPC::Semaphore;
 
-sub new {
-   my $self = shift;
-   my $attr = arg_list( @_ );
-   my $id   = 1234 + $attr->{factory}->uuid;
-   my $s    = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
+extends q(App::MCP::Async::Process);
 
-   $s->setval( 0, TRUE ); $s->setval( 1, FALSE ); $attr->{semaphore} = $s;
+# Public attributes
+has 'semaphore' => is => 'ro', isa => Object, required => TRUE;
 
-   return $self->SUPER::new( $attr );
+# Construction
+around 'BUILDARGS' => sub {
+   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+
+   my $id = 1234 + $attr->{factory}->uuid;
+   my $s  = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
+
+   $attr->{semaphore} = $s; $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
+
+   return $attr;
+};
+
+sub DEMOLISH {
+   defined $_[ 0 ]->semaphore and $_[ 0 ]->semaphore->remove; return;
 }
 
-sub DESTROY {
-   defined $_[ 0 ]->{semaphore} and $_[ 0 ]->{semaphore}->remove; return;
-}
-
+# Public methods
 sub await_trigger {
-   $_[ 0 ]->{semaphore}->op( 1, -1, 0 ); return TRUE;
+   $_[ 0 ]->semaphore->op( 1, -1, 0 ); return TRUE;
 }
 
 sub still_running {
-   return $_[ 0 ]->{semaphore}->getval( 0 );
+   return $_[ 0 ]->semaphore->getval( 0 );
 }
 
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $key  = $self->{log_key}; my $did = pad5z $self->{pid};
+   my $key  = $self->log_key; my $did = pad5z $self->pid;
 
-   $self->{log}->info( "${key}[${did}]: Stopping ".$self->{description} );
-   $self->{semaphore}->setval( 0, FALSE );
+   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
+   $self->semaphore->setval( 0, FALSE );
    $self->trigger;
    return;
 }
 
 sub trigger {
-   my $self = shift; my $semaphore = $self->{semaphore} or return;
+   my $self = shift; my $semaphore = $self->semaphore or return;
 
    my $val = $semaphore->getval( 1 ) // 0;
 
    $val < 1 and $semaphore->op( 1, 1, 0 );
    return;
 }
+
+__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -75,7 +81,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Routine>
+This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

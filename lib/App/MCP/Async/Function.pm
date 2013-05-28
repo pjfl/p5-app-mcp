@@ -1,68 +1,91 @@
-# @(#)Ident: Function.pm 2013-05-27 22:04 pjf ;
+# @(#)Ident: Function.pm 2013-05-28 23:24 pjf ;
 
 package App::MCP::Async::Function;
 
-use strict;
-use warnings;
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use App::MCP::Async::Process;
+use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(arg_list throw);
+use Class::Usul::Functions  qw(throw);
 use English                 qw(-no_match_vars);
 use Fcntl                   qw(F_SETFL O_NONBLOCK);
-use Scalar::Util            qw(blessed);
 use Storable                qw(nfreeze thaw);
 use TryCatch;
 
+# Public attributes
+has 'builder'        => is => 'ro', isa => Object, handles => [ qw(log) ],
+   required          => TRUE;
+
+has 'channels'       => is => 'ro', isa => SimpleStr, default => 'i';
+
+has 'description'    => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
+
+has 'interval'       => is => 'ro', isa => PositiveInt, default => 1;
+
+has 'log_key'        => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
+
+has 'loop'           => is => 'ro', isa => Object, required => TRUE;
+
+has 'pid'            => is => 'ro', isa => PositiveInt, required => TRUE;
+
+has 'max_calls'      => is => 'ro', isa => PositiveOrZeroInt, default => 0;
+
+has 'max_workers'    => is => 'ro', isa => PositiveInt, default => 1;
+
+has 'worker_args'    => is => 'ro', isa => HashRef, default => sub { {} };
+
+has 'worker_index'   => is => 'ro', isa => ArrayRef, default => sub { [] };
+
+has 'worker_objects' => is => 'ro', isa => HashRef, default => sub { {} };
+
 # Construction
-sub new {
-   my $self = shift; my $args = arg_list( @_ );
+around 'BUILDARGS' => sub {
+   my ($next, $self, @args) = @_; my $args = $self->$next( @args );
 
-   my $attr = { channels       => delete $args->{channels   } || q(i),
-                description    => $args->{description}.' pool',
-                log            => $args->{factory}->builder->log,
-                log_key        => delete $args->{log_key},
-                loop           => $args->{factory}->loop,
-                max_calls      => delete $args->{max_calls  } || 0,
-                max_workers    => delete $args->{max_workers} || 1,
-                pid            => $args->{factory}->uuid,
-                worker_args    => $args,
-                worker_index   => [],
-                worker_objects => {}, };
+   my $factory     = $args->{factory} or throw 'No factory';
+   my $channels    = delete $args->{channels   };
+   my $log_key     = delete $args->{log_key    };
+   my $max_calls   = delete $args->{max_calls  };
+   my $max_workers = delete $args->{max_workers};
+   my $attr        = { builder     => $factory->builder,
+                       description => $args->{description}.' pool',
+                       loop        => $factory->loop,
+                       pid         => $factory->uuid,
+                       worker_args => $args, };
 
-   return bless $attr, blessed $self || $self;
-}
+   defined $channels  and $attr->{channels   } = $channels;
+   $log_key           and $attr->{log_key    } = $log_key;
+   defined $max_calls and $attr->{max_calls  } = $max_calls;
+   $max_workers       and $attr->{max_workers} = $max_workers;
+   return $attr;
+};
 
 # Public methods
 sub call {
    my ($self, @args) = @_;
 
    my $index  = $self->_next_worker;
-   my $pid    = $self->{worker_index}->[ $index ] || 0;
-   my $worker = $self->{worker_objects}->{ $pid };
+   my $pid    = $self->worker_index->[ $index ] || 0;
+   my $worker = $self->worker_objects->{ $pid };
 
    $worker or $worker = $self->_new_worker( $index, @args );
    $worker->send( @args );
    return;
 }
 
-sub pid {
-   return $_[ 0 ]->{pid};
-}
-
 sub stop {
-   my $self = shift; my $workers = $self->{worker_objects};
+   my $self = shift; my $workers = $self->worker_objects;
 
-   my $key  = $self->{log_key}; my $did = pad5z $self->{pid};
+   my $key  = $self->log_key; my $did = pad5z $self->pid;
 
-   $self->{log}->info( "${key}[${did}]: Stopping ".$self->{description} );
+   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
 
    $workers->{ $_ }->stop for (keys %{ $workers });
 
-   $self->{loop}->watch_child( 0 );
+   $self->loop->watch_child( 0 );
    return;
 }
 
@@ -70,11 +93,11 @@ sub stop {
 sub _call_handler {
    my ($self, $args, $id) = @_; my $code = $args->{code};
 
-   my $log = $self->{log}; my $max_calls = $self->{max_calls};
+   my $log    = $self->log; my $max_calls = $self->max_calls;
 
-   my $rdr = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : undef;
+   my $reader = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : undef;
 
-   my $wtr = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : undef;
+   my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : undef;
 
    return sub {
       my $count = 0; my $did = pad5z $id;
@@ -82,16 +105,16 @@ sub _call_handler {
       while (TRUE) {
          my $args = undef; my $rv = undef;
 
-         if ($rdr) {
-            my $red = read_exactly( $rdr, my $lenbuffer, 4 );
+         if ($reader) {
+            my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
             defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
-            $red = read_exactly( $rdr, $args, unpack( 'I', $lenbuffer ) );
+            $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
             defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
          }
 
          try        { $rv = $code->( @{ $args ? thaw $args : [] } );
-                      $wtr and __send_rv( $wtr, $log, $id, $rv ) }
+                      $writer and __send_rv( $writer, $log, $id, $rv ) }
          catch ($e) { $log->error( " EXEC[${did}]: ${e}" ) }
 
          $max_calls and ++$count > $max_calls and return OK;
@@ -100,22 +123,22 @@ sub _call_handler {
 }
 
 sub _new_worker {
-   my ($self, $index, $id) = @_; my $args = { %{ $self->{worker_args} } };
+   my ($self, $index, $id) = @_; my $args = { %{ $self->worker_args } };
 
-   my $on_exit = delete $args->{on_exit}; my $workers = $self->{worker_objects};
+   my $on_exit = delete $args->{on_exit}; my $workers = $self->worker_objects;
 
-   $self->{channels   } =~ m{ i }mx
+   $self->channels    =~ m{ i }mx
       and $args->{args_pipe} = __nonblocking_write_pipe_pair();
-   $self->{channels   } =~ m{ o }mx
+   $self->channels    =~ m{ o }mx
       and $args->{ret_pipe } = __nonblocking_write_pipe_pair();
    $args->{code       } = $self->_call_handler( $args, $id );
-   $args->{description} = (lc $self->{log_key})." worker ${index}";
+   $args->{description} = (lc $self->log_key)." worker ${index}";
    $args->{log_key    } = 'WORKER';
    $args->{on_exit    } = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ )};
 
    my $worker = App::MCP::Async::Process->new( $args ); my $pid = $worker->pid;
 
-   $workers->{ $pid } = $worker; $self->{worker_index}->[ $index ] = $pid;
+   $workers->{ $pid } = $worker; $self->worker_index->[ $index ] = $pid;
 
    return $worker;
 }
@@ -123,7 +146,7 @@ sub _new_worker {
 sub _next_worker {
    my $self = shift; state $worker //= -1;
 
-   $worker++; $worker >= $self->{max_workers} and $worker = 0;
+   $worker++; $worker >= $self->max_workers and $worker = 0;
 
    return $worker;
 }
@@ -140,12 +163,12 @@ sub __nonblocking_write_pipe_pair {
 }
 
 sub __send_rv {
-   my ($wtr, $log, @args) = @_;
+   my ($writer, $log, @args) = @_;
 
    my $did   = pad5z $args[ 0 ];
    my $args  = nfreeze [ @args ];
    my $bytes = pack( 'I', length $args ).$args;
-   my $len   = $wtr->syswrite( $bytes, length $bytes );
+   my $len   = $writer->syswrite( $bytes, length $bytes );
 
    defined $len or $log->error( "SNDRV[${did}]: ${OS_ERROR}" );
 
@@ -171,7 +194,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Function>
+This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

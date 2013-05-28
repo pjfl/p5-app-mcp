@@ -1,10 +1,10 @@
-# @(#)Ident: Loop.pm 2013-05-28 10:05 pjf ;
+# @(#)Ident: Loop.pm 2013-05-28 12:46 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -58,15 +58,9 @@ sub unwatch_read_handle {
 
 sub watch_child {
    my ($self, $pid, $cb) = @_; my $w = $watchers->{ $PID } ||= {};
-$self->{log}->info( "watch_child ${PID} ${pid}" );
 
    if ($pid == 0) {
-      for (sort { $a <=> $b } keys %{ $w }) {
-$self->{log}->info( "watch_child ${PID} ${_}" );
-         $w->{ $_ }->[ 0 ]->recv;
-$self->{log}->info( "watch_child ${PID} recv" );
-      }
-$self->{log}->info( "watch_child ${PID} ".($self->{cv} ? $self->{cv} : 'null') );
+      $w->{ $_ }->[ 0 ]->recv for (sort { $a <=> $b } keys %{ $w });
    }
    else {
       my $cv = $w->{ $pid }->[ 0 ] = AnyEvent->condvar;
@@ -105,7 +99,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 6 $ of L<App::MCP::Async::Loop>
+This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 
