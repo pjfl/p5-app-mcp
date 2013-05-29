@@ -1,8 +1,8 @@
-# @(#)Ident: Routine.pm 2013-05-29 14:32 pjf ;
+# @(#)Ident: Routine.pm 2013-05-29 18:00 pjf ;
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use App::MCP::Functions    qw(pad5z);
 use Class::Usul::Moose;
@@ -12,18 +12,15 @@ use IPC::Semaphore;
 
 extends q(App::MCP::Async::Process);
 
-# Public attributes
-has 'semaphore' => is => 'ro', isa => Object, required => TRUE;
+# Private attributes
+has '_semaphore' => is => 'ro', isa => Object, reader => 'semaphore';
 
 # Construction
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
-   my $id = 1234 + $attr->{factory}->loop->uuid;
-   my $s  = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
-
-   $attr->{semaphore} = $s; $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
-
+   $attr->{code} = __loop_while_running( $attr->{code}, delete $attr->{after} );
+   $attr->{_semaphore} = __build__semaphore( $attr );
    return $attr;
 };
 
@@ -32,14 +29,6 @@ sub DEMOLISH {
 }
 
 # Public methods
-sub await_trigger {
-   $_[ 0 ]->semaphore->op( 1, -1, 0 ); return TRUE;
-}
-
-sub still_running {
-   return $_[ 0 ]->semaphore->getval( 0 );
-}
-
 sub stop {
    my $self = shift; $self->is_running or return;
 
@@ -58,6 +47,38 @@ sub trigger {
 
    $val < 1 and $semaphore->op( 1, 1, 0 );
    return;
+}
+
+# Private methods
+sub _await_trigger {
+   $_[ 0 ]->semaphore->op( 1, -1, 0 ); return TRUE;
+}
+
+sub _still_running {
+   return $_[ 0 ]->semaphore->getval( 0 );
+}
+
+# Private functions
+sub __build__semaphore {
+   my $attr = shift;
+   my $id   = 1234 + $attr->{loop}->uuid;
+   my $s    = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
+
+   $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
+   return $s;
+}
+
+sub __loop_while_running {
+   my ($code, $after) = @_;
+
+   return sub {
+      my $self = shift;
+
+      while ($self->_still_running) { $self->_await_trigger; $code->() }
+
+      $after and $after->();
+      return;
+   };
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -81,7 +102,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Routine>
+This documents version v0.2.$Rev: 9 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

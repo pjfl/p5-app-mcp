@@ -1,6 +1,7 @@
 Revision history for App::MCP
 
-0.2.8     2013-05-29 16:24:24
+0.2.9     2013-05-29 19:15:38
+          - Fixed abstraction leak in ::Async::Routine
           - Created ::Async::Base
           - Moosed ::Async classes
           - Stops cleanly

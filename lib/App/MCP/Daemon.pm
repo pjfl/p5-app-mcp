@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-05-28 21:16 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-29 17:53 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -36,21 +36,9 @@ has 'identity_file'   => is => 'lazy', isa => File, coerce => TRUE,
    documentation      => 'Path to private SSH key',
    default            => sub { $_[ 0 ]->config->identity_file };
 
-has 'max_ssh_workers' => is => 'ro',   isa => PositiveInt,
-   documentation      => 'Maximum number of SSH worker processes',
-   default            => sub { $_[ 0 ]->config->max_ssh_workers };
-
 has 'port'            => is => 'ro',   isa => PositiveInt,
    documentation      => 'Port number for the input event listener',
    default            => sub { $_[ 0 ]->config->port };
-
-has 'schema_class'    => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   documentation      => 'Classname of the schema to load',
-   default            => sub { $_[ 0 ]->config->schema_class };
-
-has 'server'          => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation      => 'Plack server class used for the event listener',
-   default            => sub { $_[ 0 ]->config->server };
 
 #   Ingnored by the command line
 has '_async_factory'  => is => 'lazy', isa => Object, reader => 'async_factory';
@@ -76,6 +64,11 @@ has '_loop'           => is => 'lazy', isa => Object,
 has '_op_ev_hndlr'    => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
 has '_schema'         => is => 'lazy', isa => Object, reader => 'schema';
+
+has '_schema_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   documentation      => 'Classname of a loadable database schema',
+   default            => sub { $_[ 0 ]->config->schema_class },
+   reader             => 'schema_class';
 
 has '_servers'        => is => 'lazy', isa => ArrayRef, auto_deref => TRUE,
    default            => sub { $_[ 0 ]->config->servers }, reader => 'servers';
@@ -129,6 +122,7 @@ sub daemon {
    $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
    $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
    $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
+   $log->info( "DAEMON[${did}]: Event loop started" );
    $loop->run; # Blocks here until loop stop is called
    $log->info( "DAEMON[${did}]: Stopping event loop" );
    $self->clock_tick->stop;
@@ -149,7 +143,7 @@ sub _build__clock_tick {
    my $self = shift; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
-      (  code     => sub { $self->_clock_tick_handler( $daemon_pid, @_ ) },
+      (  code     => sub { $self->_clock_tick_handler( $daemon_pid ) },
          interval => $self->interval,
          desc     => 'clock tick handler',
          key      => ' CLOCK',
@@ -160,7 +154,7 @@ sub _build__ip_ev_hndlr {
    my $self = shift; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
-      (  code => sub { $self->_input_handler( $daemon_pid, @_ ) },
+      (  code => sub { $self->_input_handler( $daemon_pid ) },
          desc => 'input event handler',
          key  => ' INPUT',
          type => 'routine' );
@@ -174,7 +168,7 @@ sub _build__ipc_ssh {
          desc        => 'ipcssh worker',
          key         => 'IPCSSH',
          max_calls   => $self->config->max_ssh_worker_calls,
-         max_workers => $self->max_ssh_workers,
+         max_workers => $self->config->max_ssh_workers,
          type        => 'function' );
 }
 
@@ -196,12 +190,11 @@ sub _build__op_ev_hndlr {
    my $self = shift; my $ipc_ssh = $self->ipc_ssh;
 
    return $self->async_factory->new_notifier
-      (  code => sub {
-            $self->_output_handler( $ipc_ssh, @_ ); $ipc_ssh->stop;
-         },
-         desc => 'output event handler',
-         key  => 'OUTPUT',
-         type => 'routine' );
+      (  after => sub { $ipc_ssh->stop },
+         code  => sub { $self->_output_handler( $ipc_ssh ) },
+         desc  => 'output event handler',
+         key   => 'OUTPUT',
+         type  => 'routine' );
 }
 
 sub _build__schema {
@@ -230,7 +223,7 @@ sub _get_listener_args {
    my $config = $self->config;
    my $args   = {
       '--port'       => $self->port,
-      '--server'     => $self->server,
+      '--server'     => $config->server,
       '--access-log' => $config->logsdir->catfile( 'listener.log' ),
       '--app'        => $config->binsdir->catfile( 'mcp-listener' ), };
 
@@ -241,38 +234,33 @@ sub _hangup_handler { # TODO: What should we do on reload?
 }
 
 sub _input_handler {
-   my ($self, $daemon_pid, $notifier) = @_;
+   my ($self, $daemon_pid) = @_; my $trigger = TRUE;
 
-   while ($notifier->still_running) {
-      my $trigger = $notifier->await_trigger;
+   while ($trigger) {
+      $trigger = FALSE;
 
-      while ($trigger) {
-         $trigger = FALSE;
+      my $schema = $self->schema;
+      my $ev_rs  = $schema->resultset( 'Event' );
+      my $js_rs  = $schema->resultset( 'JobState' );
+      my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+      my $events = $ev_rs->search
+         ( { transition => [ qw(finish started terminate) ] },
+           { order_by   => { -asc => 'me.id' },
+             prefetch   => 'job_rel' } );
 
-         my $schema = $self->schema;
-         my $ev_rs  = $schema->resultset( 'Event' );
-         my $js_rs  = $schema->resultset( 'JobState' );
-         my $pev_rs = $schema->resultset( 'ProcessedEvent' );
-         my $events = $ev_rs->search
-            ( { transition => [ qw(finish started terminate) ] },
-              { order_by   => { -asc => 'me.id' },
-                prefetch   => 'job_rel' } );
+      for my $event ($events->all) {
+         $schema->txn_do( sub {
+            my $p_ev = $self->_process_event( $js_rs, $event );
 
-         for my $event ($events->all) {
-            $schema->txn_do( sub {
-               my $p_ev = $self->_process_event( $js_rs, $event );
-
-               $p_ev->{rejected} or $trigger = TRUE;
-               $pev_rs->create( $p_ev ); $event->delete;
-            } );
-         }
-
-         $trigger and __trigger_output_handler( $daemon_pid );
+            $p_ev->{rejected} or $trigger = TRUE;
+            $pev_rs->create( $p_ev ); $event->delete;
+         } );
       }
 
-      __trigger_output_handler( $daemon_pid );
+      $trigger and __trigger_output_handler( $daemon_pid );
    }
 
+   __trigger_output_handler( $daemon_pid );
    return;
 }
 
@@ -304,36 +292,32 @@ sub _ipc_ssh_handler {
 }
 
 sub _output_handler {
-   my ($self, $ipc_ssh, $notifier) = @_;
+   my ($self, $ipc_ssh) = @_; my $trigger = TRUE;
 
-   while ($notifier->still_running) {
-      my $trigger = $notifier->await_trigger;
+   while ($trigger) {
+      $trigger = FALSE;
 
-      while ($trigger) {
-         $trigger = FALSE;
+      my $schema = $self->schema;
+      my $ev_rs  = $schema->resultset( 'Event' );
+      my $js_rs  = $schema->resultset( 'JobState' );
+      my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+      my $events = $ev_rs->search( { transition => 'start' },
+                                   { prefetch   => 'job_rel' } );
 
-         my $schema = $self->schema;
-         my $ev_rs  = $schema->resultset( 'Event' );
-         my $js_rs  = $schema->resultset( 'JobState' );
-         my $pev_rs = $schema->resultset( 'ProcessedEvent' );
-         my $events = $ev_rs->search( { transition => 'start' },
-                                      { prefetch   => 'job_rel' } );
+      for my $event ($events->all) {
+         $schema->txn_do( sub {
+            my $p_ev = $self->_process_event( $js_rs, $event );
 
-         for my $event ($events->all) {
-            $schema->txn_do( sub {
-               my $p_ev = $self->_process_event( $js_rs, $event );
+            unless ($p_ev->{rejected}) {
+               my ($runid, $token)
+                  = $self->_start_job( $ipc_ssh, $event->job_rel );
 
-               unless ($p_ev->{rejected}) {
-                  my ($runid, $token)
-                     = $self->_start_job( $ipc_ssh, $event->job_rel );
+               $p_ev->{runid} = $runid; $p_ev->{token} = $token;
+               $trigger = TRUE;
+            }
 
-                  $p_ev->{runid} = $runid; $p_ev->{token} = $token;
-                  $trigger = TRUE;
-               }
-
-               $pev_rs->create( $p_ev ); $event->delete;
-            } );
-         }
+            $pev_rs->create( $p_ev ); $event->delete;
+         } );
       }
    }
 
@@ -428,7 +412,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 7 $
+This documents version v0.2.$Rev: 9 $
 
 =head1 Synopsis
 

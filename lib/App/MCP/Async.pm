@@ -1,8 +1,8 @@
-# @(#)$Ident: Async.pm 2013-05-29 14:20 pjf ;
+# @(#)$Ident: Async.pm 2013-05-29 17:11 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(pad5z);
 use Class::Usul::Moose;
@@ -17,7 +17,7 @@ use App::MCP::Async::Periodical;
 use App::MCP::Async::Routine;
 
 has 'builder' => is => 'ro',   isa => Object,
-   handles    => [ qw(log) ], weak_ref => TRUE;
+   handles    => [ qw(log) ], required => TRUE, weak_ref => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
    default    => sub { App::MCP::Async::Loop->new( log => $_[ 0 ]->log ) };
@@ -33,10 +33,12 @@ sub new_notifier {
       $log->$level( "${key}[${did}]: ${msg}" ); return;
    };
 
-   my $on_exit = sub {
+   my $_on_exit = $p{on_exit}; my $on_exit = sub {
       my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-      $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" ); return;
+      $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
+
+      return $_on_exit ? $_on_exit->() : undef;
    };
 
    if ($p{type} eq 'function') {
@@ -69,7 +71,8 @@ sub new_notifier {
    }
    elsif ($p{type} eq 'routine') {
       $notifier = App::MCP::Async::Routine->new
-         (  code        => $code,
+         (  after       => $p{after},
+            code        => $code,
             description => $desc,
             factory     => $self,
             log_key     => $key,
@@ -96,7 +99,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 8 $
+This documents version v0.2.$Rev: 9 $
 
 =head1 Synopsis
 

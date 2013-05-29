@@ -1,8 +1,8 @@
-# @(#)Ident: Config.pm 2013-05-28 21:03 pjf ;
+# @(#)Ident: Config.pm 2013-05-29 17:15 pjf ;
 
 package App::MCP::Config;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -24,6 +24,7 @@ has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveOrZeroInt,
    default                 => 0;
 
 has 'max_ssh_workers'      => is => 'ro',   isa => PositiveInt,
+   documentation           => 'Maximum number of SSH worker processes',
    default                 => 3;
 
 has 'port'                 => is => 'ro',   isa => PositiveInt,
@@ -33,6 +34,7 @@ has 'schema_class'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'App::MCP::Schema::Schedule';
 
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation           => 'Plack server class used for the event listener',
    default                 => 'Twiggy';
 
 has 'servers'              => is => 'ro',   isa => ArrayRef,
@@ -62,7 +64,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 7 $ of L<App::MCP::Config>
+This documents version v0.1.$Rev: 9 $ of L<App::MCP::Config>
 
 =head1 Description
 
