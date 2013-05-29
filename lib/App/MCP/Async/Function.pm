@@ -1,9 +1,9 @@
-# @(#)Ident: Function.pm 2013-05-28 23:24 pjf ;
+# @(#)Ident: Function.pm 2013-05-29 14:49 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use App::MCP::Async::Process;
@@ -15,21 +15,12 @@ use Fcntl                   qw(F_SETFL O_NONBLOCK);
 use Storable                qw(nfreeze thaw);
 use TryCatch;
 
-# Public attributes
-has 'builder'        => is => 'ro', isa => Object, handles => [ qw(log) ],
-   required          => TRUE;
+extends q(App::MCP::Async::Base);
 
+# Public attributes
 has 'channels'       => is => 'ro', isa => SimpleStr, default => 'i';
 
-has 'description'    => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
-
 has 'interval'       => is => 'ro', isa => PositiveInt, default => 1;
-
-has 'log_key'        => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
-
-has 'loop'           => is => 'ro', isa => Object, required => TRUE;
-
-has 'pid'            => is => 'ro', isa => PositiveInt, required => TRUE;
 
 has 'max_calls'      => is => 'ro', isa => PositiveOrZeroInt, default => 0;
 
@@ -53,7 +44,6 @@ around 'BUILDARGS' => sub {
    my $attr        = { builder     => $factory->builder,
                        description => $args->{description}.' pool',
                        loop        => $factory->loop,
-                       pid         => $factory->uuid,
                        worker_args => $args, };
 
    defined $channels  and $attr->{channels   } = $channels;
@@ -90,6 +80,10 @@ sub stop {
 }
 
 # Private methods
+sub _build_pid {
+   return $_[ 0 ]->loop->uuid;
+}
+
 sub _call_handler {
    my ($self, $args, $id) = @_; my $code = $args->{code};
 
@@ -165,10 +159,10 @@ sub __nonblocking_write_pipe_pair {
 sub __send_rv {
    my ($writer, $log, @args) = @_;
 
-   my $did   = pad5z $args[ 0 ];
-   my $args  = nfreeze [ @args ];
-   my $bytes = pack( 'I', length $args ).$args;
-   my $len   = $writer->syswrite( $bytes, length $bytes );
+   my $did = pad5z $args[ 0 ];
+   my $rec = nfreeze [ @args ];
+   my $buf = pack( 'I', length $rec ).$rec;
+   my $len = $writer->syswrite( $buf, length $buf );
 
    defined $len or $log->error( "SNDRV[${did}]: ${OS_ERROR}" );
 
@@ -194,7 +188,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

@@ -1,10 +1,24 @@
-# @(#)$Ident: MCP.pm 2013-05-29 15:24 pjf ;
+# @(#)Ident: Base.pm 2013-05-29 14:38 pjf ;
 
-package App::MCP;
+package App::MCP::Async::Base;
 
-use 5.01;
-use strict;
 use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+
+use Class::Usul::Moose;
+use Class::Usul::Constants;
+
+has 'builder'     => is => 'ro',   isa => Object, handles => [ qw(log) ],
+   required       => TRUE;
+
+has 'description' => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+
+has 'log_key'     => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+
+has 'loop'        => is => 'ro',   isa => Object, required => TRUE;
+
+has 'pid'         => is => 'lazy', isa => PositiveInt;
+
+__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -12,24 +26,30 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =head1 Name
 
-App::MCP - Master Control Program - Dependency and time based job scheduler
-
-=head1 Version
-
-This documents version v0.2.$Rev: 8 $
+App::MCP::Async::Base - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Daemon;
+   use App::MCP::Async::Base;
+   # Brief but working code examples
 
-   exit App::MCP::Daemon->new_with_options
-      ( appclass => 'App::MCP', nodebug => 1 )->run;
+=head1 Version
+
+This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Base>
 
 =head1 Description
 
 =head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -59,7 +79,7 @@ Larry Wall - For the Perl programming language
 
 =head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
@@ -78,4 +98,3 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
-

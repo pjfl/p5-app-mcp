@@ -1,31 +1,22 @@
-# @(#)Ident: Periodical.pm 2013-05-28 22:33 pjf ;
+# @(#)Ident: Periodical.pm 2013-05-29 14:38 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP::Functions    qw(pad5z);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions qw(throw);
 
+extends q(App::MCP::Async::Base);
+
 # Public attributes
-has 'autostart'   => is => 'ro', isa => Bool, default => FALSE;
+has 'autostart' => is => 'ro', isa => Bool, default => FALSE;
 
-has 'builder'     => is => 'ro', isa => Object, handles => [ qw(log) ],
-   required       => TRUE;
+has 'code'      => is => 'ro', isa => CodeRef, required => TRUE;
 
-has 'code'        => is => 'ro', isa => CodeRef, required => TRUE;
-
-has 'description' => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
-
-has 'interval'    => is => 'ro', isa => PositiveInt, default => 1;
-
-has 'log_key'     => is => 'ro', isa => NonEmptySimpleStr, required => TRUE;
-
-has 'loop'        => is => 'ro', isa => Object, required => TRUE;
-
-has 'pid'         => is => 'ro', isa => PositiveInt, required => TRUE;
+has 'interval'  => is => 'ro', isa => PositiveInt, default => 1;
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -35,7 +26,6 @@ around 'BUILDARGS' => sub {
 
    $attr->{builder} = $factory->builder;
    $attr->{loop   } = $factory->loop;
-   $attr->{pid    } = $factory->uuid;
    return $attr;
 };
 
@@ -59,6 +49,11 @@ sub stop {
    return;
 }
 
+# Private methdods
+sub _build_pid {
+   return $_[ 0 ]->loop->uuid;
+}
+
 1;
 
 __END__
@@ -78,7 +73,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

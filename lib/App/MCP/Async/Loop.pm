@@ -1,17 +1,17 @@
-# @(#)Ident: Loop.pm 2013-05-28 12:46 pjf ;
+# @(#)Ident: Loop.pm 2013-05-29 14:41 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use feature                 qw(state);
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
-use Class::Usul::Constants;
-use Class::Usul::Functions qw(arg_list);
-use English                qw(-no_match_vars);
-use Scalar::Util           qw(blessed);
+use Class::Usul::Functions  qw(arg_list);
+use English                 qw(-no_match_vars);
+use Scalar::Util            qw(blessed);
 
 my $handles = {}; my $signals = {}; my $timers = {}; my $watchers = {};
 
@@ -54,6 +54,10 @@ sub stop_timer {
 
 sub unwatch_read_handle {
    my ($self, $id) = @_; return delete $handles->{ $PID }->{ "r${id}" };
+}
+
+sub uuid {
+   state $uuid //= 1; return $uuid++;
 }
 
 sub watch_child {
@@ -99,7 +103,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Loop>
+This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

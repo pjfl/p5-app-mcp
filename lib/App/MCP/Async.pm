@@ -1,9 +1,8 @@
-# @(#)$Ident: Async.pm 2013-05-28 22:27 pjf ;
+# @(#)$Ident: Async.pm 2013-05-29 14:20 pjf ;
 
 package App::MCP::Async;
 
-use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(pad5z);
 use Class::Usul::Moose;
@@ -49,6 +48,7 @@ sub new_notifier {
             max_calls   => $p{max_calls},
             max_workers => $p{max_workers},
             on_exit     => $on_exit, );
+      $desc .= ' pool';
    }
    elsif ($p{type} eq 'periodical') {
       $notifier = App::MCP::Async::Periodical->new
@@ -82,10 +82,6 @@ sub new_notifier {
    return $notifier;
 }
 
-sub uuid {
-   state $uuid //= 1; return $uuid++;
-}
-
 __PACKAGE__->meta->make_immutable;
 
 1;
@@ -100,7 +96,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 7 $
+This documents version v0.2.$Rev: 8 $
 
 =head1 Synopsis
 

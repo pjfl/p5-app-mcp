@@ -1,8 +1,8 @@
-# @(#)Ident: Routine.pm 2013-05-28 19:18 pjf ;
+# @(#)Ident: Routine.pm 2013-05-29 14:32 pjf ;
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP::Functions    qw(pad5z);
 use Class::Usul::Moose;
@@ -19,7 +19,7 @@ has 'semaphore' => is => 'ro', isa => Object, required => TRUE;
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
-   my $id = 1234 + $attr->{factory}->uuid;
+   my $id = 1234 + $attr->{factory}->loop->uuid;
    my $s  = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
 
    $attr->{semaphore} = $s; $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
@@ -81,7 +81,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Routine>
+This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

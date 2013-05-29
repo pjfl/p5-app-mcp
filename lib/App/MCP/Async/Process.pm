@@ -1,8 +1,8 @@
-# @(#)Ident: Process.pm 2013-05-28 22:26 pjf ;
+# @(#)Ident: Process.pm 2013-05-29 14:47 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
 use Class::Usul::Moose;
@@ -13,37 +13,26 @@ use Scalar::Util            qw(weaken);
 use Storable                qw(nfreeze thaw);
 use TryCatch;
 
+extends q(App::MCP::Async::Base);
+
 # Public attributes
-has 'builder'     => is => 'ro',   isa => Object, handles => [ qw(log) ],
-   required       => TRUE;
+has 'code'      => is => 'ro', isa => CodeRef, required => TRUE;
 
-has 'code'        => is => 'ro',   isa => CodeRef, required => TRUE;
+has 'on_exit'   => is => 'ro', isa => CodeRef | Undef;
 
-has 'description' => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+has 'on_return' => is => 'ro', isa => CodeRef | Undef;
 
-has 'log_key'     => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+has 'reader'    => is => 'ro', isa => FileHandle | Undef;
 
-has 'loop'        => is => 'ro',   isa => Object, required => TRUE;
-
-has 'on_exit'     => is => 'ro',   isa => CodeRef | Undef;
-
-has 'on_return'   => is => 'ro',   isa => CodeRef | Undef;
-
-has 'reader'      => is => 'ro',   isa => FileHandle | Undef;
-
-has 'writer'      => is => 'ro',   isa => FileHandle | Undef;
-
-# Private attributes
-has '_pid'        => is => 'lazy', isa => PositiveInt, init_arg => undef,
-   reader         => 'pid';
+has 'writer'    => is => 'ro', isa => FileHandle | Undef;
 
 # Construction
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
-   my $factory      = $attr->{factory} or throw 'No factory';
-   my $args_pipe    = delete $attr->{args_pipe};
-   my $ret_pipe     = delete $attr->{ret_pipe };
+   my $factory   = $attr->{factory} or throw 'No factory';
+   my $args_pipe = delete $attr->{args_pipe};
+   my $ret_pipe  = delete $attr->{ret_pipe };
 
    $attr->{builder} = $factory->builder;
    $attr->{loop   } = $factory->loop;
@@ -70,9 +59,9 @@ sub send {
 
    $self->writer or throw error => 'Process [_1] no writer', args => [ $did ];
 
-   my $rec   = nfreeze [ @args ];
-   my $bytes = pack( 'I', length $rec ).$rec;
-   my $len   = $self->writer->syswrite( $bytes, length $bytes );
+   my $rec = nfreeze [ @args ];
+   my $buf = pack( 'I', length $rec ).$rec;
+   my $len = $self->writer->syswrite( $buf, length $buf );
 
    defined $len or $self->log->error( " SEND[${did}]: ${OS_ERROR}" );
 
@@ -90,7 +79,7 @@ sub stop {
 }
 
 # Private methods
-sub _build__pid {
+sub _build_pid {
    my $self     = shift;
    my $weak_ref = $self; weaken( $weak_ref );
    my $code     = sub { $weak_ref->code->( $weak_ref ) };
@@ -140,7 +129,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 7 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

@@ -1,6 +1,7 @@
 Revision history for App::MCP
 
-0.2.7     2013-05-29 00:36:05
+0.2.8     2013-05-29 16:24:24
+          - Created ::Async::Base
           - Moosed ::Async classes
           - Stops cleanly
           - Added ::Config
