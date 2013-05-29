@@ -1,10 +1,10 @@
-# @(#)Ident: Process.pm 2013-05-29 14:47 pjf ;
+# @(#)Ident: Process.pm 2013-05-29 20:38 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
+use App::MCP::Functions     qw(log_on_error padid padkey read_exactly);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
@@ -42,7 +42,7 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift;
+   my $self = shift; $self->pid; # Trigger lazy build
 
    $self->on_exit   and $self->loop->watch_child( $self->pid, $self->on_exit );
    $self->on_return and $self->reader and $self->_watch_read_handle;
@@ -55,15 +55,16 @@ sub is_running {
 }
 
 sub send {
-   my ($self, @args) = @_; my $did = pad5z $args[ 0 ];
+   my ($self, @args) = @_; my $did = padid $args[ 0 ];
 
    $self->writer or throw error => 'Process [_1] no writer', args => [ $did ];
 
    my $rec = nfreeze [ @args ];
    my $buf = pack( 'I', length $rec ).$rec;
    my $len = $self->writer->syswrite( $buf, length $buf );
+   my $key = padkey 'error', 'SEND';
 
-   defined $len or $self->log->error( " SEND[${did}]: ${OS_ERROR}" );
+   defined $len or $self->log->error( "${key}[${did}]: ${OS_ERROR}" );
 
    return;
 }
@@ -71,9 +72,9 @@ sub send {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $key  = $self->log_key; my $did = pad5z $self->pid;
+   my $dkey = padkey 'info', $self->log_key; my $did = padid $self->pid;
 
-   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
+   $self->log->info( "${dkey}[${did}]: Stopping ".$self->description );
    CORE::kill 'TERM', $self->pid;
    return;
 }
@@ -88,7 +89,9 @@ sub _build_pid {
 }
 
 sub _watch_read_handle {
-   my $self = shift; my $code = $self->on_return; my $did = pad5z $self->pid;
+   my $self = shift; my $code = $self->on_return;
+
+   my $dkey = padkey 'error', 'RECV'; my $did = padid $self->pid;
 
    my $log  = $self->log; my $reader = $self->reader;
 
@@ -100,7 +103,7 @@ sub _watch_read_handle {
       defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
 
       try        { $code->( @{ $args ? thaw $args : [] } ) }
-      catch ($e) { $log->error( " RECV[${did}]: ${e}" ) }
+      catch ($e) { $log->error( "${dkey}[${did}]: ${e}"  ) }
 
       return;
    } );
@@ -129,7 +132,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

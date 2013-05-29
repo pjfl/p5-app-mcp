@@ -1,27 +1,31 @@
-# @(#)Ident: Routine.pm 2013-05-29 18:00 pjf ;
+# @(#)Ident: Routine.pm 2013-05-29 20:40 pjf ;
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use App::MCP::Functions    qw(pad5z);
+use App::MCP::Functions     qw(padid padkey);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use IPC::SysV              qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
+use IPC::SysV               qw(IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT);
 use IPC::Semaphore;
 
 extends q(App::MCP::Async::Process);
 
 # Private attributes
-has '_semaphore' => is => 'ro', isa => Object, reader => 'semaphore';
+has '_semaphore' => is => 'lazy', isa => Object, reader => 'semaphore';
 
 # Construction
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
    $attr->{code} = __loop_while_running( $attr->{code}, delete $attr->{after} );
-   $attr->{_semaphore} = __build__semaphore( $attr );
+
    return $attr;
+};
+
+before 'BUILD' => sub {
+   $_[ 0 ]->semaphore; # Trigger lazy build before process fork
 };
 
 sub DEMOLISH {
@@ -29,12 +33,20 @@ sub DEMOLISH {
 }
 
 # Public methods
+sub is_running {
+   return $_[ 0 ]->semaphore->getval( 0 );
+}
+
+sub start {
+   $_[ 0 ]->semaphore->setval( 0, TRUE ); return;
+}
+
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $key  = $self->log_key; my $did = pad5z $self->pid;
+   my $dkey = padkey 'info', $self->log_key; my $did = padid $self->pid;
 
-   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
+   $self->log->info( "${dkey}[${did}]: Stopping ".$self->description );
    $self->semaphore->setval( 0, FALSE );
    $self->trigger;
    return;
@@ -54,30 +66,26 @@ sub _await_trigger {
    $_[ 0 ]->semaphore->op( 1, -1, 0 ); return TRUE;
 }
 
-sub _still_running {
-   return $_[ 0 ]->semaphore->getval( 0 );
-}
-
-# Private functions
-sub __build__semaphore {
-   my $attr = shift;
-   my $id   = 1234 + $attr->{loop}->uuid;
+sub _build__semaphore {
+   my $self = shift;
+   my $id   = 1234 + $self->loop->uuid;
    my $s    = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
 
-   $s->setval( 0, TRUE ); $s->setval( 1, FALSE );
+   $s->setval( 0, $self->autostart ); $s->setval( 1, FALSE );
    return $s;
 }
 
+# Private functions
 sub __loop_while_running {
    my ($code, $after) = @_;
 
    return sub {
-      my $self = shift;
+      my $self = shift; my $rv;
 
-      while ($self->_still_running) { $self->_await_trigger; $code->() }
+      while ($self->is_running) { $self->_await_trigger; $rv = $code->() }
 
       $after and $after->();
-      return;
+      return $rv;
    };
 }
 
@@ -102,7 +110,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 9 $ of L<App::MCP::Async::Routine>
+This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

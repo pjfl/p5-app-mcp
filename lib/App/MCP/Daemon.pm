@@ -1,15 +1,15 @@
-# @(#)$Ident: Daemon.pm 2013-05-29 17:53 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-29 21:21 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id);
 use App::MCP::Async;
 use App::MCP::DaemonControl;
-use App::MCP::Functions          qw(pad5z);
+use App::MCP::Functions          qw(padid padkey);
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IPC::PerlSSH;
@@ -110,11 +110,13 @@ around 'run_chain' => sub {
 
 # Public methods
 sub daemon {
-   my $self = shift; my $log = $self->log; my $loop = $self->loop;
+   my $self = shift; my $dkey = padkey 'info', 'DAEMON';
+
+   my $did  = padid(); my $log = $self->log; my $loop = $self->loop;
 
    my $stop = sub { $loop->detach_signal( 'TERM' ); $loop->stop };
 
-   my $did  = pad5z(); $log->info( "DAEMON[${did}]: Starting event loop" );
+   $log->info( "${dkey}[${did}]: Starting event loop" );
 
    $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
@@ -122,15 +124,15 @@ sub daemon {
    $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
    $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
    $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
-   $log->info( "DAEMON[${did}]: Event loop started" );
+   $log->info( "${dkey}[${did}]: Event loop started" );
    $loop->run; # Blocks here until loop stop is called
-   $log->info( "DAEMON[${did}]: Stopping event loop" );
+   $log->info( "${dkey}[${did}]: Stopping event loop" );
    $self->clock_tick->stop;
    $self->listener->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;
    $loop->watch_child( 0 );
-   $log->info( "DAEMON[${did}]: Event loop stopped" );
+   $log->info( "${dkey}[${did}]: Event loop stopped" );
    exit OK;
 }
 
@@ -146,7 +148,7 @@ sub _build__clock_tick {
       (  code     => sub { $self->_clock_tick_handler( $daemon_pid ) },
          interval => $self->interval,
          desc     => 'clock tick handler',
-         key      => ' CLOCK',
+         key      => 'CLOCK',
          type     => 'periodical' );
 }
 
@@ -156,7 +158,7 @@ sub _build__ip_ev_hndlr {
    return $self->async_factory->new_notifier
       (  code => sub { $self->_input_handler( $daemon_pid ) },
          desc => 'input event handler',
-         key  => ' INPUT',
+         key  => 'INPUT',
          type => 'routine' );
 }
 
@@ -165,7 +167,7 @@ sub _build__ipc_ssh {
 
    return $self->async_factory->new_notifier
       (  code        => sub { $self->_ipc_ssh_handler( @_ ) },
-         desc        => 'ipcssh worker',
+         desc        => 'ipcssh',
          key         => 'IPCSSH',
          max_calls   => $self->config->max_ssh_worker_calls,
          max_workers => $self->config->max_ssh_workers,
@@ -261,20 +263,22 @@ sub _input_handler {
    }
 
    __trigger_output_handler( $daemon_pid );
-   return;
+   return OK;
 }
 
 sub _ipc_ssh_handler {
-   my ($self, $runid, $user, $host, $calls) = @_;
+   my ($self, $runid, $user, $host, $calls) = @_; my $log = $self->log;
 
-   my $log    = $self->log;
+   my $logger = sub {
+      my ($level, $key, $msg) = @_; my $dkey = padkey $level, $key;
+
+      $log->$level( "${dkey}[${runid}]: ${msg}" ); return;
+   };
+
    my $ips    = IPC::PerlSSH->new
       ( Host       => $host,
         User       => $user,
         SshOptions => [ '-i', $self->identity_file ], );
-   my $logger = sub {
-      my ($level, $cmd, $msg) = @_; $log->$level( "${cmd}[${runid}]: ${msg}" );
-   };
 
    try        { $ips->use_library( $self->library_class ) }
    catch ($e) { $logger->( 'error', 'STORE', $e ); return FALSE }
@@ -283,9 +287,9 @@ sub _ipc_ssh_handler {
       my $result;
 
       try        { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
-      catch ($e) { $logger->( 'error', ' CALL', $e ); return FALSE }
+      catch ($e) { $logger->( 'error', 'CALL', $e ); return FALSE }
 
-      $logger->( 'debug', ' CALL', $result );
+      $logger->( 'debug', 'CALL', $result );
    }
 
    return TRUE;
@@ -321,7 +325,7 @@ sub _output_handler {
       }
    }
 
-   return;
+   return OK;
 }
 
 sub _process_event {
@@ -412,7 +416,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 9 $
+This documents version v0.2.$Rev: 10 $
 
 =head1 Synopsis
 

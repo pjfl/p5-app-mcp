@@ -1,10 +1,10 @@
-# @(#)$Ident: Async.pm 2013-05-29 17:11 pjf ;
+# @(#)$Ident: Async.pm 2013-05-29 21:28 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(pad5z);
+use App::MCP::Functions     qw(padid padkey);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
@@ -25,23 +25,26 @@ has 'loop'    => is => 'lazy', isa => Object,
 sub new_notifier {
    my ($self, %p) = @_; my $log = $self->log; my $notifier;
 
-   my $code = $p{code}; my $desc = $p{desc}; my $key = $p{key};
+   my $code = $p{code}; my $ddesc = my $desc = $p{desc}; my $key = $p{key};
 
    my $logger = sub {
-      my ($level, $pid, $msg) = @_; my $did = pad5z $pid;
+      my ($level, $id, $msg) = @_;
 
-      $log->$level( "${key}[${did}]: ${msg}" ); return;
+      my $dkey = padkey $level, $key; my $did = padid $id;
+
+      $log->$level( "${dkey}[${did}]: ${msg}" ); return;
    };
 
    my $_on_exit = $p{on_exit}; my $on_exit = sub {
       my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-      $logger->( 'info', $pid, ucfirst "${desc} stopped ${rv}" );
+      $logger->( 'info', $pid, ucfirst "${desc} stopped rv ${rv}" );
 
       return $_on_exit ? $_on_exit->() : undef;
    };
 
    if ($p{type} eq 'function') {
+      $desc    .= ' worker'; $ddesc = $desc.' pool';
       $notifier = App::MCP::Async::Function->new
          (  code        => $code,
             description => $desc,
@@ -50,7 +53,6 @@ sub new_notifier {
             max_calls   => $p{max_calls},
             max_workers => $p{max_workers},
             on_exit     => $on_exit, );
-      $desc .= ' pool';
    }
    elsif ($p{type} eq 'periodical') {
       $notifier = App::MCP::Async::Periodical->new
@@ -72,6 +74,7 @@ sub new_notifier {
    elsif ($p{type} eq 'routine') {
       $notifier = App::MCP::Async::Routine->new
          (  after       => $p{after},
+            autostart   => $p{autostart} // TRUE,
             code        => $code,
             description => $desc,
             factory     => $self,
@@ -80,7 +83,7 @@ sub new_notifier {
    }
    else { throw error => 'Notifier [_1] type unknown', args => [ $p{type} ] }
 
-   $logger->( 'info', $notifier->pid, "Started ${desc}" );
+   $logger->( 'info', $notifier->pid, "Started ${ddesc}" );
 
    return $notifier;
 }
@@ -99,7 +102,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 9 $
+This documents version v0.2.$Rev: 10 $
 
 =head1 Synopsis
 

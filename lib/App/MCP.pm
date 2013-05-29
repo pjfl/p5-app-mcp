@@ -1,10 +1,10 @@
-# @(#)$Ident: MCP.pm 2013-05-29 18:15 pjf ;
+# @(#)$Ident: MCP.pm 2013-05-29 21:45 pjf ;
 
 package App::MCP;
 
 use 5.01;
 use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 1;
 
@@ -18,7 +18,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.2.$Rev: 9 $
+This documents version v0.2.$Rev: 10 $
 
 =head1 Synopsis
 

@@ -1,15 +1,15 @@
-# @(#)Ident: Functions.pm 2013-05-27 13:39 pjf ;
+# @(#)Ident: Functions.pm 2013-05-29 21:00 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 my @_functions;
 
 BEGIN {
-   @_functions = ( qw(log_on_error pad5z read_exactly) );
+   @_functions = ( qw(log_on_error padkey padid read_exactly) );
 }
 
 use Class::Usul::Constants;
@@ -21,21 +21,29 @@ use Sub::Exporter::Progressive -setup => {
 };
 
 sub log_on_error ($$$) {
-   my ($log, $did, $red) = @_;
+   my ($log, $did, $red) = @_; my $dkey;
 
    unless (defined $red) {
-      $log->error( " RECV[${did}]: ${OS_ERROR}" ); return FAILED;
+      $dkey = padkey( 'error', 'RECV' );
+      $log->error( "${dkey}[${did}]: ${OS_ERROR}" ); return FAILED;
    }
 
    unless (length $red) {
-      $log->info( " RECV[${did}]: EOF" ); return OK;
+      $dkey = padkey( 'info', 'RECV' ); $log->info( "${dkey}[${did}]: EOF" );
+      return OK;
    }
 
    return;
 }
 
-sub pad5z (;$) {
+sub padid (;$) {
    my $x = shift; $x //= $PID; return pad $x, 5, 0, 'left';
+}
+
+sub padkey ($$) {
+   my ($level, $key) = @_; my $w = 10 - length $level; $w < 1 and $w = 1;
+
+   return pad $key, $w, SPC, 'left';
 }
 
 sub read_exactly ($$$) {
@@ -69,7 +77,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 10 $ of L<App::MCP::Functions>
 
 =head1 Description
 

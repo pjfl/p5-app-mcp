@@ -1,11 +1,13 @@
-# @(#)Ident: Base.pm 2013-05-29 14:38 pjf ;
+# @(#)Ident: Base.pm 2013-05-29 19:05 pjf ;
 
 package App::MCP::Async::Base;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
+
+has 'autostart'   => is => 'ro',   isa => Bool, default => FALSE;
 
 has 'builder'     => is => 'ro',   isa => Object, handles => [ qw(log) ],
    required       => TRUE;
@@ -39,7 +41,7 @@ App::MCP::Async::Base - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Base>
+This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Base>
 
 =head1 Description
 

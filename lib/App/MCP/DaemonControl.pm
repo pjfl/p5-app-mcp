@@ -1,10 +1,10 @@
-# @(#)$Ident: DaemonControl.pm 2013-05-27 23:51 pjf ;
+# @(#)$Ident: DaemonControl.pm 2013-05-29 20:55 pjf ;
 
 package App::MCP::DaemonControl;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent qw(Daemon::Control);
 
 sub new {
@@ -26,7 +26,6 @@ sub do_stop {
       my @t = split m{ [,] }msx, $self->stop_signals; my $len = int (@t / 2);
 
       for my $i (0 .. $len) {
-         warn "do_stop ".$t[ 2 * $i ].' '.time."\n";
          kill $t[ 2 * $i ], $self->pid;
 
          my $timeout = $t[ 2 * $i + 1 ];
@@ -67,7 +66,7 @@ App::MCP::DaemonControl - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 6 $
+This documents version v0.2.$Rev: 10 $
 
 =head1 Synopsis
 

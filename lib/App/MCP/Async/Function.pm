@@ -1,11 +1,11 @@
-# @(#)Ident: Function.pm 2013-05-29 14:49 pjf ;
+# @(#)Ident: Function.pm 2013-05-29 21:11 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_on_error pad5z read_exactly);
+use App::MCP::Functions     qw(log_on_error padid padkey read_exactly);
 use App::MCP::Async::Process;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -18,19 +18,21 @@ use TryCatch;
 extends q(App::MCP::Async::Base);
 
 # Public attributes
-has 'channels'       => is => 'ro', isa => SimpleStr, default => 'i';
+has 'channels'       => is => 'ro',  isa => SimpleStr, default => 'i';
 
-has 'interval'       => is => 'ro', isa => PositiveInt, default => 1;
+has 'interval'       => is => 'ro',  isa => PositiveInt, default => 1;
 
-has 'max_calls'      => is => 'ro', isa => PositiveOrZeroInt, default => 0;
+has 'is_running'     => is => 'rwp', isa => Bool, default => TRUE;
 
-has 'max_workers'    => is => 'ro', isa => PositiveInt, default => 1;
+has 'max_calls'      => is => 'ro',  isa => PositiveOrZeroInt, default => 0;
 
-has 'worker_args'    => is => 'ro', isa => HashRef, default => sub { {} };
+has 'max_workers'    => is => 'ro',  isa => PositiveInt, default => 1;
 
-has 'worker_index'   => is => 'ro', isa => ArrayRef, default => sub { [] };
+has 'worker_args'    => is => 'ro',  isa => HashRef, default => sub { {} };
 
-has 'worker_objects' => is => 'ro', isa => HashRef, default => sub { {} };
+has 'worker_index'   => is => 'ro',  isa => ArrayRef, default => sub { [] };
+
+has 'worker_objects' => is => 'ro',  isa => HashRef, default => sub { {} };
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -42,7 +44,7 @@ around 'BUILDARGS' => sub {
    my $max_calls   = delete $args->{max_calls  };
    my $max_workers = delete $args->{max_workers};
    my $attr        = { builder     => $factory->builder,
-                       description => $args->{description}.' pool',
+                       description => $args->{description},
                        loop        => $factory->loop,
                        worker_args => $args, };
 
@@ -55,7 +57,7 @@ around 'BUILDARGS' => sub {
 
 # Public methods
 sub call {
-   my ($self, @args) = @_;
+   my ($self, @args) = @_; $self->is_running or return;
 
    my $index  = $self->_next_worker;
    my $pid    = $self->worker_index->[ $index ] || 0;
@@ -67,11 +69,13 @@ sub call {
 }
 
 sub stop {
-   my $self = shift; my $workers = $self->worker_objects;
+   my $self = shift; $self->_set_is_running( FALSE );
 
-   my $key  = $self->log_key; my $did = pad5z $self->pid;
+   my $workers = $self->worker_objects;
 
-   $self->log->info( "${key}[${did}]: Stopping ".$self->description );
+   my $dkey = padkey 'info', $self->log_key; my $did = padid $self->pid;
+
+   $self->log->info( "${dkey}[${did}]: Stopping ".$self->description.' pool' );
 
    $workers->{ $_ }->stop for (keys %{ $workers });
 
@@ -94,7 +98,7 @@ sub _call_handler {
    my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : undef;
 
    return sub {
-      my $count = 0; my $did = pad5z $id;
+      my $count = 0; my $dkey = padkey 'error', 'EXEC'; my $did = padid $id;
 
       while (TRUE) {
          my $args = undef; my $rv = undef;
@@ -109,7 +113,7 @@ sub _call_handler {
 
          try        { $rv = $code->( @{ $args ? thaw $args : [] } );
                       $writer and __send_rv( $writer, $log, $id, $rv ) }
-         catch ($e) { $log->error( " EXEC[${did}]: ${e}" ) }
+         catch ($e) { $log->error( "${dkey}[${did}]: ${e}" ) }
 
          $max_calls and ++$count > $max_calls and return OK;
       }
@@ -121,9 +125,9 @@ sub _new_worker {
 
    my $on_exit = delete $args->{on_exit}; my $workers = $self->worker_objects;
 
-   $self->channels    =~ m{ i }mx
+   $self->channels =~ m{ i }mx
       and $args->{args_pipe} = __nonblocking_write_pipe_pair();
-   $self->channels    =~ m{ o }mx
+   $self->channels =~ m{ o }mx
       and $args->{ret_pipe } = __nonblocking_write_pipe_pair();
    $args->{code       } = $self->_call_handler( $args, $id );
    $args->{description} = (lc $self->log_key)." worker ${index}";
@@ -159,12 +163,13 @@ sub __nonblocking_write_pipe_pair {
 sub __send_rv {
    my ($writer, $log, @args) = @_;
 
-   my $did = pad5z $args[ 0 ];
+   my $did = padid $args[ 0 ];
    my $rec = nfreeze [ @args ];
    my $buf = pack( 'I', length $rec ).$rec;
    my $len = $writer->syswrite( $buf, length $buf );
+   my $key = padkey 'error', 'SNDRV';
 
-   defined $len or $log->error( "SNDRV[${did}]: ${OS_ERROR}" );
+   defined $len or $log->error( "${key}[${did}]: ${OS_ERROR}" );
 
    return;
 }
@@ -188,7 +193,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 
