@@ -1,15 +1,16 @@
-# @(#)Ident: Functions.pm 2013-05-30 00:16 pjf ;
+# @(#)Ident: Functions.pm 2013-05-30 13:44 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 my @_functions;
 
 BEGIN {
-   @_functions = ( qw(log_leader log_recv_error read_exactly) );
+   @_functions = ( qw(log_leader log_recv_error read_exactly
+                      trigger_output_handler) );
 }
 
 use Class::Usul::Constants;
@@ -56,6 +57,10 @@ sub read_exactly ($$$) {
    return $_[ 2 ];
 }
 
+sub trigger_output_handler ($) {
+   my $pid = shift; return $pid ? CORE::kill 'USR2', $pid : FALSE;
+}
+
 # Private functions
 sub __padid {
    my $id = shift; $id //= $PID; return pad $id, 5, 0, 'left';
@@ -86,7 +91,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 11 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 12 $ of L<App::MCP::Functions>
 
 =head1 Description
 
