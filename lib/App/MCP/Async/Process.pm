@@ -1,8 +1,8 @@
-# @(#)Ident: Process.pm 2013-05-30 00:08 pjf ;
+# @(#)Ident: Process.pm 2013-05-30 14:11 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 13 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use Class::Usul::Moose;
@@ -84,7 +84,8 @@ sub stop {
 sub _build_pid {
    my $self     = shift;
    my $weak_ref = $self; weaken( $weak_ref );
-   my $code     = sub { $weak_ref->code->( $weak_ref ) };
+   my $name     = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
+   my $code     = sub { $PROGRAM_NAME = $name; $weak_ref->code->( $weak_ref ) };
 
    return $self->builder->run_cmd( [ $code ], { async => TRUE } )->pid;
 }
@@ -133,7 +134,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 11 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 13 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

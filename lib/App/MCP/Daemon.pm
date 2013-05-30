@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-05-30 13:33 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-30 14:16 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 12 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 13 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -96,7 +96,7 @@ around 'run_chain' => sub {
 
 # Public methods
 sub daemon {
-   my $self = shift;
+   my $self = shift; $self->_set_program_name;
 
    my $lead = log_leader 'info', 'DAEMON'; my $loop = $self->loop;
 
@@ -219,6 +219,13 @@ sub _get_listener_args {
 sub _hangup_handler { # TODO: What should we do on reload?
 }
 
+sub _set_program_name {
+   my $self = shift;
+
+   $PROGRAM_NAME = $self->config->appclass.'::Daemon '.$self->config->pathname;
+   return;
+}
+
 sub _stdio_file {
    my ($self, $extn, $name) = @_; $name ||= $self->config->name;
 
@@ -239,7 +246,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 12 $
+This documents version v0.2.$Rev: 13 $
 
 =head1 Synopsis
 
