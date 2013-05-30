@@ -1,10 +1,10 @@
-# @(#)Ident: Periodical.pm 2013-05-29 20:39 pjf ;
+# @(#)Ident: Periodical.pm 2013-05-30 00:10 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(padid padkey);
+use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
@@ -40,10 +40,9 @@ sub start {
 }
 
 sub stop {
-   my $self = shift;
-   my $dkey = padkey 'info', $self->log_key; my $did = padid $self->pid;
+   my $self = shift; my $lead = log_leader 'info', $self->log_key, $self->pid;
 
-   $self->log->info( "${dkey}[${did}]: Stopping ".$self->description );
+   $self->log->info( $lead.'Stopping '.$self->description );
    $self->loop->stop_timer( $self->pid );
    return;
 }
@@ -72,7 +71,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 11 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

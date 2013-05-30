@@ -1,10 +1,10 @@
-# @(#)$Ident: Async.pm 2013-05-29 21:28 pjf ;
+# @(#)$Ident: Async.pm 2013-05-29 23:23 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(padid padkey);
+use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
@@ -28,11 +28,9 @@ sub new_notifier {
    my $code = $p{code}; my $ddesc = my $desc = $p{desc}; my $key = $p{key};
 
    my $logger = sub {
-      my ($level, $id, $msg) = @_;
+      my ($level, $id, $msg) = @_; my $lead = log_leader $level, $key, $id;
 
-      my $dkey = padkey $level, $key; my $did = padid $id;
-
-      $log->$level( "${dkey}[${did}]: ${msg}" ); return;
+      $log->$level( $lead.$msg ); return;
    };
 
    my $_on_exit = $p{on_exit}; my $on_exit = sub {
@@ -52,7 +50,8 @@ sub new_notifier {
             log_key     => $key,
             max_calls   => $p{max_calls},
             max_workers => $p{max_workers},
-            on_exit     => $on_exit, );
+            on_exit     => $on_exit,
+            on_return   => $p{on_return}, );
    }
    elsif ($p{type} eq 'periodical') {
       $notifier = App::MCP::Async::Periodical->new
@@ -102,7 +101,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 10 $
+This documents version v0.2.$Rev: 11 $
 
 =head1 Synopsis
 

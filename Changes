@@ -1,6 +1,7 @@
 Revision history for App::MCP
 
 0.2.10    2013-05-29 22:45:55
+          - Replaced padding with log_leader
           - Added log messsage padding
           - Fixed abstraction leak in ::Async::Routine
           - Created ::Async::Base

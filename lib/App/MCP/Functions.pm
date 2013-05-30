@@ -1,15 +1,15 @@
-# @(#)Ident: Functions.pm 2013-05-29 21:00 pjf ;
+# @(#)Ident: Functions.pm 2013-05-30 00:16 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 my @_functions;
 
 BEGIN {
-   @_functions = ( qw(log_on_error padkey padid read_exactly) );
+   @_functions = ( qw(log_leader log_recv_error read_exactly) );
 }
 
 use Class::Usul::Constants;
@@ -20,30 +20,28 @@ use Sub::Exporter::Progressive -setup => {
    exports => [ @_functions ], groups => { default => [], },
 };
 
-sub log_on_error ($$$) {
-   my ($log, $did, $red) = @_; my $dkey;
+# Public functions
+sub log_leader ($$;$) {
+   my ($level, $key, $id) = @_;
+
+   my $dkey = __padkey( $level, $key ); my $did = __padid( $id );
+
+   return "${dkey}[${did}]: ";
+}
+
+sub log_recv_error ($$$) {
+   my ($log, $id, $red) = @_;
 
    unless (defined $red) {
-      $dkey = padkey( 'error', 'RECV' );
-      $log->error( "${dkey}[${did}]: ${OS_ERROR}" ); return FAILED;
+      $log->error( log_leader( 'error', 'RECV', $id ).$OS_ERROR );
+      return FAILED;
    }
 
    unless (length $red) {
-      $dkey = padkey( 'info', 'RECV' ); $log->info( "${dkey}[${did}]: EOF" );
-      return OK;
+      $log->info( log_leader( 'info', 'RECV', $id ).'EOF' ); return OK;
    }
 
    return;
-}
-
-sub padid (;$) {
-   my $x = shift; $x //= $PID; return pad $x, 5, 0, 'left';
-}
-
-sub padkey ($$) {
-   my ($level, $key) = @_; my $w = 10 - length $level; $w < 1 and $w = 1;
-
-   return pad $key, $w, SPC, 'left';
 }
 
 sub read_exactly ($$$) {
@@ -56,6 +54,17 @@ sub read_exactly ($$$) {
    }
 
    return $_[ 2 ];
+}
+
+# Private functions
+sub __padid {
+   my $id = shift; $id //= $PID; return pad $id, 5, 0, 'left';
+}
+
+sub __padkey {
+   my ($level, $key) = @_; my $w = 11 - length $level; $w < 1 and $w = 1;
+
+   return pad $key, $w, SPC, 'left';
 }
 
 1;
@@ -77,7 +86,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 10 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 11 $ of L<App::MCP::Functions>
 
 =head1 Description
 

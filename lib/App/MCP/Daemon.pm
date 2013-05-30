@@ -1,15 +1,15 @@
-# @(#)$Ident: Daemon.pm 2013-05-29 21:21 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-29 23:33 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions       qw(create_token bson64id);
 use App::MCP::Async;
 use App::MCP::DaemonControl;
-use App::MCP::Functions          qw(padid padkey);
+use App::MCP::Functions          qw(log_leader);
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use IPC::PerlSSH;
@@ -110,13 +110,13 @@ around 'run_chain' => sub {
 
 # Public methods
 sub daemon {
-   my $self = shift; my $dkey = padkey 'info', 'DAEMON';
+   my $self = shift;
 
-   my $did  = padid(); my $log = $self->log; my $loop = $self->loop;
+   my $lead = log_leader 'info', 'DAEMON'; my $loop = $self->loop;
 
    my $stop = sub { $loop->detach_signal( 'TERM' ); $loop->stop };
 
-   $log->info( "${dkey}[${did}]: Starting event loop" );
+   $self->log->info( $lead.'Starting event loop' );
 
    $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
@@ -124,15 +124,18 @@ sub daemon {
    $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
    $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
    $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
-   $log->info( "${dkey}[${did}]: Event loop started" );
+
+   $self->log->info( $lead.'Event loop started' );
    $loop->run; # Blocks here until loop stop is called
-   $log->info( "${dkey}[${did}]: Stopping event loop" );
+   $self->log->info( $lead.'Stopping event loop' );
+
    $self->clock_tick->stop;
    $self->listener->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;
    $loop->watch_child( 0 );
-   $log->info( "${dkey}[${did}]: Event loop stopped" );
+
+   $self->log->info( $lead.'Event loop stopped' );
    exit OK;
 }
 
@@ -270,9 +273,9 @@ sub _ipc_ssh_handler {
    my ($self, $runid, $user, $host, $calls) = @_; my $log = $self->log;
 
    my $logger = sub {
-      my ($level, $key, $msg) = @_; my $dkey = padkey $level, $key;
+      my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
 
-      $log->$level( "${dkey}[${runid}]: ${msg}" ); return;
+      $log->$level( $lead.$msg ); return;
    };
 
    my $ips    = IPC::PerlSSH->new
@@ -416,7 +419,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 10 $
+This documents version v0.2.$Rev: 11 $
 
 =head1 Synopsis
 

@@ -1,11 +1,11 @@
-# @(#)Ident: Function.pm 2013-05-29 21:11 pjf ;
+# @(#)Ident: Function.pm 2013-05-30 00:18 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_on_error padid padkey read_exactly);
+use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use App::MCP::Async::Process;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -71,11 +71,11 @@ sub call {
 sub stop {
    my $self = shift; $self->_set_is_running( FALSE );
 
+   my $lead = log_leader 'info', $self->log_key, $self->pid;
+
+   $self->log->info( $lead.'Stopping '.$self->description.' pool' );
+
    my $workers = $self->worker_objects;
-
-   my $dkey = padkey 'info', $self->log_key; my $did = padid $self->pid;
-
-   $self->log->info( "${dkey}[${did}]: Stopping ".$self->description.' pool' );
 
    $workers->{ $_ }->stop for (keys %{ $workers });
 
@@ -98,7 +98,7 @@ sub _call_handler {
    my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : undef;
 
    return sub {
-      my $count = 0; my $dkey = padkey 'error', 'EXEC'; my $did = padid $id;
+      my $count = 0; my $lead = log_leader 'error', 'EXEC', $id;
 
       while (TRUE) {
          my $args = undef; my $rv = undef;
@@ -106,14 +106,14 @@ sub _call_handler {
          if ($reader) {
             my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-            defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
+            defined ($rv = log_recv_error( $log, $id, $red )) and return $rv;
             $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
+            defined ($rv = log_recv_error( $log, $id, $red )) and return $rv;
          }
 
          try        { $rv = $code->( @{ $args ? thaw $args : [] } );
                       $writer and __send_rv( $writer, $log, $id, $rv ) }
-         catch ($e) { $log->error( "${dkey}[${did}]: ${e}" ) }
+         catch ($e) { $log->error( $lead.$e ) }
 
          $max_calls and ++$count > $max_calls and return OK;
       }
@@ -163,13 +163,12 @@ sub __nonblocking_write_pipe_pair {
 sub __send_rv {
    my ($writer, $log, @args) = @_;
 
-   my $did = padid $args[ 0 ];
-   my $rec = nfreeze [ @args ];
-   my $buf = pack( 'I', length $rec ).$rec;
-   my $len = $writer->syswrite( $buf, length $buf );
-   my $key = padkey 'error', 'SNDRV';
+   my $rec  = nfreeze [ @args ];
+   my $buf  = pack( 'I', length $rec ).$rec;
+   my $len  = $writer->syswrite( $buf, length $buf );
+   my $lead = log_leader 'error', 'SENDRV', $args[ 0 ];
 
-   defined $len or $log->error( "${key}[${did}]: ${OS_ERROR}" );
+   defined $len or $log->error( $lead.$OS_ERROR );
 
    return;
 }
@@ -193,7 +192,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 11 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

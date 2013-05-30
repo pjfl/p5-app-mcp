@@ -1,10 +1,10 @@
-# @(#)Ident: Process.pm 2013-05-29 20:38 pjf ;
+# @(#)Ident: Process.pm 2013-05-30 00:08 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_on_error padid padkey read_exactly);
+use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
@@ -55,16 +55,17 @@ sub is_running {
 }
 
 sub send {
-   my ($self, @args) = @_; my $did = padid $args[ 0 ];
+   my ($self, @args) = @_;
 
-   $self->writer or throw error => 'Process [_1] no writer', args => [ $did ];
+   $self->writer or throw error => 'Process [_1] no writer',
+                          args  => [ $args[ 0 ] ];
 
-   my $rec = nfreeze [ @args ];
-   my $buf = pack( 'I', length $rec ).$rec;
-   my $len = $self->writer->syswrite( $buf, length $buf );
-   my $key = padkey 'error', 'SEND';
+   my $rec  = nfreeze [ @args ];
+   my $buf  = pack( 'I', length $rec ).$rec;
+   my $len  = $self->writer->syswrite( $buf, length $buf );
+   my $lead = log_leader 'error', 'SEND', $args[ 0 ];
 
-   defined $len or $self->log->error( "${key}[${did}]: ${OS_ERROR}" );
+   defined $len or $self->log->error( $lead.$OS_ERROR );
 
    return;
 }
@@ -72,9 +73,9 @@ sub send {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $dkey = padkey 'info', $self->log_key; my $did = padid $self->pid;
+   my $lead = log_leader 'info', $self->log_key, $self->pid;
 
-   $self->log->info( "${dkey}[${did}]: Stopping ".$self->description );
+   $self->log->info( $lead.'Stopping '.$self->description );
    CORE::kill 'TERM', $self->pid;
    return;
 }
@@ -89,21 +90,21 @@ sub _build_pid {
 }
 
 sub _watch_read_handle {
-   my $self = shift; my $code = $self->on_return;
+   my $self   = shift; my $code = $self->on_return; my $pid = $self->pid;
 
-   my $dkey = padkey 'error', 'RECV'; my $did = padid $self->pid;
+   my $lead   = log_leader 'error', 'RECV', $pid; my $log = $self->log;
 
-   my $log  = $self->log; my $reader = $self->reader;
+   my $reader = $self->reader;
 
-   $self->loop->watch_read_handle( $self->pid, $reader, sub {
+   $self->loop->watch_read_handle( $pid, $reader, sub {
       my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-      defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
+      defined ($rv = log_recv_error( $log, $pid, $red )) and return $rv;
       $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-      defined ($rv = log_on_error( $log, $did, $red )) and return $rv;
+      defined ($rv = log_recv_error( $log, $pid, $red )) and return $rv;
 
       try        { $code->( @{ $args ? thaw $args : [] } ) }
-      catch ($e) { $log->error( "${dkey}[${did}]: ${e}"  ) }
+      catch ($e) { $log->error( $lead.$e ) }
 
       return;
    } );
@@ -132,7 +133,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 10 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 11 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 
