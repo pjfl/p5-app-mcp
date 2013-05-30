@@ -1,30 +1,27 @@
-# @(#)$Ident: Daemon.pm 2013-05-30 14:16 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-30 19:40 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
-use Class::Usul::Constants;
 use App::MCP;
 use App::MCP::Async;
 use App::MCP::DaemonControl;
-use App::MCP::Functions          qw(log_leader trigger_output_handler);
+use App::MCP::Functions          qw(log_leader);
+use Class::Usul::Constants;
+use Class::Usul::Functions       qw(elapsed);
+use Class::Usul::Moose;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
 use Plack::Runner;
 
 extends q(Class::Usul::Programs);
 
-# Override defaults in base class
+# Override defaults in parent class
 has '+config_class'  => default => 'App::MCP::Config';
 
 # Object attributes (public)
 #   Visible to the command line
-has 'autotrigger'    => is => 'ro',   isa => Bool,
-   documentation     => 'Trigger output event handler with each clock tick',
-   default           => FALSE;
-
 has 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
    documentation     => 'The database to connect to',
    default           => sub { $_[ 0 ]->config->database };
@@ -40,22 +37,18 @@ has 'port'           => is => 'ro',   isa => PositiveInt,
 #   Ingnored by the command line
 has '_app'           => is => 'lazy', isa => Object, reader => 'app';
 
-has '_async_factory' => is => 'lazy', isa => Object, reader => 'async_factory';
+has '_async_factory' => is => 'lazy', isa => Object,
+   handles           => [ qw(loop) ], reader => 'async_factory';
 
 has '_clock_tick'    => is => 'lazy', isa => Object, reader => 'clock_tick';
 
-has '_interval'      => is => 'lazy', isa => PositiveInt,
-   default           => sub { $_[ 0 ]->config->clock_tick_interval },
-   reader            => 'interval';
+has '_cron'          => is => 'lazy', isa => Object, reader => 'cron';
 
 has '_ip_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
 
 has '_ipc_ssh'       => is => 'lazy', isa => Object, reader => 'ipc_ssh';
 
 has '_listener'      => is => 'lazy', isa => Object, reader => 'listener';
-
-has '_loop'          => is => 'lazy', isa => Object,
-   default           => sub { $_[ 0 ]->async_factory->loop }, reader => 'loop';
 
 has '_op_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
 
@@ -96,13 +89,13 @@ around 'run_chain' => sub {
 
 # Public methods
 sub daemon {
-   my $self = shift; $self->_set_program_name;
+   my $self = shift; my $loop = $self->loop;
 
-   my $lead = log_leader 'info', 'DAEMON'; my $loop = $self->loop;
+   my $lead = log_leader 'info', $self->config->log_key;
 
    my $stop = sub { $loop->detach_signal( 'TERM' ); $loop->stop };
 
-   $self->log->info( $lead.'Starting event loop' );
+   $self->log->info( $lead.'Starting event loop' ); $self->_set_program_name;
 
    $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
@@ -116,6 +109,7 @@ sub daemon {
    $self->log->info( $lead.'Stopping event loop' );
 
    $self->clock_tick->stop;
+   $self->cron->stop;
    $self->listener->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;
@@ -135,14 +129,26 @@ sub _build__async_factory {
 }
 
 sub _build__clock_tick {
-   my $self = shift; my $daemon_pid = $PID;
+   my $self = shift; my $cron = $self->cron;
 
    return $self->async_factory->new_notifier
-      (  code     => sub { $self->_clock_tick_handler( $daemon_pid ) },
-         interval => $self->interval,
+      (  code     => sub {
+            my $lead = log_leader 'debug', $_[ 0 ]->log_key, elapsed;
+            $_[ 0 ]->log->debug( $lead.'Tick' ); $cron->trigger },
+         interval => $self->config->clock_tick_interval,
          desc     => 'clock tick handler',
          key      => 'CLOCK',
          type     => 'periodical' );
+}
+
+sub _build__cron {
+   my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
+
+   return $self->async_factory->new_notifier
+      (  code => sub { $app->start_cron_jobs( $daemon_pid ) },
+         desc => 'cron job handler',
+         key  => 'CRON',
+         type => 'routine' );
 }
 
 sub _build__ip_ev_hndlr {
@@ -192,18 +198,6 @@ sub _build__op_ev_hndlr {
          type  => 'routine' );
 }
 
-sub _clock_tick_handler {
-   my ($self, $daemon_pid) = @_;
-
-   $self->lock->set( k => 'start_cron_jobs', t => 60, async => TRUE ) or return;
-
-  ($self->app->start_cron_jobs or $self->autotrigger)
-     and trigger_output_handler( $daemon_pid );
-
-   $self->lock->reset( k => 'start_cron_jobs' );
-   return;
-}
-
 sub _get_listener_args {
    my $self   = shift;
    my $config = $self->config;
@@ -221,8 +215,10 @@ sub _hangup_handler { # TODO: What should we do on reload?
 
 sub _set_program_name {
    my $self = shift;
+   my $cfg  = $self->config;
+   my $key  = ucfirst lc $cfg->log_key;
 
-   $PROGRAM_NAME = $self->config->appclass.'::Daemon '.$self->config->pathname;
+   $PROGRAM_NAME = $cfg->appclass."::${key} ".$cfg->pathname;
    return;
 }
 
@@ -246,7 +242,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 13 $
+This documents version v0.2.$Rev: 14 $
 
 =head1 Synopsis
 

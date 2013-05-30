@@ -1,8 +1,8 @@
-# @(#)Ident: Config.pm 2013-05-29 17:15 pjf ;
+# @(#)Ident: Config.pm 2013-05-30 14:58 pjf ;
 
 package App::MCP::Config;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 14 $ =~ /\d+/gmx );
 
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -19,6 +19,12 @@ has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
 
 has 'identity_file'        => is => 'lazy', isa => File, coerce => TRUE,
    default                 => sub { [ $_[ 0 ]->my_home, qw(.ssh id_rsa) ] };
+
+has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'App::MCP::SSHLibrary';
+
+has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'DAEMON';
 
 has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveOrZeroInt,
    default                 => 0;
@@ -64,7 +70,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 9 $ of L<App::MCP::Config>
+This documents version v0.1.$Rev: 14 $ of L<App::MCP::Config>
 
 =head1 Description
 

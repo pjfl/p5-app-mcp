@@ -1,10 +1,9 @@
-# @(#)$Ident: MCP.pm 2013-05-30 14:20 pjf ;
+# @(#)$Ident: MCP.pm 2013-05-30 18:27 pjf ;
 
 package App::MCP;
 
 use 5.01;
-use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader trigger_output_handler);
 use Class::Usul::Moose;
@@ -14,21 +13,22 @@ use IPC::PerlSSH;
 use TryCatch;
 
 # Public attributes
-has 'schema'         => is => 'lazy', isa => Object;
+has 'builder'       => is => 'ro',   isa => Object,
+   handles          => [ qw(config database debug identity_file log port) ],
+   required         => TRUE, weak_ref => TRUE;
 
-has 'schema_class'   => is => 'lazy', isa => LoadableClass, coerce => TRUE,
-   default           => sub { $_[ 0 ]->config->schema_class };
+has 'library_class' => is => 'lazy', isa => NonEmptySimpleStr,
+   default          => sub { $_[ 0 ]->config->library_class };
 
-has 'servers'        => is => 'lazy', isa => ArrayRef, auto_deref => TRUE,
-   default           => sub { $_[ 0 ]->config->servers };
+has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+   default          => sub { $_[ 0 ]->config->schema_class };
+
+has 'servers'       => is => 'lazy', isa => ArrayRef, auto_deref => TRUE,
+   default          => sub { $_[ 0 ]->config->servers };
 
 # Private attributes
-has '_builder'       => is => 'ro',   isa => Object,
-   handles           => [ qw(config database debug identity_file log port) ],
-   init_arg          => 'builder', reader => 'builder', required => TRUE;
-
-has '_library_class' => is => 'ro',   isa => NonEmptySimpleStr,
-   default           => 'App::MCP::SSHLibrary', reader => 'library_class';
+has '_schema'       => is => 'lazy', isa => Object, init_arg => undef,
+   reader           => 'schema';
 
 with q(CatalystX::Usul::TraitFor::ConnectInfo);
 
@@ -127,8 +127,9 @@ sub output_handler {
 }
 
 sub start_cron_jobs {
-   my $self    = shift;
-   my $trigger = FALSE;
+   my ($self, $sig_hndlr_pid) = @_;
+
+   my $trigger = $ENV{APP_MCP_DAEMON_AUTOTRIGGER} ? TRUE : FALSE;
    my $schema  = $self->schema;
    my $job_rs  = $schema->resultset( 'Job' );
    my $ev_rs   = $schema->resultset( 'Event' );
@@ -144,11 +145,12 @@ sub start_cron_jobs {
        and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
    }
 
-   return $trigger;
+   $trigger and trigger_output_handler( $sig_hndlr_pid );
+   return OK;
 }
 
 # Private methods
-sub _build_schema {
+sub _build__schema {
    my $self = shift;
    my $info = $self->get_connect_info( $self, { database => $self->database } );
 
@@ -173,24 +175,24 @@ sub _process_event {
 sub _start_job {
    my ($self, $ipc_ssh, $job) = @_; state $provisioned //= {};
 
-   my $runid  = bson64id;
-   my $host   = $job->host;
-   my $user   = $job->user;
-   my $cmd    = $job->command;
-   my $class  = $self->config->appclass;
-   my $token  = substr create_token, 0, 32;
-   my $args   = { appclass  => $class,
-                  command   => $cmd,
-                  debug     => $self->debug,
-                  directory => $job->directory,
-                  job_id    => $job->id,
-                  port      => $self->port,
-                  runid     => $runid,
-                  servers   => (join SPC, $self->servers),
-                  token     => $token };
-   my $calls  = [ [ 'dispatch', [ %{ $args } ] ], ];
-   my $key    = "${user}\@${host}";
-   my $lead   = log_leader 'debug', 'START', $runid;
+   my $runid = bson64id;
+   my $host  = $job->host;
+   my $user  = $job->user;
+   my $cmd   = $job->command;
+   my $class = $self->config->appclass;
+   my $token = substr create_token, 0, 32;
+   my $args  = { appclass  => $class,
+                 command   => $cmd,
+                 debug     => $self->debug,
+                 directory => $job->directory,
+                 job_id    => $job->id,
+                 port      => $self->port,
+                 runid     => $runid,
+                 servers   => (join SPC, $self->servers),
+                 token     => $token };
+   my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
+   my $lead  = log_leader 'debug', 'START', $runid;
+   my $key   = "${user}\@${host}";
 
    $self->log->debug( "${lead}${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
@@ -213,7 +215,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.2.$Rev: 13 $
+This documents version v0.2.$Rev: 14 $
 
 =head1 Synopsis
 

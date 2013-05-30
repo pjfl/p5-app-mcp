@@ -1,20 +1,21 @@
-# @(#)$Ident: Schema.pm 2013-05-25 10:48 pjf ;
+# @(#)$Ident: Schema.pm 2013-05-30 19:11 pjf ;
 
 package App::MCP::Schema;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
-use Class::Usul::Crypt qw(decrypt);
-use CatalystX::Usul::Constants;
+use App::MCP::Functions     qw(trigger_input_handler);
 use App::MCP::Schema::Authentication;
 use App::MCP::Schema::Schedule;
-use Storable           qw(thaw);
+use CatalystX::Usul::Constants;
+use Class::Usul::Crypt      qw(decrypt);
+use Class::Usul::Moose;
+use Storable                qw(thaw);
 use TryCatch;
 
 extends q(CatalystX::Usul::Schema);
 
-my ($schema_version) = $VERSION =~ m{ (\d+\.\d+) }mx;
+my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
 
 has '+database'       => default => q(schedule);
 
@@ -39,13 +40,11 @@ sub create_event {
    try        { $rs->create( thaw decrypt $event->token, $params->{event} ) }
    catch ($e) { $self->log->error( $e ); return (400, $e) }
 
-   my $pid = $ENV{MCP_DAEMON_PID}; $pid and kill 'USR1', $pid;
-
+   trigger_input_handler $ENV{MCP_DAEMON_PID};
    return (204, NUL);
 }
 
 # Private methods
-
 sub _build__schedule {
    my $self = shift; my $class = $self->schema_classes->{schedule};
 
@@ -68,7 +67,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 14 $
 
 =head1 Synopsis
 

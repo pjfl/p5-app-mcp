@@ -1,13 +1,14 @@
-# @(#)Ident: Periodical.pm 2013-05-30 00:10 pjf ;
+# @(#)Ident: Periodical.pm 2013-05-30 18:15 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
+use Scalar::Util            qw(weaken);
 
 extends q(App::MCP::Async::Base);
 
@@ -33,9 +34,11 @@ sub BUILD {
 
 # Public methods
 sub start {
-   my $self = shift;
+   my $self     = shift;
+   my $weak_ref = $self; weaken( $weak_ref );
+   my $code     = sub { $weak_ref->code->( $weak_ref ) };
 
-   $self->loop->start_timer( $self->pid, $self->code, $self->interval );
+   $self->loop->start_timer( $self->pid, $code, $self->interval );
    return;
 }
 
@@ -71,7 +74,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 11 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 14 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 
