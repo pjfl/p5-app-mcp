@@ -1,9 +1,9 @@
-# @(#)Ident: Function.pm 2013-05-31 19:20 pjf ;
+# @(#)Ident: Function.pm 2013-06-01 13:44 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use App::MCP::Async::Process;
@@ -38,14 +38,12 @@ has 'worker_objects' => is => 'ro',  isa => HashRef, default => sub { {} };
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $args = $self->$next( @args );
 
-   my $factory     = $args->{factory} or throw 'No factory';
    my $channels    = delete $args->{channels   };
    my $log_key     = delete $args->{log_key    };
    my $max_calls   = delete $args->{max_calls  };
    my $max_workers = delete $args->{max_workers};
-   my $attr        = { builder     => $factory->builder,
+   my $attr        = { builder     => $args->{builder},
                        description => $args->{description},
-                       loop        => $factory->loop,
                        worker_args => $args, };
 
    defined $channels  and $attr->{channels   } = $channels;
@@ -192,7 +190,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

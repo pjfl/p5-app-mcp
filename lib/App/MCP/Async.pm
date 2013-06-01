@@ -1,8 +1,8 @@
-# @(#)$Ident: Async.pm 2013-06-01 13:36 pjf ;
+# @(#)$Ident: Async.pm 2013-06-01 16:18 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
@@ -20,7 +20,7 @@ has 'builder' => is => 'ro',   isa => Object,
    handles    => [ qw(log) ], required => TRUE, weak_ref => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
-   default    => sub { App::MCP::Async::Loop->new( log => $_[ 0 ]->log ) };
+   default    => sub { App::MCP::Async::Loop->new };
 
 sub new_notifier {
    my ($self, %p) = @_; my $log = $self->log; my $notifier;
@@ -44,9 +44,9 @@ sub new_notifier {
    if ($p{type} eq 'function') {
       $desc    .= ' worker'; $ddesc = $desc.' pool';
       $notifier = App::MCP::Async::Function->new
-         (  code        => $code,
+         (  builder     => $self->builder,
+            code        => $code,
             description => $desc,
-            factory     => $self,
             log_key     => $key,
             max_calls   => $p{max_calls},
             max_workers => $p{max_workers},
@@ -57,17 +57,17 @@ sub new_notifier {
       $notifier = App::MCP::Async::Periodical->new
          (  absolute    => $p{absolute } // FALSE,
             autostart   => $p{autostart} // TRUE,
+            builder     => $self->builder,
             code        => $code,
             description => $desc,
-            factory     => $self,
             log_key     => $key,
             interval    => $p{interval} );
    }
    elsif ($p{type} eq 'process') {
       $notifier = App::MCP::Async::Process->new
-         (  code        => $code,
+         (  builder     => $self->builder,
+            code        => $code,
             description => $desc,
-            factory     => $self,
             log_key     => $key,
             on_exit     => $on_exit, );
    }
@@ -75,9 +75,9 @@ sub new_notifier {
       $notifier = App::MCP::Async::Routine->new
          (  after       => $p{after},
             autostart   => $p{autostart} // TRUE,
+            builder     => $self->builder,
             code        => $code,
             description => $desc,
-            factory     => $self,
             log_key     => $key,
             on_exit     => $on_exit, );
    }
@@ -102,7 +102,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $
+This documents version v0.2.$Rev: 16 $
 
 =head1 Synopsis
 

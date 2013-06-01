@@ -1,11 +1,11 @@
-# @(#)Ident: Loop.pm 2013-05-31 18:14 pjf ;
+# @(#)Ident: Loop.pm 2013-06-01 15:56 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -13,32 +13,34 @@ use Class::Usul::Functions  qw(arg_list);
 use English                 qw(-no_match_vars);
 use Scalar::Util            qw(blessed);
 
-my $handles = {}; my $signals = {}; my $timers = {}; my $watchers = {};
+my $_CACHE = {};
 
+# Construction
 sub new {
    my $self = shift; return bless arg_list( @_ ), blessed $self || $self;
 }
 
+# Public methods
+#   Higher level
 sub attach_signal {
-   my ($self, $signal, $cb) = @_;
+   my ($self, $signal, $cb) = @_; my $attaches;
 
-   unless ($self->{sigattaches}->{ $signal }) {
+   unless ($attaches = $self->_sigattaches->{ $signal }) {
       my @attaches; $self->watch_signal( $signal, sub {
          for my $attachment (@attaches) { $attachment->() }
       } );
 
-      $self->{sigattaches}->{ $signal } = \@attaches;
+      $attaches = $self->_sigattaches->{ $signal } = \@attaches;
    }
 
-   push @{ $self->{sigattaches}->{ $signal } }, $cb;
-   return \$self->{sigattaches}->{ $signal }->[ -1 ];
+   push @{ $attaches }, $cb; return \$attaches->[ -1 ];
 }
 
 sub detach_signal {
    my ($self, $signal, $id) = @_;
 
    # Can't use grep because we have to preserve the addresses
-   my $attaches = $self->{sigattaches}->{ $signal } or return;
+   my $attaches = $self->_sigattaches->{ $signal } or return;
 
    for (my $i = 0; $i < @{ $attaches }; ) {
       not $id and splice @{ $attaches }, $i, 1, () and next;
@@ -47,13 +49,14 @@ sub detach_signal {
    }
 
    scalar @{ $attaches } and return; $self->unwatch_signal( $signal );
-   delete $self->{sigattaches}->{ $signal }; return;
+   delete $self->_sigattaches->{ $signal }; return;
 }
 
+#  Lower level
 sub restart_timer {
-   my ($self, $id, $after, $interval) = @_; my $ref = $timers->{ $PID } ||= {};
+   my ($self, $id, $after, $interval) = @_; my $t = __cache( 'timers' );
 
-   my $cb = exists $ref->{ $id } ? $self->stop_timer( $id ) : 0;
+   my $cb = exists $t->{ $id } ? $self->stop_timer( $id ) : 0;
 
    return $cb ? $self->start_timer( $id, $cb, $after, $interval ) : undef;
 }
@@ -63,12 +66,16 @@ sub start {
 }
 
 sub start_timer {
-   my ($self, $id, $cb, $after, $interval) = @_;
+   my ($self, $id, $cb, $after, $interval) = @_; my $t = __cache( 'timers' );
 
-   my $t = $timers->{ $PID } ||= {}; my @args = (after => $after, cb => $cb);
+   defined $interval and $interval eq 'abs' and $after -= time;
+   defined $interval and $interval =~ m{ \A (?: abs | rel ) \z }mx
+       and $interval = 0;
+
+   $after > 0 or $after = 0; my @args = (after => $after, cb => $cb);
 
    not defined $interval and push @args, 'interval', $after;
-   defined $interval and $interval and push @args, 'interval', $interval;
+       defined $interval and $interval and push @args, 'interval', $interval;
    $t->{ $id } = [ $cb, AnyEvent->timer( @args ) ];
    return $t->{ $id }->[ 1 ];
 }
@@ -78,32 +85,27 @@ sub stop {
 }
 
 sub stop_timer {
-   my $cb; my $id = $_[ 1 ]; my $ref = $timers->{ $PID } ||= {};
+   my $id = $_[ 1 ]; my $t = __cache( 'timers' ); my $cb;
 
-   exists $ref->{ $id } and $cb = $ref->{ $id }->[ 0 ]
-      and undef $ref->{ $id }->[ 1 ];
+   exists $t->{ $id } and $cb = $t->{ $id }->[ 0 ] and undef $t->{ $id }->[ 1 ];
 
-   delete $ref->{ $id }; return $cb;
+   delete $t->{ $id }; return $cb;
 }
 
 sub unwatch_child {
-   my $ref = $watchers->{ $PID } ||= {}; return delete $ref->{ $_[ 1 ] };
+   return delete __cache( 'watchers' )->{ $_[ 1 ] };
 }
 
 sub unwatch_read_handle {
-   my $ref = $handles->{ $PID } ||= {}; return delete $ref->{ 'r'.$_[ 1 ] };
+   return delete __cache( 'handles' )->{ 'r'.$_[ 1 ] };
 }
 
 sub unwatch_signal {
-   my $ref = $signals->{ $PID } ||= {}; return delete $ref->{ $_[ 1 ] };
-}
-
-sub unwatch_time {
-   return $_[ 0 ]->stop_timer( $_[ 1 ] );
+   return delete __cache( 'signals' )->{ $_[ 1 ] };
 }
 
 sub unwatch_write_handle {
-   my $ref = $handles->{ $PID } ||= {}; return delete $ref->{ 'w'.$_[ 1 ] };
+   return delete __cache( 'handles' )->{ 'w'.$_[ 1 ] };
 }
 
 sub uuid {
@@ -111,9 +113,9 @@ sub uuid {
 }
 
 sub watch_child {
-   my ($self, $pid, $cb) = @_; my $w = $watchers->{ $PID } ||= {};
+   my ($self, $id, $cb) = @_; my $w = __cache( 'watchers' );
 
-   if ($pid == 0) {
+   if ($id == 0) {
       for (sort { $a <=> $b } keys %{ $w }) {
          $w->{ $_ }->[ 0 ]->recv; undef $w->{ $_ }->[ 0 ];
          undef $w->{ $_ }->[ 1 ]; delete $w->{ $_ };
@@ -122,37 +124,39 @@ sub watch_child {
       return;
    }
 
-   my $cv = $w->{ $pid }->[ 0 ] = AnyEvent->condvar;
+   my $cv = $w->{ $id }->[ 0 ] = AnyEvent->condvar;
 
-   return   $w->{ $pid }->[ 1 ] = AnyEvent->child( pid => $pid, cb => sub {
+   return   $w->{ $id }->[ 1 ] = AnyEvent->child( pid => $id, cb => sub {
       $cb->( @_ ); $cv->send } );
 }
 
 sub watch_read_handle {
-   my ($self, $fh, $cb) = @_; my $h = $handles->{ $PID } ||= {};
+   my ($self, $fh, $cb) = @_; my $h = __cache( 'handles' );
 
    return $h->{ "r${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
 }
 
 sub watch_signal {
-   my ($self, $signal, $cb) = @_; my $s = $signals->{ $PID } ||= {};
+   my ($self, $signal, $cb) = @_; my $s = __cache( 'signals' );
 
    return $s->{ $signal } = AnyEvent->signal( signal => $signal, cb => $cb );
 
 }
 
-sub watch_time {
-   my ($self, $id, $cb, $period, $flag) = @_;
-
-   my $after = $flag ? $period - time : $period; $after or return;
-
-   return $self->start_timer( $id, $cb, $after, 0 );
-}
-
 sub watch_write_handle {
-   my ($self, $fh, $cb) = @_; my $h = $handles->{ $PID } ||= {};
+   my ($self, $fh, $cb) = @_; my $h = __cache( 'handles' );
 
    return $h->{ "w${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'w' );
+}
+
+# Private methods
+sub _sigattaches {
+   return $_[ 0 ]->{_sigattaches} ||= {};
+}
+
+# Private functions
+sub __cache {
+   return $_CACHE->{ $PID }->{ $_[ 0 ] } ||= {};
 }
 
 1;
@@ -174,7 +178,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Loop>
+This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

@@ -1,8 +1,8 @@
-# @(#)Ident: Process.pm 2013-06-01 12:49 pjf ;
+# @(#)Ident: Process.pm 2013-06-01 14:07 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use Class::Usul::Moose;
@@ -30,12 +30,9 @@ has 'writer'    => is => 'ro', isa => FileHandle | Undef;
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
-   my $factory   = $attr->{factory} or throw 'No factory';
    my $args_pipe = delete $attr->{args_pipe};
    my $ret_pipe  = delete $attr->{ret_pipe };
 
-   $attr->{builder} = $factory->builder;
-   $attr->{loop   } = $factory->loop;
    $attr->{reader } = $ret_pipe->[ 0 ]  if $ret_pipe;
    $attr->{writer } = $args_pipe->[ 1 ] if $args_pipe;
    return $attr;
@@ -86,7 +83,7 @@ sub _build_pid {
    my $name = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
    my $code = sub { $PROGRAM_NAME = $name; $self->code->( $self ) };
 
-   return $self->builder->run_cmd( [ $code ], { async => TRUE } )->pid;
+   return $self->run_cmd( [ $code ], { async => TRUE } )->pid;
 }
 
 sub _watch_read_handle {
@@ -133,7 +130,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

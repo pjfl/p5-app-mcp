@@ -1,8 +1,8 @@
-# @(#)Ident: Periodical.pm 2013-06-01 13:12 pjf ;
+# @(#)Ident: Periodical.pm 2013-06-01 13:52 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
@@ -20,24 +20,13 @@ has 'code'     => is => 'ro', isa => CodeRef, required => TRUE;
 has 'interval' => is => 'ro', isa => PositiveInt, default => 1;
 
 # Construction
-around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
-
-   my $factory = delete $attr->{factory} or throw 'No factory';
-
-   $attr->{builder} = $factory->builder;
-   $attr->{loop   } = $factory->loop;
-   return $attr;
-};
-
 sub BUILD {
    my $self = shift; $self->autostart and $self->start; return;
 }
 
 # Public methods
 sub once {
-   my $self = shift; weaken( $self );
-   my $code = sub { $self->code->( $self ) };
+   my $self = shift; weaken( $self ); my $code = sub { $self->code->( $self ) };
    my $pid  = $self->pid;
 
    $self->loop->watch_time( $pid, $code, $self->interval, $self->absolute );
@@ -45,8 +34,7 @@ sub once {
 }
 
 sub start {
-   my $self = shift; weaken( $self );
-   my $code = sub { $self->code->( $self ) };
+   my $self = shift; weaken( $self ); my $code = sub { $self->code->( $self ) };
 
    $self->loop->start_timer( $self->pid, $code, $self->interval );
    return;
@@ -84,7 +72,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 
