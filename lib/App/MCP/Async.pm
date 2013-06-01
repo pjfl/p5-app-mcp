@@ -1,89 +1,59 @@
-# @(#)$Ident: Async.pm 2013-06-01 16:18 pjf ;
+# @(#)$Ident: Async.pm 2013-06-01 18:13 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
 
+use App::MCP::Async::Loop;
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
 use POSIX                   qw(WEXITSTATUS);
 
-use App::MCP::Async::Loop;
-use App::MCP::Async::Process;
-use App::MCP::Async::Function;
-use App::MCP::Async::Periodical;
-use App::MCP::Async::Routine;
-
+# Public attributes
 has 'builder' => is => 'ro',   isa => Object,
-   handles    => [ qw(log) ], required => TRUE, weak_ref => TRUE;
+   handles    => [ qw(ensure_class_loaded log) ], required => TRUE,
+   weak_ref   => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
    default    => sub { App::MCP::Async::Loop->new };
 
+# Public methods
 sub new_notifier {
-   my ($self, %p) = @_; my $log = $self->log; my $notifier;
+   my ($self, %p) = @_; my $log = $self->log;
 
-   my $code = $p{code}; my $ddesc = my $desc = $p{desc}; my $key = $p{key};
+   my $ddesc = my $desc = delete $p{desc}; my $key = delete $p{key};
+
+   my $log_level = delete $p{log_level} || 'info'; my $type = delete $p{type};
 
    my $logger = sub {
       my ($level, $id, $msg) = @_; my $lead = log_leader $level, $key, $id;
 
-      $log->$level( $lead.$msg ); return;
+      return $log->$level( $lead.$msg );
    };
 
-   my $_on_exit = $p{on_exit}; my $on_exit = sub {
+   my $_on_exit = delete $p{on_exit}; my $on_exit = sub {
       my $pid = shift; my $rv = WEXITSTATUS( shift );
 
-      $logger->( 'info', $pid, ucfirst "${desc} stopped rv ${rv}" );
+      $logger->( $log_level, $pid, ucfirst "${desc} stopped rv ${rv}" );
 
-      return $_on_exit ? $_on_exit->() : undef;
+      return $_on_exit ? $_on_exit->( $pid, $rv ) : undef;
    };
 
-   if ($p{type} eq 'function') {
-      $desc    .= ' worker'; $ddesc = $desc.' pool';
-      $notifier = App::MCP::Async::Function->new
-         (  builder     => $self->builder,
-            code        => $code,
-            description => $desc,
-            log_key     => $key,
-            max_calls   => $p{max_calls},
-            max_workers => $p{max_workers},
-            on_exit     => $on_exit,
-            on_return   => $p{on_return}, );
-   }
-   elsif ($p{type} eq 'periodical') {
-      $notifier = App::MCP::Async::Periodical->new
-         (  absolute    => $p{absolute } // FALSE,
-            autostart   => $p{autostart} // TRUE,
-            builder     => $self->builder,
-            code        => $code,
-            description => $desc,
-            log_key     => $key,
-            interval    => $p{interval} );
-   }
-   elsif ($p{type} eq 'process') {
-      $notifier = App::MCP::Async::Process->new
-         (  builder     => $self->builder,
-            code        => $code,
-            description => $desc,
-            log_key     => $key,
-            on_exit     => $on_exit, );
-   }
-   elsif ($p{type} eq 'routine') {
-      $notifier = App::MCP::Async::Routine->new
-         (  after       => $p{after},
-            autostart   => $p{autostart} // TRUE,
-            builder     => $self->builder,
-            code        => $code,
-            description => $desc,
-            log_key     => $key,
-            on_exit     => $on_exit, );
-   }
-   else { throw error => 'Notifier [_1] type unknown', args => [ $p{type} ] }
+   if ($type eq 'function') { $desc .= ' worker'; $ddesc = $desc.' pool' }
 
-   $logger->( 'info', $notifier->pid, "Started ${ddesc}" );
+   my $class    = (substr $type, 0, 1) eq '+'
+                ? (substr $type, 1) : __PACKAGE__.'::'.(ucfirst $type);
+
+   $self->ensure_class_loaded( $class );
+
+   my $notifier = $class->new( builder     => $self->builder,
+                               description => $desc,
+                               log_key     => $key,
+                               on_exit     => $on_exit, %p, );
+
+   $logger->( $log_level, $notifier->pid, "Started ${ddesc}" );
 
    return $notifier;
 }
@@ -102,7 +72,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 16 $
+This documents version v0.2.$Rev: 17 $
 
 =head1 Synopsis
 

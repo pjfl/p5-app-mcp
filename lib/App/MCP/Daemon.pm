@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-05-31 20:51 pjf ;
+# @(#)$Ident: Daemon.pm 2013-06-01 16:41 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -96,11 +96,11 @@ sub daemon {
 
    $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
-   $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
-   $loop->attach_signal( QUIT => sub { __terminate( $loop )        } );
-   $loop->attach_signal( TERM => sub { __terminate( $loop )        } );
-   $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
-   $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
+   $loop->watch_signal( HUP  => sub { $self->_hangup_handler      } );
+   $loop->watch_signal( QUIT => sub { __terminate( $loop )        } );
+   $loop->watch_signal( TERM => sub { __terminate( $loop )        } );
+   $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
+   $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
 
    $log->info( $lead.'Event loop started' );
    $loop->start; # Blocks here until __terminate is called
@@ -230,8 +230,8 @@ sub _stdio_file {
 sub __terminate {
    my $loop = shift;
 
-   $loop->detach_signal( 'QUIT' ); $loop->detach_signal( 'TERM' ); $loop->stop;
-
+   $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
+   $loop->stop;
    return;
 }
 
@@ -249,7 +249,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $
+This documents version v0.2.$Rev: 17 $
 
 =head1 Synopsis
 

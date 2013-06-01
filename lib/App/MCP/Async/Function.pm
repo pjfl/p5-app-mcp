@@ -1,9 +1,9 @@
-# @(#)Ident: Function.pm 2013-06-01 13:44 pjf ;
+# @(#)Ident: Function.pm 2013-06-01 16:57 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use App::MCP::Async::Process;
@@ -125,7 +125,7 @@ sub _new_worker {
 
    $self->channels =~ m{ i }mx
       and $args->{args_pipe} = __nonblocking_write_pipe_pair();
-   $self->channels =~ m{ o }mx
+  ($self->channels =~ m{ o }mx or exists $args->{on_return})
       and $args->{ret_pipe } = __nonblocking_write_pipe_pair();
    $args->{code       } = $self->_call_handler( $args, $id );
    $args->{description} = (lc $self->log_key)." worker ${index}";
@@ -190,7 +190,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 17 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

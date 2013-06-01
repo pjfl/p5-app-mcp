@@ -1,11 +1,11 @@
-# @(#)Ident: Loop.pm 2013-06-01 15:56 pjf ;
+# @(#)Ident: Loop.pm 2013-06-01 16:38 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -21,38 +21,6 @@ sub new {
 }
 
 # Public methods
-#   Higher level
-sub attach_signal {
-   my ($self, $signal, $cb) = @_; my $attaches;
-
-   unless ($attaches = $self->_sigattaches->{ $signal }) {
-      my @attaches; $self->watch_signal( $signal, sub {
-         for my $attachment (@attaches) { $attachment->() }
-      } );
-
-      $attaches = $self->_sigattaches->{ $signal } = \@attaches;
-   }
-
-   push @{ $attaches }, $cb; return \$attaches->[ -1 ];
-}
-
-sub detach_signal {
-   my ($self, $signal, $id) = @_;
-
-   # Can't use grep because we have to preserve the addresses
-   my $attaches = $self->_sigattaches->{ $signal } or return;
-
-   for (my $i = 0; $i < @{ $attaches }; ) {
-      not $id and splice @{ $attaches }, $i, 1, () and next;
-      $id == \$attaches->[ $i ] and splice @{ $attaches }, $i, 1, () and last;
-      $i++;
-   }
-
-   scalar @{ $attaches } and return; $self->unwatch_signal( $signal );
-   delete $self->_sigattaches->{ $signal }; return;
-}
-
-#  Lower level
 sub restart_timer {
    my ($self, $id, $after, $interval) = @_; my $t = __cache( 'timers' );
 
@@ -101,7 +69,21 @@ sub unwatch_read_handle {
 }
 
 sub unwatch_signal {
-   return delete __cache( 'signals' )->{ $_[ 1 ] };
+   my ($self, $signal, $id) = @_;
+
+   # Can't use grep because we have to preserve the addresses
+   my $attaches = $self->_sigattaches->{ $signal } or return;
+
+   for (my $i = 0; $i < @{ $attaches }; ) {
+      not $id and splice @{ $attaches }, $i, 1, () and next;
+      $id == \$attaches->[ $i ] and splice @{ $attaches }, $i, 1, () and last;
+      $i++;
+   }
+
+   scalar @{ $attaches } and return;
+   delete $self->_sigattaches->{ $signal };
+   delete __cache( 'signals' )->{ $signal };
+   return;
 }
 
 sub unwatch_write_handle {
@@ -137,10 +119,19 @@ sub watch_read_handle {
 }
 
 sub watch_signal {
-   my ($self, $signal, $cb) = @_; my $s = __cache( 'signals' );
+   my ($self, $signal, $cb) = @_; my $attaches;
 
-   return $s->{ $signal } = AnyEvent->signal( signal => $signal, cb => $cb );
+   unless ($attaches = $self->_sigattaches->{ $signal }) {
+      my $s = __cache( 'signals' ); my @attaches;
 
+      $s->{ $signal } = AnyEvent->signal( signal => $signal, cb => sub {
+         for my $attachment (@attaches) { $attachment->() }
+      } );
+
+      $attaches = $self->_sigattaches->{ $signal } = \@attaches;
+   }
+
+   push @{ $attaches }, $cb; return \$attaches->[ -1 ];
 }
 
 sub watch_write_handle {
@@ -178,7 +169,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Loop>
+This documents version v0.2.$Rev: 17 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 
