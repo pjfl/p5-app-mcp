@@ -1,15 +1,14 @@
-# @(#)$Ident: Daemon.pm 2013-05-30 19:40 pjf ;
+# @(#)$Ident: Daemon.pm 2013-05-31 20:51 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
 use App::MCP::DaemonControl;
 use App::MCP::Functions          qw(log_leader);
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(elapsed);
 use Class::Usul::Moose;
 use English                      qw(-no_match_vars);
 use File::DataClass::Constraints qw(File Path);
@@ -89,24 +88,23 @@ around 'run_chain' => sub {
 
 # Public methods
 sub daemon {
-   my $self = shift; my $loop = $self->loop;
+   my $self = shift; my $log = $self->log; my $loop = $self->loop;
 
    my $lead = log_leader 'info', $self->config->log_key;
 
-   my $stop = sub { $loop->detach_signal( 'TERM' ); $loop->stop };
-
-   $self->log->info( $lead.'Starting event loop' ); $self->_set_program_name;
+   $log->info( $lead.'Starting event loop' ); $self->_set_program_name;
 
    $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
 
-   $loop->attach_signal( TERM => $stop );
+   $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
+   $loop->attach_signal( QUIT => sub { __terminate( $loop )        } );
+   $loop->attach_signal( TERM => sub { __terminate( $loop )        } );
    $loop->attach_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
    $loop->attach_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
-   $loop->attach_signal( HUP  => sub { $self->_hangup_handler      } );
 
-   $self->log->info( $lead.'Event loop started' );
-   $loop->run; # Blocks here until loop stop is called
-   $self->log->info( $lead.'Stopping event loop' );
+   $log->info( $lead.'Event loop started' );
+   $loop->start; # Blocks here until __terminate is called
+   $log->info( $lead.'Stopping event loop' );
 
    $self->clock_tick->stop;
    $self->cron->stop;
@@ -115,7 +113,7 @@ sub daemon {
    $self->op_ev_hndlr->stop;
    $loop->watch_child( 0 );
 
-   $self->log->info( $lead.'Event loop stopped' );
+   $log->info( $lead.'Event loop stopped' );
    exit OK;
 }
 
@@ -129,12 +127,12 @@ sub _build__async_factory {
 }
 
 sub _build__clock_tick {
-   my $self = shift; my $cron = $self->cron;
+   my $self = shift; my $app = $self->app;
+
+   my $cron = $self->cron; my $key = $self->config->log_key;
 
    return $self->async_factory->new_notifier
-      (  code     => sub {
-            my $lead = log_leader 'debug', $_[ 0 ]->log_key, elapsed;
-            $_[ 0 ]->log->debug( $lead.'Tick' ); $cron->trigger },
+      (  code     => sub { $app->clock_tick_handler( $key, $cron ) },
          interval => $self->config->clock_tick_interval,
          desc     => 'clock tick handler',
          key      => 'CLOCK',
@@ -145,7 +143,7 @@ sub _build__cron {
    my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
-      (  code => sub { $app->start_cron_jobs( $daemon_pid ) },
+      (  code => sub { $app->cron_job_handler( $daemon_pid ) },
          desc => 'cron job handler',
          key  => 'CRON',
          type => 'routine' );
@@ -228,6 +226,15 @@ sub _stdio_file {
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 }
 
+# Private functions
+sub __terminate {
+   my $loop = shift;
+
+   $loop->detach_signal( 'QUIT' ); $loop->detach_signal( 'TERM' ); $loop->stop;
+
+   return;
+}
+
 __PACKAGE__->meta->make_immutable;
 
 1;
@@ -242,7 +249,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 14 $
+This documents version v0.2.$Rev: 15 $
 
 =head1 Synopsis
 

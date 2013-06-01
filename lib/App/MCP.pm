@@ -1,14 +1,14 @@
-# @(#)$Ident: MCP.pm 2013-05-30 18:27 pjf ;
+# @(#)$Ident: MCP.pm 2013-05-31 13:52 pjf ;
 
 package App::MCP;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader trigger_output_handler);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(create_token bson64id);
+use Class::Usul::Functions  qw(bson64id create_token elapsed);
 use IPC::PerlSSH;
 use TryCatch;
 
@@ -33,6 +33,36 @@ has '_schema'       => is => 'lazy', isa => Object, init_arg => undef,
 with q(CatalystX::Usul::TraitFor::ConnectInfo);
 
 # Public methods
+sub clock_tick_handler {
+   my ($self, $key, $cron) = @_; my $lead = log_leader 'debug', $key, elapsed;
+
+   $self->log->debug( $lead.'Tick' ); $cron->trigger;
+   return;
+}
+
+sub cron_job_handler {
+   my ($self, $sig_hndlr_pid) = @_;
+
+   my $trigger = $ENV{APP_MCP_DAEMON_AUTOTRIGGER} ? TRUE : FALSE;
+   my $schema  = $self->schema;
+   my $job_rs  = $schema->resultset( 'Job' );
+   my $ev_rs   = $schema->resultset( 'Event' );
+   my $jobs    = $job_rs->search( {
+      'state.name'       => 'active',
+      'crontab'          => { '!=' => undef   }, }, {
+         'join'          => 'state' } )->search_related( 'events', {
+            'transition' => { '!=' => 'start' } } );
+
+   for my $job (grep { $job_rs->should_start_now( $_ ) } $jobs->all) {
+      (not $job->condition or $job_rs->eval_condition( $job )->[ 0 ])
+       and $trigger = TRUE
+       and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
+   }
+
+   $trigger and trigger_output_handler( $sig_hndlr_pid );
+   return OK;
+}
+
 sub input_handler {
    my ($self, $sig_hndlr_pid) = @_; my $trigger = TRUE;
 
@@ -126,29 +156,6 @@ sub output_handler {
    return OK;
 }
 
-sub start_cron_jobs {
-   my ($self, $sig_hndlr_pid) = @_;
-
-   my $trigger = $ENV{APP_MCP_DAEMON_AUTOTRIGGER} ? TRUE : FALSE;
-   my $schema  = $self->schema;
-   my $job_rs  = $schema->resultset( 'Job' );
-   my $ev_rs   = $schema->resultset( 'Event' );
-   my $jobs    = $job_rs->search( {
-      'state.name'       => 'active',
-      'crontab'          => { '!=' => undef   }, }, {
-         'join'          => 'state' } )->search_related( 'events', {
-            'transition' => { '!=' => 'start' } } );
-
-   for my $job (grep { $job_rs->should_start_now( $_ ) } $jobs->all) {
-      (not $job->condition or $job_rs->eval_condition( $job )->[ 0 ])
-       and $trigger = TRUE
-       and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
-   }
-
-   $trigger and trigger_output_handler( $sig_hndlr_pid );
-   return OK;
-}
-
 # Private methods
 sub _build__schema {
    my $self = shift;
@@ -160,15 +167,14 @@ sub _build__schema {
 }
 
 sub _process_event {
-   my ($self, $js_rs, $event) = @_; my $r;
+   my ($self, $js_rs, $event) = @_; my $cols = { $event->get_inflated_columns };
 
-   my $cols = { $event->get_inflated_columns };
+   my $r    = $js_rs->create_and_or_update( $event ) or return $cols;
 
-   if ($r = $js_rs->create_and_or_update( $event )) {
-      $self->log->debug( (uc $r->[ 0 ]).'['.$r->[ 1 ].'] '.$r->[ 2 ] );
-      $cols->{rejected} = $r->[ 2 ]->class;
-   }
+   my $lead = log_leader 'debug', uc $r->[ 0 ], $r->[ 1 ];
 
+   $self->log->debug( $lead.$r->[ 2 ] );
+   $cols->{rejected} = $r->[ 2 ]->class;
    return $cols;
 }
 
@@ -215,7 +221,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.2.$Rev: 14 $
+This documents version v0.2.$Rev: 15 $
 
 =head1 Synopsis
 

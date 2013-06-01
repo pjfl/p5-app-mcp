@@ -1,9 +1,9 @@
-# @(#)Ident: Function.pm 2013-05-30 00:18 pjf ;
+# @(#)Ident: Function.pm 2013-05-31 19:20 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use App::MCP::Async::Process;
@@ -71,9 +71,9 @@ sub call {
 sub stop {
    my $self = shift; $self->_set_is_running( FALSE );
 
-   my $lead = log_leader 'info', $self->log_key, $self->pid;
+   my $lead = log_leader 'debug', $self->log_key, $self->pid;
 
-   $self->log->info( $lead.'Stopping '.$self->description.' pool' );
+   $self->log->debug( $lead.'Stopping '.$self->description.' pool' );
 
    my $workers = $self->worker_objects;
 
@@ -115,7 +115,7 @@ sub _call_handler {
                       $writer and __send_rv( $writer, $log, $id, $rv ) }
          catch ($e) { $log->error( $lead.$e ) }
 
-         $max_calls and ++$count > $max_calls and return OK;
+         $max_calls and ++$count >= $max_calls and return OK;
       }
    }
 }
@@ -192,7 +192,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 11 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

@@ -1,6 +1,7 @@
 Revision history for App::MCP
 
-0.2.14    2013-05-30 20:43:03
+0.2.15    2013-06-01 14:39:06
+          - Added more ::Loop methods
           - Made cron jobs a routine
           - Set PROGRAM_NAME for ps output
           - Separated app from ::Daemon

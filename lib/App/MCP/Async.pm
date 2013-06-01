@@ -1,8 +1,8 @@
-# @(#)$Ident: Async.pm 2013-05-29 23:23 pjf ;
+# @(#)$Ident: Async.pm 2013-06-01 13:36 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
@@ -55,7 +55,8 @@ sub new_notifier {
    }
    elsif ($p{type} eq 'periodical') {
       $notifier = App::MCP::Async::Periodical->new
-         (  autostart   => $p{autostart} // TRUE,
+         (  absolute    => $p{absolute } // FALSE,
+            autostart   => $p{autostart} // TRUE,
             code        => $code,
             description => $desc,
             factory     => $self,
@@ -101,7 +102,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 11 $
+This documents version v0.2.$Rev: 15 $
 
 =head1 Synopsis
 

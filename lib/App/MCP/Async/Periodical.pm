@@ -1,8 +1,8 @@
-# @(#)Ident: Periodical.pm 2013-05-30 18:15 pjf ;
+# @(#)Ident: Periodical.pm 2013-06-01 13:12 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
@@ -13,6 +13,8 @@ use Scalar::Util            qw(weaken);
 extends q(App::MCP::Async::Base);
 
 # Public attributes
+has 'absolute' => is => 'ro', isa => Bool, default => FALSE;
+
 has 'code'     => is => 'ro', isa => CodeRef, required => TRUE;
 
 has 'interval' => is => 'ro', isa => PositiveInt, default => 1;
@@ -33,19 +35,27 @@ sub BUILD {
 }
 
 # Public methods
+sub once {
+   my $self = shift; weaken( $self );
+   my $code = sub { $self->code->( $self ) };
+   my $pid  = $self->pid;
+
+   $self->loop->watch_time( $pid, $code, $self->interval, $self->absolute );
+   return;
+}
+
 sub start {
-   my $self     = shift;
-   my $weak_ref = $self; weaken( $weak_ref );
-   my $code     = sub { $weak_ref->code->( $weak_ref ) };
+   my $self = shift; weaken( $self );
+   my $code = sub { $self->code->( $self ) };
 
    $self->loop->start_timer( $self->pid, $code, $self->interval );
    return;
 }
 
 sub stop {
-   my $self = shift; my $lead = log_leader 'info', $self->log_key, $self->pid;
+   my $self = shift; my $lead = log_leader 'debug', $self->log_key, $self->pid;
 
-   $self->log->info( $lead.'Stopping '.$self->description );
+   $self->log->debug( $lead.'Stopping '.$self->description );
    $self->loop->stop_timer( $self->pid );
    return;
 }
@@ -74,7 +84,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 14 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

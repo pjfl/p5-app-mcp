@@ -1,11 +1,11 @@
-# @(#)Ident: Loop.pm 2013-05-29 14:41 pjf ;
+# @(#)Ident: Loop.pm 2013-05-31 18:14 pjf ;
 
 package App::MCP::Async::Loop;
 
 use strict;
 use warnings;
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -20,28 +20,57 @@ sub new {
 }
 
 sub attach_signal {
-   my ($self, $sig, $cb) = @_;
+   my ($self, $signal, $cb) = @_;
 
-   $signals->{ $PID }->{ $sig } = AnyEvent->signal( signal => $sig, cb => $cb );
+   unless ($self->{sigattaches}->{ $signal }) {
+      my @attaches; $self->watch_signal( $signal, sub {
+         for my $attachment (@attaches) { $attachment->() }
+      } );
 
-   return;
+      $self->{sigattaches}->{ $signal } = \@attaches;
+   }
+
+   push @{ $self->{sigattaches}->{ $signal } }, $cb;
+   return \$self->{sigattaches}->{ $signal }->[ -1 ];
 }
 
 sub detach_signal {
-   my ($self, $sig) = @_; return delete $signals->{ $PID }->{ $sig };
+   my ($self, $signal, $id) = @_;
+
+   # Can't use grep because we have to preserve the addresses
+   my $attaches = $self->{sigattaches}->{ $signal } or return;
+
+   for (my $i = 0; $i < @{ $attaches }; ) {
+      not $id and splice @{ $attaches }, $i, 1, () and next;
+      $id == \$attaches->[ $i ] and splice @{ $attaches }, $i, 1, () and last;
+      $i++;
+   }
+
+   scalar @{ $attaches } and return; $self->unwatch_signal( $signal );
+   delete $self->{sigattaches}->{ $signal }; return;
 }
 
-sub run {
-   my $self = shift; $self->{cv} = AnyEvent->condvar; $self->{cv}->recv; return;
+sub restart_timer {
+   my ($self, $id, $after, $interval) = @_; my $ref = $timers->{ $PID } ||= {};
+
+   my $cb = exists $ref->{ $id } ? $self->stop_timer( $id ) : 0;
+
+   return $cb ? $self->start_timer( $id, $cb, $after, $interval ) : undef;
+}
+
+sub start {
+   my $self = shift; (local $self->{cv} = AnyEvent->condvar)->recv; return;
 }
 
 sub start_timer {
-   my ($self, $id, $cb, $period) = @_;
+   my ($self, $id, $cb, $after, $interval) = @_;
 
-   $timers->{ $PID }->{ $id } = AnyEvent->timer
-      ( after => $period, cb => $cb, interval => $period );
+   my $t = $timers->{ $PID } ||= {}; my @args = (after => $after, cb => $cb);
 
-   return;
+   not defined $interval and push @args, 'interval', $after;
+   defined $interval and $interval and push @args, 'interval', $interval;
+   $t->{ $id } = [ $cb, AnyEvent->timer( @args ) ];
+   return $t->{ $id }->[ 1 ];
 }
 
 sub stop {
@@ -49,11 +78,32 @@ sub stop {
 }
 
 sub stop_timer {
-   my ($self, $id) = @_; return delete $timers->{ $PID }->{ $id };
+   my $cb; my $id = $_[ 1 ]; my $ref = $timers->{ $PID } ||= {};
+
+   exists $ref->{ $id } and $cb = $ref->{ $id }->[ 0 ]
+      and undef $ref->{ $id }->[ 1 ];
+
+   delete $ref->{ $id }; return $cb;
+}
+
+sub unwatch_child {
+   my $ref = $watchers->{ $PID } ||= {}; return delete $ref->{ $_[ 1 ] };
 }
 
 sub unwatch_read_handle {
-   my ($self, $id) = @_; return delete $handles->{ $PID }->{ "r${id}" };
+   my $ref = $handles->{ $PID } ||= {}; return delete $ref->{ 'r'.$_[ 1 ] };
+}
+
+sub unwatch_signal {
+   my $ref = $signals->{ $PID } ||= {}; return delete $ref->{ $_[ 1 ] };
+}
+
+sub unwatch_time {
+   return $_[ 0 ]->stop_timer( $_[ 1 ] );
+}
+
+sub unwatch_write_handle {
+   my $ref = $handles->{ $PID } ||= {}; return delete $ref->{ 'w'.$_[ 1 ] };
 }
 
 sub uuid {
@@ -64,24 +114,45 @@ sub watch_child {
    my ($self, $pid, $cb) = @_; my $w = $watchers->{ $PID } ||= {};
 
    if ($pid == 0) {
-      $w->{ $_ }->[ 0 ]->recv for (sort { $a <=> $b } keys %{ $w });
-   }
-   else {
-      my $cv = $w->{ $pid }->[ 0 ] = AnyEvent->condvar;
+      for (sort { $a <=> $b } keys %{ $w }) {
+         $w->{ $_ }->[ 0 ]->recv; undef $w->{ $_ }->[ 0 ];
+         undef $w->{ $_ }->[ 1 ]; delete $w->{ $_ };
+      }
 
-      $w->{ $pid }->[ 1 ] = AnyEvent->child( pid => $pid, cb => sub {
-         $cb->( @_ ); $cv->send } );
+      return;
    }
 
-   return;
+   my $cv = $w->{ $pid }->[ 0 ] = AnyEvent->condvar;
+
+   return   $w->{ $pid }->[ 1 ] = AnyEvent->child( pid => $pid, cb => sub {
+      $cb->( @_ ); $cv->send } );
 }
 
 sub watch_read_handle {
-   my ($self, $id, $fh, $cb) = @_; my $h = $handles->{ $PID };
+   my ($self, $fh, $cb) = @_; my $h = $handles->{ $PID } ||= {};
 
-   $h->{ "r${id}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
+   return $h->{ "r${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
+}
 
-   return;
+sub watch_signal {
+   my ($self, $signal, $cb) = @_; my $s = $signals->{ $PID } ||= {};
+
+   return $s->{ $signal } = AnyEvent->signal( signal => $signal, cb => $cb );
+
+}
+
+sub watch_time {
+   my ($self, $id, $cb, $period, $flag) = @_;
+
+   my $after = $flag ? $period - time : $period; $after or return;
+
+   return $self->start_timer( $id, $cb, $after, 0 );
+}
+
+sub watch_write_handle {
+   my ($self, $fh, $cb) = @_; my $h = $handles->{ $PID } ||= {};
+
+   return $h->{ "w${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'w' );
 }
 
 1;
@@ -103,7 +174,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 8 $ of L<App::MCP::Async::Loop>
+This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

@@ -1,8 +1,8 @@
-# @(#)Ident: Process.pm 2013-05-30 14:11 pjf ;
+# @(#)Ident: Process.pm 2013-06-01 12:49 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
 use Class::Usul::Moose;
@@ -73,19 +73,18 @@ sub send {
 sub stop {
    my $self = shift; $self->is_running or return;
 
-   my $lead = log_leader 'info', $self->log_key, $self->pid;
+   my $lead = log_leader 'debug', $self->log_key, $self->pid;
 
-   $self->log->info( $lead.'Stopping '.$self->description );
+   $self->log->debug( $lead.'Stopping '.$self->description );
    CORE::kill 'TERM', $self->pid;
    return;
 }
 
 # Private methods
 sub _build_pid {
-   my $self     = shift;
-   my $weak_ref = $self; weaken( $weak_ref );
-   my $name     = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
-   my $code     = sub { $PROGRAM_NAME = $name; $weak_ref->code->( $weak_ref ) };
+   my $self = shift; weaken( $self );
+   my $name = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
+   my $code = sub { $PROGRAM_NAME = $name; $self->code->( $self ) };
 
    return $self->builder->run_cmd( [ $code ], { async => TRUE } )->pid;
 }
@@ -97,7 +96,7 @@ sub _watch_read_handle {
 
    my $reader = $self->reader;
 
-   $self->loop->watch_read_handle( $pid, $reader, sub {
+   $self->loop->watch_read_handle( $reader, sub {
       my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
       defined ($rv = log_recv_error( $log, $pid, $red )) and return $rv;
@@ -134,7 +133,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 13 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 
