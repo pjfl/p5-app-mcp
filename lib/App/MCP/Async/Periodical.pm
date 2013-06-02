@@ -1,8 +1,8 @@
-# @(#)Ident: Periodical.pm 2013-06-01 13:52 pjf ;
+# @(#)Ident: Periodical.pm 2013-06-02 14:29 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader);
 use Class::Usul::Moose;
@@ -13,44 +13,62 @@ use Scalar::Util            qw(weaken);
 extends q(App::MCP::Async::Base);
 
 # Public attributes
-has 'absolute' => is => 'ro', isa => Bool, default => FALSE;
+has 'time_spec' => is => 'ro', isa => SimpleStr | Undef;
 
-has 'code'     => is => 'ro', isa => CodeRef, required => TRUE;
+has 'code'      => is => 'ro', isa => CodeRef, required => TRUE;
 
-has 'interval' => is => 'ro', isa => PositiveInt, default => 1;
+has 'interval'  => is => 'ro', isa => PositiveInt, default => 1;
 
 # Construction
 sub BUILD {
-   my $self = shift; $self->autostart and $self->start; return;
+   my $self = shift; $self->autostart or return;
+
+   if ($self->time_spec) { $self->once } else { $self->start }
+
+   return;
 }
 
 # Public methods
 sub once {
-   my $self = shift; weaken( $self ); my $code = sub { $self->code->( $self ) };
-   my $pid  = $self->pid;
+   my $self = shift; weaken( $self ); my $cb = sub { $self->code->( $self ) };
 
-   $self->loop->watch_time( $pid, $code, $self->interval, $self->absolute );
+   my $flag = $self->time_spec or return $self->_time_spec_error;
+
+   $self->loop->watch_time( $self->pid, $cb, $self->interval, $flag ); return;
+}
+
+sub restart {
+   my $self = shift; my $cb = $self->loop->unwatch_time( $self->pid );
+
+   my $flag = $self->time_spec;
+
+   $cb and $self->loop->watch_time( $self->pid, $cb, $self->interval, $flag );
    return;
 }
 
 sub start {
-   my $self = shift; weaken( $self ); my $code = sub { $self->code->( $self ) };
+   my $self = shift; weaken( $self ); my $cb = sub { $self->code->( $self ) };
 
-   $self->loop->start_timer( $self->pid, $code, $self->interval );
-   return;
+   $self->loop->watch_time( $self->pid, $cb, $self->interval ); return;
 }
 
 sub stop {
    my $self = shift; my $lead = log_leader 'debug', $self->log_key, $self->pid;
 
    $self->log->debug( $lead.'Stopping '.$self->description );
-   $self->loop->stop_timer( $self->pid );
-   return;
+
+   $self->loop->unwatch_time( $self->pid ); return;
 }
 
 # Private methdods
 sub _build_pid {
    return $_[ 0 ]->loop->uuid;
+}
+
+sub _time_spec_error {
+   my $self = shift; my $lead = log_leader 'error', $self->log_key, $self->pid;
+
+   $self->log->error( $lead.'Flag time_spec must be set' ); return;
 }
 
 1;
@@ -72,7 +90,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

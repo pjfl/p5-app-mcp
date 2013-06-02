@@ -1,8 +1,8 @@
-# @(#)$Ident: Async.pm 2013-06-01 18:13 pjf ;
+# @(#)$Ident: Async.pm 2013-06-01 20:41 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
 
 use App::MCP::Async::Loop;
 use App::MCP::Functions     qw(log_leader);
@@ -13,8 +13,7 @@ use POSIX                   qw(WEXITSTATUS);
 
 # Public attributes
 has 'builder' => is => 'ro',   isa => Object,
-   handles    => [ qw(ensure_class_loaded log) ], required => TRUE,
-   weak_ref   => TRUE;
+   handles    => [ qw(ensure_class_loaded log) ], required => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
    default    => sub { App::MCP::Async::Loop->new };
@@ -72,7 +71,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 17 $
+This documents version v0.2.$Rev: 18 $
 
 =head1 Synopsis
 

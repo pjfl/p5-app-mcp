@@ -1,15 +1,15 @@
-# @(#)Ident: Functions.pm 2013-05-30 19:04 pjf ;
+# @(#)Ident: Functions.pm 2013-06-02 14:20 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 14 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 18 $ =~ /\d+/gmx );
 
 my @_functions;
 
 BEGIN {
-   @_functions = ( qw(log_leader log_recv_error read_exactly
+   @_functions = ( qw(log_leader read_exactly recv_arg_error recv_rv_error
                       trigger_input_handler trigger_output_handler) );
 }
 
@@ -30,21 +30,6 @@ sub log_leader ($$;$) {
    return "${dkey}[${did}]: ";
 }
 
-sub log_recv_error ($$$) {
-   my ($log, $id, $red) = @_;
-
-   unless (defined $red) {
-      $log->error( log_leader( 'error', 'RECV', $id ).$OS_ERROR );
-      return FAILED;
-   }
-
-   unless (length $red) {
-      $log->info( log_leader( 'info', 'RECV', $id ).'EOF' ); return OK;
-   }
-
-   return;
-}
-
 sub read_exactly ($$$) {
    $_[ 1 ] = q();
 
@@ -55,6 +40,14 @@ sub read_exactly ($$$) {
    }
 
    return $_[ 2 ];
+}
+
+sub recv_arg_error ($$$) {
+   my ($log, $id, $red) = @_; return __recv_error( $log, 'RCVARG', $id, $red );
+}
+
+sub recv_rv_error ($$$) {
+   my ($log, $id, $red) = @_; return __recv_error( $log, 'RECVRV', $id, $red );
 }
 
 sub trigger_input_handler (;$) {
@@ -76,6 +69,20 @@ sub __padkey {
    return pad $key, $w, SPC, 'left';
 }
 
+sub __recv_error {
+   my ($log, $key, $id, $red) = @_;
+
+   unless (defined $red) {
+      $log->error( log_leader( 'error', $key, $id ).$OS_ERROR ); return FAILED;
+   }
+
+   unless (length $red) {
+      $log->info( log_leader( 'info', $key, $id ).'EOF' ); return OK;
+   }
+
+   return;
+}
+
 1;
 
 __END__
@@ -95,7 +102,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 14 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 18 $ of L<App::MCP::Functions>
 
 =head1 Description
 

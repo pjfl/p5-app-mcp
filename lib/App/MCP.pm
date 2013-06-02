@@ -1,9 +1,9 @@
-# @(#)$Ident: MCP.pm 2013-05-31 13:52 pjf ;
+# @(#)$Ident: MCP.pm 2013-06-01 22:37 pjf ;
 
 package App::MCP;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader trigger_output_handler);
 use Class::Usul::Moose;
@@ -203,7 +203,7 @@ sub _start_job {
    $self->log->debug( "${lead}${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
 
-   $ipc_ssh->call( $runid, $user, $host, $calls );
+   $ipc_ssh->call( $runid, $user, $host, $calls ); # Calls ipc_ssh_handler
 
    $provisioned->{ $key } = TRUE;
    return ($runid, $token);
@@ -221,7 +221,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $
+This documents version v0.2.$Rev: 18 $
 
 =head1 Synopsis
 

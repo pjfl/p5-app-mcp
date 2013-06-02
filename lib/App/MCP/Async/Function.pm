@@ -1,11 +1,11 @@
-# @(#)Ident: Function.pm 2013-06-01 16:57 pjf ;
+# @(#)Ident: Function.pm 2013-06-02 14:15 pjf ;
 
 package App::MCP::Async::Function;
 
 use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
+use App::MCP::Functions     qw(log_leader read_exactly recv_arg_error);
 use App::MCP::Async::Process;
 use Class::Usul::Moose;
 use Class::Usul::Constants;
@@ -91,12 +91,12 @@ sub _call_handler {
 
    my $log    = $self->log; my $max_calls = $self->max_calls;
 
-   my $reader = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : undef;
+   my $reader = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : FALSE;
 
-   my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : undef;
+   my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : FALSE;
 
    return sub {
-      my $count = 0; my $lead = log_leader 'error', 'EXEC', $id;
+      my $count = 0; my $lead = log_leader 'error', 'EXCODE', $id;
 
       while (TRUE) {
          my $args = undef; my $rv = undef;
@@ -104,9 +104,9 @@ sub _call_handler {
          if ($reader) {
             my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-            defined ($rv = log_recv_error( $log, $id, $red )) and return $rv;
+            defined ($rv = recv_arg_error( $log, $id, $red )) and return $rv;
             $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = log_recv_error( $log, $id, $red )) and return $rv;
+            defined ($rv = recv_arg_error( $log, $id, $red )) and return $rv;
          }
 
          try        { $rv = $code->( @{ $args ? thaw $args : [] } );
@@ -190,7 +190,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 17 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

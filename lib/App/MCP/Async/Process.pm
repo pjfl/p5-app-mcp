@@ -1,10 +1,10 @@
-# @(#)Ident: Process.pm 2013-06-01 14:07 pjf ;
+# @(#)Ident: Process.pm 2013-06-02 14:15 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 16 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader log_recv_error read_exactly);
+use App::MCP::Functions     qw(log_leader read_exactly recv_rv_error);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(throw);
@@ -33,13 +33,13 @@ around 'BUILDARGS' => sub {
    my $args_pipe = delete $attr->{args_pipe};
    my $ret_pipe  = delete $attr->{ret_pipe };
 
-   $attr->{reader } = $ret_pipe->[ 0 ]  if $ret_pipe;
-   $attr->{writer } = $args_pipe->[ 1 ] if $args_pipe;
+   $args_pipe and $attr->{writer} = $args_pipe->[ 1 ];
+   $ret_pipe  and $attr->{reader} =  $ret_pipe->[ 0 ];
    return $attr;
 };
 
 sub BUILD {
-   my $self = shift; $self->pid; # Trigger lazy build
+   my $self = shift;
 
    $self->on_exit   and $self->loop->watch_child( $self->pid, $self->on_exit );
    $self->on_return and $self->reader and $self->_watch_read_handle;
@@ -60,7 +60,7 @@ sub send {
    my $rec  = nfreeze [ @args ];
    my $buf  = pack( 'I', length $rec ).$rec;
    my $len  = $self->writer->syswrite( $buf, length $buf );
-   my $lead = log_leader 'error', 'SEND', $args[ 0 ];
+   my $lead = log_leader 'error', 'SNDARG', $args[ 0 ];
 
    defined $len or $self->log->error( $lead.$OS_ERROR );
 
@@ -89,16 +89,16 @@ sub _build_pid {
 sub _watch_read_handle {
    my $self   = shift; my $code = $self->on_return; my $pid = $self->pid;
 
-   my $lead   = log_leader 'error', 'RECV', $pid; my $log = $self->log;
+   my $lead   = log_leader 'error', 'EXECRV', $pid; my $log = $self->log;
 
    my $reader = $self->reader;
 
    $self->loop->watch_read_handle( $reader, sub {
       my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-      defined ($rv = log_recv_error( $log, $pid, $red )) and return $rv;
+      defined ($rv = recv_rv_error( $log, $pid, $red )) and return $rv;
       $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-      defined ($rv = log_recv_error( $log, $pid, $red )) and return $rv;
+      defined ($rv = recv_rv_error( $log, $pid, $red )) and return $rv;
 
       try        { $code->( @{ $args ? thaw $args : [] } ) }
       catch ($e) { $log->error( $lead.$e ) }
@@ -130,7 +130,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 16 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 
