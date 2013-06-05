@@ -1,15 +1,17 @@
-# @(#)$Ident: Job.pm 2013-04-30 23:29 pjf ;
+# @(#)$Ident: Job.pm 2013-06-04 23:50 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use strict;
 use warnings;
-use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use parent  qw(App::MCP::Schema::Base);
+use feature                 qw(state);
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use parent                  qw(App::MCP::Schema::Base);
 
-use CatalystX::Usul::Constants;
-use CatalystX::Usul::Functions qw(is_arrayref is_hashref throw);
+use Algorithm::Cron;
+use App::MCP::ExpressionParser;
+use Class::Usul::Constants;
+use Class::Usul::Functions  qw(is_arrayref is_hashref throw);
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -22,16 +24,16 @@ $class->add_columns
      created     => $class->set_on_create_datetime_data_type,
      command     => $class->varchar_data_type,
      condition   => $class->varchar_data_type,
-     crontab     => { data_type     => 'varchar',
-                      accessor      => '_crontab',
-                      is_nullable   => FALSE,
-                      size          => 127, },
+     crontab     => { data_type   => 'varchar',
+                      accessor    => '_crontab',
+                      is_nullable => FALSE,
+                      size        => 127, },
      directory   => $class->varchar_data_type,
      expected_rv => $class->numerical_id_data_type( 0 ),
-     fqjn        => { data_type     => 'varchar',
-                      accessor      => '_fqjn',
-                      is_nullable   => FALSE,
-                      size          => $class->varchar_max_size, },
+     fqjn        => { data_type   => 'varchar',
+                      accessor    => '_fqjn',
+                      is_nullable => FALSE,
+                      size        => $class->varchar_max_size, },
      host        => $class->varchar_data_type( 64, 'localhost' ),
      name        => $class->varchar_data_type( 126, undef ),
      parent_id   => $class->nullable_foreign_key_data_type,
@@ -43,7 +45,8 @@ $class->set_primary_key( 'id' );
 
 $class->add_unique_constraint( [ 'fqjn' ] );
 
-$class->belongs_to( parent_category  => "${result}::Job",         'parent_id' );
+$class->belongs_to( parent_category  => "${result}::Job",         'parent_id',
+                    { join_type      => 'left' } );
 
 $class->has_many  ( child_categories => "${result}::Job",         'parent_id' );
 
@@ -63,6 +66,10 @@ sub new {
    return $new;
 }
 
+sub condition_dependencies {
+   return $_[ 0 ]->_eval_condition->[ 1 ];
+}
+
 sub crontab {
    my ($self, $crontab) = @_; my @names  = qw(min hour mday mon wday); my $tmp;
 
@@ -75,7 +82,7 @@ sub crontab {
 
    $self->{ 'crontab_'.$names[ $_ ] } = $fields[ $_ ] for (0 .. 4);
 
-   return $crontab;
+   return $self->_crontab;
 }
 
 sub crontab_hour {
@@ -99,9 +106,13 @@ sub crontab_wday {
 }
 
 sub delete {
-   my $self = shift; $self->condition and $self->_delete_condition( $self->id );
+   my $self = shift; $self->condition and $self->_delete_condition;
 
    return $self->next::method;
+}
+
+sub eval_condition {
+   return $_[ 0 ]->_eval_condition->[ 0 ];
 }
 
 sub fqjn { # Fully qualified job name
@@ -120,11 +131,11 @@ sub get_validation_attributes {
 }
 
 sub insert {
-   my $self = shift; $self->_validate; my $r = $self->next::method;
+   my $self = shift; $self->_validate; my $job = $self->next::method;
 
-   $self->condition and $self->_insert_condition( $r->id );
-
-   return $r;
+   $self->condition and $self->_insert_condition( $job->id );
+   $self->_create_job_state( $job );
+   return $job;
 }
 
 sub materialised_path_columns {
@@ -157,6 +168,15 @@ sub namespace {
    return $root ? $cache->{ $id } = $ns : $ns;
 }
 
+sub should_start_now {
+   my $self      = shift;
+   my $crontab   = $self->crontab or return TRUE;
+   my $last_time = $self->state ? $self->state->updated->epoch : 0;
+   my $cron      = Algorithm::Cron->new( base => 'utc', crontab => $crontab );
+
+   return time >= $cron->next_time( $last_time ) ? TRUE : FALSE;
+}
+
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
@@ -166,26 +186,42 @@ sub sqlt_deploy_hook {
 }
 
 sub update {
-   my ($self, $columns) = @_; my $condition = $self->condition;
+   my ($self, $columns) = @_; my $update_condition = FALSE;
+
+  ($columns->{condition} || NUL) ne $self->condition
+     and $update_condition = TRUE;
 
    $self->set_inflated_columns( %{ $columns } ); $self->_validate;
 
-   my $r = $self->next::method;
+   my $job = $self->next::method;
 
-   ($condition or $r->condition)
-      and $self->_update_condition( $r->id, $condition );
+   $update_condition and $self->_delete_condition and $job->_insert_condition;
 
-   return $r;
+   return $job;
 }
 
 # Private methods
-
 sub _delete_condition {
-   $_[ 0 ]->_job_condition_rs->delete_dependents( $_[ 1 ] ); return;
+   return $_[ 0 ]->_job_condition_rs->delete_dependents( $_[ 0 ] );
+}
+
+sub _eval_condition {
+   my $self = shift; $self->condition or return [ TRUE, [] ];
+
+   my $j_rs = $self->result_source->resultset;
+
+   state $parser //= App::MCP::ExpressionParser->new
+      ( external => $j_rs, predicates => $j_rs->predicates );
+
+   return $parser->parse( $self->condition, $self->namespace );
 }
 
 sub _insert_condition {
-   $_[ 0 ]->_job_condition_rs->create_dependents( @_ ); return;
+   return $_[ 0 ]->_job_condition_rs->create_dependents( $_[ 0 ] );
+}
+
+sub _create_job_state {
+   return $_[ 0 ]->_job_state_rs->find_or_create( $_[ 1 ] );
 }
 
 sub _job_condition_rs {
@@ -194,19 +230,13 @@ sub _job_condition_rs {
    return $rs;
 }
 
-sub _update_condition {
-   my ($self, $id, $old_condition) = @_; $old_condition ||= '';
+sub _job_state_rs {
+   state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobState' );
 
-   my $new_condition = $self->condition || '';
-
-   $old_condition eq $new_condition and return;
-   $self->_delete_condition( $id );
-   $self->_insert_condition( $id );
-   return;
+   return $rs;
 }
 
 # Private functions
-
 sub __separator {
    return '/';
 }
@@ -223,7 +253,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 

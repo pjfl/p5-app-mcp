@@ -4,7 +4,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-This documents version v0.2.$Rev: 18 $
+This documents version v0.2.$Rev: 19 $
 
 # Synopsis
 
@@ -23,7 +23,10 @@ This documents version v0.2.$Rev: 18 $
 
 # Dependencies
 
+- [CatalystX::Usul::TraitFor::ConnectInfo](https://metacpan.org/module/CatalystX::Usul::TraitFor::ConnectInfo)
 - [Class::Usul](https://metacpan.org/module/Class::Usul)
+- [IPC::PerlSSH](https://metacpan.org/module/IPC::PerlSSH)
+- [TryCatch](https://metacpan.org/module/TryCatch)
 
 # Incompatibilities
 

@@ -1,29 +1,29 @@
-# @(#)$Ident: JobCondition.pm 2013-04-30 23:38 pjf ;
+# @(#)$Ident: JobCondition.pm 2013-06-04 21:37 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Functions qw(throw);
 
 sub create_dependents {
-   my ($self, $job, $id) = @_; my $rs = $job->result_source->resultset;
+   my ($self, $job) = @_; my $j_rs = $job->result_source->resultset;
 
-   for my $fqjn (@{ $rs->eval_condition( $job )->[ 1 ] }) {
-      my $jobs = $rs->search( { fqjn => $fqjn } );
-      my $job  = $jobs->first or throw error => 'Job [_1] unknown',
-                                       args  => [ $fqjn ];
+   for my $fqjn (@{ $job->condition_dependencies }) {
+      my $depend = $j_rs->search( {
+         fqjn => $fqjn }, { columns => [ 'id' ] } )->single
+            or throw error => 'Job [_1] unknown', args => [ $fqjn ];
 
-      $self->create( { job_id => $job->id, reverse_id => $id } );
+      $self->create( { job_id => $depend->id, reverse_id => $job->id } );
    }
 
    return;
 }
 
 sub delete_dependents {
-   my ($self, $id) = @_; $self->search( { reverse_id => $id } )->delete; return;
+   $_[ 0 ]->search( { reverse_id => $_[ 1 ]->id } )->delete; return;
 }
 
 1;
@@ -38,7 +38,7 @@ App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of m
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 

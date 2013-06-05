@@ -1,11 +1,12 @@
-# @(#)$Ident: MCP.pm 2013-06-01 22:37 pjf ;
+# @(#)$Ident: MCP.pm 2013-06-04 12:25 pjf ;
 
 package App::MCP;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader trigger_output_handler);
+use App::MCP::Functions     qw(log_leader trigger_input_handler
+                               trigger_output_handler);
 use Class::Usul::Moose;
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw(bson64id create_token elapsed);
@@ -49,13 +50,16 @@ sub cron_job_handler {
    my $ev_rs   = $schema->resultset( 'Event' );
    my $jobs    = $job_rs->search( {
       'state.name'       => 'active',
-      'crontab'          => { '!=' => undef   }, }, {
-         'join'          => 'state' } )->search_related( 'events', {
-            'transition' => { '!=' => 'start' } } );
+      'me.crontab'       => { '!=' => q() }, }, {
+         'columns'       => [ qw(condition crontab id
+                                 state.name state.updated) ],
+         'join'          => 'state' } );
+#->search_related( 'events', {
+#            'transition' => [ undef, { '!=' => 'start' } ] } );
 
-   for my $job (grep { $job_rs->should_start_now( $_ ) } $jobs->all) {
-      (not $job->condition or $job_rs->eval_condition( $job )->[ 0 ])
-       and $trigger = TRUE
+
+   for my $job (grep { $_->should_start_now } $jobs->all) {
+      (not $job->condition or $job->eval_condition) and $trigger = TRUE
        and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
    }
 
@@ -221,7 +225,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.2.$Rev: 18 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 
@@ -242,7 +246,13 @@ This documents version v0.2.$Rev: 18 $
 
 =over 3
 
+=item L<CatalystX::Usul::TraitFor::ConnectInfo>
+
 =item L<Class::Usul>
+
+=item L<IPC::PerlSSH>
+
+=item L<TryCatch>
 
 =back
 

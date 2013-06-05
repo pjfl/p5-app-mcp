@@ -1,8 +1,8 @@
-# @(#)Ident: Process.pm 2013-06-02 14:15 pjf ;
+# @(#)Ident: Process.pm 2013-06-02 23:14 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw(log_leader read_exactly recv_rv_error);
 use Class::Usul::Moose;
@@ -82,8 +82,12 @@ sub _build_pid {
    my $self = shift; weaken( $self );
    my $name = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
    my $code = sub { $PROGRAM_NAME = $name; $self->code->( $self ) };
+   my $temp = $self->file->tempdir;
+   my $args = { async => TRUE };
 
-   return $self->run_cmd( [ $code ], { async => TRUE } )->pid;
+   $self->debug and $args->{err} = $temp->catfile( (lc $self->log_key).'.err' );
+
+   return $self->run_cmd( [ $code ], $args )->pid;
 }
 
 sub _watch_read_handle {
@@ -130,7 +134,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 19 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

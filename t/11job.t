@@ -1,8 +1,8 @@
-# @(#)$Ident: ;
+# @(#)$Ident: 11job.t 2013-06-02 14:51 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -68,6 +68,18 @@ $job1 = $rs->create( { condition => 'finished( test )',
                        type      => 'job',     user => 'mcp' } );
 
 is $job1->fqjn, 'main::test1', 'Creates job with condition';
+
+my $job2 = $rs->search( { fqjn => 'main::test2' } )->first;
+
+$job2 and $job2->delete; # Left over job and event from previous run
+
+my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime;
+
+$job2 = $rs->create( { crontab => ($min + 1).' '.$hour.' * * *',
+                       command => 'sleep 1', name => 'test2',
+                       type    => 'job',     user => 'mcp' } );
+
+is $job2->fqjn, 'main::test2', 'Creates job with crontab';
 
 done_testing;
 

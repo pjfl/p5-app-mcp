@@ -1,13 +1,13 @@
-# @(#)$Ident: Workflow.pm 2013-04-30 23:36 pjf ;
+# @(#)$Ident: Workflow.pm 2013-06-04 12:25 pjf ;
 
 package App::MCP::Workflow;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
-use CatalystX::Usul::Constants;
-use CatalystX::Usul::Functions qw(throw);
 use App::MCP::Workflow::Transition;
+use Class::Usul::Moose;
+use Class::Usul::Constants;
+use Class::Usul::Functions qw(throw);
 use TryCatch;
 
 extends qw(Class::Workflow);
@@ -64,15 +64,11 @@ sub BUILD {
       sub {
          my ($self, $instance, $event) = @_; my $job = $event->job_rel;
 
-         $job->condition or $job->crontab or return;
+         $job->should_start_now
+            or throw error => 'Not at this time', class => 'Crontab';
 
-         my $job_rs = $job->result_source->resultset;
-
-         $job->crontab and ($job_rs->should_start_now( $job )
-            or throw error => 'Not at this time', class => 'Crontab');
-
-         $job->condition and ($job_rs->eval_condition( $job )->[ 0 ]
-            or throw error => 'Condition not true', class => 'Condition');
+         $job->eval_condition
+            or throw error => 'Condition not true', class => 'Condition';
 
          return;
       }, ] );
@@ -123,7 +119,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 

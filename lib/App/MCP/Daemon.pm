@@ -1,8 +1,8 @@
-# @(#)$Ident: Daemon.pm 2013-06-01 16:41 pjf ;
+# @(#)$Ident: Daemon.pm 2013-06-04 12:14 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 17 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -249,7 +249,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 17 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 
@@ -276,17 +276,11 @@ None
 
 =item L<App::MCP::DaemonControl>
 
-=item L<CatalystX::Usul::TraitFor::ConnectInfo>
-
 =item L<Class::Usul>
 
 =item L<File::DataClass>
 
-=item L<IPC::PerlSSH>
-
 =item L<Plack::Runner>
-
-=item L<TryCatch>
 
 =back
 

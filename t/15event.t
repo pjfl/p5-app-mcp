@@ -1,8 +1,8 @@
-# @(#)$Ident: ;
+# @(#)$Ident: 15event.t 2013-06-02 14:54 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 use File::Spec::Functions;
 use FindBin qw( $Bin );
 use lib catdir( $Bin, updir, q(lib) );
@@ -49,7 +49,7 @@ $e and unlike $e, qr{ validation \s+ errors }imsx, 'Event validation errors';
 
 if ($e) { warn $_.' '.$_->args->[ 0 ] for (@{ $e->args }) }
 
-$event and is $event->job_id, $job->id, 'Creates an event';
+$event and is $event->job_id, $job->id, 'Creates a start event';
 
 #$e and warn "$e\n";
 

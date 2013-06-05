@@ -1,6 +1,7 @@
 Revision history for App::MCP
 
-0.2.18    2013-06-02 15:32:47
+0.2.19    2013-06-05 12:59:23
+          - First cron job works!
           - Finished with ::Async
           - Refactored ::Async
           - Refactored ::Loop

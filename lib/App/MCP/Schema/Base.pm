@@ -1,12 +1,12 @@
-# @(#)$Ident: Base.pm 2013-04-30 23:29 pjf ;
+# @(#)$Ident: Base.pm 2013-06-04 12:15 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 use parent q(DBIx::Class::Core);
 
-use CatalystX::Usul::Constants;
+use Class::Usul::Constants;
 use Data::Validation;
 
 __PACKAGE__->load_components( qw(InflateColumn::Object::Enum TimeStamp) );
@@ -123,7 +123,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 

@@ -1,10 +1,10 @@
-# @(#)$Ident: JobState.pm 2013-04-30 23:38 pjf ;
+# @(#)$Ident: JobState.pm 2013-06-03 11:08 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use strict;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Functions qw(exception);
@@ -17,7 +17,7 @@ sub create_and_or_update {
    my ($self, $event) = @_;
 
    my $job        = $event->job_rel;
-   my $job_state  = $self->_find_or_create( $job );
+   my $job_state  = $self->find_or_create( $job );
    my $state_name = $job_state->name->value;
 
    try {
@@ -37,18 +37,16 @@ sub create_and_or_update {
    return;
 }
 
-# Private methods
-
-sub _find_or_create {
-   my ($self, $job) = @_; my $parent_state = 'inactive';
+sub find_or_create {
+   my ($self, $job) = @_; my $parent_state = 'active';
 
    my $job_state; $job_state = $self->find( $job->id ) and return $job_state;
 
    if ($job->parent_id and $job->id != $job->parent_id) {
       $parent_state = $self->find( $job->parent_id );
       $parent_state and $parent_state = $parent_state->name;
+      $parent_state or  $parent_state = 'inactive';
    }
-   else { $parent_state = 'active' }
 
    my $initial_state = ($parent_state eq 'active'
                      or $parent_state eq 'running'
@@ -60,6 +58,7 @@ sub _find_or_create {
                            updated => DateTime->now } );
 }
 
+# Private methods
 sub _trigger_update_cascade {
    my ($self, $event) = @_; my $schema = $self->result_source->schema;
 
@@ -89,7 +88,7 @@ App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of modul
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 

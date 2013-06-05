@@ -1,26 +1,16 @@
-# @(#)$Ident: Job.pm 2013-04-30 23:38 pjf ;
+# @(#)$Ident: Job.pm 2013-06-03 14:26 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use strict;
-use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use parent  qw(DBIx::Class::ResultSet);
+use feature                 qw(state);
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use parent                  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
-use Algorithm::Cron;
-use App::MCP::ExpressionParser;
+use Class::Usul::Functions  qw(throw);
 
-sub eval_condition {
-   my ($self, $job) = @_;
-
-   state $parser //= App::MCP::ExpressionParser->new
-      ( external => $self, predicates => $self->predicates );
-
-   return $parser->parse( $job->condition, $job->namespace );
-}
-
+# Public methods
 sub finished {
    my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
@@ -37,17 +27,6 @@ sub running {
    return $state eq 'running' ? TRUE : FALSE
 }
 
-sub should_start_now {
-   my ($self, $job) = @_;
-
-   my $crontab   = $job->crontab;
-   my $last_time = $job->state ? $job->state->updated->epoch : 0;
-   my $cron      = Algorithm::Cron->new( base => 'utc', crontab => $crontab );
-   my $time      = $cron->next_time( $last_time );
-
-   return time > $time ? TRUE : FALSE;
-}
-
 sub terminated {
    my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
@@ -55,13 +34,11 @@ sub terminated {
 }
 
 # Private methods
-
 sub _get_job_state {
    my ($self, $fqjn) = @_;
 
-   my $jobs = $self->search( { fqjn => $fqjn }, { prefetch => 'state' } );
-   my $job  = $jobs->first or throw error => 'Job [_1] unknown',
-                                    args  => [ $fqjn ];
+   my $job = $self->search( { fqjn => $fqjn }, { prefetch => 'state' } )->single
+      or throw error => 'Job [_1] unknown', args => [ $fqjn ];
 
    return $job->state ? $job->state->name : 'inactive';
 }
@@ -78,7 +55,7 @@ App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's p
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 19 $
 
 =head1 Synopsis
 
