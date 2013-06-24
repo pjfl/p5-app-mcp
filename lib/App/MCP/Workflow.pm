@@ -1,13 +1,15 @@
-# @(#)$Ident: Workflow.pm 2013-06-04 12:25 pjf ;
+# @(#)$Ident: Workflow.pm 2013-06-24 15:24 pjf ;
 
 package App::MCP::Workflow;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
 use App::MCP::Workflow::Transition;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(throw);
+use Class::Usul::Functions  qw( throw );
+use Moo;
+use Scalar::Util            qw( blessed );
 use TryCatch;
 
 extends qw(Class::Workflow);
@@ -105,8 +107,6 @@ sub process_event {
    return $state_name;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -119,7 +119,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

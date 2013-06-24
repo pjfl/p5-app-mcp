@@ -1,19 +1,21 @@
-# @(#)$Ident: Async.pm 2013-06-01 20:41 pjf ;
+# @(#)$Ident: Async.pm 2013-06-24 11:49 pjf ;
 
 package App::MCP::Async;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
 use App::MCP::Async::Loop;
-use App::MCP::Functions     qw(log_leader);
-use Class::Usul::Moose;
+use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(throw);
-use POSIX                   qw(WEXITSTATUS);
+use Class::Usul::Functions  qw( throw );
+use Class::Usul::Types      qw( Object );
+use Moo;
+use POSIX                   qw( WEXITSTATUS );
 
 # Public attributes
 has 'builder' => is => 'ro',   isa => Object,
-   handles    => [ qw(ensure_class_loaded log) ], required => TRUE;
+   handles    => [ qw( ensure_class_loaded log ) ], required => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
    default    => sub { App::MCP::Async::Loop->new };
@@ -57,8 +59,6 @@ sub new_notifier {
    return $notifier;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -71,7 +71,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 18 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

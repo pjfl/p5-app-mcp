@@ -1,18 +1,20 @@
-# @(#)Ident: Function.pm 2013-06-02 14:15 pjf ;
+# @(#)Ident: Function.pm 2013-06-24 15:17 pjf ;
 
 package App::MCP::Async::Function;
 
-use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use 5.01;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader read_exactly recv_arg_error);
+use App::MCP::Functions     qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(throw);
-use English                 qw(-no_match_vars);
-use Fcntl                   qw(F_SETFL O_NONBLOCK);
-use Storable                qw(nfreeze thaw);
+use Class::Usul::Functions  qw( throw );
+use Class::Usul::Types      qw( ArrayRef Bool HashRef
+                                NonZeroPositiveInt PositiveInt SimpleStr );
+use English                 qw( -no_match_vars );
+use Fcntl                   qw( F_SETFL O_NONBLOCK );
+use Moo;
+use Storable                qw( nfreeze thaw );
 use TryCatch;
 
 extends q(App::MCP::Async::Base);
@@ -20,13 +22,13 @@ extends q(App::MCP::Async::Base);
 # Public attributes
 has 'channels'       => is => 'ro',  isa => SimpleStr, default => 'i';
 
-has 'interval'       => is => 'ro',  isa => PositiveInt, default => 1;
+has 'interval'       => is => 'ro',  isa => NonZeroPositiveInt, default => 1;
 
 has 'is_running'     => is => 'rwp', isa => Bool, default => TRUE;
 
-has 'max_calls'      => is => 'ro',  isa => PositiveOrZeroInt, default => 0;
+has 'max_calls'      => is => 'ro',  isa => PositiveInt, default => 0;
 
-has 'max_workers'    => is => 'ro',  isa => PositiveInt, default => 1;
+has 'max_workers'    => is => 'ro',  isa => NonZeroPositiveInt, default => 1;
 
 has 'worker_args'    => is => 'ro',  isa => HashRef, default => sub { {} };
 
@@ -73,11 +75,11 @@ sub stop {
 
    $self->log->debug( $lead.'Stopping '.$self->description.' pool' );
 
-   my $workers = $self->worker_objects;
+   my $workers = $self->worker_objects; my @pids = keys %{ $workers };
 
-   $workers->{ $_ }->stop for (keys %{ $workers });
+   $workers->{ $_ }->stop for (@pids);
 
-   $self->loop->watch_child( 0 );
+   $self->loop->watch_child( 0, sub { @pids } );
    return;
 }
 
@@ -190,7 +192,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

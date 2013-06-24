@@ -1,14 +1,14 @@
-# @(#)$Ident: Authentication.pm 2013-04-30 23:35 pjf ;
+# @(#)$Ident: Authentication.pm 2013-06-24 12:37 pjf ;
 
 package App::MCP::Schema::Authentication;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 use parent q(DBIx::Class::Schema);
 
-use File::Spec::Functions qw(catfile);
-use Scalar::Util          qw(blessed);
+use File::Spec::Functions qw( catfile );
+use Scalar::Util          qw( blessed );
 
 __PACKAGE__->load_namespaces;
 
@@ -35,7 +35,7 @@ App::MCP::Schema::Authentication - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

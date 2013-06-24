@@ -1,24 +1,27 @@
-# @(#)Ident: Config.pm 2013-05-30 14:58 pjf ;
+# @(#)Ident: Config.pm 2013-06-24 12:18 pjf ;
 
 package App::MCP::Config;
 
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 14 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
-use Class::Usul::Functions       qw(fqdn);
-use File::DataClass::Constraints qw(File);
+use Class::Usul::Functions  qw( fqdn );
+use File::DataClass::Types  qw( ArrayRef File NonEmptySimpleStr
+                                NonZeroPositiveInt PositiveInt );
+use Moo;
 
 extends qw(Class::Usul::Config::Programs);
 
-has 'clock_tick_interval'  => is => 'ro',   isa => PositiveInt,
+has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
 
 has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'schedule';
 
-has 'identity_file'        => is => 'lazy', isa => File, coerce => TRUE,
-   default                 => sub { [ $_[ 0 ]->my_home, qw(.ssh id_rsa) ] };
+has 'identity_file'        => is => 'lazy', isa => File,
+   default                 => sub { [ $_[ 0 ]->my_home, qw(.ssh id_rsa) ] },
+   coerce                  => File->coercion;
 
 has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'App::MCP::SSHLibrary';
@@ -26,14 +29,14 @@ has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
 has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'DAEMON';
 
-has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveOrZeroInt,
+has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveInt,
    default                 => 0;
 
-has 'max_ssh_workers'      => is => 'ro',   isa => PositiveInt,
+has 'max_ssh_workers'      => is => 'ro',   isa => NonZeroPositiveInt,
    documentation           => 'Maximum number of SSH worker processes',
    default                 => 3;
 
-has 'port'                 => is => 'ro',   isa => PositiveInt,
+has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
 
 has 'schema_class'         => is => 'ro',   isa => NonEmptySimpleStr,
@@ -48,8 +51,6 @@ has 'servers'              => is => 'ro',   isa => ArrayRef,
 
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -70,7 +71,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 14 $ of L<App::MCP::Config>
+This documents version v0.1.$Rev: 20 $ of L<App::MCP::Config>
 
 =head1 Description
 
@@ -91,6 +92,8 @@ Defines the following attributes;
 =over 3
 
 =item L<Class::Usul>
+
+=item L<File::DataClass>
 
 =back
 

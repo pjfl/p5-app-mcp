@@ -1,9 +1,10 @@
-# @(#)$Ident: Base.pm 2013-06-04 12:15 pjf ;
+# @(#)$Ident: Base.pm 2013-06-24 11:44 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use warnings;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 use parent q(DBIx::Class::Core);
 
 use Class::Usul::Constants;
@@ -91,7 +92,6 @@ sub varchar_data_type {
 }
 
 # Private methods
-
 sub _validate {
    my $self = shift; my $attr = $self->get_validation_attributes;
 
@@ -123,7 +123,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

@@ -1,17 +1,17 @@
-# @(#)$Ident: Job.pm 2013-06-04 23:50 pjf ;
+# @(#)$Ident: Job.pm 2013-06-24 11:47 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
+use 5.01;
 use strict;
 use warnings;
-use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
-use parent                  qw(App::MCP::Schema::Base);
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
 use App::MCP::ExpressionParser;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(is_arrayref is_hashref throw);
+use Class::Usul::Functions  qw( is_arrayref is_hashref throw );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -253,7 +253,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

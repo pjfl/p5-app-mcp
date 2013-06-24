@@ -1,65 +1,68 @@
-# @(#)$Ident: Daemon.pm 2013-06-04 12:14 pjf ;
+# @(#)$Ident: Daemon.pm 2013-06-24 12:21 pjf ;
 
 package App::MCP::Daemon;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
 use App::MCP::DaemonControl;
-use App::MCP::Functions          qw(log_leader);
+use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
-use Class::Usul::Moose;
-use English                      qw(-no_match_vars);
-use File::DataClass::Constraints qw(File Path);
+use English                 qw( -no_match_vars );
+use File::DataClass::Types  qw( File NonEmptySimpleStr NonZeroPositiveInt
+                                Object Path );
+use Moo;
+use MooX::Options;
 use Plack::Runner;
 
 extends q(Class::Usul::Programs);
+with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 # Override defaults in parent class
 has '+config_class'  => default => 'App::MCP::Config';
 
 # Object attributes (public)
 #   Visible to the command line
-has 'database'       => is => 'ro',   isa => NonEmptySimpleStr,
+option 'database'    => is => 'ro',   isa => NonEmptySimpleStr,
    documentation     => 'The database to connect to',
-   default           => sub { $_[ 0 ]->config->database };
+   default           => sub { $_[ 0 ]->config->database }, format => 's';
 
-has 'identity_file'  => is => 'lazy', isa => File, coerce => TRUE,
+option 'identity_file'  => is => 'lazy', isa => File, coerce => File->coercion,
    documentation     => 'Path to private SSH key',
-   default           => sub { $_[ 0 ]->config->identity_file };
+   default           => sub { $_[ 0 ]->config->identity_file }, format => 's';
 
-has 'port'           => is => 'ro',   isa => PositiveInt,
+option 'port'        => is => 'ro',   isa => NonZeroPositiveInt,
    documentation     => 'Port number for the input event listener',
-   default           => sub { $_[ 0 ]->config->port };
+   default           => sub { $_[ 0 ]->config->port }, format => 'i';
 
 #   Ingnored by the command line
-has '_app'           => is => 'lazy', isa => Object, reader => 'app';
+has 'app'           => is => 'lazy', isa => Object;
 
-has '_async_factory' => is => 'lazy', isa => Object,
-   handles           => [ qw(loop) ], reader => 'async_factory';
+has 'async_factory' => is => 'lazy', isa => Object, handles => [ qw( loop ) ];
 
-has '_clock_tick'    => is => 'lazy', isa => Object, reader => 'clock_tick';
+has 'clock_tick'    => is => 'lazy', isa => Object;
 
-has '_cron'          => is => 'lazy', isa => Object, reader => 'cron';
+has 'cron'          => is => 'lazy', isa => Object;
 
-has '_ip_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'ip_ev_hndlr';
+has 'ip_ev_hndlr'   => is => 'lazy', isa => Object;
 
-has '_ipc_ssh'       => is => 'lazy', isa => Object, reader => 'ipc_ssh';
+has 'ipc_ssh'       => is => 'lazy', isa => Object;
 
-has '_listener'      => is => 'lazy', isa => Object, reader => 'listener';
+has 'listener'      => is => 'lazy', isa => Object;
 
-has '_op_ev_hndlr'   => is => 'lazy', isa => Object, reader => 'op_ev_hndlr';
+has 'op_ev_hndlr'   => is => 'lazy', isa => Object;
 
 # Construction
 around 'run' => sub {
-   my ($next, $self, @args) = @_; $self->quiet( TRUE );
+   my ($orig, $self, @args) = @_; $self->quiet( TRUE );
 
-   return $self->$next( @args );
+   return $orig->( $self, @args );
 };
 
 around 'run_chain' => sub {
-   my ($next, $self, @args) = @_; @ARGV = @{ $self->extra_argv };
+   my ($orig, $self, @args) = @_; @ARGV = @{ $self->extra_argv };
 
    my $config = $self->config; my $name = $config->name;
 
@@ -83,7 +86,7 @@ around 'run_chain' => sub {
       stop_signals => $config->stop_signals,
    } )->run;
 
-   return $self->$next( @args ); # Never reached
+   return $orig->( $self, @args ); # Never reached
 };
 
 # Public methods
@@ -118,15 +121,15 @@ sub daemon {
 }
 
 # Private methods
-sub _build__app {
+sub _build_app {
    return App::MCP->new( builder => $_[ 0 ] );
 }
 
-sub _build__async_factory {
+sub _build_async_factory {
    return App::MCP::Async->new( builder => $_[ 0 ] );
 }
 
-sub _build__clock_tick {
+sub _build_clock_tick {
    my $self = shift; my $app = $self->app;
 
    my $cron = $self->cron; my $key = $self->config->log_key;
@@ -139,7 +142,7 @@ sub _build__clock_tick {
          type     => 'periodical' );
 }
 
-sub _build__cron {
+sub _build_cron {
    my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
@@ -149,7 +152,7 @@ sub _build__cron {
          type => 'routine' );
 }
 
-sub _build__ip_ev_hndlr {
+sub _build_ip_ev_hndlr {
    my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
@@ -159,7 +162,7 @@ sub _build__ip_ev_hndlr {
          type => 'routine' );
 }
 
-sub _build__ipc_ssh {
+sub _build_ipc_ssh {
    my $self = shift; my $app = $self->app;
 
    return $self->async_factory->new_notifier
@@ -171,7 +174,7 @@ sub _build__ipc_ssh {
          type        => 'function' );
 }
 
-sub _build__listener {
+sub _build_listener {
    my $self = shift; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
@@ -185,7 +188,7 @@ sub _build__listener {
          type => 'process' );
 }
 
-sub _build__op_ev_hndlr {
+sub _build_op_ev_hndlr {
    my $self = shift; my $app = $self->app; my $ipc_ssh = $self->ipc_ssh;
 
    return $self->async_factory->new_notifier
@@ -235,8 +238,6 @@ sub __terminate {
    return;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -249,7 +250,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

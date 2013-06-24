@@ -1,30 +1,33 @@
-# @(#)$Ident: MCP.pm 2013-06-04 12:25 pjf ;
+# @(#)$Ident: MCP.pm 2013-06-24 11:51 pjf ;
 
 package App::MCP;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader trigger_input_handler
-                               trigger_output_handler);
-use Class::Usul::Moose;
+use App::MCP::Functions     qw( log_leader trigger_input_handler
+                                trigger_output_handler );
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(bson64id create_token elapsed);
+use Class::Usul::Functions  qw( bson64id create_token elapsed );
+use Class::Usul::Types      qw( ArrayRef LoadableClass
+                                NonEmptySimpleStr Object );
 use IPC::PerlSSH;
+use Moo;
 use TryCatch;
 
 # Public attributes
 has 'builder'       => is => 'ro',   isa => Object,
-   handles          => [ qw(config database debug identity_file log port) ],
+   handles          => [ qw( config database debug identity_file log port ) ],
    required         => TRUE, weak_ref => TRUE;
 
 has 'library_class' => is => 'lazy', isa => NonEmptySimpleStr,
    default          => sub { $_[ 0 ]->config->library_class };
 
-has 'schema_class'  => is => 'lazy', isa => LoadableClass, coerce => TRUE,
+has 'schema_class'  => is => 'lazy', isa => LoadableClass,
    default          => sub { $_[ 0 ]->config->schema_class };
 
-has 'servers'       => is => 'lazy', isa => ArrayRef, auto_deref => TRUE,
+has 'servers'       => is => 'lazy', isa => ArrayRef,
    default          => sub { $_[ 0 ]->config->servers };
 
 # Private attributes
@@ -198,7 +201,7 @@ sub _start_job {
                  job_id    => $job->id,
                  port      => $self->port,
                  runid     => $runid,
-                 servers   => (join SPC, $self->servers),
+                 servers   => (join SPC, @{ $self->servers }),
                  token     => $token };
    my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $lead  = log_leader 'debug', 'START', $runid;
@@ -225,7 +228,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

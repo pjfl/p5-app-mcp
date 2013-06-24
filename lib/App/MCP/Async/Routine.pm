@@ -1,14 +1,15 @@
-# @(#)Ident: Routine.pm 2013-05-31 21:08 pjf ;
+# @(#)Ident: Routine.pm 2013-06-24 12:10 pjf ;
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader);
-use Class::Usul::Moose;
+use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
-use IPC::SysV               qw(IPC_CREAT S_IRUSR S_IWUSR);
+use Class::Usul::Types      qw( Object );
+use IPC::SysV               qw( IPC_CREAT S_IRUSR S_IWUSR );
 use IPC::Semaphore;
+use Moo;
 
 extends q(App::MCP::Async::Process);
 
@@ -91,8 +92,6 @@ sub __loop_while_running {
    };
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -112,7 +111,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 15 $ of L<App::MCP::Async::Routine>
+This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

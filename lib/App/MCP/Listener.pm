@@ -1,9 +1,10 @@
-# @(#)$Ident: Listener.pm 2013-04-30 23:33 pjf ;
+# @(#)$Ident: Listener.pm 2013-06-24 12:31 pjf ;
 
 package App::MCP::Listener;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use warnings;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
 use App::MCP::Schema;
 use Web::Simple;
@@ -44,7 +45,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

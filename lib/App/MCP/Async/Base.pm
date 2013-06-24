@@ -1,25 +1,26 @@
-# @(#)Ident: Base.pm 2013-06-02 23:11 pjf ;
+# @(#)Ident: Base.pm 2013-06-24 12:17 pjf ;
 
 package App::MCP::Async::Base;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
+use Class::Usul::Types      qw( Bool NonEmptySimpleStr
+                                Object NonZeroPositiveInt );
+use Moo;
 
 has 'autostart'   => is => 'ro',   isa => Bool, default => TRUE;
 
 has 'builder'     => is => 'ro',   isa => Object,
-   handles        => [ qw(config debug file log loop run_cmd) ],
+   handles        => [ qw( config debug file log loop run_cmd ) ],
    required       => TRUE;
 
 has 'description' => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
 has 'log_key'     => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
-has 'pid'         => is => 'lazy', isa => PositiveInt;
-
-__PACKAGE__->meta->make_immutable;
+has 'pid'         => is => 'lazy', isa => NonZeroPositiveInt;
 
 1;
 
@@ -40,7 +41,7 @@ App::MCP::Async::Base - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $ of L<App::MCP::Async::Base>
+This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Base>
 
 =head1 Description
 

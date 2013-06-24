@@ -1,14 +1,16 @@
-# @(#)Ident: Periodical.pm 2013-06-02 14:29 pjf ;
+# @(#)Ident: Periodical.pm 2013-06-24 12:16 pjf ;
 
 package App::MCP::Async::Periodical;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader);
-use Class::Usul::Moose;
+use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(throw);
-use Scalar::Util            qw(weaken);
+use Class::Usul::Functions  qw( throw );
+use Class::Usul::Types      qw( CodeRef NonZeroPositiveInt SimpleStr Undef );
+use Moo;
+use Scalar::Util            qw( weaken );
 
 extends q(App::MCP::Async::Base);
 
@@ -17,7 +19,7 @@ has 'time_spec' => is => 'ro', isa => SimpleStr | Undef;
 
 has 'code'      => is => 'ro', isa => CodeRef, required => TRUE;
 
-has 'interval'  => is => 'ro', isa => PositiveInt, default => 1;
+has 'interval'  => is => 'ro', isa => NonZeroPositiveInt, default => 1;
 
 # Construction
 sub BUILD {
@@ -90,7 +92,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Periodical>
+This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

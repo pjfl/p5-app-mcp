@@ -1,16 +1,17 @@
-# @(#)Ident: Process.pm 2013-06-02 23:14 pjf ;
+# @(#)Ident: Process.pm 2013-06-24 12:09 pjf ;
 
 package App::MCP::Async::Process;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(log_leader read_exactly recv_rv_error);
-use Class::Usul::Moose;
+use App::MCP::Functions     qw( log_leader read_exactly recv_rv_error );
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(throw);
-use English                 qw(-no_match_vars);
-use Scalar::Util            qw(weaken);
-use Storable                qw(nfreeze thaw);
+use Class::Usul::Functions  qw( throw );
+use Class::Usul::Types      qw( CodeRef FileHandle Undef );
+use English                 qw( -no_match_vars );
+use Moo;
+use Scalar::Util            qw( weaken );
+use Storable                qw( nfreeze thaw );
 use TryCatch;
 
 extends q(App::MCP::Async::Base);
@@ -113,8 +114,6 @@ sub _watch_read_handle {
    return;
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -134,7 +133,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $ of L<App::MCP::Async::Process>
+This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

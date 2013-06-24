@@ -1,17 +1,17 @@
-# @(#)Ident: Loop.pm 2013-06-02 13:51 pjf ;
+# @(#)Ident: Loop.pm 2013-06-24 15:13 pjf ;
 
 package App::MCP::Async::Loop;
 
+use 5.01;
 use strict;
 use warnings;
-use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
-use Class::Usul::Functions  qw(arg_list);
-use English                 qw(-no_match_vars);
-use Scalar::Util            qw(blessed);
+use Class::Usul::Functions  qw( arg_list );
+use English                 qw( -no_match_vars );
+use Scalar::Util            qw( blessed );
 
 my $_EVENTS = {};
 
@@ -36,11 +36,11 @@ sub watch_child {
       my $cv = $w->{ $id }->[ 0 ] = AnyEvent->condvar;
 
       $w->{ $id }->[ 1 ] = AnyEvent->child( pid => $id, cb => sub {
-         $cb->( @_ ); $cv->send } );
+         defined $cb and $cb->( @_ ); $cv->send } );
       return;
    }
 
-   for (sort { $a <=> $b } keys %{ $w }) {
+   for (sort { $a <=> $b } $cb ? $cb->() : keys %{ $w }) {
       $w->{ $_ }->[ 0 ]->recv; $self->unwatch_child( $_ );
    }
 
@@ -167,7 +167,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 18 $ of L<App::MCP::Async::Loop>
+This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

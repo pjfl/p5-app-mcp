@@ -1,16 +1,18 @@
-# @(#)$Ident: Schema.pm 2013-05-30 19:11 pjf ;
+# @(#)$Ident: Schema.pm 2013-06-24 12:34 pjf ;
 
 package App::MCP::Schema;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 14 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw(trigger_input_handler);
+use App::MCP::Functions     qw( trigger_input_handler );
 use App::MCP::Schema::Authentication;
 use App::MCP::Schema::Schedule;
-use CatalystX::Usul::Constants;
-use Class::Usul::Crypt      qw(decrypt);
-use Class::Usul::Moose;
-use Storable                qw(thaw);
+use Class::Usul::Constants;
+use Class::Usul::Crypt      qw( decrypt );
+use Class::Usul::Types      qw( Object );
+use Moo;
+use Storable                qw( thaw );
 use TryCatch;
 
 extends q(CatalystX::Usul::Schema);
@@ -25,8 +27,9 @@ has '+schema_classes' => default => sub { {
 
 has '+schema_version' => default => $schema_version;
 
-has '_schedule'       => is => 'lazy', isa => 'Object', reader => 'schedule';
+has '_schedule'       => is => 'lazy', isa => Object, reader => 'schedule';
 
+# Public methods
 sub create_event {
    my ($self, $runid, $params) = @_; my $schema = $self->schedule;
 
@@ -53,8 +56,6 @@ sub _build__schedule {
    return $class->connect( @{ $self->connect_info }, $params );
 }
 
-__PACKAGE__->meta->make_immutable;
-
 1;
 
 __END__
@@ -67,7 +68,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 14 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 

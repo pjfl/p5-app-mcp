@@ -1,14 +1,14 @@
-# @(#)$Ident: Transition.pm 2013-04-30 23:32 pjf ;
+# @(#)$Ident: Transition.pm 2013-06-24 12:06 pjf ;
 
 package App::MCP::Workflow::Transition;
 
-use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
 
-use Class::Usul::Moose;
 use Class::Usul::Constants;
+use Moo;
 
-extends qw(Class::Workflow::Transition::Simple);
+extends q(Class::Workflow::Transition::Simple);
 
 sub validate {
    my ($self, $instance, @args) = @_;
@@ -19,8 +19,6 @@ sub validate {
 
    return TRUE;
 }
-
-__PACKAGE__->meta->make_immutable;
 
 1;
 
@@ -34,7 +32,7 @@ App::MCP::Workflow::Transition - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 20 $
 
 =head1 Synopsis
 
