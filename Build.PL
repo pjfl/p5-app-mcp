@@ -1,16 +1,17 @@
-# @(#)$Ident: Build.PL 2013-05-30 00:48 pjf ;
+# @(#)$Ident: Build.PL 2013-06-24 20:03 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
 
 Bob->new( {
    module    => q(App::MCP),
    home_page => q(http://www.roxsoft.co.uk),
    requires  => {
-      'perl'                       => 5.01,
+      'perl'                       => 5.010001,
       'local::lib'                 => 1.008004,
+      'namespace::sweep'           => 0.006,
       'parent'                     => 0.224,
       'Algorithm::Cron'            => 0.04,
       'AnyEvent'                   => 7.01,
@@ -31,8 +32,9 @@ Bob->new( {
       'IPC::PerlSSH'               => 0.16,
       'LWP'                        => 6.04,
       'Marpa::R2'                  => 2.024000,
+      'Moo'                        => 1.002000,
+      'MooX::Options'              => 3.83,
       'Plack'                      => 1.0018,
-      'Sub::Exporter::Progressive' => 0.001006,
       'TryCatch'                   => 1.003000,
       'Web::Simple'                => 0.020,
    },

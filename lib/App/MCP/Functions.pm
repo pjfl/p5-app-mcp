@@ -1,25 +1,18 @@
-# @(#)Ident: Functions.pm 2013-06-02 14:20 pjf ;
+# @(#)Ident: Functions.pm 2013-06-24 19:45 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 18 $ =~ /\d+/gmx );
-
-my @_functions;
-
-BEGIN {
-   @_functions = ( qw(log_leader read_exactly recv_arg_error recv_rv_error
-                      trigger_input_handler trigger_output_handler) );
-}
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 21 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw(pad);
-use English                qw(-no_match_vars);
+use Class::Usul::Functions  qw( pad );
+use English                 qw( -no_match_vars );
+use Exporter 5.57           qw( import );
 
-use Sub::Exporter::Progressive -setup => {
-   exports => [ @_functions ], groups => { default => [], },
-};
+our @EXPORT_OK = ( qw( log_leader read_exactly recv_arg_error recv_rv_error
+                       trigger_input_handler trigger_output_handler ) );
 
 # Public functions
 sub log_leader ($$;$) {
@@ -102,7 +95,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 18 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 21 $ of L<App::MCP::Functions>
 
 =head1 Description
 

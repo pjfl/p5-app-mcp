@@ -1,11 +1,11 @@
-# @(#)Ident: Loop.pm 2013-06-24 15:13 pjf ;
+# @(#)Ident: Loop.pm 2013-06-24 19:13 pjf ;
 
 package App::MCP::Async::Loop;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -37,11 +37,12 @@ sub watch_child {
 
       $w->{ $id }->[ 1 ] = AnyEvent->child( pid => $id, cb => sub {
          defined $cb and $cb->( @_ ); $cv->send } );
-      return;
    }
-
-   for (sort { $a <=> $b } $cb ? $cb->() : keys %{ $w }) {
-      $w->{ $_ }->[ 0 ]->recv; $self->unwatch_child( $_ );
+   else {
+      for (sort { $a <=> $b } $cb ? $cb->() : keys %{ $w }) {
+         $w->{ $_ } and $w->{ $_ }->[ 0 ] and $w->{ $_ }->[ 0 ]->recv;
+         $self->unwatch_child( $_ );
+      }
    }
 
    return;
@@ -167,7 +168,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Loop>
+This documents version v0.2.$Rev: 21 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

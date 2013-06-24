@@ -1,9 +1,9 @@
-# @(#)$Ident: Daemon.pm 2013-06-24 12:21 pjf ;
+# @(#)$Ident: Daemon.pm 2013-06-24 19:50 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -21,21 +21,21 @@ extends q(Class::Usul::Programs);
 with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 # Override defaults in parent class
-has '+config_class'  => default => 'App::MCP::Config';
+has '+config_class' => default => 'App::MCP::Config';
 
 # Object attributes (public)
 #   Visible to the command line
-option 'database'    => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation     => 'The database to connect to',
-   default           => sub { $_[ 0 ]->config->database }, format => 's';
+option 'database'      => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation       => 'The database to connect to',
+   default             => sub { $_[ 0 ]->config->database }, format => 's';
 
-option 'identity_file'  => is => 'lazy', isa => File, coerce => File->coercion,
-   documentation     => 'Path to private SSH key',
-   default           => sub { $_[ 0 ]->config->identity_file }, format => 's';
+option 'identity_file' => is => 'lazy', isa => File, coerce => File->coercion,
+   documentation       => 'Path to private SSH key',
+   default             => sub { $_[ 0 ]->config->identity_file }, format => 's';
 
-option 'port'        => is => 'ro',   isa => NonZeroPositiveInt,
-   documentation     => 'Port number for the input event listener',
-   default           => sub { $_[ 0 ]->config->port }, format => 'i';
+option 'port'          => is => 'ro',   isa => NonZeroPositiveInt,
+   documentation       => 'Port number for the input event listener',
+   default             => sub { $_[ 0 ]->config->port }, format => 'i';
 
 #   Ingnored by the command line
 has 'app'           => is => 'lazy', isa => Object;
@@ -250,7 +250,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 20 $
+This documents version v0.2.$Rev: 21 $
 
 =head1 Synopsis
 

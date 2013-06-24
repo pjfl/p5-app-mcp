@@ -1,9 +1,9 @@
-# @(#)Ident: Function.pm 2013-06-24 15:17 pjf ;
+# @(#)Ident: Function.pm 2013-06-24 19:31 pjf ;
 
 package App::MCP::Async::Function;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
@@ -22,8 +22,6 @@ extends q(App::MCP::Async::Base);
 # Public attributes
 has 'channels'       => is => 'ro',  isa => SimpleStr, default => 'i';
 
-has 'interval'       => is => 'ro',  isa => NonZeroPositiveInt, default => 1;
-
 has 'is_running'     => is => 'rwp', isa => Bool, default => TRUE;
 
 has 'max_calls'      => is => 'ro',  isa => PositiveInt, default => 0;
@@ -40,32 +38,30 @@ has 'worker_objects' => is => 'ro',  isa => HashRef, default => sub { {} };
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $args = $self->$next( @args );
 
-   my $channels    = delete $args->{channels   };
-   my $log_key     = delete $args->{log_key    };
-   my $max_calls   = delete $args->{max_calls  };
-   my $max_workers = delete $args->{max_workers};
-   my $attr        = { builder     => $args->{builder},
-                       description => $args->{description},
-                       worker_args => $args, };
+   my $attr = { builder     => $args->{builder},
+                description => $args->{description}, };
 
-   defined $channels  and $attr->{channels   } = $channels;
-   $log_key           and $attr->{log_key    } = $log_key;
-   defined $max_calls and $attr->{max_calls  } = $max_calls;
-   $max_workers       and $attr->{max_workers} = $max_workers;
+   for my $k ( qw( autostart channels log_key max_calls max_workers ) ) {
+      my $v = delete $args->{ $k }; defined $v and $attr->{ $k } = $v;
+   }
+
+   $attr->{worker_args} = $args;
    return $attr;
 };
 
+sub BUILD {
+   my $self = shift; $self->autostart or return;
+
+   $self->_next_worker for (0 .. $self->max_workers - 1);
+
+   return;
+}
+
 # Public methods
 sub call {
-   my ($self, @args) = @_; $self->is_running or return;
+   my $self = shift;
 
-   my $index  = $self->_next_worker;
-   my $pid    = $self->worker_index->[ $index ] || 0;
-   my $worker = $self->worker_objects->{ $pid };
-
-   $worker or $worker = $self->_new_worker( $index, @args );
-   $worker->send( @args );
-   return;
+   return $self->is_running ? $self->_next_worker->send( @_ ) : FALSE;
 }
 
 sub stop {
@@ -89,7 +85,7 @@ sub _build_pid {
 }
 
 sub _call_handler {
-   my ($self, $args, $id) = @_; my $code = $args->{code};
+   my ($self, $args) = @_; my $code = $args->{code};
 
    my $log    = $self->log; my $max_calls = $self->max_calls;
 
@@ -98,7 +94,7 @@ sub _call_handler {
    my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : FALSE;
 
    return sub {
-      my $count = 0; my $lead = log_leader 'error', 'EXCODE', $id;
+      my $count = 0; my $lead = log_leader 'error', 'EXCODE', $PID;
 
       while (TRUE) {
          my $args = undef; my $rv = undef;
@@ -106,13 +102,16 @@ sub _call_handler {
          if ($reader) {
             my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-            defined ($rv = recv_arg_error( $log, $id, $red )) and return $rv;
+            defined ($rv = recv_arg_error( $log, $PID, $red )) and return $rv;
             $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = recv_arg_error( $log, $id, $red )) and return $rv;
+            defined ($rv = recv_arg_error( $log, $PID, $red )) and return $rv;
          }
 
-         try        { $rv = $code->( @{ $args ? thaw $args : [] } );
-                      $writer and __send_rv( $writer, $log, $id, $rv ) }
+         try  {
+            $args = $args ? thaw $args : []; my $runid = $args->[ 0 ] || $PID;
+            $rv = $code->( @{ $args } );
+            $writer and __send_rv( $writer, $log, $runid, $rv );
+         }
          catch ($e) { $log->error( $lead.$e ) }
 
          $max_calls and ++$count >= $max_calls and return OK;
@@ -121,7 +120,7 @@ sub _call_handler {
 }
 
 sub _new_worker {
-   my ($self, $index, $id) = @_; my $args = { %{ $self->worker_args } };
+   my ($self, $index) = @_; my $args = { %{ $self->worker_args } };
 
    my $on_exit = delete $args->{on_exit}; my $workers = $self->worker_objects;
 
@@ -129,7 +128,7 @@ sub _new_worker {
       and $args->{args_pipe} = __nonblocking_write_pipe_pair();
   ($self->channels =~ m{ o }mx or exists $args->{on_return})
       and $args->{ret_pipe } = __nonblocking_write_pipe_pair();
-   $args->{code       } = $self->_call_handler( $args, $id );
+   $args->{code       } = $self->_call_handler( $args );
    $args->{description} = (lc $self->log_key)." worker ${index}";
    $args->{log_key    } = 'WORKER';
    $args->{on_exit    } = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ )};
@@ -142,6 +141,14 @@ sub _new_worker {
 }
 
 sub _next_worker {
+   my $self  = shift;
+   my $index = $self->_next_worker_index;
+   my $pid   = $self->worker_index->[ $index ] || 0;
+
+   return $self->worker_objects->{ $pid } || $self->_new_worker( $index );
+}
+
+sub _next_worker_index {
    my $self = shift; state $worker //= -1;
 
    $worker++; $worker >= $self->max_workers and $worker = 0;
@@ -170,7 +177,7 @@ sub __send_rv {
 
    defined $len or $log->error( $lead.$OS_ERROR );
 
-   return;
+   return TRUE;
 }
 
 1;
@@ -192,7 +199,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Function>
+This documents version v0.2.$Rev: 21 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

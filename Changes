@@ -1,6 +1,7 @@
 Revision history for App::MCP
 
-0.2.20    2013-06-24 17:24:36
+0.2.21    2013-06-24 21:12:12
+          - Added autostart to ::Async::Function
           - Ported to Moo
           - First cron job works!
           - Finished with ::Async

@@ -1,16 +1,16 @@
-# @(#)$Ident: SSHLibrary.pm 2013-04-30 23:30 pjf ;
+# @(#)$Ident: SSHLibrary.pm 2013-06-24 19:56 pjf ;
 
 package App::MCP::SSHLibrary;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
 
 use IPC::PerlSSH::Library;
 
 init q{
-   use File::Path            qw(mkpath);
-   use File::Spec::Functions qw(catdir catfile);
+   use File::Path            qw( mkpath );
+   use File::Spec::Functions qw( catdir catfile );
 };
 
 func 'dispatch'  => q{
@@ -58,7 +58,7 @@ App::MCP::SSHLibrary - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.2.$Rev: 21 $
 
 =head1 Synopsis
 
