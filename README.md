@@ -4,7 +4,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-This documents version v0.2.$Rev: 22 $
+This documents version v0.3.$Rev: 1 $
 
 # Synopsis
 
