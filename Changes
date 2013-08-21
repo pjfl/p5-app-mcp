@@ -1,6 +1,8 @@
 Revision history for App::MCP
 
 0.3.1     2013-08-21 21:45:06
+          - Switched to Dist::Zilla
+
 0.2.22    2013-08-21 21:27:31
           - Added autostart to ::Async::Function
           - Ported to Moo
