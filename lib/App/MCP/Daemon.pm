@@ -3,7 +3,7 @@
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -250,7 +250,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 21 $
+This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

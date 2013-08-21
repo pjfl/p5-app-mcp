@@ -4,7 +4,7 @@ package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use strict;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Functions qw(exception);
@@ -88,7 +88,7 @@ App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of modul
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

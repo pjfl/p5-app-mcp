@@ -4,7 +4,7 @@ package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 21 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( pad );
@@ -95,7 +95,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 21 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 1 $ of L<App::MCP::Functions>
 
 =head1 Description
 

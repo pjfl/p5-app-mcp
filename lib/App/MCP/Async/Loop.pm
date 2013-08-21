@@ -5,7 +5,7 @@ package App::MCP::Async::Loop;
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -168,7 +168,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 21 $ of L<App::MCP::Async::Loop>
+This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

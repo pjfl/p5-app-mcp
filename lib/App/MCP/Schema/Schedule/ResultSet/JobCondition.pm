@@ -3,7 +3,7 @@
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent  qw(DBIx::Class::ResultSet);
 
 use Class::Usul::Functions qw(throw);
@@ -38,7 +38,7 @@ App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of m
 
 =head1 Version
 
-This documents version v0.2.$Rev: 19 $
+This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

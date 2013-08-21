@@ -3,7 +3,7 @@
 package App::MCP::Async::Function;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
@@ -199,7 +199,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 21 $ of L<App::MCP::Async::Function>
+This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

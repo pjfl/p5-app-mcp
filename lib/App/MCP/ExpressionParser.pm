@@ -5,7 +5,7 @@ package App::MCP::ExpressionParser;
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Functions qw(arg_list throw);
 use Marpa::R2;
@@ -193,7 +193,7 @@ App::MCP::ExpressionParser - Evaluate the condition field of the Job table
 
 =head1 Version
 
-This documents version v0.2.$Rev: 2 $
+This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

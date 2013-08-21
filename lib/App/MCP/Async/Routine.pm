@@ -2,7 +2,7 @@
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
@@ -111,7 +111,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.2.$Rev: 20 $ of L<App::MCP::Async::Routine>
+This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

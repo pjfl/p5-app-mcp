@@ -4,7 +4,7 @@ package App::MCP::DaemonControl;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 use parent qw(Daemon::Control);
 
 sub new {
@@ -66,7 +66,7 @@ App::MCP::DaemonControl - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 10 $
+This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

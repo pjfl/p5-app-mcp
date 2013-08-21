@@ -3,7 +3,7 @@
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( fqdn );
@@ -71,7 +71,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 20 $ of L<App::MCP::Config>
+This documents version v0.1.$Rev: 1 $ of L<App::MCP::Config>
 
 =head1 Description
 

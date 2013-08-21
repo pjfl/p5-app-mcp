@@ -3,7 +3,7 @@
 package App::MCP::Workflow;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use App::MCP::Workflow::Transition;
 use Class::Usul::Constants;
@@ -119,7 +119,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 20 $
+This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

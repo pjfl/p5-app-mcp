@@ -1,21 +1,24 @@
-# @(#)$Ident: 11job.t 2013-06-02 14:51 pjf ;
+# @(#)$Ident: 11job.t 2013-08-21 20:43 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 19 $ =~ /\d+/gmx );
-use File::Spec::Functions;
-use FindBin qw( $Bin );
-use lib catdir( $Bin, updir, q(lib) );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use File::Spec::Functions   qw( catdir updir );
+use FindBin                 qw( $Bin );
+use lib                 catdir( $Bin, updir, 'lib' );
 
 use Module::Build;
 use Test::More;
 
-BEGIN {
-   my $current = eval { Module::Build->current };
+my $notes = {}; my $perl_ver;
 
-   $current and $current->notes->{stop_tests}
-            and plan skip_all => $current->notes->{stop_tests};
+BEGIN {
+   my $builder = eval { Module::Build->current };
+      $builder and $notes = $builder->notes;
+      $perl_ver = $notes->{min_perl_version} || 5.008;
 }
+
+use Test::Requires "${perl_ver}";
 
 use_ok 'App::MCP::Schema';
 
@@ -23,7 +26,6 @@ my $factory = App::MCP::Schema->new( appclass => 'App::MCP', nodebug => 1 );
 my $schema  = $factory->schedule;
 
 # Job
-
 my $rs = $schema->resultset( 'Job' ); my $job;
 
 $job = $rs->search( { fqjn => 'main::test' } )->first;
