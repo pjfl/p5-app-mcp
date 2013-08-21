@@ -1,9 +1,9 @@
-# @(#)$Ident: Schema.pm 2013-06-24 12:34 pjf ;
+# @(#)$Ident: Schema.pm 2013-06-25 01:36 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 22 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( trigger_input_handler );
 use App::MCP::Schema::Authentication;
@@ -44,7 +44,7 @@ sub create_event {
    catch ($e) { $self->log->error( $e ); return (400, $e) }
 
    trigger_input_handler $ENV{MCP_DAEMON_PID};
-   return (204, NUL);
+   return (204, 'Event created');
 }
 
 # Private methods
@@ -68,7 +68,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.2.$Rev: 20 $
+This documents version v0.2.$Rev: 22 $
 
 =head1 Synopsis
 

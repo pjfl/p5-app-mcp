@@ -1,13 +1,13 @@
-# @(#)$Ident: Build.PL 2013-06-24 20:03 pjf ;
+# @(#)$Ident: Build.PL 2013-08-07 00:43 pjf ;
 
 use strict;
 use warnings;
 use inc::Bob; # Module::Build subclass
-use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 21 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.2.%d', q$Rev: 22 $ =~ /\d+/gmx );
 
 Bob->new( {
-   module    => q(App::MCP),
-   home_page => q(http://www.roxsoft.co.uk),
+   module    => 'App::MCP',
+   home_page => 'http://www.roxsoft.co.uk',
    requires  => {
       'perl'                       => 5.010001,
       'local::lib'                 => 1.008004,
