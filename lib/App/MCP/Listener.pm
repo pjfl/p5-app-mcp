@@ -1,21 +1,33 @@
-# @(#)$Ident: Listener.pm 2013-06-24 12:31 pjf ;
+# @(#)$Ident: Listener.pm 2013-09-18 15:46 pjf ;
 
 package App::MCP::Listener;
 
-use strict;
-use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use namespace::sweep;
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
-use App::MCP::Schema;
+use App::MCP;
+use Class::Usul;
+use Class::Usul::File;
+use Class::Usul::Functions  qw( find_apphome get_cfgfiles );
 use Web::Simple;
 
-has 'appclass' => is => 'ro', required => 1;
+has 'app'      => is => 'lazy',
+   default     => sub { App::MCP->new( builder => $_[ 0 ] ) };
 
-has 'schema'   => is => 'lazy';
+has 'appclass' => is => 'ro',   required => 1;
+
+has 'database' => is => 'ro',   default  => sub { $ENV{MCP_DATABASE} };
+
+has 'usul'     => is => 'lazy', handles  => [ qw( debug log ) ],
+   init_arg    => undef;
+
+sub config {
+   return $_[ 0 ]->usul->config;
+}
 
 sub dispatch_request {
    sub (POST + /api/event + ?runid= + %*) {
-      my ($code, $msg) = shift->schema->create_event( @_ );
+      my ($code, $msg) = shift->app->create_event( @_ );
 
       return [ $code, [ 'Content-type', 'text/plain' ], [ $msg ] ];
    },
@@ -27,10 +39,20 @@ sub dispatch_request {
    };
 }
 
-sub _build_schema {
-   return App::MCP::Schema->new
-      ( config  => { appclass => $_[ 0 ]->appclass, name => 'listener', },
-        nodebug => 1, );
+sub _build_usul {
+   my $self     = shift;
+   my $appclass = $self->appclass || blessed $self || $self;
+   my $extns    = [ keys %{ Class::Usul::File->extensions } ];
+   my $attr     = { config       => { appclass => $appclass,
+                                      name     => 'listener' },
+                    config_class => "${appclass}::Config",
+                    debug        => $ENV{MCP_DEBUG} || 0 };
+   my $conf     = $attr->{config};
+
+   $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
+   $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
+
+   return Class::Usul->new( $attr );
 }
 
 1;
@@ -45,7 +67,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

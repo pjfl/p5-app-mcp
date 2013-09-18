@@ -1,8 +1,8 @@
-# @(#)$Ident: 15event.t 2013-08-21 20:43 pjf ;
+# @(#)$Ident: 15event.t 2013-09-17 11:13 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -22,7 +22,7 @@ use Test::Requires "${perl_ver}";
 
 use_ok 'App::MCP::Schema';
 
-my $factory = App::MCP::Schema->new( appclass => 'App::MCP', nodebug => 1 );
+my $factory = App::MCP::Schema->new( appclass => 'App::MCP', noask => 1 );
 my $schema  = $factory->schedule;
 my $job_rs  = $schema->resultset( 'Job' );
 my $jobs    = $job_rs->search( { fqjn => 'main::test' } );

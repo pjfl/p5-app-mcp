@@ -1,11 +1,11 @@
-# @(#)$Ident: Job.pm 2013-06-24 11:47 pjf ;
+# @(#)$Ident: Job.pm 2013-09-13 22:48 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
@@ -71,7 +71,7 @@ sub condition_dependencies {
 }
 
 sub crontab {
-   my ($self, $crontab) = @_; my @names  = qw(min hour mday mon wday); my $tmp;
+   my ($self, $crontab) = @_; my @names = qw( min hour mday mon wday ); my $tmp;
 
    is_hashref  $crontab and $tmp = $crontab
            and $crontab = join SPC, map { $tmp->{ $names[ $_ ] } } 0 .. 4;
@@ -253,7 +253,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

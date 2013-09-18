@@ -1,9 +1,9 @@
-# @(#)$Ident: Daemon.pm 2013-06-24 19:50 pjf ;
+# @(#)$Ident: Daemon.pm 2013-09-17 12:48 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -175,14 +175,10 @@ sub _build_ipc_ssh {
 }
 
 sub _build_listener {
-   my $self = shift; my $daemon_pid = $PID;
+   my $self = shift;
 
    return $self->async_factory->new_notifier
-      (  code => sub {
-            $ENV{MCP_DAEMON_PID} = $daemon_pid;
-            Plack::Runner->run( $self->_get_listener_args );
-            return OK;
-         },
+      (  code => $self->_get_listener_sub,
          desc => 'listener',
          key  => 'LISTEN',
          type => 'process' );
@@ -199,19 +195,27 @@ sub _build_op_ev_hndlr {
          type  => 'routine' );
 }
 
-sub _get_listener_args {
-   my $self   = shift;
-   my $config = $self->config;
-   my $args   = {
+sub _get_listener_sub {
+   my $self = shift; my $config = $self->config; my $daemon_pid = $PID;
+
+   my $database = $self->database; my $debug = $self->debug;
+
+   my $args = {
       '--port'       => $self->port,
       '--server'     => $config->server,
       '--access-log' => $config->logsdir->catfile( 'listener.log' ),
       '--app'        => $config->binsdir->catfile( 'mcp-listener' ), };
 
-   return %{ $args };
+   return sub {
+      $ENV{MCP_DAEMON_PID} = $daemon_pid;
+      $ENV{MCP_DATABASE  } = $database;
+      $ENV{MCP_DEBUG     } = $debug;
+      Plack::Runner->run( %{ $args } );
+      return OK;
+   };
 }
 
-sub _hangup_handler { # TODO: What should we do on reload?
+sub _hangup_handler { # TODO: On reload - stop, Class::Unload; require; start
 }
 
 sub _set_program_name {
@@ -250,7 +254,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

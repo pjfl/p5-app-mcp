@@ -1,19 +1,21 @@
-# @(#)$Ident: MCP.pm 2013-08-07 00:42 pjf ;
+# @(#)$Ident: MCP.pm 2013-09-18 15:09 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
 use Class::Usul::Constants;
+use Class::Usul::Crypt      qw( decrypt );
 use Class::Usul::Functions  qw( bson64id create_token elapsed );
 use Class::Usul::Types      qw( ArrayRef LoadableClass
                                 NonEmptySimpleStr Object );
 use IPC::PerlSSH;
 use Moo;
+use Storable                qw( thaw );
 use TryCatch;
 
 # Public attributes
@@ -21,18 +23,13 @@ has 'builder'       => is => 'ro',   isa => Object,
    handles          => [ qw( config database debug identity_file log port ) ],
    required         => TRUE, weak_ref => TRUE;
 
-has 'library_class' => is => 'lazy', isa => NonEmptySimpleStr,
-   default          => sub { $_[ 0 ]->config->library_class };
-
-has 'schema_class'  => is => 'lazy', isa => LoadableClass,
-   default          => sub { $_[ 0 ]->config->schema_class };
-
-has 'servers'       => is => 'lazy', isa => ArrayRef,
-   default          => sub { $_[ 0 ]->config->servers };
-
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, init_arg => undef,
    reader           => 'schema';
+
+has '_schema_class' => is => 'lazy', isa => LoadableClass, init_arg => undef,
+   default          => sub { $_[ 0 ]->config->schema_classes->{schedule} },
+   reader           => 'schema_class';
 
 with q(CatalystX::Usul::TraitFor::ConnectInfo);
 
@@ -42,6 +39,23 @@ sub clock_tick_handler {
 
    $self->log->debug( $lead.'Tick' ); $cron->trigger;
    return;
+}
+
+sub create_event {
+   my ($self, $runid, $params) = @_;
+
+   my $schema = $self->schema;
+   my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
+                       ->search( { runid   => $runid },
+                                 { columns => [ 'token' ] } );
+   my $event  = $pe_rs->first or return (404, 'Not found');
+   my $ev_rs  = $schema->resultset( 'Event' );
+
+   try        { $ev_rs->create( thaw decrypt $event->token, $params->{event} ) }
+   catch ($e) { $self->log->error( $e ); return (400, $e) }
+
+   trigger_input_handler $ENV{MCP_DAEMON_PID};
+   return (204, 'Event created');
 }
 
 sub cron_job_handler {
@@ -115,7 +129,7 @@ sub ipc_ssh_handler {
         User       => $user,
         SshOptions => [ '-i', $self->identity_file ], );
 
-   try        { $ips->use_library( $self->library_class ) }
+   try        { $ips->use_library( $self->config->library_class ) }
    catch ($e) { $logger->( 'error', 'STORE', $e ); return FALSE }
 
    for my $call (@{ $calls }) {
@@ -201,7 +215,7 @@ sub _start_job {
                  job_id    => $job->id,
                  port      => $self->port,
                  runid     => $runid,
-                 servers   => (join SPC, @{ $self->servers }),
+                 servers   => (join SPC, @{ $self->config->servers }),
                  token     => $token };
    my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $lead  = log_leader 'debug', 'START', $runid;
@@ -228,14 +242,14 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 
    use App::MCP::Daemon;
 
    exit App::MCP::Daemon->new_with_options
-      ( appclass => 'App::MCP', nodebug => 1 )->run;
+      ( appclass => 'App::MCP', noask => 1 )->run;
 
 =head1 Description
 

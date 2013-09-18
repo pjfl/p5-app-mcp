@@ -1,11 +1,11 @@
-# @(#)Ident: Loop.pm 2013-06-24 19:13 pjf ;
+# @(#)Ident: Loop.pm 2013-09-09 16:33 pjf ;
 
 package App::MCP::Async::Loop;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -13,7 +13,7 @@ use Class::Usul::Functions  qw( arg_list );
 use English                 qw( -no_match_vars );
 use Scalar::Util            qw( blessed );
 
-my $_EVENTS = {};
+my $Events = {};
 
 # Construction
 sub new {
@@ -142,11 +142,11 @@ sub uuid {
 
 # Private methods
 sub _events {
-   return $_EVENTS->{ $PID }->{ $_[ 1 ] } ||= {};
+   return $Events->{ $PID }->{ $_[ 1 ] } ||= {};
 }
 
 sub _sigattaches {
-   return $_EVENTS->{ $PID }->{_sigattaches} ||= {};
+   return $Events->{ $PID }->{_sigattaches} ||= {};
 }
 
 1;
@@ -168,7 +168,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Loop>
+This documents version v0.3.$Rev: 2 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

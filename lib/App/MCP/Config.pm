@@ -1,17 +1,17 @@
-# @(#)Ident: Config.pm 2013-06-24 12:18 pjf ;
+# @(#)Ident: Config.pm 2013-09-18 14:43 pjf ;
 
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( fqdn );
-use File::DataClass::Types  qw( ArrayRef File NonEmptySimpleStr
+use File::DataClass::Types  qw( ArrayRef File HashRef NonEmptySimpleStr
                                 NonZeroPositiveInt PositiveInt );
 use Moo;
 
-extends qw(Class::Usul::Config::Programs);
+extends q(Class::Usul::Config::Programs);
 
 has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
@@ -39,8 +39,10 @@ has 'max_ssh_workers'      => is => 'ro',   isa => NonZeroPositiveInt,
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
 
-has 'schema_class'         => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'App::MCP::Schema::Schedule';
+has 'schema_classes'       => is => 'ro',   isa => HashRef,
+   default                 => sub { {
+      authentication       => 'App::MCP::Schema::Authentication',
+      schedule             => 'App::MCP::Schema::Schedule', } };
 
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
    documentation           => 'Plack server class used for the event listener',
@@ -71,7 +73,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 1 $ of L<App::MCP::Config>
+This documents version v0.1.$Rev: 2 $ of L<App::MCP::Config>
 
 =head1 Description
 

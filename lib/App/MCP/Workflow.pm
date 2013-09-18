@@ -1,9 +1,9 @@
-# @(#)$Ident: Workflow.pm 2013-06-24 15:24 pjf ;
+# @(#)$Ident: Workflow.pm 2013-09-09 17:09 pjf ;
 
 package App::MCP::Workflow;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
 use App::MCP::Workflow::Transition;
 use Class::Usul::Constants;
@@ -13,6 +13,12 @@ use Scalar::Util            qw( blessed );
 use TryCatch;
 
 extends qw(Class::Workflow);
+
+EXCEPTION_CLASS->has_exception( 'Condition' );
+EXCEPTION_CLASS->has_exception( 'Crontab'   );
+EXCEPTION_CLASS->has_exception( 'Illegal'   );
+EXCEPTION_CLASS->has_exception( 'Retry'     );
+EXCEPTION_CLASS->has_exception( 'Unknown'   );
 
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
@@ -119,7 +125,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

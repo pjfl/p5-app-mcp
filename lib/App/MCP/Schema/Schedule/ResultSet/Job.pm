@@ -1,20 +1,30 @@
-# @(#)$Ident: Job.pm 2013-06-03 14:26 pjf ;
+# @(#)$Ident: Job.pm 2013-09-13 22:43 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use strict;
-use feature                 qw(state);
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent                  qw(DBIx::Class::ResultSet);
+use warnings;
+use feature                 qw( state );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use parent                  qw( DBIx::Class::ResultSet );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw(throw);
+use Class::Usul::Functions  qw( throw );
 
 # Public methods
 sub finished {
    my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
    return $state eq 'finished' ? TRUE : FALSE ;
+}
+
+sub job_id_by_name {
+   my ($self, $fqjn) = @_;
+
+   my $job = $self->search( { fqjn => $fqjn }, { columns => [ 'id' ] } )->single
+      or throw error => 'Job [_1] unknown', args => [ $fqjn ];
+
+   return $job->id;
 }
 
 sub predicates {
@@ -55,7 +65,7 @@ App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's p
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

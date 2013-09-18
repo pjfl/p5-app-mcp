@@ -1,16 +1,16 @@
-# @(#)$Ident: Base.pm 2013-06-24 11:44 pjf ;
+# @(#)$Ident: Base.pm 2013-09-13 22:50 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent q(DBIx::Class::Core);
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use parent                  qw( DBIx::Class::Core );
 
 use Class::Usul::Constants;
 use Data::Validation;
 
-__PACKAGE__->load_components( qw(InflateColumn::Object::Enum TimeStamp) );
+__PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 
 sub get_validation_attributes {
    return {};
@@ -22,16 +22,17 @@ sub varchar_max_size {
 
 
 sub job_type_enum {
-   return [ qw(box job) ];
+   return [ qw( box job ) ];
 }
 
 sub state_enum {
-   return [ qw(active hold failed finished
-               inactive running starting terminated) ];
+   return [ qw( active hold failed finished
+                inactive running starting terminated ) ];
 }
 
 sub transition_enum {
-   return [ qw(activate fail finish off_hold on_hold start started terminate) ];
+   return [ qw( activate fail finish off_hold
+                on_hold start started terminate ) ];
 }
 
 
@@ -123,7 +124,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

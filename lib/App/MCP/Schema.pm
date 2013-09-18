@@ -1,59 +1,80 @@
-# @(#)$Ident: Schema.pm 2013-06-25 01:36 pjf ;
+# @(#)$Ident: Schema.pm 2013-09-18 15:06 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
 
-use App::MCP::Functions     qw( trigger_input_handler );
-use App::MCP::Schema::Authentication;
-use App::MCP::Schema::Schedule;
 use Class::Usul::Constants;
-use Class::Usul::Crypt      qw( decrypt );
-use Class::Usul::Types      qw( Object );
+use Class::Usul::Functions  qw( throw );
+use Class::Usul::Types      qw( LoadableClass Object );
 use Moo;
-use Storable                qw( thaw );
-use TryCatch;
 
 extends q(CatalystX::Usul::Schema);
 
 my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
 
-has '+database'       => default => q(schedule);
+# Public attributes (override defaults in base class)
+has '+config_class'   => default => 'App::MCP::Config';
 
-has '+schema_classes' => default => sub { {
-   authentication     => q(App::MCP::Schema::Authentication),
-   schedule           => q(App::MCP::Schema::Schedule), } };
+has '+database'       => default => 'schedule';
+
+has '+schema_classes' => default => sub { $_[ 0 ]->config->schema_classes };
 
 has '+schema_version' => default => $schema_version;
 
+# Private attributes
 has '_schedule'       => is => 'lazy', isa => Object, reader => 'schedule';
 
+has '_schedule_class' => is => 'lazy', isa => LoadableClass,
+   default            => sub { $_[ 0 ]->schema_classes->{schedule} },
+   reader             => 'schedule_class';
+
 # Public methods
-sub create_event {
-   my ($self, $runid, $params) = @_; my $schema = $self->schedule;
+sub dump_jobs : method {
+   my $self     = shift;
+   my $job_spec = $self->next_argv || '%';
+   my $path     = $self->next_argv || 'jobs.json';
+   my $job_rs   = $self->schedule->resultset( 'Job' )->search( {
+      fqjn => { like => $job_spec }, }, {
+         result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+      } );
 
-   my $rs = $schema->resultset( 'ProcessedEvent' )
-                   ->search( { runid => $runid }, { columns => [ 'token' ] } );
+   $self->file->data_dump( { data => [ $job_rs->all ], path => $path, } );
+   return OK;
+}
 
-   my $event = $rs->first or return (404, 'Not found');
+sub load_jobs : method {
+   my $self     = shift;
+   my $path     = $self->next_argv || 'jobs.json';
+   my $job_rs   = $self->schedule->resultset( 'Job' );
 
-   $rs = $schema->resultset( 'Event' );
+   return OK;
+}
 
-   try        { $rs->create( thaw decrypt $event->token, $params->{event} ) }
-   catch ($e) { $self->log->error( $e ); return (400, $e) }
+sub send_event : method {
+   my $self     = shift;
+   my $job_name = $self->next_argv or throw 'No job name';
+   my $trans    = $self->next_argv || 'start';
+   my $fqjn     = __fully_qualify( $job_name );
+   my $schema   = $self->schedule;
+   my $event_rs = $schema->resultset( 'Event' );
+   my $job_id   = $schema->resultset( 'Job' )->job_id_by_name( $fqjn );
 
-   trigger_input_handler $ENV{MCP_DAEMON_PID};
-   return (204, 'Event created');
+   $event_rs->create( { job_id => $job_id, transition => $trans } );
+   return OK;
 }
 
 # Private methods
 sub _build__schedule {
-   my $self = shift; my $class = $self->schema_classes->{schedule};
+   my $self = shift; my $params = { quote_names => TRUE };
 
-   my $params = { quote_names => TRUE };
+   return $self->schedule_class->connect( @{ $self->connect_info }, $params );
+}
 
-   return $class->connect( @{ $self->connect_info }, $params );
+# Private functions
+sub __fully_qualify {
+   my $name = shift; return $name =~ m{ :: }mx ? $name : "main::${name}";
 }
 
 1;
@@ -68,7 +89,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 
@@ -81,7 +102,11 @@ This documents version v0.3.$Rev: 1 $
 
 =head1 Subroutines/Methods
 
-=head2 create_event
+=head2 dump_jobs - Dump selected job definitions to a file
+
+=head2 load_jobs - Load job table dump file
+
+=head2 send_event - Create a job state transition event
 
 =head1 Diagnostics
 

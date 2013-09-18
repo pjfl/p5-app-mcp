@@ -1,22 +1,21 @@
-# @(#)$Ident: JobCondition.pm 2013-06-04 21:37 pjf ;
+# @(#)$Ident: JobCondition.pm 2013-09-13 22:42 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
 use strict;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent  qw(DBIx::Class::ResultSet);
+use warnings;
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use parent                  qw( DBIx::Class::ResultSet );
 
-use Class::Usul::Functions qw(throw);
+use Class::Usul::Functions  qw( throw );
 
 sub create_dependents {
-   my ($self, $job) = @_; my $j_rs = $job->result_source->resultset;
+   my ($self, $job) = @_; my $job_rs = $job->result_source->resultset;
 
    for my $fqjn (@{ $job->condition_dependencies }) {
-      my $depend = $j_rs->search( {
-         fqjn => $fqjn }, { columns => [ 'id' ] } )->single
-            or throw error => 'Job [_1] unknown', args => [ $fqjn ];
+      my $depend_id = $job_rs->job_id_by_name( $fqjn );
 
-      $self->create( { job_id => $depend->id, reverse_id => $job->id } );
+      $self->create( { job_id => $depend_id, reverse_id => $job->id } );
    }
 
    return;
@@ -38,7 +37,7 @@ App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of m
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

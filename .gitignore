@@ -19,6 +19,7 @@ nytprof.out
 pm_to_blib
 README
 README.pod
+jobs.json
 t/ipc_srlock*
 var/
 *.tar.gz

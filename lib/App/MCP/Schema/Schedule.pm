@@ -1,24 +1,24 @@
-# @(#)$Ident: Schedule.pm 2013-04-30 23:35 pjf ;
+# @(#)$Ident: Schedule.pm 2013-09-16 16:46 pjf ;
 
 package App::MCP::Schema::Schedule;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent q(DBIx::Class::Schema);
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use parent                  qw( DBIx::Class::Schema );
 
-use File::Spec::Functions qw(catfile);
-use Scalar::Util          qw(blessed);
+use File::Spec::Functions   qw( catfile );
+use Scalar::Util            qw( blessed );
 
 __PACKAGE__->load_namespaces;
 
 sub ddl_filename {
     my ($self, $type, $version, $dir, $preversion) = @_;
 
-    ($dir, $version) = ($version, $dir) if ($DBIx::Class::VERSION < 0.08100);
+    $DBIx::Class::VERSION < 0.08100 and ($dir, $version) = ($version, $dir);
 
-    (my $filename = (blessed $self || $self)) =~ s{ :: }{-}gmx;
-    $version = join q(.), (split m{ [.] }mx, $version)[ 0, 1 ];
+   (my $filename = (blessed $self || $self)) =~ s{ :: }{-}gmx;
+    $version = join '.', (split m{ [.] }mx, $version)[ 0, 1 ];
     $preversion and $version = "${preversion}-${version}";
     return catfile( $dir, "${filename}-${version}-${type}.sql" );
 }
@@ -35,7 +35,7 @@ App::MCP::Schema::Schedule - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 
