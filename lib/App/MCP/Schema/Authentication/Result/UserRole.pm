@@ -1,11 +1,11 @@
-# @(#)$Ident: UserRole.pm 2013-04-30 23:35 pjf ;
+# @(#)$Ident: UserRole.pm 2013-09-18 23:03 pjf ;
 
 package App::MCP::Schema::Authentication::Result::UserRole;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent qw(App::MCP::Schema::Base);
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use parent                  qw( App::MCP::Schema::Base );
 
 use Class::Usul::Constants;
 
@@ -41,7 +41,7 @@ App::MCP::Schema::Authentication::Result::UserRole - <One-line description of mo
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 

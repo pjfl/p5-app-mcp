@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# @(#)$Ident: mcp-listener 2013-09-17 12:52 pjf ;
+# @(#)$Ident: mcp-listener 2013-09-18 22:56 pjf ;
 
 use strict;
 use warnings;
@@ -14,13 +14,11 @@ BEGIN {
    do $path or die $EVAL_ERROR || "Path ${path} not done\n";
 }
 
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use App::MCP::Listener;
 
-my $app = App::MCP::Listener->new( appclass => 'App::MCP' );
-
-$app->run_if_script;
+App::MCP::Listener->new->run_if_script;
 
 __END__
 
@@ -50,7 +48,7 @@ Lists the methods available in this program
 
 =head1 VERSION
 
-This documents version v0.3.$Rev: 2 $ of L<App::MCP>
+This documents version v0.3.$Rev: 3 $ of L<App::MCP>
 
 =head1 DESCRIPTION
 

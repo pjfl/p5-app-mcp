@@ -1,9 +1,9 @@
-# @(#)$Ident: Daemon.pm 2013-09-17 12:48 pjf ;
+# @(#)$Ident: Daemon.pm 2013-09-19 01:04 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -11,8 +11,7 @@ use App::MCP::DaemonControl;
 use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
 use English                 qw( -no_match_vars );
-use File::DataClass::Types  qw( File NonEmptySimpleStr NonZeroPositiveInt
-                                Object Path );
+use File::DataClass::Types  qw( NonZeroPositiveInt Object );
 use Moo;
 use MooX::Options;
 use Plack::Runner;
@@ -25,17 +24,9 @@ has '+config_class' => default => 'App::MCP::Config';
 
 # Object attributes (public)
 #   Visible to the command line
-option 'database'      => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation       => 'The database to connect to',
-   default             => sub { $_[ 0 ]->config->database }, format => 's';
-
-option 'identity_file' => is => 'lazy', isa => File, coerce => File->coercion,
-   documentation       => 'Path to private SSH key',
-   default             => sub { $_[ 0 ]->config->identity_file }, format => 's';
-
-option 'port'          => is => 'ro',   isa => NonZeroPositiveInt,
-   documentation       => 'Port number for the input event listener',
-   default             => sub { $_[ 0 ]->config->port }, format => 'i';
+option 'port'       => is => 'ro',   isa => NonZeroPositiveInt,
+   documentation    => 'Port number for the input event listener',
+   default          => sub { $_[ 0 ]->config->port }, format => 'i';
 
 #   Ingnored by the command line
 has 'app'           => is => 'lazy', isa => Object;
@@ -64,7 +55,7 @@ around 'run' => sub {
 around 'run_chain' => sub {
    my ($orig, $self, @args) = @_; @ARGV = @{ $self->extra_argv };
 
-   my $config = $self->config; my $name = $config->name;
+   my $conf = $self->config; my $name = $conf->name;
 
    App::MCP::DaemonControl->new( {
       name         => blessed $self || $self,
@@ -72,18 +63,18 @@ around 'run_chain' => sub {
       lsb_stop     => '$syslog',
       lsb_sdesc    => 'Master Control Program',
       lsb_desc     => 'Manages the Master Control Program daemon',
-      path         => $config->pathname,
+      path         => $conf->pathname,
 
-      directory    => $config->appldir,
+      directory    => $conf->appldir,
       program      => sub { shift; $self->daemon( @_ ) },
       program_args => [],
 
-      pid_file     => $config->rundir->catfile( "${name}.pid" ),
+      pid_file     => $conf->rundir->catfile( "${name}.pid" ),
       stderr_file  => $self->_stdio_file( 'err' ),
       stdout_file  => $self->_stdio_file( 'out' ),
 
       fork         => 2,
-      stop_signals => $config->stop_signals,
+      stop_signals => $conf->stop_signals,
    } )->run;
 
    return $orig->( $self, @args ); # Never reached
@@ -196,19 +187,18 @@ sub _build_op_ev_hndlr {
 }
 
 sub _get_listener_sub {
-   my $self = shift; my $config = $self->config; my $daemon_pid = $PID;
-
-   my $database = $self->database; my $debug = $self->debug;
+   my $self = shift; my $conf = $self->config;
 
    my $args = {
       '--port'       => $self->port,
-      '--server'     => $config->server,
-      '--access-log' => $config->logsdir->catfile( 'listener.log' ),
-      '--app'        => $config->binsdir->catfile( 'mcp-listener' ), };
+      '--server'     => $conf->server,
+      '--access-log' => $conf->logsdir->catfile( 'listener.log' ),
+      '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
+
+   my $daemon_pid = $PID; my $debug = $self->debug;
 
    return sub {
       $ENV{MCP_DAEMON_PID} = $daemon_pid;
-      $ENV{MCP_DATABASE  } = $database;
       $ENV{MCP_DEBUG     } = $debug;
       Plack::Runner->run( %{ $args } );
       return OK;
@@ -220,10 +210,10 @@ sub _hangup_handler { # TODO: On reload - stop, Class::Unload; require; start
 
 sub _set_program_name {
    my $self = shift;
-   my $cfg  = $self->config;
-   my $key  = ucfirst lc $cfg->log_key;
+   my $conf = $self->config;
+   my $key  = ucfirst lc $conf->log_key;
 
-   $PROGRAM_NAME = $cfg->appclass."::${key} ".$cfg->pathname;
+   $PROGRAM_NAME = $conf->appclass."::${key} ".$conf->pathname;
    return;
 }
 
@@ -254,7 +244,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 

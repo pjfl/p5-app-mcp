@@ -1,18 +1,17 @@
-# @(#)$Ident: MCP.pm 2013-09-18 15:09 pjf ;
+# @(#)$Ident: MCP.pm 2013-09-19 00:59 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt );
 use Class::Usul::Functions  qw( bson64id create_token elapsed );
-use Class::Usul::Types      qw( ArrayRef LoadableClass
-                                NonEmptySimpleStr Object );
+use Class::Usul::Types      qw( LoadableClass Object );
 use IPC::PerlSSH;
 use Moo;
 use Storable                qw( thaw );
@@ -20,7 +19,7 @@ use TryCatch;
 
 # Public attributes
 has 'builder'       => is => 'ro',   isa => Object,
-   handles          => [ qw( config database debug identity_file log port ) ],
+   handles          => [ qw( config debug log port ) ],
    required         => TRUE, weak_ref => TRUE;
 
 # Private attributes
@@ -127,7 +126,7 @@ sub ipc_ssh_handler {
    my $ips    = IPC::PerlSSH->new
       ( Host       => $host,
         User       => $user,
-        SshOptions => [ '-i', $self->identity_file ], );
+        SshOptions => [ '-i', $self->config->identity_file ], );
 
    try        { $ips->use_library( $self->config->library_class ) }
    catch ($e) { $logger->( 'error', 'STORE', $e ); return FALSE }
@@ -180,7 +179,8 @@ sub output_handler {
 # Private methods
 sub _build__schema {
    my $self = shift;
-   my $info = $self->get_connect_info( $self, { database => $self->database } );
+   my $conf = $self->config;
+   my $info = $self->get_connect_info( $self, { database => $conf->database } );
 
    my $params = { quote_names => TRUE }; # TODO: Fix me
 
@@ -242,7 +242,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 

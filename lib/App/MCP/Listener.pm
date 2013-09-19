@@ -1,25 +1,22 @@
-# @(#)$Ident: Listener.pm 2013-09-18 15:46 pjf ;
+# @(#)$Ident: Listener.pm 2013-09-19 00:48 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use App::MCP;
 use Class::Usul;
 use Class::Usul::File;
 use Class::Usul::Functions  qw( find_apphome get_cfgfiles );
+use Class::Usul::Types      qw( Object );
 use Web::Simple;
 
-has 'app'      => is => 'lazy',
-   default     => sub { App::MCP->new( builder => $_[ 0 ] ) };
+has 'app'    => is => 'lazy', isa => Object,
+   default   => sub { App::MCP->new( builder => $_[ 0 ] ) };
 
-has 'appclass' => is => 'ro',   required => 1;
-
-has 'database' => is => 'ro',   default  => sub { $ENV{MCP_DATABASE} };
-
-has 'usul'     => is => 'lazy', handles  => [ qw( debug log ) ],
-   init_arg    => undef;
+has 'usul'   => is => 'lazy', isa => Object, handles => [ qw( debug log ) ],
+   init_arg  => undef;
 
 sub config {
    return $_[ 0 ]->usul->config;
@@ -40,14 +37,13 @@ sub dispatch_request {
 }
 
 sub _build_usul {
-   my $self     = shift;
-   my $appclass = $self->appclass || blessed $self || $self;
-   my $extns    = [ keys %{ Class::Usul::File->extensions } ];
-   my $attr     = { config       => { appclass => $appclass,
-                                      name     => 'listener' },
-                    config_class => "${appclass}::Config",
-                    debug        => $ENV{MCP_DEBUG} || 0 };
-   my $conf     = $attr->{config};
+   my $self  = shift;
+   my $extns = [ keys %{ Class::Usul::File->extensions } ];
+   my $attr  = { config       => { appclass => 'App::MCP',
+                                   name     => 'listener' },
+                 config_class => 'App::MCP::Config',
+                 debug        => $ENV{MCP_DEBUG} || 0 };
+   my $conf  = $attr->{config};
 
    $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
    $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
@@ -67,7 +63,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 

@@ -1,9 +1,9 @@
-# @(#)$Ident: Schema.pm 2013-09-18 15:06 pjf ;
+# @(#)$Ident: Schema.pm 2013-09-19 00:38 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
@@ -17,7 +17,7 @@ my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
 # Public attributes (override defaults in base class)
 has '+config_class'   => default => 'App::MCP::Config';
 
-has '+database'       => default => 'schedule';
+has '+database'       => default => sub { $_[ 0 ]->config->database };
 
 has '+schema_classes' => default => sub { $_[ 0 ]->config->schema_classes };
 
@@ -89,7 +89,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 

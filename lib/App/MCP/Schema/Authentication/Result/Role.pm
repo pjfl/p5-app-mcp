@@ -1,16 +1,15 @@
-# @(#)$Ident: Role.pm 2013-04-30 23:34 pjf ;
+# @(#)$Ident: Role.pm 2013-09-18 23:03 pjf ;
 
 package App::MCP::Schema::Authentication::Result::Role;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent qw(App::MCP::Schema::Base);
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use parent                  qw( App::MCP::Schema::Base );
 
 use Class::Usul::Constants;
 
-my $class  = __PACKAGE__;
-my $schema = 'App::MCP::Schema::Authentication';
+my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Authentication';
 
 $class->table( 'role' );
 
@@ -35,7 +34,7 @@ App::MCP::Schema::Authentication::Result::Role - <One-line description of module
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 
