@@ -1,9 +1,9 @@
-# @(#)Ident: Config.pm 2013-09-18 14:43 pjf ;
+# @(#)Ident: Config.pm 2013-09-24 13:17 pjf ;
 
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( fqdn );
@@ -20,7 +20,7 @@ has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'schedule';
 
 has 'identity_file'        => is => 'lazy', isa => File,
-   default                 => sub { [ $_[ 0 ]->my_home, qw(.ssh id_rsa) ] },
+   builder                 => sub { [ $_[ 0 ]->my_home, qw( .ssh id_rsa ) ] },
    coerce                  => File->coercion;
 
 has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
@@ -40,7 +40,7 @@ has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
 
 has 'schema_classes'       => is => 'ro',   isa => HashRef,
-   default                 => sub { {
+   builder                 => sub { {
       authentication       => 'App::MCP::Schema::Authentication',
       schedule             => 'App::MCP::Schema::Schedule', } };
 
@@ -49,7 +49,7 @@ has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'Twiggy';
 
 has 'servers'              => is => 'ro',   isa => ArrayRef,
-   default                 => sub { [ fqdn ] };
+   builder                 => sub { [ fqdn ] };
 
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
@@ -73,7 +73,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 2 $ of L<App::MCP::Config>
+This documents version v0.3.$Rev: 4 $ of L<App::MCP::Config>
 
 =head1 Description
 

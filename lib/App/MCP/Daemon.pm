@@ -1,9 +1,9 @@
-# @(#)$Ident: Daemon.pm 2013-09-19 01:04 pjf ;
+# @(#)$Ident: Daemon.pm 2013-09-22 20:13 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -29,9 +29,11 @@ option 'port'       => is => 'ro',   isa => NonZeroPositiveInt,
    default          => sub { $_[ 0 ]->config->port }, format => 'i';
 
 #   Ingnored by the command line
-has 'app'           => is => 'lazy', isa => Object;
+has 'app'           => is => 'lazy', isa => Object, builder => sub {
+   App::MCP->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
 
-has 'async_factory' => is => 'lazy', isa => Object, handles => [ qw( loop ) ];
+has 'async_factory' => is => 'lazy', isa => Object, builder => sub {
+   App::MCP::Async->new( builder => $_[ 0 ] ) }, handles => [ qw( loop ) ];
 
 has 'clock_tick'    => is => 'lazy', isa => Object;
 
@@ -88,7 +90,7 @@ sub daemon {
 
    $log->info( $lead.'Starting event loop' ); $self->_set_program_name;
 
-   $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->listener; $self->clock_tick;
+   $self->listener; $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->clock_tick;
 
    $loop->watch_signal( HUP  => sub { $self->_hangup_handler      } );
    $loop->watch_signal( QUIT => sub { __terminate( $loop )        } );
@@ -102,9 +104,9 @@ sub daemon {
 
    $self->clock_tick->stop;
    $self->cron->stop;
-   $self->listener->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;
+   $self->listener->stop;
    $loop->watch_child( 0 );
 
    $log->info( $lead.'Event loop stopped' );
@@ -112,14 +114,6 @@ sub daemon {
 }
 
 # Private methods
-sub _build_app {
-   return App::MCP->new( builder => $_[ 0 ] );
-}
-
-sub _build_async_factory {
-   return App::MCP::Async->new( builder => $_[ 0 ] );
-}
-
 sub _build_clock_tick {
    my $self = shift; my $app = $self->app;
 
@@ -195,11 +189,12 @@ sub _get_listener_sub {
       '--access-log' => $conf->logsdir->catfile( 'listener.log' ),
       '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
 
-   my $daemon_pid = $PID; my $debug = $self->debug;
+   my $daemon_pid = $PID; my $debug = $self->debug; my $port = $self->port;
 
    return sub {
-      $ENV{MCP_DAEMON_PID} = $daemon_pid;
-      $ENV{MCP_DEBUG     } = $debug;
+      $ENV{MCP_DAEMON_PID   } = $daemon_pid;
+      $ENV{MCP_DEBUG        } = $debug;
+      $ENV{MCP_LISTENER_PORT} = $port;
       Plack::Runner->run( %{ $args } );
       return OK;
    };
@@ -244,7 +239,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 3 $
+This documents version v0.3.$Rev: 4 $
 
 =head1 Synopsis
 

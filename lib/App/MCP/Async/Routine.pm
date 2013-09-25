@@ -1,8 +1,8 @@
-# @(#)Ident: Routine.pm 2013-06-24 12:10 pjf ;
+# @(#)Ident: Routine.pm 2013-09-21 00:07 pjf ;
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Constants;
@@ -72,7 +72,7 @@ sub _build__semaphore {
    my $id   = 1234 + $self->loop->uuid;
    my $s    = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
 
-   $s->setval( 0, $self->autostart ); $s->setval( 1, FALSE );
+   $s->setval( 0, TRUE ); $s->setval( 1, $self->autostart );
    return $s;
 }
 
@@ -111,7 +111,7 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Routine>
+This documents version v0.3.$Rev: 4 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

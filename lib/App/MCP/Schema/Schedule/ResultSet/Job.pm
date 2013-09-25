@@ -1,21 +1,49 @@
-# @(#)$Ident: Job.pm 2013-09-13 22:43 pjf ;
+# @(#)$Ident: Job.pm 2013-09-25 13:54 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use strict;
 use warnings;
 use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 
 # Public methods
+sub dump {
+   my ($self, $job_spec) = @_; my $index = {}; my @jobs;
+
+   my $rs = $self->search( {
+      fqjn => { like => $job_spec }, }, {
+         order_by     => 'id',
+         result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+      } );
+
+   for my $job ($rs->all) {
+      my $parent_id = delete $job->{parent_id}; delete $job->{parent_path};
+
+      $index->{ delete $job->{id} } = $job->{fqjn};
+      $parent_id and $job->{parent_name} = $index->{ $parent_id };
+      push @jobs, $job;
+   }
+
+   return \@jobs;
+}
+
 sub finished {
    my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
 
    return $state eq 'finished' ? TRUE : FALSE ;
+}
+
+sub load {
+   my ($self, $jobs) = @_; my $count = 0;
+
+   for my $job (@{ $jobs }) { $self->create( $job ); $count++ }
+
+   return $count;
 }
 
 sub job_id_by_name {
@@ -65,7 +93,7 @@ App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's p
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 4 $
 
 =head1 Synopsis
 

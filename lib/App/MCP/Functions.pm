@@ -1,18 +1,19 @@
-# @(#)Ident: Functions.pm 2013-06-24 19:45 pjf ;
+# @(#)Ident: Functions.pm 2013-09-25 13:33 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( pad );
 use English                 qw( -no_match_vars );
 use Exporter 5.57           qw( import );
 
-our @EXPORT_OK = ( qw( log_leader read_exactly recv_arg_error recv_rv_error
-                       trigger_input_handler trigger_output_handler ) );
+our @EXPORT_OK = ( qw( log_leader qualify_job_name read_exactly recv_arg_error
+                       recv_rv_error trigger_input_handler
+                       trigger_output_handler ) );
 
 # Public functions
 sub log_leader ($$;$) {
@@ -21,6 +22,12 @@ sub log_leader ($$;$) {
    my $dkey = __padkey( $level, $key ); my $did = __padid( $id );
 
    return "${dkey}[${did}]: ";
+}
+
+sub qualify_job_name {
+   my $name = shift; my $sep = '::';
+
+   return $name =~ m{ $sep }mx ? $name : "main${sep}${name}";
 }
 
 sub read_exactly ($$$) {
@@ -95,7 +102,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 1 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 4 $ of L<App::MCP::Functions>
 
 =head1 Description
 

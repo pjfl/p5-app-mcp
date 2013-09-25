@@ -1,10 +1,11 @@
-# @(#)$Ident: Schema.pm 2013-09-19 00:38 pjf ;
+# @(#)$Ident: Schema.pm 2013-09-25 13:43 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
+use App::MCP::Functions     qw( qualify_job_name trigger_output_handler );
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 use Class::Usul::Types      qw( LoadableClass Object );
@@ -24,10 +25,14 @@ has '+schema_classes' => default => sub { $_[ 0 ]->config->schema_classes };
 has '+schema_version' => default => $schema_version;
 
 # Private attributes
-has '_schedule'       => is => 'lazy', isa => Object, reader => 'schedule';
+has '_schedule'       => is => 'lazy', isa => Object, builder => sub {
+   my $self = shift; my $params = { quote_names => TRUE };
+
+   return $self->schedule_class->connect( @{ $self->connect_info }, $params );
+}, reader             => 'schedule';
 
 has '_schedule_class' => is => 'lazy', isa => LoadableClass,
-   default            => sub { $_[ 0 ]->schema_classes->{schedule} },
+   builder            => sub { $_[ 0 ]->schema_classes->{schedule} },
    reader             => 'schedule_class';
 
 # Public methods
@@ -35,20 +40,22 @@ sub dump_jobs : method {
    my $self     = shift;
    my $job_spec = $self->next_argv || '%';
    my $path     = $self->next_argv || 'jobs.json';
-   my $job_rs   = $self->schedule->resultset( 'Job' )->search( {
-      fqjn => { like => $job_spec }, }, {
-         result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-      } );
+   my $data     = $self->schedule->resultset( 'Job' )->dump( $job_spec );
+   my $count    = @{ $data };
 
-   $self->file->data_dump( { data => [ $job_rs->all ], path => $path, } );
+   $self->file->data_dump( data => { jobs => $data }, path => $path, );
+   $self->info( 'Dumped [_1] jobs matching "[_2]" to [_3]',
+                { args => [ $count, $job_spec, $path ] } );
    return OK;
 }
 
 sub load_jobs : method {
    my $self     = shift;
    my $path     = $self->next_argv || 'jobs.json';
-   my $job_rs   = $self->schedule->resultset( 'Job' );
+   my $data     = $self->file->data_load( paths => [ $path ] );
+   my $count    = $self->schedule->resultset( 'Job' )->load( $data->{jobs} );
 
+   $self->info( 'Loaded [_1] jobs from [_2]', { args => [ $count, $path ] } );
    return OK;
 }
 
@@ -56,25 +63,17 @@ sub send_event : method {
    my $self     = shift;
    my $job_name = $self->next_argv or throw 'No job name';
    my $trans    = $self->next_argv || 'start';
-   my $fqjn     = __fully_qualify( $job_name );
+   my $fqjn     = qualify_job_name( $job_name );
    my $schema   = $self->schedule;
    my $event_rs = $schema->resultset( 'Event' );
    my $job_id   = $schema->resultset( 'Job' )->job_id_by_name( $fqjn );
 
    $event_rs->create( { job_id => $job_id, transition => $trans } );
+
+   my $pid_file = $self->config->rundir->catfile( 'daemon.pid' );
+
+   $pid_file->exists and trigger_output_handler( $pid_file->chomp->getline );
    return OK;
-}
-
-# Private methods
-sub _build__schedule {
-   my $self = shift; my $params = { quote_names => TRUE };
-
-   return $self->schedule_class->connect( @{ $self->connect_info }, $params );
-}
-
-# Private functions
-sub __fully_qualify {
-   my $name = shift; return $name =~ m{ :: }mx ? $name : "main::${name}";
 }
 
 1;
@@ -89,7 +88,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 3 $
+This documents version v0.3.$Rev: 4 $
 
 =head1 Synopsis
 

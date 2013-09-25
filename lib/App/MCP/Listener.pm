@@ -1,22 +1,37 @@
-# @(#)$Ident: Listener.pm 2013-09-19 00:48 pjf ;
+# @(#)$Ident: Listener.pm 2013-09-20 16:16 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use App::MCP;
 use Class::Usul;
 use Class::Usul::File;
 use Class::Usul::Functions  qw( find_apphome get_cfgfiles );
-use Class::Usul::Types      qw( Object );
+use Class::Usul::Types      qw( BaseType NonZeroPositiveInt Object );
 use Web::Simple;
 
-has 'app'    => is => 'lazy', isa => Object,
-   default   => sub { App::MCP->new( builder => $_[ 0 ] ) };
+has 'app'    => is => 'lazy', isa => Object, builder => sub {
+   App::MCP->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
 
-has 'usul'   => is => 'lazy', isa => Object, handles => [ qw( debug log ) ],
-   init_arg  => undef;
+has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
+   builder   => sub { $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->config->port };
+
+has 'usul'   => is => 'lazy', isa => BaseType, builder => sub {
+   my $self  = shift;
+   my $extns = [ keys %{ Class::Usul::File->extensions } ];
+   my $attr  = { config       => { appclass => 'App::MCP',
+                                   name     => 'listener' },
+                 config_class => 'App::MCP::Config',
+                 debug        => $ENV{MCP_DEBUG} || 0 };
+   my $conf  = $attr->{config};
+
+   $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
+   $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
+
+   return Class::Usul->new( $attr );
+}, handles   => [ qw( debug log ) ], init_arg => undef;
 
 sub config {
    return $_[ 0 ]->usul->config;
@@ -36,21 +51,6 @@ sub dispatch_request {
    };
 }
 
-sub _build_usul {
-   my $self  = shift;
-   my $extns = [ keys %{ Class::Usul::File->extensions } ];
-   my $attr  = { config       => { appclass => 'App::MCP',
-                                   name     => 'listener' },
-                 config_class => 'App::MCP::Config',
-                 debug        => $ENV{MCP_DEBUG} || 0 };
-   my $conf  = $attr->{config};
-
-   $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
-   $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
-
-   return Class::Usul->new( $attr );
-}
-
 1;
 
 __END__
@@ -63,7 +63,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 3 $
+This documents version v0.3.$Rev: 4 $
 
 =head1 Synopsis
 

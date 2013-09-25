@@ -1,33 +1,39 @@
-# @(#)$Ident: MCP.pm 2013-09-19 00:59 pjf ;
+# @(#)$Ident: MCP.pm 2013-09-22 19:48 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
 use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( decrypt );
 use Class::Usul::Functions  qw( bson64id create_token elapsed );
-use Class::Usul::Types      qw( LoadableClass Object );
+use Class::Usul::Types      qw( BaseType LoadableClass
+                                NonZeroPositiveInt Object );
 use IPC::PerlSSH;
 use Moo;
 use Storable                qw( thaw );
 use TryCatch;
 
 # Public attributes
-has 'builder'       => is => 'ro',   isa => Object,
-   handles          => [ qw( config debug log port ) ],
+has 'builder'       => is => 'ro',   isa => BaseType,
+   handles          => [ qw( config debug log ) ],
    required         => TRUE, weak_ref => TRUE;
 
+has 'port'          => is => 'lazy', isa => NonZeroPositiveInt,
+   builder          => sub { $_[ 0 ]->config->port };
+
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object, init_arg => undef,
+has '_schema'       => is => 'lazy', isa => Object, builder => sub {
+   $_[ 0 ]->schema_class->connect( @{ $_[ 0 ]->get_connect_info },
+                                   { quote_names => TRUE } ) },
    reader           => 'schema';
 
-has '_schema_class' => is => 'lazy', isa => LoadableClass, init_arg => undef,
-   default          => sub { $_[ 0 ]->config->schema_classes->{schedule} },
+has '_schema_class' => is => 'lazy', isa => LoadableClass,
+   builder          => sub { $_[ 0 ]->config->schema_classes->{schedule} },
    reader           => 'schema_class';
 
 with q(CatalystX::Usul::TraitFor::ConnectInfo);
@@ -60,7 +66,7 @@ sub create_event {
 sub cron_job_handler {
    my ($self, $sig_hndlr_pid) = @_;
 
-   my $trigger = $ENV{APP_MCP_DAEMON_AUTOTRIGGER} ? TRUE : FALSE;
+   my $trigger = FALSE;
    my $schema  = $self->schema;
    my $job_rs  = $schema->resultset( 'Job' );
    my $ev_rs   = $schema->resultset( 'Event' );
@@ -177,16 +183,6 @@ sub output_handler {
 }
 
 # Private methods
-sub _build__schema {
-   my $self = shift;
-   my $conf = $self->config;
-   my $info = $self->get_connect_info( $self, { database => $conf->database } );
-
-   my $params = { quote_names => TRUE }; # TODO: Fix me
-
-   return $self->schema_class->connect( @{ $info }, $params );
-}
-
 sub _process_event {
    my ($self, $js_rs, $event) = @_; my $cols = { $event->get_inflated_columns };
 
@@ -242,7 +238,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 3 $
+This documents version v0.3.$Rev: 4 $
 
 =head1 Synopsis
 

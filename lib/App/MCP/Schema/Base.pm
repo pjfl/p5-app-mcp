@@ -1,10 +1,10 @@
-# @(#)$Ident: Base.pm 2013-09-13 22:50 pjf ;
+# @(#)$Ident: Base.pm 2013-09-25 11:34 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::Core );
 
 use Class::Usul::Constants;
@@ -106,9 +106,7 @@ sub _validate {
    }
 
    $columns = Data::Validation->new( $attr )->check_form( NUL, $columns );
-
    $self->set_inflated_columns( $columns );
-
    return;
 }
 
@@ -124,7 +122,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 4 $
 
 =head1 Synopsis
 
