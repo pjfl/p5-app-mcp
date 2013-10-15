@@ -1,11 +1,11 @@
-# @(#)$Ident: Job.pm 2013-09-25 13:54 pjf ;
+# @(#)$Ident: Job.pm 2013-10-13 22:22 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use strict;
 use warnings;
 use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
 use Class::Usul::Constants;
@@ -56,7 +56,7 @@ sub job_id_by_name {
 }
 
 sub predicates {
-   return [ qw(finished running terminated) ];
+   return [ qw( finished running terminated ) ];
 }
 
 sub running {
@@ -93,7 +93,7 @@ App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's p
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 5 $
 
 =head1 Synopsis
 

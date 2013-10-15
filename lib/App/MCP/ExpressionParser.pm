@@ -1,11 +1,11 @@
-# @(#)$Ident: ExpressionParser.pm 2013-04-30 23:33 pjf ;
+# @(#)$Ident: ExpressionParser.pm 2013-10-11 16:27 pjf ;
 
 package App::MCP::ExpressionParser;
 
 use strict;
 use warnings;
 use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Usul::Functions qw(arg_list throw);
 use Marpa::R2;
@@ -52,7 +52,6 @@ sub parse {
 }
 
 # Private methods
-
 sub _grammar {
    my $self = shift; state $cache; $cache and return $cache;
 
@@ -137,7 +136,6 @@ sub _recogniser {
 }
 
 # Private functions
-
 sub __tokens {
    my $predicates = shift; $predicates = join '|', @{ $predicates };
 
@@ -193,7 +191,7 @@ App::MCP::ExpressionParser - Evaluate the condition field of the Job table
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 5 $
 
 =head1 Synopsis
 

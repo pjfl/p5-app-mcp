@@ -1,15 +1,16 @@
-# @(#)$Ident: Job.pm 2013-09-22 21:31 pjf ;
+# @(#)$Ident: Job.pm 2013-10-13 23:51 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
 use App::MCP::ExpressionParser;
+use App::MCP::Functions     qw( qualify_job_name );
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( is_arrayref is_hashref throw );
 
@@ -34,10 +35,13 @@ $class->add_columns
                       accessor    => '_fqjn',
                       is_nullable => FALSE,
                       size        => $class->varchar_max_size, },
+     group       => $class->nullable_foreign_key_data_type,
      host        => $class->varchar_data_type( 64, 'localhost' ),
      name        => $class->varchar_data_type( 126, undef ),
+     owner       => $class->nullable_foreign_key_data_type,
      parent_id   => $class->nullable_foreign_key_data_type,
      parent_path => $class->nullable_varchar_data_type,
+     permissions => $class->numerical_id_data_type( 4 ),
      type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
      user        => $class->varchar_data_type( 32 ), );
 
@@ -58,12 +62,27 @@ $class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
 $class->might_have( state            => "${result}::JobState",       'job_id' );
 
+$result = 'App::MCP::Schema::Authentication::Result';
+
+$class->belongs_to( owner_rel        => "${result}::User",            'owner' );
+
+$class->belongs_to( group_rel        => "${result}::Role",            'group' );
+
 sub new {
    my ($class, $attr) = @_; my $new = $class->next::method( $attr );
 
    $new->crontab; $new->fqjn; # Force the attributes to take on a values
 
    return $new;
+}
+
+sub can_update {
+   my ($self, $user) = @_;
+
+   $user_id = $user_rs->uid_by_name( $user );
+   $user_id == $self->owner and return $self->permissions & 4 ? TRUE : FALSE;
+   
+   return $self->permissions & 1 ? TRUE : FALSE;
 }
 
 sub condition_dependencies {
@@ -77,8 +96,8 @@ sub crontab {
            and $crontab = join SPC, map { $tmp->{ $names[ $_ ] } } 0 .. 4;
    is_arrayref $crontab and $crontab = join SPC, @{ $crontab };
 
-   my @fields = split m{ \s+ }msx, $crontab ? $self->_crontab( $crontab )
-                                            : $self->_crontab || NUL;
+   my @fields = split m{ \s+ }msx, ($crontab ? $self->_crontab( $crontab )
+                                             : $self->_crontab || NUL);
 
    $self->{ 'crontab_'.$names[ $_ ] } = $fields[ $_ ] for (0 .. 4);
 
@@ -116,9 +135,9 @@ sub eval_condition {
 }
 
 sub fqjn { # Fully qualified job name
-   my $self = shift; my $fqjn = $self->_fqjn; $fqjn and return $fqjn;
+   my $self = shift; $self->_fqjn and return $self->_fqjn;
 
-   return $self->_fqjn( $self->namespace.'::'.($self->name || 'void') );
+   return $self->_fqjn( qualify_job_name( $self->name, $self->namespace ) );
 }
 
 sub get_validation_attributes {
@@ -131,7 +150,16 @@ sub get_validation_attributes {
 }
 
 sub insert {
-   my $self = shift; $self->_validate; my $job = $self->next::method;
+   my $self = shift; my $columns = { $self->get_inflated_columns };
+
+   if (my $parent_name = delete $columns->{parent_name}) {
+      my $job_rs = $self->result_source->resultset;
+
+      $columns->{parent_id} = $job_rs->job_id_by_name( $parent_name );
+      $self->set_inflated_columns( $columns );
+   }
+
+   $self->_validate; my $job = $self->next::method;
 
    $self->condition and $self->_insert_condition( $job->id );
    $self->_create_job_state( $job );
@@ -201,6 +229,10 @@ sub update {
 }
 
 # Private methods
+sub _create_job_state {
+   return $_[ 0 ]->_job_state_rs->find_or_create( $_[ 1 ] );
+}
+
 sub _delete_condition {
    return $_[ 0 ]->_job_condition_rs->delete_dependents( $_[ 0 ] );
 }
@@ -208,20 +240,16 @@ sub _delete_condition {
 sub _eval_condition {
    my $self = shift; $self->condition or return [ TRUE, [] ];
 
-   my $j_rs = $self->result_source->resultset;
+   my $job_rs = $self->result_source->resultset;
 
    state $parser //= App::MCP::ExpressionParser->new
-      ( external => $j_rs, predicates => $j_rs->predicates );
+      ( external => $job_rs, predicates => $job_rs->predicates );
 
    return $parser->parse( $self->condition, $self->namespace );
 }
 
 sub _insert_condition {
    return $_[ 0 ]->_job_condition_rs->create_dependents( $_[ 0 ] );
-}
-
-sub _create_job_state {
-   return $_[ 0 ]->_job_state_rs->find_or_create( $_[ 1 ] );
 }
 
 sub _job_condition_rs {
@@ -234,6 +262,9 @@ sub _job_state_rs {
    state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobState' );
 
    return $rs;
+}
+
+sub _user_rs {
 }
 
 # Private functions
@@ -253,7 +284,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 5 $
 
 =head1 Synopsis
 

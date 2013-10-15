@@ -1,10 +1,10 @@
-# @(#)Ident: Functions.pm 2013-09-25 13:33 pjf ;
+# @(#)Ident: Functions.pm 2013-10-11 14:49 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( pad );
@@ -24,10 +24,10 @@ sub log_leader ($$;$) {
    return "${dkey}[${did}]: ";
 }
 
-sub qualify_job_name {
-   my $name = shift; my $sep = '::';
+sub qualify_job_name (;$$) {
+   my ($name, $ns) = @_; my $sep = '::'; $name //= 'void'; $ns //= 'main';
 
-   return $name =~ m{ $sep }mx ? $name : "main${sep}${name}";
+   return $name =~ m{ $sep }mx ? $name : "${ns}${sep}${name}";
 }
 
 sub read_exactly ($$$) {
@@ -36,7 +36,7 @@ sub read_exactly ($$$) {
    while ((my $have = length $_[ 1 ]) < $_[ 2 ]) {
       my $red = read( $_[ 0 ], $_[ 1 ], $_[ 2 ] - $have, $have );
 
-      defined $red or return; $red or return q();
+      defined $red or return; $red or return NUL;
    }
 
    return $_[ 2 ];
@@ -102,7 +102,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 4 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 5 $ of L<App::MCP::Functions>
 
 =head1 Description
 

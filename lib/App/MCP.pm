@@ -1,10 +1,10 @@
-# @(#)$Ident: MCP.pm 2013-09-22 19:48 pjf ;
+# @(#)$Ident: MCP.pm 2013-10-04 16:16 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
@@ -19,10 +19,6 @@ use Storable                qw( thaw );
 use TryCatch;
 
 # Public attributes
-has 'builder'       => is => 'ro',   isa => BaseType,
-   handles          => [ qw( config debug log ) ],
-   required         => TRUE, weak_ref => TRUE;
-
 has 'port'          => is => 'lazy', isa => NonZeroPositiveInt,
    builder          => sub { $_[ 0 ]->config->port };
 
@@ -35,6 +31,10 @@ has '_schema'       => is => 'lazy', isa => Object, builder => sub {
 has '_schema_class' => is => 'lazy', isa => LoadableClass,
    builder          => sub { $_[ 0 ]->config->schema_classes->{schedule} },
    reader           => 'schema_class';
+
+has '_usul'         => is => 'ro',   isa => BaseType,
+   handles          => [ qw( config debug log ) ], init_arg => 'builder',
+   required         => TRUE, weak_ref => TRUE;
 
 with q(CatalystX::Usul::TraitFor::ConnectInfo);
 
@@ -53,14 +53,25 @@ sub create_event {
    my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
                        ->search( { runid   => $runid },
                                  { columns => [ 'token' ] } );
-   my $event  = $pe_rs->first or return (404, 'Not found');
+   my $event  = $pe_rs->first or return ( 404, 'Runid not found' );
    my $ev_rs  = $schema->resultset( 'Event' );
 
    try        { $ev_rs->create( thaw decrypt $event->token, $params->{event} ) }
-   catch ($e) { $self->log->error( $e ); return (400, $e) }
+   catch ($e) { $self->log->error( $e ); return ( 400, $e ) }
 
    trigger_input_handler $ENV{MCP_DAEMON_PID};
-   return (204, 'Event created');
+   return ( 204, 'Event created' );
+}
+
+sub create_job {
+   my ($self, $params) = @_;
+
+   my $job_rs = $self->schema->resultset( 'Job' );
+
+   try        { $job_rs->create( thaw $params->{job} ) }
+   catch ($e) { $self->log->error( $e ); return ( 400, $e ) }
+
+   return ( 204, 'Job created' );
 }
 
 sub cron_job_handler {
@@ -238,7 +249,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 5 $
 
 =head1 Synopsis
 

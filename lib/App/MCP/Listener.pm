@@ -1,9 +1,9 @@
-# @(#)$Ident: Listener.pm 2013-09-20 16:16 pjf ;
+# @(#)$Ident: Listener.pm 2013-10-04 16:03 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
 
 use App::MCP;
 use Class::Usul;
@@ -13,12 +13,12 @@ use Class::Usul::Types      qw( BaseType NonZeroPositiveInt Object );
 use Web::Simple;
 
 has 'app'    => is => 'lazy', isa => Object, builder => sub {
-   App::MCP->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
+   App::MCP->new( builder => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
 
 has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
-   builder   => sub { $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->config->port };
+   builder   => sub { $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->_usul->config->port };
 
-has 'usul'   => is => 'lazy', isa => BaseType, builder => sub {
+has '_usul'  => is => 'lazy', isa => BaseType, builder => sub {
    my $self  = shift;
    my $extns = [ keys %{ Class::Usul::File->extensions } ];
    my $attr  = { config       => { appclass => 'App::MCP',
@@ -31,15 +31,16 @@ has 'usul'   => is => 'lazy', isa => BaseType, builder => sub {
    $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
 
    return Class::Usul->new( $attr );
-}, handles   => [ qw( debug log ) ], init_arg => undef;
-
-sub config {
-   return $_[ 0 ]->usul->config;
-}
+};
 
 sub dispatch_request {
    sub (POST + /api/event + ?runid= + %*) {
       my ($code, $msg) = shift->app->create_event( @_ );
+
+      return [ $code, [ 'Content-type', 'text/plain' ], [ $msg ] ];
+   },
+   sub (POST + /api/job + %*) {
+      my ($code, $msg) = shift->app->create_job( @_ );
 
       return [ $code, [ 'Content-type', 'text/plain' ], [ $msg ] ];
    },
@@ -63,7 +64,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 5 $
 
 =head1 Synopsis
 

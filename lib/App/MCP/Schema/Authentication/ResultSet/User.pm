@@ -1,27 +1,25 @@
-# @(#)$Ident: Role.pm 2013-10-10 21:32 pjf ;
+# @(#)Ident: User.pm 2013-10-13 23:15 pjf ;
 
-package App::MCP::Schema::Authentication::Result::Role;
+package App::MCP::Schema::Authentication::ResultSet::User;
 
 use strict;
 use warnings;
+use feature                 qw( state );
 use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
-use parent                  qw( App::MCP::Schema::Base );
+use parent                  qw( DBIx::Class::ResultSet );
 
 use Class::Usul::Constants;
+use Class::Usul::Functions  qw( throw );
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Authentication';
+sub uid_by_name {
+   my ($self, $username) = @_;
 
-$class->table( 'role' );
+   my $user = $self->search
+      ( { username => $username }, { columns => [ 'id' ] } )->single
+      or throw error => 'User [_1] unknown', args => [ $username ];
 
-$class->add_columns
-   (  id    => $class->serial_data_type,
-      desc  => $class->varchar_data_type( $class->varchar_max_size, NUL ), );
-
-$class->set_primary_key( 'id' );
-
-$class->add_unique_constraint( [ 'desc' ] );
-
-$class->has_many( users => "${schema}::Result::UserRole", 'role_id' );
+   return $user->id;
+}
 
 1;
 
@@ -29,22 +27,30 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =head1 Name
 
-App::MCP::Schema::Authentication::Result::Role - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 5 $
+App::MCP::Schema::Authentication::ResultSet::User - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Authentication::Result::Role;
+   use App::MCP::Schema::Authentication::ResultSet::User;
    # Brief but working code examples
+
+=head1 Version
+
+This documents version v0.1.$Rev: 5 $ of L<App::MCP::Schema::Authentication::ResultSet::User>
 
 =head1 Description
 
 =head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -64,8 +70,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
 Patches are welcome
 
 =head1 Acknowledgements
@@ -74,7 +80,7 @@ Larry Wall - For the Perl programming language
 
 =head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
