@@ -1,18 +1,18 @@
-# @(#)$Ident: Job.pm 2013-10-13 23:51 pjf ;
+# @(#)$Ident: Job.pm 2013-10-27 17:15 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
 use App::MCP::ExpressionParser;
 use App::MCP::Functions     qw( qualify_job_name );
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( is_arrayref is_hashref throw );
+use Class::Usul::Functions  qw( is_arrayref is_hashref is_member throw );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -41,7 +41,7 @@ $class->add_columns
      owner       => $class->nullable_foreign_key_data_type,
      parent_id   => $class->nullable_foreign_key_data_type,
      parent_path => $class->nullable_varchar_data_type,
-     permissions => $class->numerical_id_data_type( 4 ),
+     permissions => $class->numerical_id_data_type( 488 ),
      type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
      user        => $class->varchar_data_type( 32 ), );
 
@@ -62,27 +62,21 @@ $class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
 $class->might_have( state            => "${result}::JobState",       'job_id' );
 
-$result = 'App::MCP::Schema::Authentication::Result';
-
 $class->belongs_to( owner_rel        => "${result}::User",            'owner' );
 
 $class->belongs_to( group_rel        => "${result}::Role",            'group' );
 
 sub new {
-   my ($class, $attr) = @_; my $new = $class->next::method( $attr );
+   my ($class, $attr) = @_; my $parent_name = delete $attr->{parent_name};
+
+   my $new = $class->next::method( $attr );
+
+   $parent_name
+      and $new->_set_parent_id( $parent_name, { $new->get_inflated_columns } );
 
    $new->crontab; $new->fqjn; # Force the attributes to take on a values
 
    return $new;
-}
-
-sub can_update {
-   my ($self, $user) = @_;
-
-   $user_id = $user_rs->uid_by_name( $user );
-   $user_id == $self->owner and return $self->permissions & 4 ? TRUE : FALSE;
-   
-   return $self->permissions & 1 ? TRUE : FALSE;
 }
 
 sub condition_dependencies {
@@ -150,20 +144,23 @@ sub get_validation_attributes {
 }
 
 sub insert {
-   my $self = shift; my $columns = { $self->get_inflated_columns };
+   my $self = shift; $self->_validate; my $job = $self->next::method;
 
-   if (my $parent_name = delete $columns->{parent_name}) {
-      my $job_rs = $self->result_source->resultset;
-
-      $columns->{parent_id} = $job_rs->job_id_by_name( $parent_name );
-      $self->set_inflated_columns( $columns );
-   }
-
-   $self->_validate; my $job = $self->next::method;
-
-   $self->condition and $self->_insert_condition( $job->id );
+   $self->condition and $self->_insert_condition( $job );
    $self->_create_job_state( $job );
    return $job;
+}
+
+sub is_executable_by {
+   return $_[ 0 ]->_is_permitted( $_[ 1 ], [ 64, 8, 1 ] );
+}
+
+sub is_readable_by {
+   return $_[ 0 ]->_is_permitted( $_[ 1 ], [ 256, 32, 4 ] );
+}
+
+sub is_writable_by {
+   return $_[ 0 ]->_is_permitted( $_[ 1 ], [ 128, 16, 2 ] );
 }
 
 sub materialised_path_columns {
@@ -230,11 +227,15 @@ sub update {
 
 # Private methods
 sub _create_job_state {
-   return $_[ 0 ]->_job_state_rs->find_or_create( $_[ 1 ] );
+   my $self = shift; my $schema = $self->result_source->schema;
+
+   return $schema->resultset( 'JobState' )->find_or_create( @_ );
 }
 
 sub _delete_condition {
-   return $_[ 0 ]->_job_condition_rs->delete_dependents( $_[ 0 ] );
+   my $self = shift; my $schema = $self->result_source->schema;
+
+   return $schema->resultset( 'JobCondition' )->delete_dependents( $self );
 }
 
 sub _eval_condition {
@@ -249,22 +250,38 @@ sub _eval_condition {
 }
 
 sub _insert_condition {
-   return $_[ 0 ]->_job_condition_rs->create_dependents( $_[ 0 ] );
+   my $self = shift; my $schema = $self->result_source->schema;
+
+   return $schema->resultset( 'JobCondition' )->create_dependents( $_[ 0 ] );
 }
 
-sub _job_condition_rs {
-   state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobCondition' );
+sub _is_permitted {
+   my ($self, $user_id, $mask) = @_; my $perms = $self->permissions;
 
-   return $rs;
+   my $user_rs = $self->result_source->schema->resultset( 'User' );
+   my $user    = $user_rs->find( $user_id );
+
+   $perms & $mask->[ 2 ] and return TRUE;
+   $perms & $mask->[ 1 ]
+      and is_member( $self->group, map { $_->id } $user->roles )
+      and return TRUE;
+   $perms & $mask->[ 0 ] and $self->owner == $user->id and return TRUE;
+   return FALSE;
 }
 
-sub _job_state_rs {
-   state $rs //= $_[ 0 ]->result_source->schema->resultset( 'JobState' );
+sub _set_parent_id {
+   my ($self, $parent_name, $columns) = @_;
 
-   return $rs;
-}
+   my $job_rs = $self->result_source->resultset;
+   my $parent = $job_rs->search( { fqjn => $parent_name } )->single
+      or throw error => 'Job [_1] unknown', args => [ $parent_name ];
 
-sub _user_rs {
+   $parent->is_writable_by( $columns->{owner} )
+      or throw error => 'Job [_1] write permission denied to [_1]',
+               args  => [ $parent_name, $columns->{owner} ];
+   $columns->{parent_id} = $parent->id;
+   $self->set_inflated_columns( $columns );
+   return;
 }
 
 # Private functions
@@ -284,7 +301,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.3.$Rev: 5 $
+This documents version v0.3.$Rev: 6 $
 
 =head1 Synopsis
 

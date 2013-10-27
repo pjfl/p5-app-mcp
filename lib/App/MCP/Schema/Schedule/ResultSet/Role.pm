@@ -1,28 +1,23 @@
-# @(#)$Ident: JobCondition.pm 2013-10-22 03:47 pjf ;
+# @(#)Ident: Role.pm 2013-10-21 23:23 pjf ;
 
-package App::MCP::Schema::Schedule::ResultSet::JobCondition;
+package App::MCP::Schema::Schedule::ResultSet::Role;
 
 use strict;
 use warnings;
+use feature                 qw( state );
 use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
+use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 
-sub create_dependents {
-   my ($self, $depend) = @_; my $job_rs = $depend->result_source->resultset;
+sub find_by_name {
+   my ($self, $rolename) = @_;
 
-   for my $fqjn (@{ $depend->condition_dependencies }) {
-      my $job_id = $job_rs->job_id_by_name( $fqjn );
+   my $role = $self->search( { rolename => $rolename } )->single
+      or throw error => 'Role [_1] unknown', args => [ $rolename ];
 
-      $self->create( { job_id => $job_id, reverse_id => $depend->id } );
-   }
-
-   return;
-}
-
-sub delete_dependents {
-   $_[ 0 ]->search( { reverse_id => $_[ 1 ]->id } )->delete; return;
+   return $role;
 }
 
 1;
@@ -31,22 +26,30 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =head1 Name
 
-App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 6 $
+App::MCP::Schema::Schedule::ResultSet::Role - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::ResultSet::JobCondition;
+   use App::MCP::Schema::Schedule::ResultSet::Role;
    # Brief but working code examples
+
+=head1 Version
+
+This documents version v0.1.$Rev: 6 $ of L<App::MCP::Schema::Schedule::ResultSet::Role>
 
 =head1 Description
 
 =head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -66,8 +69,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
 Patches are welcome
 
 =head1 Acknowledgements
@@ -76,7 +79,7 @@ Larry Wall - For the Perl programming language
 
 =head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 

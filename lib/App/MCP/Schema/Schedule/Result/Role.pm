@@ -1,6 +1,6 @@
-# @(#)$Ident: Role.pm 2013-10-10 21:32 pjf ;
+# @(#)$Ident: Role.pm 2013-10-21 23:04 pjf ;
 
-package App::MCP::Schema::Authentication::Result::Role;
+package App::MCP::Schema::Schedule::Result::Role;
 
 use strict;
 use warnings;
@@ -9,19 +9,21 @@ use parent                  qw( App::MCP::Schema::Base );
 
 use Class::Usul::Constants;
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Authentication';
+my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
 $class->table( 'role' );
 
 $class->add_columns
-   (  id    => $class->serial_data_type,
-      desc  => $class->varchar_data_type( $class->varchar_max_size, NUL ), );
+   (  id       => $class->serial_data_type,
+      rolename => $class->varchar_data_type( $class->varchar_max_size, NUL ), );
 
 $class->set_primary_key( 'id' );
 
-$class->add_unique_constraint( [ 'desc' ] );
+$class->add_unique_constraint( [ 'rolename' ] );
 
-$class->has_many( users => "${schema}::Result::UserRole", 'role_id' );
+$class->has_many    ( user_role => "${result}::UserRole", 'role_id' );
+
+$class->many_to_many( users     => 'user_role',           'user_id' );
 
 1;
 
@@ -31,7 +33,7 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Authentication::Result::Role - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::Result::Role - <One-line description of module's purpose>
 
 =head1 Version
 
@@ -39,7 +41,7 @@ This documents version v0.3.$Rev: 5 $
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Authentication::Result::Role;
+   use App::MCP::Schema::Schedule::Result::Role;
    # Brief but working code examples
 
 =head1 Description

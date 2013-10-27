@@ -1,9 +1,9 @@
-# @(#)Ident: Config.pm 2013-09-24 13:17 pjf ;
+# @(#)Ident: Config.pm 2013-10-24 14:41 pjf ;
 
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( fqdn );
@@ -16,6 +16,9 @@ extends q(Class::Usul::Config::Programs);
 has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
 
+has 'connect_params'       => is => 'ro',   isa => HashRef,
+   default                 => sub { { quote_names => TRUE } };
+
 has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'schedule';
 
@@ -26,8 +29,14 @@ has 'identity_file'        => is => 'lazy', isa => File,
 has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'App::MCP::SSHLibrary';
 
+has 'load_factor'          => is => 'ro',   isa => NonZeroPositiveInt,
+   default                 => 14;
+
 has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'DAEMON';
+
+has 'max_session_age'      => is => 'ro',   isa => PositiveInt,
+   default                 => 300;
 
 has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveInt,
    default                 => 0;
@@ -41,7 +50,6 @@ has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
 
 has 'schema_classes'       => is => 'ro',   isa => HashRef,
    builder                 => sub { {
-      authentication       => 'App::MCP::Schema::Authentication',
       schedule             => 'App::MCP::Schema::Schedule', } };
 
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
@@ -73,7 +81,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $ of L<App::MCP::Config>
+This documents version v0.3.$Rev: 6 $ of L<App::MCP::Config>
 
 =head1 Description
 

@@ -1,31 +1,35 @@
-# @(#)$Ident: MCP.pm 2013-10-04 16:16 pjf ;
+# @(#)$Ident: MCP.pm 2013-10-27 17:42 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
 use Class::Usul::Constants;
-use Class::Usul::Crypt      qw( decrypt );
-use Class::Usul::Functions  qw( bson64id create_token elapsed );
+use Class::Usul::Crypt      qw( encrypt decrypt );
+use Class::Usul::Functions  qw( base64_encode_ns bson64id bson64id_time
+                                create_token elapsed );
 use Class::Usul::Types      qw( BaseType LoadableClass
                                 NonZeroPositiveInt Object );
 use IPC::PerlSSH;
 use Moo;
-use Storable                qw( thaw );
+use Storable                qw( nfreeze thaw );
 use TryCatch;
+
+my $Sessions = {}; my $Users = [];
 
 # Public attributes
 has 'port'          => is => 'lazy', isa => NonZeroPositiveInt,
    builder          => sub { $_[ 0 ]->config->port };
 
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object, builder => sub {
-   $_[ 0 ]->schema_class->connect( @{ $_[ 0 ]->get_connect_info },
-                                   { quote_names => TRUE } ) },
+has '_schema'       => is => 'lazy', isa => Object,
+   builder          => sub {
+      my $self = shift; my $extra = $self->config->connect_params;
+      $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) },
    reader           => 'schema';
 
 has '_schema_class' => is => 'lazy', isa => LoadableClass,
@@ -47,31 +51,36 @@ sub clock_tick_handler {
 }
 
 sub create_event {
-   my ($self, $runid, $params) = @_;
+   my ($self, $run_id, $params) = @_;
 
    my $schema = $self->schema;
    my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
-                       ->search( { runid   => $runid },
-                                 { columns => [ 'token' ] } );
-   my $event  = $pe_rs->first or return ( 404, 'Runid not found' );
+                        ->search( { runid   => $run_id },
+                                  { columns => [ 'token' ] } );
+   my $event  = $pe_rs->first or return ( 404, 'Run id not found' );
    my $ev_rs  = $schema->resultset( 'Event' );
 
    try        { $ev_rs->create( thaw decrypt $event->token, $params->{event} ) }
    catch ($e) { $self->log->error( $e ); return ( 400, $e ) }
 
    trigger_input_handler $ENV{MCP_DAEMON_PID};
-   return ( 204, 'Event created' );
+   return ( 201, 'Event created' );
 }
 
 sub create_job {
-   my ($self, $params) = @_;
+   my ($self, $sess_id, $params) = @_;
 
-   my $job_rs = $self->schema->resultset( 'Job' );
+   my $sess = $self->_get_session( $sess_id )
+      or return ( 401, 'Session not found' );
+   my $job  = $self->_get_authenticated_params( $sess, $params->{job} )
+      or return ( 401, 'Authentication failure' );
 
-   try        { $job_rs->create( thaw $params->{job} ) }
+   $job->{owner} = $sess->{user}->id; # TODO: Add job group
+
+   try        { $self->schema->resultset( 'Job' )->create( $job ) }
    catch ($e) { $self->log->error( $e ); return ( 400, $e ) }
 
-   return ( 204, 'Job created' );
+   return ( 201, 'Job created' );
 }
 
 sub cron_job_handler {
@@ -98,6 +107,27 @@ sub cron_job_handler {
 
    $trigger and trigger_output_handler( $sig_hndlr_pid );
    return OK;
+}
+
+sub find_or_create_session {
+   my ($self, $user_name) = @_; my $user;
+
+   my $user_rs = $self->schema->resultset( 'User' );
+
+   try        { $user = $user_rs->find_by_name( $user_name ) }
+   catch ($e) { $self->log->error( $e ); return ( 404, "${e}" ) }
+
+   my $code = 200; my $sess;
+
+   unless ($sess = $self->_get_session_for_user( $user )) {
+      $sess = $self->_create_session( $user ); $code = 201;
+   }
+
+   my $salt = __get_salt( $user->password );
+   my $iced = nfreeze { id => $sess->{id}, token => $sess->{token}, };
+   my $res  = { salt => $salt, token => encrypt $user->password, $iced };
+
+   return (200, base64_encode_ns nfreeze $res);
 }
 
 sub input_handler {
@@ -194,6 +224,44 @@ sub output_handler {
 }
 
 # Private methods
+sub _create_session {
+   my ($self, $user) = @_; my $id = $Users->[ $user->id ] = bson64id;
+
+   return $Sessions->{ $id } = { id        => $id,
+                                 last_used => bson64id_time( $id ),
+                                 max_age   => $self->config->max_session_age,
+                                 token     => create_token,
+                                 user      => $user, };
+}
+
+sub _get_authenticated_params {
+   my ($self, $sess, $params) = @_; my $user_name = $sess->{user}->username;
+
+   try        { $params = thaw decrypt $sess->{token}, $params }
+   catch ($e) {
+      $self->log->warn( "User ${user_name} - authentication failure" );
+      $self->debug and $self->log->debug( $e );
+      return;
+   }
+
+   return $params;
+}
+
+sub _get_session {
+   my ($self, $id) = @_; $id or return; my $now = time;
+
+   my $sess = $Sessions->{ $id } or return; my $max_age = $sess->{max_age};
+
+   $max_age and $now - $sess->{last_used} > $max_age
+      and delete $Sessions->{ $id } and return;
+   $sess->{last_used} = $now;
+   return $sess;
+}
+
+sub _get_session_for_user {
+   return $_[ 0 ]->_get_session( $Users->[ $_[ 1 ]->id ] );
+}
+
 sub _process_event {
    my ($self, $js_rs, $event) = @_; my $cols = { $event->get_inflated_columns };
 
@@ -237,6 +305,15 @@ sub _start_job {
    return ($runid, $token);
 }
 
+# Private functions
+sub __get_salt {
+   my $password = shift; my @parts = split m{ [\$] }mx, $password;
+
+   $parts[ -1 ] = substr $parts[ -1 ], 0, 22;
+
+   return join '$', @parts;
+}
+
 1;
 
 __END__
@@ -249,7 +326,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 5 $
+This documents version v0.3.$Rev: 6 $
 
 =head1 Synopsis
 

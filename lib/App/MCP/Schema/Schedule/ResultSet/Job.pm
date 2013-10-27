@@ -1,17 +1,27 @@
-# @(#)$Ident: Job.pm 2013-10-13 22:22 pjf ;
+# @(#)$Ident: Job.pm 2013-10-23 00:25 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use strict;
 use warnings;
 use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 
 # Public methods
+sub assert_executable {
+   my ($self, $fqjn, $user) = @_; my $job = $self->find_by_name( $fqjn );
+
+   $job->is_executable_by( $user->id )
+        or throw error => 'Job [_1] execute permission denied to [_2]',
+                 args  => [ $fqjn, $user->username ];
+
+   return $job;
+}
+
 sub dump {
    my ($self, $job_spec) = @_; my $index = {}; my @jobs;
 
@@ -22,14 +32,25 @@ sub dump {
       } );
 
    for my $job ($rs->all) {
-      my $parent_id = delete $job->{parent_id}; delete $job->{parent_path};
-
+      delete $job->{group}; delete $job->{owner}; delete $job->{parent_path};
       $index->{ delete $job->{id} } = $job->{fqjn};
-      $parent_id and $job->{parent_name} = $index->{ $parent_id };
+
+      my $parent_id; $parent_id = delete $job->{parent_id}
+         and $job->{parent_name} = $index->{ $parent_id };
+
       push @jobs, $job;
    }
 
    return \@jobs;
+}
+
+sub find_by_name {
+   my ($self, $fqjn) = @_;
+
+   my $job = $self->search( { fqjn => $fqjn } )->single
+      or throw error => 'Job [_1] unknown', args => [ $fqjn ];
+
+   return $job;
 }
 
 sub finished {
@@ -39,9 +60,13 @@ sub finished {
 }
 
 sub load {
-   my ($self, $jobs) = @_; my $count = 0;
+   my ($self, $auth, $jobs) = @_; my $count = 0;
 
-   for my $job (@{ $jobs }) { $self->create( $job ); $count++ }
+   for my $job (@{ $jobs || [] }) {
+      $job->{owner} = $auth->{user}->id; $job->{group} = $auth->{role}->id;
+      $self->create( $job );
+      $count++;
+   }
 
    return $count;
 }
@@ -93,7 +118,7 @@ App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's p
 
 =head1 Version
 
-This documents version v0.3.$Rev: 5 $
+This documents version v0.3.$Rev: 6 $
 
 =head1 Synopsis
 

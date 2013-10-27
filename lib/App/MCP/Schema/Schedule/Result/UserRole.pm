@@ -1,27 +1,26 @@
-# @(#)$Ident: Authentication.pm 2013-09-16 16:48 pjf ;
+# @(#)$Ident: UserRole.pm 2013-10-15 21:27 pjf ;
 
-package App::MCP::Schema::Authentication;
+package App::MCP::Schema::Schedule::Result::UserRole;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::Schema );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use parent                  qw( App::MCP::Schema::Base );
 
-use File::Spec::Functions   qw( catfile );
-use Scalar::Util            qw( blessed );
+use Class::Usul::Constants;
 
-__PACKAGE__->load_namespaces;
+my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
-sub ddl_filename {
-    my ($self, $type, $version, $dir, $preversion) = @_;
+$class->table( 'user_role' );
 
-    $DBIx::Class::VERSION < 0.08100 and ($dir, $version) = ($version, $dir);
+$class->add_columns( user_id => $class->foreign_key_data_type,
+                     role_id => $class->foreign_key_data_type, );
 
-   (my $filename = (blessed $self || $self)) =~ s{ :: }{-}gmx;
-    $version = join '.', (split m{ [.] }mx, $version)[ 0, 1 ];
-    $preversion and $version = "${preversion}-${version}";
-    return catfile( $dir, "${filename}-${version}-${type}.sql" );
-}
+$class->set_primary_key( qw( user_id role_id ) );
+
+$class->belongs_to( user => "${result}::User", 'user_id' );
+
+$class->belongs_to( role => "${result}::Role", 'role_id' );
 
 1;
 
@@ -31,15 +30,15 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Authentication - <One-line description of module's purpose>
+App::MCP::Schema::Schedule::Result::UserRole - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 3 $
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Authentication;
+   use App::MCP::Schema::Schedule::Result::UserRole;
    # Brief but working code examples
 
 =head1 Description
@@ -47,8 +46,6 @@ This documents version v0.3.$Rev: 2 $
 =head1 Configuration and Environment
 
 =head1 Subroutines/Methods
-
-=head2 ddl_filename
 
 =head1 Diagnostics
 

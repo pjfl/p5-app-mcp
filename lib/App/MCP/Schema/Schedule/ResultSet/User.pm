@@ -1,6 +1,6 @@
-# @(#)Ident: User.pm 2013-10-13 23:15 pjf ;
+# @(#)Ident: User.pm 2013-10-21 23:23 pjf ;
 
-package App::MCP::Schema::Authentication::ResultSet::User;
+package App::MCP::Schema::Schedule::ResultSet::User;
 
 use strict;
 use warnings;
@@ -11,14 +11,17 @@ use parent                  qw( DBIx::Class::ResultSet );
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 
-sub uid_by_name {
+sub find_by_name {
    my ($self, $username) = @_;
 
-   my $user = $self->search
-      ( { username => $username }, { columns => [ 'id' ] } )->single
+   my $user = $self->search( { username => $username } )->single
       or throw error => 'User [_1] unknown', args => [ $username ];
 
-   return $user->id;
+   return $user;
+}
+
+sub load_factor {
+   return 14;
 }
 
 1;
@@ -31,16 +34,16 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Authentication::ResultSet::User - One-line description of the modules purpose
+App::MCP::Schema::Schedule::ResultSet::User - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Authentication::ResultSet::User;
+   use App::MCP::Schema::Schedule::ResultSet::User;
    # Brief but working code examples
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Schema::Authentication::ResultSet::User>
+This documents version v0.3.$Rev: 5 $ of L<App::MCP::Schema::Schedule::ResultSet::User>
 
 =head1 Description
 

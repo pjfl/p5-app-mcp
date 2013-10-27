@@ -1,9 +1,9 @@
-# @(#)$Ident: Listener.pm 2013-10-04 16:03 pjf ;
+# @(#)$Ident: Listener.pm 2013-10-27 14:00 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use App::MCP;
 use Class::Usul;
@@ -34,15 +34,20 @@ has '_usul'  => is => 'lazy', isa => BaseType, builder => sub {
 };
 
 sub dispatch_request {
-   sub (POST + /api/event + ?runid= + %*) {
-      my ($code, $msg) = shift->app->create_event( @_ );
+   sub (POST + /api/event/* + %*) {
+      my ($code, $content) = shift->app->create_event( @_ );
 
-      return [ $code, [ 'Content-type', 'text/plain' ], [ $msg ] ];
+      return [ $code, [ 'Content-type', 'text/plain' ], [ $content ] ];
    },
-   sub (POST + /api/job + %*) {
-      my ($code, $msg) = shift->app->create_job( @_ );
+   sub (POST + /api/job/* + %*) {
+      my ($code, $content) = shift->app->create_job( @_ );
 
-      return [ $code, [ 'Content-type', 'text/plain' ], [ $msg ] ];
+      return [ $code, [ 'Content-type', 'text/plain' ], [ $content ] ];
+   },
+   sub (POST + /api/session/* ) {
+      my ($code, $content) = shift->app->find_or_create_session( @_ );
+
+      return [ $code, [ 'Content-Type', 'text/plain' ], [ $content ] ];
    },
    sub (GET) {
       [ 404, [ 'Content-type', 'text/plain' ], [ 'Not found' ] ]
@@ -64,7 +69,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 5 $
+This documents version v0.3.$Rev: 6 $
 
 =head1 Synopsis
 
