@@ -1,11 +1,11 @@
-# @(#)$Ident: Job.pm 2013-10-27 17:15 pjf ;
+# @(#)$Ident: Job.pm 2013-11-02 16:05 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
@@ -134,17 +134,12 @@ sub fqjn { # Fully qualified job name
    return $self->_fqjn( qualify_job_name( $self->name, $self->namespace ) );
 }
 
-sub get_validation_attributes {
-   return { # Keys: constraints, fields, and filters (all hashes)
-      fields         => {
-         name        => {
-            validate => 'isMandatory isSimpleText isValidLength' }, },
-      constraints    => {
-         name        => { max_length => 126, min_length => 1, }, }, };
-}
-
 sub insert {
-   my $self = shift; $self->_validate; my $job = $self->next::method;
+   my $self = shift; my $columns = { $self->get_inflated_columns };
+
+   $self->set_inflated_columns( $columns ); $self->_validate;
+
+   my $job = $self->next::method;
 
    $self->condition and $self->_insert_condition( $job );
    $self->_create_job_state( $job );
@@ -181,14 +176,15 @@ sub materialised_path_columns {
 }
 
 sub namespace {
-   my $self = shift; my $path = $self->parent_path; my $sep = __separator();
+   my $self = shift;
+   my $sep  = __separator();
+   my $path = $self->parent_path;
+   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ];
 
-   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ]; state $cache //= {};
-
-   my $ns; $id and $ns = $cache->{ $id }; $ns and return $ns;
+   state $cache //= {}; $id and $cache->{ $id } and return $cache->{ $id };
 
    my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
-      $ns   = $root ? $root->id != $id ? $root->name : 'main' : 'main';
+   my $ns   = $root ? $root->id != $id ? $root->name : 'main' : 'main';
 
    return $root ? $cache->{ $id } = $ns : $ns;
 }
@@ -223,6 +219,15 @@ sub update {
    $update_condition and $self->_delete_condition and $job->_insert_condition;
 
    return $job;
+}
+
+sub validation_attributes {
+   return { # Keys: constraints, fields, and filters (all hashes)
+      fields         => {
+         name        => {
+            validate => 'isMandatory isSimpleText isValidLength' }, },
+      constraints    => {
+         name        => { max_length => 126, min_length => 1, }, }, };
 }
 
 # Private methods
@@ -301,7 +306,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.3.$Rev: 6 $
+This documents version v0.3.$Rev: 7 $
 
 =head1 Synopsis
 
@@ -318,15 +323,15 @@ This documents version v0.3.$Rev: 6 $
 
 =head2 fqjn
 
-=head2 get_validation_attributes
-
 =head2 insert
 
 =head2 materialised_path_columns
 
+=head2 namespace
+
 =head2 update
 
-=head2 namespace
+=head2 validation_attributes
 
 =head1 Diagnostics
 

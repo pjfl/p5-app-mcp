@@ -1,10 +1,10 @@
-# @(#)$Ident: Base.pm 2013-09-25 11:34 pjf ;
+# @(#)$Ident: Base.pm 2013-11-02 15:45 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::Core );
 
 use Class::Usul::Constants;
@@ -12,7 +12,7 @@ use Data::Validation;
 
 __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 
-sub get_validation_attributes {
+sub validation_attributes {
    return {};
 }
 
@@ -94,7 +94,7 @@ sub varchar_data_type {
 
 # Private methods
 sub _validate {
-   my $self = shift; my $attr = $self->get_validation_attributes;
+   my $self = shift; my $attr = $self->validation_attributes;
 
    defined $attr->{fields} or return; $attr->{exception} = EXCEPTION_CLASS;
 
@@ -122,7 +122,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 7 $
 
 =head1 Synopsis
 
@@ -137,8 +137,6 @@ This documents version v0.3.$Rev: 4 $
 
 =head2 event_type_enum
 
-=head2 get_validation_attributes
-
 =head2 job_type_enum
 
 =head2 nullable_varchar_data_type
@@ -148,6 +146,8 @@ This documents version v0.3.$Rev: 4 $
 =head2 serial_data_type
 
 =head2 state_enum
+
+=head2 validation_attributes
 
 =head2 varchar_data_type
 

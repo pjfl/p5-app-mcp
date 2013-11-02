@@ -1,10 +1,10 @@
-# @(#)$Ident: Event.pm 2013-06-24 11:47 pjf ;
+# @(#)$Ident: Event.pm 2013-11-02 15:45 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Event;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Class::Usul::Constants;
@@ -26,14 +26,6 @@ $class->set_primary_key( 'id' );
 
 $class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
-sub get_validation_attributes {
-   return { # Keys: constraints, fields, and filters (all hashes)
-      fields        => {
-         job_id     => { validate => 'isMandatory isValidInteger' },
-         pid        => { validate => 'isValidInteger' },
-         transition => { validate => 'isMandatory isValidIdentifier' }, }, };
-}
-
 sub insert {
    my $self = shift; $self->_validate; return $self->next::method;
 }
@@ -44,6 +36,14 @@ sub update {
    $self->set_inflated_columns( %{ $columns } ); $self->_validate;
 
    return $self->next::method;
+}
+
+sub validation_attributes {
+   return { # Keys: constraints, fields, and filters (all hashes)
+      fields        => {
+         job_id     => { validate => 'isMandatory isValidInteger' },
+         pid        => { validate => 'isValidInteger' },
+         transition => { validate => 'isMandatory isValidIdentifier' }, }, };
 }
 
 1;
@@ -58,7 +58,7 @@ App::MCP::Schema::Schedule::Result::Event - <One-line description of module's pu
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 7 $
 
 =head1 Synopsis
 
@@ -71,11 +71,11 @@ This documents version v0.3.$Rev: 1 $
 
 =head1 Subroutines/Methods
 
-=head2 get_validation_attributes
-
 =head2 insert
 
 =head2 update
+
+=head2 validation_attributes
 
 =head1 Diagnostics
 

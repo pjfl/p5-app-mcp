@@ -1,24 +1,29 @@
-# @(#)$Ident: Listener.pm 2013-10-27 14:00 pjf ;
+# @(#)$Ident: Listener.pm 2013-11-02 19:00 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
 
 use App::MCP;
+use App::MCP::Request;
 use Class::Usul;
 use Class::Usul::File;
-use Class::Usul::Functions  qw( find_apphome get_cfgfiles );
+use Class::Usul::Functions  qw( find_apphome get_cfgfiles is_hashref );
 use Class::Usul::Types      qw( BaseType NonZeroPositiveInt Object );
+use JSON                    qw( );
+use TryCatch;
 use Web::Simple;
 
-has 'app'    => is => 'lazy', isa => Object, builder => sub {
+has 'app'         => is => 'lazy', isa => Object, builder => sub {
    App::MCP->new( builder => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
 
-has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
-   builder   => sub { $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->_usul->config->port };
+has 'port'        => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
+   $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->_usul->config->port };
 
-has '_usul'  => is => 'lazy', isa => BaseType, builder => sub {
+has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
+
+has '_usul'       => is => 'lazy', isa => BaseType, builder => sub {
    my $self  = shift;
    my $extns = [ keys %{ Class::Usul::File->extensions } ];
    my $attr  = { config       => { appclass => 'App::MCP',
@@ -34,27 +39,35 @@ has '_usul'  => is => 'lazy', isa => BaseType, builder => sub {
 };
 
 sub dispatch_request {
-   sub (POST + /api/event/* + %*) {
-      my ($code, $content) = shift->app->create_event( @_ );
-
-      return [ $code, [ 'Content-type', 'text/plain' ], [ $content ] ];
+   sub (POST + /api/event/*) {
+      return shift->_model( 'create_event', @_ );
    },
-   sub (POST + /api/job/* + %*) {
-      my ($code, $content) = shift->app->create_job( @_ );
-
-      return [ $code, [ 'Content-type', 'text/plain' ], [ $content ] ];
+   sub (POST + /api/job/*) {
+      return shift->_model( 'create_job', @_ );
    },
-   sub (POST + /api/session/* ) {
-      my ($code, $content) = shift->app->find_or_create_session( @_ );
-
-      return [ $code, [ 'Content-Type', 'text/plain' ], [ $content ] ];
-   },
-   sub (GET) {
-      [ 404, [ 'Content-type', 'text/plain' ], [ 'Not found' ] ]
+   sub (POST + /api/session/*) {
+      return shift->_model( 'find_or_create_session', @_ );
    },
    sub {
-      [ 405, [ 'Content-type', 'text/plain' ], [ 'Method not allowed' ] ]
+      return shift->_encode_json( 405, 'Method not allowed' );
    };
+}
+
+sub _encode_json {
+   my ($self, $code, $content) = @_;
+
+   $content = $self->_transcoder->encode
+      ( (is_hashref $content) ? $content : { message => $content } );
+
+   return [ $code, [ 'Content-Type', 'application/json' ], [ $content ] ];
+}
+
+sub _model {
+   my ($self, $method, @args) = @_;
+
+   my $req = App::MCP::Request->new( $self->_usul, @args );
+
+   return $self->_encode_json( $self->app->$method( $req ) );
 }
 
 1;
@@ -69,7 +82,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 6 $
+This documents version v0.3.$Rev: 7 $
 
 =head1 Synopsis
 
