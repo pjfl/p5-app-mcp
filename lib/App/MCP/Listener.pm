@@ -1,9 +1,9 @@
-# @(#)$Ident: Listener.pm 2013-11-02 19:00 pjf ;
+# @(#)$Ident: Listener.pm 2013-11-04 16:48 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Request;
@@ -12,45 +12,57 @@ use Class::Usul::File;
 use Class::Usul::Functions  qw( find_apphome get_cfgfiles is_hashref );
 use Class::Usul::Types      qw( BaseType NonZeroPositiveInt Object );
 use JSON                    qw( );
-use TryCatch;
 use Web::Simple;
 
+# Public attributes
 has 'app'         => is => 'lazy', isa => Object, builder => sub {
    App::MCP->new( builder => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
 
 has 'port'        => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
    $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->_usul->config->port };
 
+# Private attributes
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
 
-has '_usul'       => is => 'lazy', isa => BaseType, builder => sub {
-   my $self  = shift;
-   my $extns = [ keys %{ Class::Usul::File->extensions } ];
-   my $attr  = { config       => { appclass => 'App::MCP',
-                                   name     => 'listener' },
-                 config_class => 'App::MCP::Config',
-                 debug        => $ENV{MCP_DEBUG} || 0 };
-   my $conf  = $attr->{config};
+has '_usul'       => is => 'lazy', isa => BaseType, handles => [ 'log' ],
+   builder        => sub {
+      my $self  = shift;
+      my $extns = [ keys %{ Class::Usul::File->extensions } ];
+      my $attr  = { config       => { appclass => 'App::MCP',
+                                      name     => 'listener' },
+                    config_class => 'App::MCP::Config',
+                    debug        => $ENV{MCP_DEBUG} || 0 };
+      my $conf  = $attr->{config};
 
-   $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
-   $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
+      $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
+      $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
 
-   return Class::Usul->new( $attr );
-};
+      return Class::Usul->new( $attr ) };
 
+# Public methods
 sub dispatch_request {
    sub (POST + /api/event/*) {
-      return shift->_model( 'create_event', @_ );
+      return shift->_action( 'create_event', @_ );
    },
    sub (POST + /api/job/*) {
-      return shift->_model( 'create_job', @_ );
+      return shift->_action( 'create_job', @_ );
    },
    sub (POST + /api/session/*) {
-      return shift->_model( 'find_or_create_session', @_ );
+      return shift->_action( 'find_or_create_session', @_ );
    },
    sub {
       return shift->_encode_json( 405, 'Method not allowed' );
    };
+}
+
+# Private methods
+sub _action {
+   my ($self, $method, @args) = @_;
+
+   my $req = App::MCP::Request->new( $self->_usul, @args )->authenticate
+      or return $self->_encode_json( 401, 'Host authentication failure' );
+
+   return $self->_encode_json( $self->app->$method( $req ) );
 }
 
 sub _encode_json {
@@ -59,15 +71,7 @@ sub _encode_json {
    $content = $self->_transcoder->encode
       ( (is_hashref $content) ? $content : { message => $content } );
 
-   return [ $code, [ 'Content-Type', 'application/json' ], [ $content ] ];
-}
-
-sub _model {
-   my ($self, $method, @args) = @_;
-
-   my $req = App::MCP::Request->new( $self->_usul, @args );
-
-   return $self->_encode_json( $self->app->$method( $req ) );
+   return [ $code, [ 'Content-Type' => 'application/json' ], [ $content ] ];
 }
 
 1;
@@ -82,7 +86,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 7 $
+This documents version v0.3.$Rev: 8 $
 
 =head1 Synopsis
 

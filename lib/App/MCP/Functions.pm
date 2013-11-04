@@ -1,10 +1,10 @@
-# @(#)Ident: Functions.pm 2013-10-11 14:49 pjf ;
+# @(#)Ident: Functions.pm 2013-11-04 17:58 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( pad );
@@ -50,11 +50,11 @@ sub recv_rv_error ($$$) {
    my ($log, $id, $red) = @_; return __recv_error( $log, 'RECVRV', $id, $red );
 }
 
-sub trigger_input_handler (;$) {
+sub trigger_input_handler ($) {
    my $pid = shift; return $pid ? CORE::kill 'USR1', $pid : FALSE;
 }
 
-sub trigger_output_handler (;$) {
+sub trigger_output_handler ($) {
    my $pid = shift; return $pid ? CORE::kill 'USR2', $pid : FALSE;
 }
 
@@ -102,7 +102,7 @@ App::MCP::Functions - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 5 $ of L<App::MCP::Functions>
+This documents version v0.1.$Rev: 8 $ of L<App::MCP::Functions>
 
 =head1 Description
 

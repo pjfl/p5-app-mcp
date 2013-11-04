@@ -1,14 +1,15 @@
-# @(#)Ident: Config.pm 2013-10-24 14:41 pjf ;
+# @(#)Ident: Config.pm 2013-11-03 01:35 pjf ;
 
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( fqdn );
-use File::DataClass::Types  qw( ArrayRef File HashRef NonEmptySimpleStr
-                                NonZeroPositiveInt PositiveInt );
+use File::DataClass::Types  qw( ArrayRef Directory File HashRef
+                                NonEmptySimpleStr NonZeroPositiveInt
+                                PositiveInt );
 use Moo;
 
 extends q(Class::Usul::Config::Programs);
@@ -23,7 +24,7 @@ has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'schedule';
 
 has 'identity_file'        => is => 'lazy', isa => File,
-   builder                 => sub { [ $_[ 0 ]->my_home, qw( .ssh id_rsa ) ] },
+   builder                 => sub { [ $_[ 0 ]->ssh_dir, 'id_rsa' ] },
    coerce                  => File->coercion;
 
 has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
@@ -59,6 +60,10 @@ has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
 has 'servers'              => is => 'ro',   isa => ArrayRef,
    builder                 => sub { [ fqdn ] };
 
+has 'ssh_dir'              => is => 'lazy', isa => Directory,
+   builder                 => sub { [ $_[ 0 ]->my_home, '.ssh' ] },
+   coerce                  => Directory->coercion;
+
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
 
@@ -81,7 +86,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 6 $ of L<App::MCP::Config>
+This documents version v0.3.$Rev: 8 $ of L<App::MCP::Config>
 
 =head1 Description
 

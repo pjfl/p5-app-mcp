@@ -1,20 +1,16 @@
-# @(#)$Ident: Base.pm 2013-11-02 15:45 pjf ;
+# @(#)$Ident: Base.pm 2013-11-04 17:33 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::Core );
 
 use Class::Usul::Constants;
 use Data::Validation;
 
 __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
-
-sub validation_attributes {
-   return {};
-}
 
 sub varchar_max_size {
    return 255;
@@ -85,6 +81,10 @@ sub set_on_create_datetime_data_type {
             set_on_create     => TRUE, };
 }
 
+sub validation_attributes {
+   return {};
+}
+
 sub varchar_data_type {
    return { data_type         => 'varchar',
             default_value     => $_[ 2 ],
@@ -122,7 +122,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 7 $
+This documents version v0.3.$Rev: 8 $
 
 =head1 Synopsis
 

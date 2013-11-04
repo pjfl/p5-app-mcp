@@ -1,8 +1,8 @@
-# @(#)$Ident: 10compile.t 2013-08-21 20:42 pjf ;
+# @(#)$Ident: 10compile.t 2013-11-04 17:44 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -23,13 +23,10 @@ use Test::Requires "${perl_ver}";
 use_ok 'App::MCP';
 use_ok 'App::MCP::Functions';
 use_ok 'App::MCP::Daemon';
+use_ok 'App::MCP::Listener';
 use_ok 'App::MCP::Schema';
 
 done_testing;
-
-#SKIP: {
-#   $reason and $reason =~ m{ \A tests: }mx and skip $reason, 1;
-#}
 
 # Local Variables:
 # mode: perl

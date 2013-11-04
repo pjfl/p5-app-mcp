@@ -1,10 +1,10 @@
-# @(#)$Ident: MCP.pm 2013-11-02 15:16 pjf ;
+# @(#)$Ident: MCP.pm 2013-11-04 17:57 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
@@ -63,8 +63,8 @@ sub create_event {
                                   { columns => [ 'token' ] } );
    my $pevent = $pe_rs->first or return ( 404, 'Runid not found' );
    my $args   = { message => "Runid ${run_id} event", token => $pevent->token };
-   my $event  = $self->_get_authenticated_params( $args, $req->body->{event} )
-      or return ( 401, 'Authentication failure' );
+   my $event  = $self->_authenticate_params( $args, $req->content->{event} )
+      or return ( 401, 'User authentication failure' );
 
    try        { $schema->resultset( 'Event' )->create( $event ) }
    catch ($e) { $self->log->error( $e ); return ( 400, "${e}" ) }
@@ -78,8 +78,8 @@ sub create_job {
 
    my $sess = $self->_get_session( $req->args->[ 0 ] // 'undef' )
       or return ( 404, "Session not found" );
-   my $job  = $self->_get_authenticated_params( $sess, $req->body->{job} )
-      or return ( 401, 'Authentication failure' );
+   my $job  = $self->_authenticate_params( $sess, $req->content->{job} )
+      or return ( 401, 'User authentication failure' );
 
    $job->{owner} = $sess->{user_id}; # TODO: Add job group
 
@@ -98,9 +98,9 @@ sub cron_job_handler {
    my $ev_rs   = $schema->resultset( 'Event' );
    my $jobs    = $job_rs->search( {
       'state.name'       => 'active',
-      'me.crontab'       => { '!=' => q() }, }, {
-         'columns'       => [ qw(condition crontab id
-                                 state.name state.updated) ],
+      'me.crontab'       => { '!=' => NUL }, }, {
+         'columns'       => [ qw( condition crontab id
+                                  state.name state.updated ) ],
          'join'          => 'state' } );
 #->search_related( 'events', {
 #            'transition' => [ undef, { '!=' => 'start' } ] } );
@@ -111,7 +111,7 @@ sub cron_job_handler {
        and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
    }
 
-   $trigger and trigger_output_handler( $sig_hndlr_pid );
+   $trigger and trigger_output_handler $sig_hndlr_pid;
    return OK;
 }
 
@@ -147,7 +147,7 @@ sub input_handler {
       my $js_rs  = $schema->resultset( 'JobState' );
       my $pev_rs = $schema->resultset( 'ProcessedEvent' );
       my $events = $ev_rs->search
-         ( { transition => [ qw(finish started terminate) ] },
+         ( { transition => [ qw( finish started terminate ) ] },
            { order_by   => { -asc => 'me.id' },
              prefetch   => 'job_rel' } );
 
@@ -160,10 +160,10 @@ sub input_handler {
          } );
       }
 
-      $trigger and trigger_output_handler( $sig_hndlr_pid );
+      $trigger and trigger_output_handler $sig_hndlr_pid;
    }
 
-   trigger_output_handler( $sig_hndlr_pid );
+   trigger_output_handler $sig_hndlr_pid;
    return OK;
 }
 
@@ -230,18 +230,7 @@ sub output_handler {
 }
 
 # Private methods
-sub _create_session {
-   my ($self, $user) = @_; my $id = $Users->[ $user->id ] = bson64id;
-
-   return $Sessions->{ $id } = { id        => $id,
-                                 last_used => bson64id_time( $id ),
-                                 max_age   => $self->config->max_session_age,
-                                 message   => 'User '.$user->username,
-                                 token     => create_token,
-                                 user_id   => $user->id, };
-}
-
-sub _get_authenticated_params {
+sub _authenticate_params {
    my ($self, $args, $params) = @_;
 
    try {
@@ -250,11 +239,23 @@ sub _get_authenticated_params {
    }
    catch ($e) {
       $self->log->warn( $args->{message}.' authentication failure' );
-      $self->debug and $self->log->debug( $e );
+      $self->log->debug( $e );
       return;
    }
 
    return $params;
+}
+
+sub _create_session {
+   my ($self, $user) = @_; my $id = $Users->[ $user->id ] = bson64id;
+
+   return $Sessions->{ $id } = { id        => $id,
+                                 last_used => bson64id_time( $id ),
+                                 max_age   => $self->config->max_session_age,
+                                 message   => 'User '.$user->username,
+#                                 role_id   => ,
+                                 token     => create_token,
+                                 user_id   => $user->id, };
 }
 
 sub _get_session {
@@ -336,7 +337,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 7 $
+This documents version v0.3.$Rev: 8 $
 
 =head1 Synopsis
 

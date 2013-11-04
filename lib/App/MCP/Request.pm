@@ -1,39 +1,53 @@
-# @(#)Ident: Request.pm 2013-11-02 18:45 pjf ;
+# @(#)Ident: Request.pm 2013-11-04 15:47 pjf ;
 
 package App::MCP::Request;
 
+use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
+use Authen::HTTP::Signature::Parser;
 use CGI::Simple::Cookie;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw( is_arrayref is_hashref trim );
+use Class::Usul::Functions qw( class2appdir is_arrayref is_hashref
+                               is_member throw trim );
 use Class::Usul::Types     qw( ArrayRef HashRef NonEmptySimpleStr
-                               Object SimpleStr );
+                               Object SimpleStr Str );
+use Convert::SSH2;
 use JSON                   qw( );
 use Moo;
 use TryCatch;
+use URI;
 
 # Public attributes
-has 'args'   => is => 'ro',   isa => ArrayRef, default => sub { [] };
+has 'args'     => is => 'ro',   isa => ArrayRef, default => sub { [] };
 
-has 'base'   => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+has 'base'     => is => 'ro',   isa => Object, required => TRUE;
 
-has 'body'   => is => 'lazy', isa => HashRef;
+has 'content'  => is => 'lazy', isa => HashRef;
 
-has 'cookie' => is => 'lazy', isa => HashRef, builder => sub {
+has 'cookie'   => is => 'lazy', isa => HashRef, builder => sub {
    { CGI::Simple::Cookie->parse( $_[ 0 ]->_env->{HTTP_COOKIE} ) } };
 
-has 'domain' => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+has 'domain'   => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
-has 'locale' => is => 'lazy', isa => NonEmptySimpleStr,
-   builder   => sub { $_[ 0 ]->config->locale };
+has 'locale'   => is => 'lazy', isa => NonEmptySimpleStr,
+   builder     => sub { $_[ 0 ]->config->locale };
 
-has 'params' => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'params'   => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'path'   => is => 'ro',   isa => SimpleStr, default => NUL;
+has 'path'     => is => 'ro',   isa => SimpleStr, default => NUL;
+
+has 'protocol' => is => 'lazy', isa => SimpleStr,
+   builder     => sub { $_[ 0 ]->_env->{ 'SERVER_PROTOCOL' } };
+
+has 'scheme'   => is => 'ro',   isa => NonEmptySimpleStr;
+
+has 'uri'      => is => 'ro',   isa => Object, required => TRUE;
 
 # Private attributes
+has '_content'    => is => 'lazy', isa => Str, init_arg => undef;
+
 has '_env'        => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg       => 'env';
 
@@ -51,20 +65,90 @@ around 'BUILDARGS' => sub {
    $attr->{builder} = shift @args;
    $attr->{env    } = (is_hashref $args[ -1 ]) ? pop @args : {};
    $attr->{params } = (is_hashref $args[ -1 ]) ? pop @args : {};
-   $attr->{args   } = [ split m{ / }mx, trim $args[ 0 ] || NUL ];
+   $attr->{args   } = [ split m{ / }mx, trim $args[ 0 ] // NUL ];
 
-   my $env  = $attr->{env};
-   my $prot = lc( (split m{ / }mx, $env->{SERVER_PROTOCOL} || 'HTTP')[ 0 ] );
-   my $path = $env->{SCRIPT_NAME} || '/'; $path =~ s{ / \z }{}gmx;
-   my $host = $env->{HTTP_HOST} || 'localhost';
+   my $env       = $attr->{env};
+   my $scheme    = $attr->{scheme} = $env->{ 'psgi.url_scheme' };
+   my $host      = $env->{ 'HTTP_HOST'    } || $env->{ 'SERVER_NAME' };
+   my $port      = $env->{ 'SERVER_PORT'  } || (split m{ : }mx, $host)[1] || 80;
+   my $base_path = $env->{ 'SCRIPT_NAME'  } || '/';
+      $base_path =~ s{ / \z }{}gmx;
+   my $req_uri   = $env->{ 'REQUEST_URI'  };
+      $req_uri   =~ s{ \A / }{}mx; $req_uri =~ s{ \? .* \z }{}mx;
+   my $query     = $env->{ 'QUERY_STRING' } ? '?'.$env->{ 'QUERY_STRING' } : '';
+   my $base_uri  = "${scheme}://${host}${base_path}/";
+   my $uri       = "${base_uri}${req_uri}${query}";
+   my $uri_class = "URI::${scheme}";
 
-   $attr->{base   } = $prot.'://'.$host.$path.'/';
+   $attr->{path   } = $base_path;
+   $attr->{uri    } = bless \$uri, $uri_class;
+   $attr->{base   } = bless \$base_uri, $uri_class;
    $attr->{domain } = (split m{ : }mx, $host)[ 0 ];
-   $attr->{path   } = $path;
    return $attr;
 };
 
+sub _build_content {
+   my $self = shift; my $env = $self->_env; my $content = $self->_content;
+
+   try {
+      $content and $env->{CONTENT_TYPE} eq 'application/json'
+            and $content = $self->_transcoder->decode( $content );
+   }
+   catch ($e) { $self->log->error( $e ); $content = undef }
+
+   return $content;
+}
+
+sub _build__content {
+   my $self = shift; my $env = $self->_env; my $content;
+
+   try {
+      $env->{CONTENT_LENGTH}
+         and $env->{ 'psgi.input' }->read( $content, $env->{CONTENT_LENGTH} );
+
+      if ($content and my $checksum = $self->header( 'content-sha1' )) {
+         my $digest = Digest->new( 'SHA-1' ); $digest->add( $content );
+
+         $checksum eq $digest->hexdigest or throw 'Content checksum failure';
+      }
+   }
+   catch ($e) { $self->log->error( $e ); $content = undef }
+
+   return $content;
+}
+
 # Public methods
+sub authenticate {
+   my $self = shift; my $sig;
+
+   try        { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
+   catch ($e) { $self->log->error( $e ); return }
+
+   my $prefix = 'Host '.$sig->key_id;
+
+   unless (is_member 'content-sha1', $sig->headers) {
+      $self->log->error( "${prefix} missing checksum" ); return;
+   }
+
+   if (my $key = $self->_read_public_key( $sig )) { $sig->key( $key ) }
+   else { $self->log->error( "${prefix} no key" ); return }
+
+   unless ($sig->verify) {
+      $self->log->error( "${prefix} verification failed" ); return;
+   }
+
+   return $self; # Authentication was successful
+}
+
+sub header {
+   my ($self, $name) = @_; $name =~ s{ [\-] }{_}gmx; $name = uc $name;
+
+   exists $self->_env->{ "HTTP_${name}" }
+      and return $self->_env->{ "HTTP_${name}" };
+
+   return $self->_env->{ $name };
+}
+
 sub loc {
    my ($self, $key, @args) = @_; my $car = $args[ 0 ];
 
@@ -78,21 +162,25 @@ sub loc {
 }
 
 sub uri_for {
-   my ($self, $args) = @_; return $self->base.$args;
+   my ($self, $args) = @_; my $uri = $self->base.$args;
+
+   return bless \$uri, 'URI::'.$self->scheme;
 }
 
 # Private methods
-sub _build_body {
-   my $self = shift; my $env = $self->_env; my $body = {}; my $buf;
+sub _read_public_key {
+   my ($self, $sig) = @_; state $cache //= {};
 
-   try {
-      $env->{CONTENT_LENGTH}
-         and $env->{ 'psgi.input' }->read( $buf, $env->{CONTENT_LENGTH} );
-      $buf and $body = $self->_transcoder->decode( $buf );
-   }
-   catch ($e) { $self->debug and $self->log->debug( $e ); $body = {} }
+   my $config    = $self->config;
+   my $key; $key = $cache->{ $sig->key_id } and return $key;
+   my $ssh_dir   = $config->my_home->catdir( '.ssh' );
+   my $prefix    = class2appdir $config->appclass;
+   my $key_file  = $ssh_dir->catfile( "${prefix}_".$sig->key_id.'.pub' );
 
-   return $body;
+   $key_file->exists
+      and $key = Convert::SSH2->new( $key_file->all )->format_output;
+
+   return $key ? $cache->{ $sig->key_id } = $key : undef;
 }
 
 1;
@@ -114,7 +202,7 @@ App::MCP::Request - Represents the request sent from the client to the server
 
 =head1 Version
 
-This documents version v0.3.$Rev: 7 $ of L<App::MCP::Request>
+This documents version v0.3.$Rev: 8 $ of L<App::MCP::Request>
 
 =head1 Description
 
