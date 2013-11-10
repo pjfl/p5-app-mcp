@@ -1,11 +1,11 @@
-# @(#)$Ident: Job.pm 2013-11-02 16:05 pjf ;
+# @(#)$Ident: Job.pm 2013-11-10 23:34 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
@@ -35,10 +35,10 @@ $class->add_columns
                       accessor    => '_fqjn',
                       is_nullable => FALSE,
                       size        => $class->varchar_max_size, },
-     group       => $class->nullable_foreign_key_data_type,
+     group       => $class->foreign_key_data_type( 1 ),
      host        => $class->varchar_data_type( 64, 'localhost' ),
      name        => $class->varchar_data_type( 126, undef ),
-     owner       => $class->nullable_foreign_key_data_type,
+     owner       => $class->foreign_key_data_type( 1 ),
      parent_id   => $class->nullable_foreign_key_data_type,
      parent_path => $class->nullable_varchar_data_type,
      permissions => $class->numerical_id_data_type( 488 ),
@@ -306,7 +306,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.3.$Rev: 7 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 

@@ -1,9 +1,9 @@
-# @(#)$Ident: Schema.pm 2013-10-26 17:47 pjf ;
+# @(#)$Ident: Schema.pm 2013-11-06 16:49 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use App::MCP::Functions      qw( qualify_job_name trigger_output_handler );
 use Class::Usul::Constants;
@@ -75,7 +75,7 @@ sub send_event : method {
    my $self     = shift;
    my $job_name = $self->next_argv or throw $self->loc( 'No job name' );
    my $trans    = $self->next_argv || 'start';
-   my $fqjn     = qualify_job_name( $job_name );
+   my $fqjn     = qualify_job_name $job_name;
    my $schema   = $self->schedule;
    my $job_rs   = $schema->resultset( 'Job' );
    my $event_rs = $schema->resultset( 'Event' );
@@ -86,7 +86,7 @@ sub send_event : method {
 
    my $pid_file = $self->config->rundir->catfile( 'daemon.pid' );
 
-   $pid_file->exists and trigger_output_handler( $pid_file->chomp->getline );
+   $pid_file->exists and trigger_output_handler $pid_file->chomp->getline;
    $self->info( "Job '[_1]' was sent a [_2] event",
                 { args => [ $fqjn, $trans ] } );
    return OK;
@@ -125,7 +125,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 6 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 

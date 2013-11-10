@@ -1,21 +1,21 @@
-# @(#)Ident: User.pm 2013-10-21 23:23 pjf ;
+# @(#)Ident: User.pm 2013-11-06 15:04 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::User;
 
 use strict;
 use warnings;
 use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 
 sub find_by_name {
-   my ($self, $username) = @_;
+   my ($self, $user_name) = @_;
 
-   my $user = $self->search( { username => $username } )->single
-      or throw error => 'User [_1] unknown', args => [ $username ];
+   my $user = $self->search( { username => $user_name } )->single
+      or throw error => 'User [_1] unknown', args => [ $user_name ];
 
    return $user;
 }
@@ -43,7 +43,7 @@ App::MCP::Schema::Schedule::ResultSet::User - One-line description of the module
 
 =head1 Version
 
-This documents version v0.3.$Rev: 5 $ of L<App::MCP::Schema::Schedule::ResultSet::User>
+This documents version v0.3.$Rev: 9 $ of L<App::MCP::Schema::Schedule::ResultSet::User>
 
 =head1 Description
 

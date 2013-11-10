@@ -1,9 +1,9 @@
-# @(#)$Ident: Daemon.pm 2013-09-22 20:13 pjf ;
+# @(#)$Ident: Daemon.pm 2013-11-06 13:43 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Async;
@@ -239,7 +239,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 

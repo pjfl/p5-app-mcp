@@ -1,9 +1,9 @@
-# @(#)$Ident: Listener.pm 2013-11-04 16:48 pjf ;
+# @(#)$Ident: Listener.pm 2013-11-05 01:58 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use App::MCP;
 use App::MCP::Request;
@@ -12,6 +12,7 @@ use Class::Usul::File;
 use Class::Usul::Functions  qw( find_apphome get_cfgfiles is_hashref );
 use Class::Usul::Types      qw( BaseType NonZeroPositiveInt Object );
 use JSON                    qw( );
+use TryCatch;
 use Web::Simple;
 
 # Public attributes
@@ -57,12 +58,17 @@ sub dispatch_request {
 
 # Private methods
 sub _action {
-   my ($self, $method, @args) = @_;
+   my ($self, $method, @args) = @_; my ($req, $res);
 
-   my $req = App::MCP::Request->new( $self->_usul, @args )->authenticate
-      or return $self->_encode_json( 401, 'Host authentication failure' );
+   try {
+      $req = App::MCP::Request->new( $self->_usul, @args )->authenticate;
+      $res = $self->_encode_json( $self->app->$method( $req ) );
+   }
+   catch ($e) {
+      $self->log->error( $e ); return $self->_encode_json( $e->rv, "${e}" );
+   }
 
-   return $self->_encode_json( $self->app->$method( $req ) );
+   return $res;
 }
 
 sub _encode_json {
@@ -86,7 +92,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 8 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 

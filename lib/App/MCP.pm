@@ -1,10 +1,10 @@
-# @(#)$Ident: MCP.pm 2013-11-04 17:57 pjf ;
+# @(#)$Ident: MCP.pm 2013-11-10 15:39 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
@@ -61,32 +61,31 @@ sub create_event {
    my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
                         ->search( { runid   => $run_id },
                                   { columns => [ 'token' ] } );
-   my $pevent = $pe_rs->first or return ( 404, 'Runid not found' );
-   my $args   = { message => "Runid ${run_id} event", token => $pevent->token };
-   my $event  = $self->_authenticate_params( $args, $req->content->{event} )
-      or return ( 401, 'User authentication failure' );
+   my $pevent = $pe_rs->first or throw error => 'Runid [_1] not found',
+                                        args => [ $run_id ], rv => 404;
+   my $event  = $self->_authenticate_params
+      ( $run_id, $pevent->token, $req->content->{event} );
 
-   try        { $schema->resultset( 'Event' )->create( $event ) }
-   catch ($e) { $self->log->error( $e ); return ( 400, "${e}" ) }
+   try        { $event = $schema->resultset( 'Event' )->create( $event ) }
+   catch ($e) { throw error => $e, rv => 400 }
 
    trigger_input_handler $ENV{MCP_DAEMON_PID};
-   return ( 201, 'Event created' );
+   return ( 201, 'Event '.$event->id.' created' );
 }
 
 sub create_job {
    my ($self, $req) = @_;
 
-   my $sess = $self->_get_session( $req->args->[ 0 ] // 'undef' )
-      or return ( 404, "Session not found" );
-   my $job  = $self->_authenticate_params( $sess, $req->content->{job} )
-      or return ( 401, 'User authentication failure' );
+   my $sess = $self->_get_session( $req->args->[ 0 ] // 'undef' );
+   my $job  = $self->_authenticate_params
+      ( $sess->{key}, $sess->{token}, $req->content->{job} );
 
-   $job->{owner} = $sess->{user_id}; # TODO: Add job group
+   $job->{owner} = $sess->{user_id}; $job->{group} = $sess->{role_id};
 
-   try        { $self->schema->resultset( 'Job' )->create( $job ) }
-   catch ($e) { $self->log->error( $e ); return ( 400, "${e}" ) }
+   try        { $job = $self->schema->resultset( 'Job' )->create( $job ) }
+   catch ($e) { throw error => $e, rv => 400 }
 
-   return ( 201, 'Job created' );
+   return ( 201, 'Job '.$job->id.' created' );
 }
 
 sub cron_job_handler {
@@ -121,19 +120,18 @@ sub find_or_create_session {
    my $user_rs = $self->schema->resultset( 'User' ); my $user;
 
    try        { $user = $user_rs->find_by_name( $user_name ) }
-   catch ($e) { $self->log->error( $e ); return ( 404, "${e}" ) }
+   catch ($e) { throw error => $e, rv => 404 }
 
-   my $code = 200; my $sess;
+   $user->active or throw error => 'User [_1] account inactive',
+                          args  => [ $user_name ], rv => 401;
 
-   unless ($sess = $self->_get_session_for_user( $user )) {
-      $sess = $self->_create_session( $user ); $code = 201;
-   }
+   my ($code, $sess) = $self->_find_or_create_session( $user );
 
    my $salt  = __get_salt( $user->password );
-   my $resp  = { id => $sess->{id}, token => $sess->{token}, };
-   my $token = encrypt $user->password, $self->_transcoder->encode( $resp );
+   my $res   = { id => $sess->{id}, token => $sess->{token}, };
+   my $token = encrypt $user->password, $self->_transcoder->encode( $res );
 
-   return ( 200, { salt => $salt, token => $token } );
+   return ( $code, { salt => $salt, token => $token } );
 }
 
 sub input_handler {
@@ -231,46 +229,56 @@ sub output_handler {
 
 # Private methods
 sub _authenticate_params {
-   my ($self, $args, $params) = @_;
+   my ($self, $key, $token, $params) = @_;
 
-   try {
-      $params or throw 'Request has no content';
-      $params = $self->_transcoder->decode( decrypt $args->{token}, $params );
-   }
+   $params or throw error => 'Request [_1] has no content',
+                     args => [ $key ], rv => 401;
+
+   try { $params = $self->_transcoder->decode( decrypt $token, $params ) }
    catch ($e) {
-      $self->log->warn( $args->{message}.' authentication failure' );
-      $self->log->debug( $e );
-      return;
+      $self->log->error( $e );
+      throw error => 'Request [_1] authentication failed with token [_2]',
+             args => [ $key, $token ], rv => 401;
    }
 
    return $params;
 }
 
-sub _create_session {
-   my ($self, $user) = @_; my $id = $Users->[ $user->id ] = bson64id;
+sub _find_or_create_session {
+   my ($self, $user) = @_; my $code = 200; my $sess;
 
-   return $Sessions->{ $id } = { id        => $id,
-                                 last_used => bson64id_time( $id ),
-                                 max_age   => $self->config->max_session_age,
-                                 message   => 'User '.$user->username,
-#                                 role_id   => ,
-                                 token     => create_token,
-                                 user_id   => $user->id, };
+   try        { $sess = $self->_get_session( $Users->[ $user->id ] ) }
+   catch ($e) { # Create a new session
+      $self->log->debug( $e );
+
+      my $id = $Users->[ $user->id ] = bson64id; $code = 201;
+
+      $sess = $Sessions->{ $id } = {
+         id        => $id,
+         key       => $user->username,
+         last_used => bson64id_time( $id ),
+         max_age   => $self->config->max_session_age,
+         role_id   => $user->role_id,
+         token     => create_token,
+         user_id   => $user->id, };
+   }
+
+   return ($code, $sess);
 }
 
 sub _get_session {
-   my ($self, $id) = @_; $id or return; my $now = time;
+   my ($self, $id) = @_; $id or throw 'No session id', rv => 400;
 
-   my $sess = $Sessions->{ $id } or return; my $max_age = $sess->{max_age};
+   my $sess = $Sessions->{ $id }
+      or throw error => 'Session [_1 ] not found', args => [ $id ], rv => 404;
+
+   my $max_age = $sess->{max_age}; my $now = time;
 
    $max_age and $now - $sess->{last_used} > $max_age
-      and delete $Sessions->{ $id } and return;
+      and delete $Sessions->{ $id }
+      and throw error => 'Session [_1] expired', args => [ $id ], rv => 401;
    $sess->{last_used} = $now;
    return $sess;
-}
-
-sub _get_session_for_user {
-   return $_[ 0 ]->_get_session( $Users->[ $_[ 1 ]->id ] );
 }
 
 sub _process_event {
@@ -337,7 +345,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 8 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 

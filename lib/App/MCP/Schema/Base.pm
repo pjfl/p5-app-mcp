@@ -1,10 +1,10 @@
-# @(#)$Ident: Base.pm 2013-11-04 17:33 pjf ;
+# @(#)$Ident: Base.pm 2013-11-10 23:33 pjf ;
 
 package App::MCP::Schema::Base;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::Core );
 
 use Class::Usul::Constants;
@@ -15,7 +15,6 @@ __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 sub varchar_max_size {
    return 255;
 }
-
 
 sub job_type_enum {
    return [ qw( box job ) ];
@@ -42,8 +41,10 @@ sub enumerated_data_type {
 }
 
 sub foreign_key_data_type {
+   my ($self, $default) = @_;
+
    return { data_type         => 'integer',
-            default_value     => undef,
+            default_value     => $default,
             extra             => { unsigned => TRUE },
             is_nullable       => FALSE, };
 }
@@ -122,7 +123,7 @@ App::MCP::Schema::Base - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 8 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 

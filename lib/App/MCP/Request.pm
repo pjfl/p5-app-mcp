@@ -1,10 +1,10 @@
-# @(#)Ident: Request.pm 2013-11-04 15:47 pjf ;
+# @(#)Ident: Request.pm 2013-11-10 23:21 pjf ;
 
 package App::MCP::Request;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 
 use Authen::HTTP::Signature::Parser;
 use CGI::Simple::Cookie;
@@ -19,12 +19,23 @@ use Moo;
 use TryCatch;
 use URI;
 
+BEGIN {
+   my $class = EXCEPTION_CLASS;
+
+   $class->has_exception( 'Authentication' );
+   $class->has_exception( 'ParseFailure'       => [ 'Authentication' ] );
+   $class->has_exception( 'MissingChecksum'    => [ 'Authentication' ] );
+   $class->has_exception( 'MissingKey'         => [ 'Authentication' ] );
+   $class->has_exception( 'ChecksumFailure'    => [ 'Authentication' ] );
+   $class->has_exception( 'VerificationFailed' => [ 'Authentication' ] );
+}
+
 # Public attributes
 has 'args'     => is => 'ro',   isa => ArrayRef, default => sub { [] };
 
 has 'base'     => is => 'ro',   isa => Object, required => TRUE;
 
-has 'content'  => is => 'lazy', isa => HashRef;
+has 'content'  => is => 'lazy', isa => HashRef, init_arg => undef;
 
 has 'cookie'   => is => 'lazy', isa => HashRef, builder => sub {
    { CGI::Simple::Cookie->parse( $_[ 0 ]->_env->{HTTP_COOKIE} ) } };
@@ -96,7 +107,9 @@ sub _build_content {
    }
    catch ($e) { $self->log->error( $e ); $content = undef }
 
-   return $content;
+   $content and not is_hashref $content and $content = { content => $content };
+
+   return $content ? $content : {};
 }
 
 sub _build__content {
@@ -105,16 +118,10 @@ sub _build__content {
    try {
       $env->{CONTENT_LENGTH}
          and $env->{ 'psgi.input' }->read( $content, $env->{CONTENT_LENGTH} );
-
-      if ($content and my $checksum = $self->header( 'content-sha1' )) {
-         my $digest = Digest->new( 'SHA-1' ); $digest->add( $content );
-
-         $checksum eq $digest->hexdigest or throw 'Content checksum failure';
-      }
    }
    catch ($e) { $self->log->error( $e ); $content = undef }
 
-   return $content;
+   return $content ? $content : NUL;
 }
 
 # Public methods
@@ -122,20 +129,23 @@ sub authenticate {
    my $self = shift; my $sig;
 
    try        { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
-   catch ($e) { $self->log->error( $e ); return }
+   catch ($e) { throw error => $e, class => 'ParseFailure', rv => 401 }
 
-   my $prefix = 'Host '.$sig->key_id;
+   is_member 'content-sha1', $sig->headers
+      or throw error => 'Sig. [_1] missing checksum', args => [ $sig->key_id ],
+               class => 'MissingChecksum', rv => 401;
 
-   unless (is_member 'content-sha1', $sig->headers) {
-      $self->log->error( "${prefix} missing checksum" ); return;
-   }
+   my $digest = Digest->new( 'SHA-1' ); $digest->add( $self->_content );
 
-   if (my $key = $self->_read_public_key( $sig )) { $sig->key( $key ) }
-   else { $self->log->error( "${prefix} no key" ); return }
+   $self->header( 'content-sha1' ) eq $digest->hexdigest
+      or throw error => 'Sig. [_1] checksum failure', args => [ $sig->key_id ],
+               class => 'ChecksumFailure', rv => 401;
 
-   unless ($sig->verify) {
-      $self->log->error( "${prefix} verification failed" ); return;
-   }
+   $sig->key( $self->_read_public_key( $sig->key_id ) );
+
+   $sig->verify or throw error => 'Sig. [_1] verification failed',
+                          args => [ $sig->key_id ],
+                         class => 'VerificationFailed', rv => 401;
 
    return $self; # Authentication was successful
 }
@@ -156,7 +166,7 @@ sub loc {
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
    $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->config->name ];
-   $args->{locale      } ||= $self->locale;
+   $args->{locale      } ||= $self->locale; # TODO: Make request dependent
 
    return $self->localize( $key, $args );
 }
@@ -169,18 +179,17 @@ sub uri_for {
 
 # Private methods
 sub _read_public_key {
-   my ($self, $sig) = @_; state $cache //= {};
+   my ($self, $key_id) = @_; state $cache //= {};
 
-   my $config    = $self->config;
-   my $key; $key = $cache->{ $sig->key_id } and return $key;
-   my $ssh_dir   = $config->my_home->catdir( '.ssh' );
-   my $prefix    = class2appdir $config->appclass;
-   my $key_file  = $ssh_dir->catfile( "${prefix}_".$sig->key_id.'.pub' );
+   my $key      = $cache->{ $key_id }; $key and return $key;
+   my $ssh_dir  = $self->config->my_home->catdir( '.ssh' );
+   my $prefix   = class2appdir $self->config->appclass;
+   my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
 
-   $key_file->exists
-      and $key = Convert::SSH2->new( $key_file->all )->format_output;
+   try        { $key = Convert::SSH2->new( $key_file->all )->format_output }
+   catch ($e) { throw error => $e, class => 'MissingKey', rv => 401 }
 
-   return $key ? $cache->{ $sig->key_id } = $key : undef;
+   return $cache->{ $key_id } = $key;
 }
 
 1;
@@ -202,7 +211,7 @@ App::MCP::Request - Represents the request sent from the client to the server
 
 =head1 Version
 
-This documents version v0.3.$Rev: 8 $ of L<App::MCP::Request>
+This documents version v0.3.$Rev: 9 $ of L<App::MCP::Request>
 
 =head1 Description
 

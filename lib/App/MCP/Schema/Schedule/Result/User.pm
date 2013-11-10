@@ -1,15 +1,16 @@
-# @(#)$Ident: User.pm 2013-10-23 00:14 pjf ;
+# @(#)$Ident: User.pm 2013-11-10 16:24 pjf ;
 
 package App::MCP::Schema::Schedule::Result::User;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Class::Usul::Constants;
 use Class::Usul::Functions     qw( create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
+use TryCatch;
 
 EXCEPTION_CLASS->has_exception( 'AccountInactive' );
 EXCEPTION_CLASS->has_exception( 'IncorrectPassword' );
@@ -23,6 +24,7 @@ $class->add_columns
      active        => { data_type     => 'boolean',
                         default_value => FALSE,
                         is_nullable   => FALSE, },
+     role_id       => $class->foreign_key_data_type,
      username      => $class->varchar_data_type( 64, NUL ),
      password      => $class->varchar_data_type( 64, NUL ),
      email_address => $class->varchar_data_type( 64, NUL ),
@@ -66,22 +68,26 @@ sub activate {
 sub add_member_to {
    my ($self, $role) = @_;
 
-   $self->user_role->find( $self->id, $role->id )
-      and throw error => 'User [_1] already a member of role [_2]',
-                args  => [ $self->username, $role->rolename ];
+   try        { $self->assert_member_of( $role ) }
+   catch ($e) {
+      return $self->user_role->create( { user_id => $self->id,
+                                         role_id => $role->id } );
+   }
 
-   return $self->user_role->create( { user_id => $self->id,
-                                      role_id => $role->id } );
+   throw error => 'User [_1] already a member of role [_2]',
+         args  => [ $self->username, $role->rolename ];
 }
 
 sub assert_member_of {
    my ($self, $role) = @_;
 
+   $self->role_id == $role->id and return TRUE;
+
    my $user_role = $self->user_role->find( $self->id, $role->id )
       or throw error => 'User [_1] not member of role [_2]',
                args  => [ $self->username, $role->rolename ];
 
-   return $user_role;
+   return TRUE;
 }
 
 sub authenticate {
@@ -106,21 +112,35 @@ sub deactivate {
 }
 
 sub delete_member_from {
-   return $_[ 0 ]->assert_member_of( $_[ 1 ] )->delete;
+   my ($self, $role) = @_;
+
+   $self->role_id == $role->id and throw 'Cannot delete from primary role';
+
+   my $user_role = $self->user_role->find( $self->id, $role->id )
+      or throw error => 'User [_1] not member of role [_2]',
+               args  => [ $self->username, $role->rolename ];
+
+   return $user_role->delete;
 }
 
 sub insert {
-   my $self = shift; my $columns = { $self->get_inflated_columns };
+   my $self     = shift;
+   my $columns  = { $self->get_inflated_columns };
+   my $password = $columns->{password};
 
-   $columns->{password} and
-      $columns->{password} = $self->_encrypt_password( $columns->{password} );
-
+   $password and not __is_encrypted( $password )
+      and $columns->{password} = $self->_encrypt_password( $password );
+   $columns->{role_id} ||= $self->_default_role_id;
    $self->set_inflated_columns( $columns );
 
    return $self->next::method;
 }
 
 # Private methods
+sub _default_role_id {
+   my $self = shift; return 1; # TODO: Derive default role_id from self
+}
+
 sub _encrypt_password {
    my ($self, $password, $salt) = @_;
 
@@ -137,6 +157,10 @@ sub __get_salt {
       .(en_base64( pack( 'H*', substr( create_token, 0, 32 ) ) ) );
 }
 
+sub __is_encrypted {
+   return $_[ 0 ] =~ m{ \A \$2a }mx ? TRUE : FALSE;
+}
+
 1;
 
 __END__
@@ -149,7 +173,7 @@ App::MCP::Schema::Schedule::Result::User - <One-line description of module's pur
 
 =head1 Version
 
-This documents version v0.3.$Rev: 3 $
+This documents version v0.3.$Rev: 9 $
 
 =head1 Synopsis
 
