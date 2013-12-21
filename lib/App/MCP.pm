@@ -1,14 +1,14 @@
-# @(#)$Ident: MCP.pm 2013-11-10 15:39 pjf ;
+# @(#)$Ident: MCP.pm 2013-12-02 22:27 pjf ;
 
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
+use App::MCP::Constants;
 use App::MCP::Functions     qw( log_leader trigger_input_handler
                                 trigger_output_handler );
-use Class::Usul::Constants;
 use Class::Usul::Crypt      qw( encrypt decrypt );
 use Class::Usul::Functions  qw( bson64id bson64id_time
                                 create_token elapsed throw );
@@ -309,7 +309,7 @@ sub _start_job {
                  job_id    => $job->id,
                  port      => $self->port,
                  runid     => $runid,
-                 servers   => (join SPC, @{ $self->config->servers }),
+                 servers   => (join COMMA, @{ $self->config->servers }),
                  token     => $token };
    my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $lead  = log_leader 'debug', 'START', $runid;
@@ -345,7 +345,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 
@@ -392,7 +392,7 @@ Larry Wall - For the Perl programming language
 
 =head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 

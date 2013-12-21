@@ -1,11 +1,11 @@
-# @(#)Ident: Loop.pm 2013-09-09 16:33 pjf ;
+# @(#)Ident: Loop.pm 2013-11-17 09:54 pjf ;
 
 package App::MCP::Async::Loop;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
@@ -58,7 +58,8 @@ sub unwatch_child {
 sub watch_read_handle {
    my ($self, $fh, $cb) = @_; my $h = $self->_events( 'handles' );
 
-   $h->{ "r${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' ); return;
+   $h->{ "r${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'r' );
+   return;
 }
 
 sub unwatch_read_handle {
@@ -113,7 +114,8 @@ sub watch_time {
 
    my $t = $self->_events( 'timers' ); $t->{ $id }->[ 0 ] = $cb;
 
-   $t->{ $id }->[ 1 ] = AnyEvent->timer( @args ); return;
+   $t->{ $id }->[ 1 ] = AnyEvent->timer( @args );
+   return;
 }
 
 sub unwatch_time {
@@ -129,7 +131,8 @@ sub unwatch_time {
 sub watch_write_handle {
    my ($self, $fh, $cb) = @_; my $h = $self->_events( 'handles' );
 
-   $h->{ "w${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'w' ); return;
+   $h->{ "w${fh}" } = AnyEvent->io( cb => $cb, fh => $fh, poll => 'w' );
+   return;
 }
 
 sub unwatch_write_handle {
@@ -168,7 +171,7 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $ of L<App::MCP::Async::Loop>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

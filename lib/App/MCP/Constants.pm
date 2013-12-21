@@ -1,28 +1,30 @@
-# @(#)Ident: User.pm 2013-11-18 15:34 pjf ;
+# @(#)Ident: Constants.pm 2013-11-20 16:14 pjf ;
 
-package App::MCP::Schema::Schedule::ResultSet::User;
+package App::MCP::Constants;
 
 use strict;
 use warnings;
-use feature                 qw( state );
 use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::ResultSet );
+use parent                  qw( Exporter::Tiny );
 
-use App::MCP::Constants;
-use Class::Usul::Functions  qw( throw );
+use App::MCP::Exception;
+use Class::Usul::Constants ();
 
-sub find_by_name {
-   my ($self, $user_name) = @_;
+Class::Usul::Constants->Exception_Class( 'App::MCP::Exception' );
 
-   my $user = $self->search( { username => $user_name } )->single
-      or throw error => 'User [_1] unknown', args => [ $user_name ];
+our @EXPORT = qw( SEPARATOR );
 
-   return $user;
+sub import {
+   my $class       = shift;
+   my $global_opts = { $_[ 0 ] && ref $_[ 0 ] eq 'HASH' ? %{+ shift } : () };
+
+   $global_opts->{into} ||= caller;
+   Class::Usul::Constants->import( $global_opts );
+   $class->SUPER::import( $global_opts );
+   return;
 }
 
-sub load_factor {
-   return 14;
-}
+sub SEPARATOR () { '/' }
 
 1;
 
@@ -34,28 +36,28 @@ __END__
 
 =head1 Name
 
-App::MCP::Schema::Schedule::ResultSet::User - One-line description of the modules purpose
+App::MCP::Constants - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::ResultSet::User;
+   use App::MCP::Constants;
    # Brief but working code examples
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Schema::Schedule::ResultSet::User>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Constants>
 
 =head1 Description
 
 =head1 Configuration and Environment
 
-Defines the following attributes;
-
-=over 3
-
-=back
+Defines no attributes
 
 =head1 Subroutines/Methods
+
+=head2 SEPARATOR
+
+The forward slash character. Used by L<App::MCP::MaterialisedPath>
 
 =head1 Diagnostics
 

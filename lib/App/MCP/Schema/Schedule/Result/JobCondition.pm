@@ -1,13 +1,13 @@
-# @(#)$Ident: JobCondition.pm 2013-04-30 23:37 pjf ;
+# @(#)$Ident: JobCondition.pm 2013-11-18 16:41 pjf ;
 
 package App::MCP::Schema::Schedule::Result::JobCondition;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent qw(App::MCP::Schema::Base);
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use parent                  qw( App::MCP::Schema::Base );
 
-use Class::Usul::Constants;
+use App::MCP::Constants;
 
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
@@ -41,7 +41,7 @@ App::MCP::Schema::Schedule::Result::JobCondition - <One-line description of modu
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

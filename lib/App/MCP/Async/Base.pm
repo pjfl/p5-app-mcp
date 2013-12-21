@@ -1,11 +1,11 @@
-# @(#)Ident: Base.pm 2013-06-24 12:17 pjf ;
+# @(#)Ident: Base.pm 2013-11-18 16:45 pjf ;
 
 package App::MCP::Async::Base;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use Class::Usul::Constants;
+use App::MCP::Constants;
 use Class::Usul::Types      qw( Bool NonEmptySimpleStr
                                 Object NonZeroPositiveInt );
 use Moo;
@@ -41,7 +41,7 @@ App::MCP::Async::Base - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Base>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Base>
 
 =head1 Description
 

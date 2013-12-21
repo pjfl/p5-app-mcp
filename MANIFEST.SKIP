@@ -61,6 +61,7 @@ Thumbs.db
 \bipc_srlock
 
 # Avoid archives of this distribution
-\bApp::MCP-v?[\d\.\_]+
+\bApp-MCP-v?[\d\.\_]+
 \bvar/logs
 \bvar/tmp
+\bjobs.json$

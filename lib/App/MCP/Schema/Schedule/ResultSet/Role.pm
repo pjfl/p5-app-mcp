@@ -1,14 +1,13 @@
-# @(#)Ident: Role.pm 2013-10-21 23:23 pjf ;
+# @(#)Ident: Role.pm 2013-11-18 16:43 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Role;
 
 use strict;
 use warnings;
-use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
-use Class::Usul::Constants;
+use App::MCP::Constants;
 use Class::Usul::Functions  qw( throw );
 
 sub find_by_name {
@@ -39,7 +38,7 @@ App::MCP::Schema::Schedule::ResultSet::Role - One-line description of the module
 
 =head1 Version
 
-This documents version v0.1.$Rev: 6 $ of L<App::MCP::Schema::Schedule::ResultSet::Role>
+This documents version v0.1.$Rev: 10 $ of L<App::MCP::Schema::Schedule::ResultSet::Role>
 
 =head1 Description
 

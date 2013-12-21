@@ -1,21 +1,21 @@
-# @(#)$Ident: Async.pm 2013-09-20 16:13 pjf ;
+# @(#)$Ident: Async.pm 2013-11-23 14:40 pjf ;
 
 package App::MCP::Async;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use App::MCP::Async::Loop;
-use App::MCP::Functions     qw( log_leader );
-use Class::Usul::Constants;
-use Class::Usul::Functions  qw( throw );
-use Class::Usul::Types      qw( BaseType Object );
 use Moo;
+use App::MCP::Async::Loop;
+use App::MCP::Constants;
+use App::MCP::Functions     qw( log_leader );
+use Class::Usul::Functions  qw( ensure_class_loaded throw );
+use Class::Usul::Types      qw( BaseType Object );
 use POSIX                   qw( WEXITSTATUS );
 
 # Public attributes
 has 'builder' => is => 'ro',   isa => BaseType,
-   handles    => [ qw( ensure_class_loaded log ) ], required => TRUE;
+   handles    => [ qw( log ) ], required => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
    builder    => sub { App::MCP::Async::Loop->new };
@@ -44,10 +44,10 @@ sub new_notifier {
 
    if ($type eq 'function') { $desc .= ' worker'; $ddesc = $desc.' pool' }
 
-   my $class    = (substr $type, 0, 1) eq '+'
-                ? (substr $type, 1) : __PACKAGE__.'::'.(ucfirst $type);
+   my $class = (substr $type, 0, 1) eq '+'
+             ? (substr $type, 1) : __PACKAGE__.'::'.(ucfirst $type);
 
-   $self->ensure_class_loaded( $class );
+   ensure_class_loaded( $class );
 
    my $notifier = $class->new( builder     => $self->builder,
                                description => $desc,
@@ -71,7 +71,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 4 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

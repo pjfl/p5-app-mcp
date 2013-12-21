@@ -1,16 +1,16 @@
-# @(#)Ident: Config.pm 2013-11-03 01:35 pjf ;
+# @(#)Ident: Config.pm 2013-11-23 14:40 pjf ;
 
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use Class::Usul::Constants;
+use Moo;
+use App::MCP::Constants;
 use Class::Usul::Functions  qw( fqdn );
 use File::DataClass::Types  qw( ArrayRef Directory File HashRef
                                 NonEmptySimpleStr NonZeroPositiveInt
                                 PositiveInt );
-use Moo;
 
 extends q(Class::Usul::Config::Programs);
 
@@ -86,7 +86,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 8 $ of L<App::MCP::Config>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Config>
 
 =head1 Description
 

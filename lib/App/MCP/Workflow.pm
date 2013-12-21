@@ -1,24 +1,19 @@
-# @(#)$Ident: Workflow.pm 2013-09-09 17:09 pjf ;
+# @(#)$Ident: Workflow.pm 2013-11-19 23:17 pjf ;
 
 package App::MCP::Workflow;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
+use App::MCP::Constants;
 use App::MCP::Workflow::Transition;
-use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 use Moo;
 use Scalar::Util            qw( blessed );
 use TryCatch;
+use Unexpected::Functions   qw( Condition Crontab Illegal Retry );
 
-extends qw(Class::Workflow);
-
-EXCEPTION_CLASS->has_exception( 'Condition' );
-EXCEPTION_CLASS->has_exception( 'Crontab'   );
-EXCEPTION_CLASS->has_exception( 'Illegal'   );
-EXCEPTION_CLASS->has_exception( 'Retry'     );
-EXCEPTION_CLASS->has_exception( 'Unknown'   );
+extends q(Class::Workflow);
 
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
@@ -61,7 +56,7 @@ sub BUILD {
          $event->rv <= $job->expected_rv and return;
          $event->transition->set_fail;
          throw error => 'Rv [_1] greater than expected [_2]',
-               args  => [ $event->rv, $job->expected_rv ], class => 'Retry';
+               args  => [ $event->rv, $job->expected_rv ], class => Retry;
       }, ] );
 
    $self->transition( 'off_hold',  to_state => 'active' );
@@ -73,10 +68,10 @@ sub BUILD {
          my ($self, $instance, $event) = @_; my $job = $event->job_rel;
 
          $job->should_start_now
-            or throw error => 'Not at this time', class => 'Crontab';
+            or throw error => 'Not at this time', class => Crontab;
 
          $job->eval_condition
-            or throw error => 'Condition not true', class => 'Condition';
+            or throw error => 'Condition not true', class => Condition;
 
          return;
       }, ] );
@@ -97,17 +92,15 @@ sub process_event {
       my $instance   = $self->new_instance( state => $state );
       my $transition = $instance->state->get_transition( $ev_t->value )
          or throw error => 'Transition [_1] from state [_2] illegal',
-                  args  => [ $ev_t->value, $state_name ], class => 'Illegal';
+                  args  => [ $ev_t->value, $state_name ], class => Illegal;
 
       $instance   = $transition->apply( $instance, $event );
       $state_name = $instance->state->name;
    }
    catch ($e) {
-      my $class = blessed $e && $e->can( 'class' ) ? $e->class : 'Unknown';
+      my $class = blessed $e && $e->can( 'class' ) ? $e->class : undef;
 
-      $class eq 'Retry' and goto RETRY; $class ne 'Unknown' and throw $e;
-
-      throw error => $e, class => $class;
+      $class and $class eq Retry and goto RETRY; throw $e;
    }
 
    return $state_name;
@@ -125,7 +118,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

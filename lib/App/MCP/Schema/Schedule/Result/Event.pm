@@ -1,13 +1,13 @@
-# @(#)$Ident: Event.pm 2013-11-02 15:45 pjf ;
+# @(#)$Ident: Event.pm 2013-11-18 15:30 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Event;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 7 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
-use Class::Usul::Constants;
+use App::MCP::Constants;
 
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
@@ -58,7 +58,7 @@ App::MCP::Schema::Schedule::Result::Event - <One-line description of module's pu
 
 =head1 Version
 
-This documents version v0.3.$Rev: 7 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

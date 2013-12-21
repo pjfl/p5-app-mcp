@@ -1,23 +1,22 @@
-# @(#)$Ident: Daemon.pm 2013-11-06 13:43 pjf ;
+# @(#)$Ident: Daemon.pm 2013-11-22 22:26 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
+use Moo;
 use App::MCP;
 use App::MCP::Async;
+use App::MCP::Constants;
 use App::MCP::DaemonControl;
 use App::MCP::Functions     qw( log_leader );
-use Class::Usul::Constants;
+use Class::Usul::Options;
 use English                 qw( -no_match_vars );
 use File::DataClass::Types  qw( NonZeroPositiveInt Object );
-use Moo;
-use MooX::Options;
 use Plack::Runner;
 
 extends q(Class::Usul::Programs);
-with    q(Class::Usul::TraitFor::UntaintedGetopts);
 
 # Override defaults in parent class
 has '+config_class' => default => 'App::MCP::Config';
@@ -239,7 +238,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

@@ -1,34 +1,25 @@
-# @(#)Ident: Request.pm 2013-11-10 23:21 pjf ;
+# @(#)Ident: Request.pm 2013-11-23 21:06 pjf ;
 
 package App::MCP::Request;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use Authen::HTTP::Signature::Parser;
-use CGI::Simple::Cookie;
-use Class::Usul::Constants;
-use Class::Usul::Functions qw( class2appdir is_arrayref is_hashref
-                               is_member throw trim );
-use Class::Usul::Types     qw( ArrayRef HashRef NonEmptySimpleStr
-                               Object SimpleStr Str );
-use Convert::SSH2;
-use JSON                   qw( );
 use Moo;
+use App::MCP::Constants;
+use CGI::Simple::Cookie;
+use Class::Usul::Functions  qw( class2appdir ensure_class_loaded is_arrayref
+                                is_hashref is_member throw trim );
+use Class::Usul::Types      qw( ArrayRef BaseType HashRef NonEmptySimpleStr
+                                Object SimpleStr Str );
+use File::DataClass::Types  qw( LoadableClass ):
+use JSON                    qw( );
 use TryCatch;
+use Unexpected::Functions   qw( ChecksumFailure MissingChecksum
+                                MissingDependency MissingKey
+                                SigParserFailure SigVerifyFailure );
 use URI;
-
-BEGIN {
-   my $class = EXCEPTION_CLASS;
-
-   $class->has_exception( 'Authentication' );
-   $class->has_exception( 'ParseFailure'       => [ 'Authentication' ] );
-   $class->has_exception( 'MissingChecksum'    => [ 'Authentication' ] );
-   $class->has_exception( 'MissingKey'         => [ 'Authentication' ] );
-   $class->has_exception( 'ChecksumFailure'    => [ 'Authentication' ] );
-   $class->has_exception( 'VerificationFailed' => [ 'Authentication' ] );
-}
 
 # Public attributes
 has 'args'     => is => 'ro',   isa => ArrayRef, default => sub { [] };
@@ -57,17 +48,20 @@ has 'scheme'   => is => 'ro',   isa => NonEmptySimpleStr;
 has 'uri'      => is => 'ro',   isa => Object, required => TRUE;
 
 # Private attributes
-has '_content'    => is => 'lazy', isa => Str, init_arg => undef;
+has '_content'      => is => 'lazy', isa => Str, init_arg => undef;
 
-has '_env'        => is => 'ro',   isa => HashRef, default => sub { {} },
-   init_arg       => 'env';
+has '_env'          => is => 'ro',   isa => HashRef, default => sub { {} },
+   init_arg         => 'env';
 
-has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new },
-   init_arg       => undef;
+has '_parser_class' => is => 'lazy', isa => LoadableClass,
+   default          => 'Authen::HTTP::Signature::Parser';
 
-has '_usul'       => is => 'ro',   isa => Object,
-   handles        => [ qw( config debug localize log ) ],
-   init_arg       => 'builder', required => TRUE, weak_ref => TRUE;
+has '_transcoder'   => is => 'lazy', isa => Object,
+   builder          => sub { JSON->new }, init_arg => undef;
+
+has '_usul'         => is => 'ro',   isa => BaseType,
+   handles          => [ qw( config debug localize log ) ],
+   init_arg         => 'builder', required => TRUE, weak_ref => TRUE;
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -128,24 +122,26 @@ sub _build__content {
 sub authenticate {
    my $self = shift; my $sig;
 
-   try        { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
-   catch ($e) { throw error => $e, class => 'ParseFailure', rv => 401 }
+   try        { $sig = $self->_parser_class->new( $self )->parse() }
+   catch ($e) { throw error => $e, class => SigParserFailure, rv => 401 }
 
-   is_member 'content-sha1', $sig->headers
+   $sig->key_id or throw error => 'Sig. missing key id', rv => 401;
+
+   is_member 'content-sha512', $sig->headers
       or throw error => 'Sig. [_1] missing checksum', args => [ $sig->key_id ],
-               class => 'MissingChecksum', rv => 401;
+               class => MissingChecksum, rv => 401;
 
-   my $digest = Digest->new( 'SHA-1' ); $digest->add( $self->_content );
+   my $digest = Digest->new( 'SHA-512' ); $digest->add( $self->_content );
 
-   $self->header( 'content-sha1' ) eq $digest->hexdigest
+   $self->header( 'content-sha512' ) eq $digest->hexdigest
       or throw error => 'Sig. [_1] checksum failure', args => [ $sig->key_id ],
-               class => 'ChecksumFailure', rv => 401;
+               class => ChecksumFailure, rv => 401;
 
    $sig->key( $self->_read_public_key( $sig->key_id ) );
 
    $sig->verify or throw error => 'Sig. [_1] verification failed',
                           args => [ $sig->key_id ],
-                         class => 'VerificationFailed', rv => 401;
+                         class => SigVerifyFailure, rv => 401;
 
    return $self; # Authentication was successful
 }
@@ -186,8 +182,11 @@ sub _read_public_key {
    my $prefix   = class2appdir $self->config->appclass;
    my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
 
+   try        { ensure_class_loaded( 'Convert::SSH2' ) }
+   catch ($e) { throw error => $e, class => MissingDependency, rv => 501 }
+
    try        { $key = Convert::SSH2->new( $key_file->all )->format_output }
-   catch ($e) { throw error => $e, class => 'MissingKey', rv => 401 }
+   catch ($e) { throw error => $e, class => MissingKey, rv => 401 }
 
    return $cache->{ $key_id } = $key;
 }
@@ -211,7 +210,7 @@ App::MCP::Request - Represents the request sent from the client to the server
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $ of L<App::MCP::Request>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Request>
 
 =head1 Description
 

@@ -1,11 +1,12 @@
-# @(#)$Ident: Listener.pm 2013-11-05 01:58 pjf ;
+# @(#)$Ident: Listener.pm 2013-11-18 15:31 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use App::MCP;
+use App::MCP::Constants;
 use App::MCP::Request;
 use Class::Usul;
 use Class::Usul::File;
@@ -16,13 +17,13 @@ use TryCatch;
 use Web::Simple;
 
 # Public attributes
-has 'app'         => is => 'lazy', isa => Object, builder => sub {
-   App::MCP->new( builder => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
-
 has 'port'        => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
    $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->_usul->config->port };
 
 # Private attributes
+has '_app'        => is => 'lazy', isa => Object, builder => sub {
+   App::MCP->new( builder => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
+
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
 
 has '_usul'       => is => 'lazy', isa => BaseType, handles => [ 'log' ],
@@ -32,7 +33,7 @@ has '_usul'       => is => 'lazy', isa => BaseType, handles => [ 'log' ],
       my $attr  = { config       => { appclass => 'App::MCP',
                                       name     => 'listener' },
                     config_class => 'App::MCP::Config',
-                    debug        => $ENV{MCP_DEBUG} || 0 };
+                    debug        => $ENV{MCP_DEBUG} || FALSE };
       my $conf  = $attr->{config};
 
       $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
@@ -62,10 +63,10 @@ sub _action {
 
    try {
       $req = App::MCP::Request->new( $self->_usul, @args )->authenticate;
-      $res = $self->_encode_json( $self->app->$method( $req ) );
+      $res = $self->_encode_json( $self->_app->$method( $req ) );
    }
    catch ($e) {
-      $self->log->error( $e ); return $self->_encode_json( $e->rv, "${e}" );
+      $self->log->error( $e ); $res = $self->_encode_json( $e->rv, "${e}" );
    }
 
    return $res;
@@ -92,7 +93,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

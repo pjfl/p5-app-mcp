@@ -1,19 +1,17 @@
-# @(#)$Ident: User.pm 2013-11-10 16:24 pjf ;
+# @(#)$Ident: User.pm 2013-11-19 22:18 pjf ;
 
 package App::MCP::Schema::Schedule::Result::User;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
-use Class::Usul::Constants;
+use App::MCP::Constants;
 use Class::Usul::Functions     qw( create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
 use TryCatch;
-
-EXCEPTION_CLASS->has_exception( 'AccountInactive' );
-EXCEPTION_CLASS->has_exception( 'IncorrectPassword' );
+use Unexpected::Functions      qw( AccountInactive IncorrectPassword );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -95,14 +93,14 @@ sub authenticate {
 
    $self->active
       or throw error => 'User [_1] authentication failed',
-               args  => [ $self->username ], class => 'AccountInactive';
+               args  => [ $self->username ], class => AccountInactive;
 
    my $stored   = $self->password || NUL;
    my $supplied = $self->_encrypt_password( $password, $stored );
 
    $supplied eq $stored
       or throw error => 'User [_1] authentication failed',
-               args  => [ $self->username ], class => 'IncorrectPassword';
+               args  => [ $self->username ], class => IncorrectPassword;
 
    return;
 }
@@ -173,7 +171,7 @@ App::MCP::Schema::Schedule::Result::User - <One-line description of module's pur
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

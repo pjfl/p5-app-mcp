@@ -1,13 +1,13 @@
-# @(#)Ident: Function.pm 2013-06-24 19:31 pjf ;
+# @(#)Ident: Function.pm 2013-11-18 20:27 pjf ;
 
 package App::MCP::Async::Function;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
+use App::MCP::Constants;
 use App::MCP::Functions     qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
-use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 use Class::Usul::Types      qw( ArrayRef Bool HashRef
                                 NonZeroPositiveInt PositiveInt SimpleStr );
@@ -108,8 +108,10 @@ sub _call_handler {
          }
 
          try  {
-            $args = $args ? thaw $args : []; my $runid = $args->[ 0 ] || $PID;
-            $rv = $code->( @{ $args } );
+            $args = $args ? thaw $args : [];
+
+            my $runid = $args->[ 0 ] || $PID; $rv = $code->( @{ $args } );
+
             $writer and __send_rv( $writer, $log, $runid, $rv );
          }
          catch ($e) { $log->error( $lead.$e ) }
@@ -199,7 +201,7 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Function>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

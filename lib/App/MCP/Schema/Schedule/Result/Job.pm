@@ -1,17 +1,17 @@
-# @(#)$Ident: Job.pm 2013-11-10 23:34 pjf ;
+# @(#)$Ident: Job.pm 2013-11-18 15:26 pjf ;
 
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use parent                  qw( App::MCP::Schema::Base );
 
 use Algorithm::Cron;
+use App::MCP::Constants;
 use App::MCP::ExpressionParser;
 use App::MCP::Functions     qw( qualify_job_name );
-use Class::Usul::Constants;
 use Class::Usul::Functions  qw( is_arrayref is_hashref is_member throw );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
@@ -74,7 +74,7 @@ sub new {
    $parent_name
       and $new->_set_parent_id( $parent_name, { $new->get_inflated_columns } );
 
-   $new->crontab; $new->fqjn; # Force the attributes to take on a values
+   $new->crontab; $new->fqjn; # Force the attributes to take on values
 
    return $new;
 }
@@ -170,14 +170,14 @@ sub materialised_path_columns {
          children_relationship        => 'child_categories',
          full_path                    => 'ancestors',
          reverse_full_path            => 'descendants',
-         separator                    => __separator(),
+         separator                    => SEPARATOR,
       },
    };
 }
 
 sub namespace {
    my $self = shift;
-   my $sep  = __separator();
+   my $sep  = SEPARATOR;
    my $path = $self->parent_path;
    my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ];
 
@@ -289,11 +289,6 @@ sub _set_parent_id {
    return;
 }
 
-# Private functions
-sub __separator {
-   return '/';
-}
-
 1;
 
 __END__
@@ -306,7 +301,7 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

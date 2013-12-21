@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 8 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -25,6 +25,7 @@ use_ok 'App::MCP::Functions';
 use_ok 'App::MCP::Daemon';
 use_ok 'App::MCP::Listener';
 use_ok 'App::MCP::Schema';
+use_ok 'App::MCP::Schema::Schedule';
 
 done_testing;
 

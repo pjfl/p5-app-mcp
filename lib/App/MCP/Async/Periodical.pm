@@ -1,12 +1,12 @@
-# @(#)Ident: Periodical.pm 2013-06-24 12:16 pjf ;
+# @(#)Ident: Periodical.pm 2013-11-18 16:45 pjf ;
 
 package App::MCP::Async::Periodical;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
+use App::MCP::Constants;
 use App::MCP::Functions     qw( log_leader );
-use Class::Usul::Constants;
 use Class::Usul::Functions  qw( throw );
 use Class::Usul::Types      qw( CodeRef NonZeroPositiveInt SimpleStr Undef );
 use Moo;
@@ -92,7 +92,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 1 $ of L<App::MCP::Async::Periodical>
+This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

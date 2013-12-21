@@ -1,16 +1,16 @@
-# @(#)$Ident: Schema.pm 2013-11-06 16:49 pjf ;
+# @(#)$Ident: Schema.pm 2013-11-22 22:26 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 9 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
-use App::MCP::Functions      qw( qualify_job_name trigger_output_handler );
-use Class::Usul::Constants;
-use Class::Usul::Functions   qw( throw );
-use Class::Usul::Types       qw( LoadableClass NonEmptySimpleStr Object );
 use Moo;
-use MooX::Options;
+use App::MCP::Constants;
+use App::MCP::Functions      qw( qualify_job_name trigger_output_handler );
+use Class::Usul::Functions   qw( throw );
+use Class::Usul::Options;
+use Class::Usul::Types       qw( LoadableClass NonEmptySimpleStr Object );
 
 extends q(CatalystX::Usul::Schema);
 with    q(App::MCP::Worker::ClientAuth);
@@ -125,7 +125,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Switched to Class::Usul::Constants
           - Added exception classes
           - Added host authentication
           - Added user authentication

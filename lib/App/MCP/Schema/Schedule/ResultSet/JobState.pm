@@ -1,17 +1,19 @@
-# @(#)$Ident: JobState.pm 2013-09-09 17:09 pjf ;
+# @(#)$Ident: JobState.pm 2013-11-20 19:43 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use strict;
-use feature qw(state);
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use parent  qw(DBIx::Class::ResultSet);
+use feature                 qw( state );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use parent                  qw( DBIx::Class::ResultSet );
 
-use Class::Usul::Functions qw(exception);
+use App::MCP::Constants;
 use App::MCP::Workflow;
+use Class::Usul::Functions  qw( exception );
 use DateTime;
-use Scalar::Util           qw(blessed);
+use Scalar::Util            qw( blessed );
 use TryCatch;
+use Unexpected::Functions   qw( Unknown );
 
 sub create_and_or_update {
    my ($self, $event) = @_;
@@ -25,7 +27,7 @@ sub create_and_or_update {
    }
    catch ($e) {
       (blessed $e and $e->can( 'class' ))
-         or $e = exception error => $e, class => 'Unknown';
+         or $e = exception error => $e, class => Unknown;
 
       return [ $event->transition->value, $job->fqjn, $e ];
    }
@@ -88,7 +90,7 @@ App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of modul
 
 =head1 Version
 
-This documents version v0.3.$Rev: 2 $
+This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 
