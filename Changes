@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Using Unexpected::has_exception as a function
           - Switched to Class::Usul::Constants
           - Added exception classes
           - Added host authentication

@@ -1,16 +1,16 @@
-# @(#)Ident: Process.pm 2013-11-18 16:44 pjf ;
+# @(#)Ident: Process.pm 2014-01-08 01:43 pjf ;
 
 package App::MCP::Async::Process;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
+use Moo;
 use App::MCP::Constants;
 use App::MCP::Functions     qw( log_leader read_exactly recv_rv_error );
 use Class::Usul::Functions  qw( throw );
 use Class::Usul::Types      qw( CodeRef FileHandle Undef );
 use English                 qw( -no_match_vars );
-use Moo;
 use Scalar::Util            qw( weaken );
 use Storable                qw( nfreeze thaw );
 use TryCatch;
@@ -65,7 +65,6 @@ sub send {
    my $lead = log_leader 'error', 'SNDARG', $args[ 0 ];
 
    defined $len or $self->log->error( $lead.$OS_ERROR );
-
    return TRUE;
 }
 
@@ -134,7 +133,7 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Process>
+This documents version v0.3.$Rev: 11 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

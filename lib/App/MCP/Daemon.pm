@@ -1,12 +1,12 @@
-# @(#)$Ident: Daemon.pm 2013-11-22 22:26 pjf ;
+# @(#)$Ident: Daemon.pm 2013-12-21 04:07 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
-use App::MCP;
+use App::MCP::Application;
 use App::MCP::Async;
 use App::MCP::Constants;
 use App::MCP::DaemonControl;
@@ -29,7 +29,7 @@ option 'port'       => is => 'ro',   isa => NonZeroPositiveInt,
 
 #   Ingnored by the command line
 has 'app'           => is => 'lazy', isa => Object, builder => sub {
-   App::MCP->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
+   App::MCP::Application->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
 
 has 'async_factory' => is => 'lazy', isa => Object, builder => sub {
    App::MCP::Async->new( builder => $_[ 0 ] ) }, handles => [ qw( loop ) ];
@@ -238,7 +238,7 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $
+This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

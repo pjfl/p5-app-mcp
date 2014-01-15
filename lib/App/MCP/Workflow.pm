@@ -1,9 +1,9 @@
-# @(#)$Ident: Workflow.pm 2013-11-19 23:17 pjf ;
+# @(#)$Ident: Workflow.pm 2014-01-15 16:58 pjf ;
 
 package App::MCP::Workflow;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use App::MCP::Constants;
 use App::MCP::Workflow::Transition;
@@ -55,8 +55,7 @@ sub BUILD {
 
          $event->rv <= $job->expected_rv and return;
          $event->transition->set_fail;
-         throw error => 'Rv [_1] greater than expected [_2]',
-               args  => [ $event->rv, $job->expected_rv ], class => Retry;
+         throw class => Retry, args => [ $event->rv, $job->expected_rv ];
       }, ] );
 
    $self->transition( 'off_hold',  to_state => 'active' );
@@ -67,11 +66,9 @@ sub BUILD {
       sub {
          my ($self, $instance, $event) = @_; my $job = $event->job_rel;
 
-         $job->should_start_now
-            or throw error => 'Not at this time', class => Crontab;
+         $job->should_start_now or throw class => Crontab;
 
-         $job->eval_condition
-            or throw error => 'Condition not true', class => Condition;
+         $job->eval_condition or throw class => Condition;
 
          return;
       }, ] );
@@ -91,8 +88,7 @@ sub process_event {
       my $state      = $self->state( $state_name );
       my $instance   = $self->new_instance( state => $state );
       my $transition = $instance->state->get_transition( $ev_t->value )
-         or throw error => 'Transition [_1] from state [_2] illegal',
-                  args  => [ $ev_t->value, $state_name ], class => Illegal;
+         or throw class => Illegal, args => [ $ev_t->value, $state_name ];
 
       $instance   = $transition->apply( $instance, $event );
       $state_name = $instance->state->name;
@@ -118,7 +114,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $
+This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

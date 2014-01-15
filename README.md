@@ -4,14 +4,9 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-This documents version v0.3.$Rev: 9 $
+This documents version v0.3.$Rev: 10 $
 
 # Synopsis
-
-    use App::MCP::Daemon;
-
-    exit App::MCP::Daemon->new_with_options
-       ( appclass => 'App::MCP', noask => 1 )->run;
 
 # Description
 
@@ -23,10 +18,7 @@ This documents version v0.3.$Rev: 9 $
 
 # Dependencies
 
-- [CatalystX::Usul::TraitFor::ConnectInfo](https://metacpan.org/pod/CatalystX::Usul::TraitFor::ConnectInfo)
 - [Class::Usul](https://metacpan.org/pod/Class::Usul)
-- [IPC::PerlSSH](https://metacpan.org/pod/IPC::PerlSSH)
-- [TryCatch](https://metacpan.org/pod/TryCatch)
 
 # Incompatibilities
 

@@ -1,15 +1,15 @@
-# @(#)Ident: Periodical.pm 2013-11-18 16:45 pjf ;
+# @(#)Ident: Periodical.pm 2014-01-08 01:37 pjf ;
 
 package App::MCP::Async::Periodical;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
+use Moo;
 use App::MCP::Constants;
 use App::MCP::Functions     qw( log_leader );
 use Class::Usul::Functions  qw( throw );
 use Class::Usul::Types      qw( CodeRef NonZeroPositiveInt SimpleStr Undef );
-use Moo;
 use Scalar::Util            qw( weaken );
 
 extends q(App::MCP::Async::Base);
@@ -36,7 +36,8 @@ sub once {
 
    my $flag = $self->time_spec or return $self->_time_spec_error;
 
-   $self->loop->watch_time( $self->pid, $cb, $self->interval, $flag ); return;
+   $self->loop->watch_time( $self->pid, $cb, $self->interval, $flag );
+   return;
 }
 
 sub restart {
@@ -51,15 +52,16 @@ sub restart {
 sub start {
    my $self = shift; weaken( $self ); my $cb = sub { $self->code->( $self ) };
 
-   $self->loop->watch_time( $self->pid, $cb, $self->interval ); return;
+   $self->loop->watch_time( $self->pid, $cb, $self->interval );
+   return;
 }
 
 sub stop {
    my $self = shift; my $lead = log_leader 'debug', $self->log_key, $self->pid;
 
-   $self->log->debug( $lead.'Stopping '.$self->description );
-
-   $self->loop->unwatch_time( $self->pid ); return;
+   $self->log->debug( "${lead}Stopping ".$self->description );
+   $self->loop->unwatch_time( $self->pid );
+   return;
 }
 
 # Private methdods
@@ -70,7 +72,8 @@ sub _build_pid {
 sub _time_spec_error {
    my $self = shift; my $lead = log_leader 'error', $self->log_key, $self->pid;
 
-   $self->log->error( $lead.'Flag time_spec must be set' ); return;
+   $self->log->error( "${lead}Flag time_spec must be set" );
+   return;
 }
 
 1;
@@ -92,7 +95,7 @@ App::MCP::Async::Periodical - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Periodical>
+This documents version v0.3.$Rev: 11 $ of L<App::MCP::Async::Periodical>
 
 =head1 Description
 

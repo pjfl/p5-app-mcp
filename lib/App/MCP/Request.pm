@@ -1,25 +1,29 @@
-# @(#)Ident: Request.pm 2013-11-23 21:06 pjf ;
+# @(#)Ident: Request.pm 2014-01-15 17:03 pjf ;
 
 package App::MCP::Request;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
 use CGI::Simple::Cookie;
 use Class::Usul::Functions  qw( class2appdir ensure_class_loaded is_arrayref
                                 is_hashref is_member throw trim );
-use Class::Usul::Types      qw( ArrayRef BaseType HashRef NonEmptySimpleStr
+use Class::Usul::Types      qw( ArrayRef HashRef NonEmptySimpleStr
                                 Object SimpleStr Str );
-use File::DataClass::Types  qw( LoadableClass ):
+use File::DataClass::Types  qw( LoadableClass );
+use HTTP::Status            qw( HTTP_EXPECTATION_FAILED HTTP_FAILED_DEPENDENCY
+                                HTTP_UNAUTHORIZED );
 use JSON                    qw( );
 use TryCatch;
 use Unexpected::Functions   qw( ChecksumFailure MissingChecksum
                                 MissingDependency MissingKey
-                                SigParserFailure SigVerifyFailure );
+                                SigParserFailure SigVerifyFailure Unspecified );
 use URI;
+
+extends q(App::MCP);
 
 # Public attributes
 has 'args'     => is => 'ro',   isa => ArrayRef, default => sub { [] };
@@ -58,10 +62,6 @@ has '_parser_class' => is => 'lazy', isa => LoadableClass,
 
 has '_transcoder'   => is => 'lazy', isa => Object,
    builder          => sub { JSON->new }, init_arg => undef;
-
-has '_usul'         => is => 'ro',   isa => BaseType,
-   handles          => [ qw( config debug localize log ) ],
-   init_arg         => 'builder', required => TRUE, weak_ref => TRUE;
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -123,25 +123,26 @@ sub authenticate {
    my $self = shift; my $sig;
 
    try        { $sig = $self->_parser_class->new( $self )->parse() }
-   catch ($e) { throw error => $e, class => SigParserFailure, rv => 401 }
+   catch ($e) { throw class => SigParserFailure, error => $e,
+                      rv    => HTTP_EXPECTATION_FAILED }
 
-   $sig->key_id or throw error => 'Sig. missing key id', rv => 401;
+   $sig->key_id or throw class => Unspecified, args => [ 'key id' ],
+                         rv    => HTTP_EXPECTATION_FAILED;
 
    is_member 'content-sha512', $sig->headers
-      or throw error => 'Sig. [_1] missing checksum', args => [ $sig->key_id ],
-               class => MissingChecksum, rv => 401;
+      or throw class => MissingChecksum, args => [ $sig->key_id ],
+               rv    => HTTP_EXPECTATION_FAILED;
 
    my $digest = Digest->new( 'SHA-512' ); $digest->add( $self->_content );
 
    $self->header( 'content-sha512' ) eq $digest->hexdigest
-      or throw error => 'Sig. [_1] checksum failure', args => [ $sig->key_id ],
-               class => ChecksumFailure, rv => 401;
+      or throw class => ChecksumFailure, args => [ $sig->key_id ],
+               rv    => HTTP_UNAUTHORIZED;
 
    $sig->key( $self->_read_public_key( $sig->key_id ) );
 
-   $sig->verify or throw error => 'Sig. [_1] verification failed',
-                          args => [ $sig->key_id ],
-                         class => SigVerifyFailure, rv => 401;
+   $sig->verify or throw class => SigVerifyFailure, args => [ $sig->key_id ],
+                         rv    => HTTP_UNAUTHORIZED;
 
    return $self; # Authentication was successful
 }
@@ -183,10 +184,12 @@ sub _read_public_key {
    my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
 
    try        { ensure_class_loaded( 'Convert::SSH2' ) }
-   catch ($e) { throw error => $e, class => MissingDependency, rv => 501 }
+   catch ($e) { throw class => MissingDependency, error => $e,
+                      rv    => HTTP_FAILED_DEPENDENCY }
 
    try        { $key = Convert::SSH2->new( $key_file->all )->format_output }
-   catch ($e) { throw error => $e, class => MissingKey, rv => 401 }
+   catch ($e) { throw class => MissingKey, error => $e,
+                      rv    => HTTP_UNAUTHORIZED }
 
    return $cache->{ $key_id } = $key;
 }
@@ -210,7 +213,7 @@ App::MCP::Request - Represents the request sent from the client to the server
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Request>
+This documents version v0.3.$Rev: 11 $ of L<App::MCP::Request>
 
 =head1 Description
 

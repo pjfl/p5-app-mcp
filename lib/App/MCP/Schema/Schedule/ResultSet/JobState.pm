@@ -1,10 +1,10 @@
-# @(#)$Ident: JobState.pm 2013-11-20 19:43 pjf ;
+# @(#)$Ident: JobState.pm 2014-01-15 17:04 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use strict;
 use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 use parent                  qw( DBIx::Class::ResultSet );
 
 use App::MCP::Constants;
@@ -27,7 +27,7 @@ sub create_and_or_update {
    }
    catch ($e) {
       (blessed $e and $e->can( 'class' ))
-         or $e = exception error => $e, class => Unknown;
+         or $e = exception class => Unknown, error => $e;
 
       return [ $event->transition->value, $job->fqjn, $e ];
    }
@@ -90,7 +90,7 @@ App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of modul
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $
+This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

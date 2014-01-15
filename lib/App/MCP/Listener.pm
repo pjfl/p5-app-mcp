@@ -1,15 +1,14 @@
-# @(#)$Ident: Listener.pm 2013-11-18 15:31 pjf ;
+# @(#)$Ident: Listener.pm 2014-01-13 02:53 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
-use App::MCP;
+use App::MCP::Application;
 use App::MCP::Constants;
 use App::MCP::Request;
 use Class::Usul;
-use Class::Usul::File;
 use Class::Usul::Functions  qw( find_apphome get_cfgfiles is_hashref );
 use Class::Usul::Types      qw( BaseType NonZeroPositiveInt Object );
 use JSON                    qw( );
@@ -22,24 +21,23 @@ has 'port'        => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
 
 # Private attributes
 has '_app'        => is => 'lazy', isa => Object, builder => sub {
-   App::MCP->new( builder => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
+   App::MCP::Application->new
+      ( builder   => $_[ 0 ]->_usul, port => $_[ 0 ]->port ) };
 
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
 
-has '_usul'       => is => 'lazy', isa => BaseType, handles => [ 'log' ],
-   builder        => sub {
-      my $self  = shift;
-      my $extns = [ keys %{ Class::Usul::File->extensions } ];
-      my $attr  = { config       => { appclass => 'App::MCP',
-                                      name     => 'listener' },
-                    config_class => 'App::MCP::Config',
-                    debug        => $ENV{MCP_DEBUG} || FALSE };
-      my $conf  = $attr->{config};
+has '_usul'       => is => 'lazy', isa => BaseType, builder => sub {
+   my $self = shift;
+   my $attr = {
+      config       => { appclass => 'App::MCP', name => 'listener' },
+      config_class => 'App::MCP::Config',
+      debug        => $ENV{MCP_DEBUG} || FALSE };
+   my $conf = $attr->{config};
 
-      $conf->{home    } = find_apphome $conf->{appclass},         undef, $extns;
-      $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home}, $extns;
+   $conf->{home    } = find_apphome $conf->{appclass};
+   $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home};
 
-      return Class::Usul->new( $attr ) };
+   return Class::Usul->new( $attr ) }, handles => [ 'log' ];
 
 # Public methods
 sub dispatch_request {
@@ -93,7 +91,7 @@ App::MCP::Listener - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $
+This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

@@ -1,32 +1,57 @@
-# @(#)Ident: Exception.pm 2013-11-23 21:05 pjf ;
+# @(#)Ident: Exception.pm 2014-01-15 17:05 pjf ;
 
 package App::MCP::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
+use Unexpected::Functions   qw( has_exception );
 
 extends q(Class::Usul::Exception);
 
 my $class = __PACKAGE__;
 
-$class->has_exception( $class             => [ 'Class::Usul::Exception' ] );
-$class->has_exception( Authentication     => [ $class ] );
-$class->has_exception( MissingDependency  => [ $class ] );
-$class->has_exception( Workflow           => [ $class ] );
-$class->has_exception( AccountInactive    => [ 'Authentication' ] );
-$class->has_exception( ChecksumFailure    => [ 'Authentication' ] );
-$class->has_exception( IncorrectPassword  => [ 'Authentication' ] );
-$class->has_exception( MissingChecksum    => [ 'Authentication' ] );
-$class->has_exception( MissingKey         => [ 'Authentication' ] );
-$class->has_exception( SigParserFailure   => [ 'Authentication' ] );
-$class->has_exception( SigVerifyFailure   => [ 'Authentication' ] );
-$class->has_exception( Condition          => [ 'Workflow' ] );
-$class->has_exception( Crontab            => [ 'Workflow' ] );
-$class->has_exception( Illegal            => [ 'Workflow' ] );
-$class->has_exception( Retry              => [ 'Workflow' ] );
-$class->has_exception( Unknown            => [ 'Workflow' ] );
+has_exception $class              => parents => [ 'Class::Usul::Exception' ];
+
+has_exception 'Authentication'    => parents => [ $class ];
+
+has_exception 'MissingDependency' => parents => [ $class ];
+
+has_exception 'Workflow'          => parents => [ $class ];
+
+has_exception 'AccountInactive'   => parents => [ 'Authentication' ],
+   error   => 'User [_1] authentication failed';
+
+has_exception 'ChecksumFailure'   => parents => [ 'Authentication' ],
+   error   => 'Signature [_1] checksum failure';
+
+has_exception 'IncorrectPassword' => parents => [ 'Authentication' ],
+   error   => 'User [_1] authentication failed';
+
+has_exception 'MissingChecksum'   => parents => [ 'Authentication' ],
+   error   => 'Signature [_1] missing checksum';
+
+has_exception 'MissingKey'        => parents => [ 'Authentication' ];
+
+has_exception 'SigParserFailure'  => parents => [ 'Authentication' ];
+
+has_exception 'SigVerifyFailure'  => parents => [ 'Authentication' ],
+   error   => 'Signature [_1] verification failed';
+
+has_exception 'Condition'         => parents => [ 'Workflow' ],
+   error   => 'Condition not true';
+
+has_exception 'Crontab'           => parents => [ 'Workflow' ],
+   error   => 'Not at this time';
+
+has_exception 'Illegal'           => parents => [ 'Workflow' ],
+   error   => 'Transition [_1] from state [_2] illegal';
+
+has_exception 'Retry'             => parents => [ 'Workflow' ],
+   error   => 'Rv [_1] greater than expected [_2]';
+
+has_exception 'Unknown'           => parents => [ 'Workflow' ];
 
 has '+class' => default => $class;
 
@@ -49,7 +74,7 @@ App::MCP::Exception - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Exception>
+This documents version v0.3.$Rev: 11 $ of L<App::MCP::Exception>
 
 =head1 Description
 

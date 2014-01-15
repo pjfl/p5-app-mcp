@@ -1,15 +1,15 @@
-# @(#)$Ident: Async.pm 2013-11-23 14:40 pjf ;
+# @(#)$Ident: Async.pm 2014-01-08 01:24 pjf ;
 
 package App::MCP::Async;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Async::Loop;
 use App::MCP::Constants;
 use App::MCP::Functions     qw( log_leader );
-use Class::Usul::Functions  qw( ensure_class_loaded throw );
+use Class::Usul::Functions  qw( ensure_class_loaded );
 use Class::Usul::Types      qw( BaseType Object );
 use POSIX                   qw( WEXITSTATUS );
 
@@ -71,7 +71,7 @@ App::MCP::Async - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $
+This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

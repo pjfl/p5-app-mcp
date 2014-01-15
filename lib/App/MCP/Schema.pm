@@ -1,9 +1,9 @@
-# @(#)$Ident: Schema.pm 2013-11-22 22:26 pjf ;
+# @(#)$Ident: Schema.pm 2014-01-09 03:32 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
@@ -11,8 +11,9 @@ use App::MCP::Functions      qw( qualify_job_name trigger_output_handler );
 use Class::Usul::Functions   qw( throw );
 use Class::Usul::Options;
 use Class::Usul::Types       qw( LoadableClass NonEmptySimpleStr Object );
+use Unexpected::Functions    qw( Unspecified );
 
-extends q(CatalystX::Usul::Schema);
+extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::ClientAuth);
 
 my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
@@ -36,14 +37,13 @@ has '+schema_classes' => default => sub { $_[ 0 ]->config->schema_classes };
 has '+schema_version' => default => $schema_version;
 
 # Private attributes
-has '_schedule'       => is => 'lazy', isa => Object,
-   builder            => sub {
-      my $self = shift; my $extra = $self->config->connect_params;
-      $self->schedule_class->connect( @{ $self->connect_info }, $extra ) },
+has '_schedule'       => is => 'lazy', isa => Object, builder => sub {
+   my $self = shift; my $extra = $self->config->connect_params;
+   $self->schedule_class->connect( @{ $self->connect_info }, $extra ) },
    reader             => 'schedule';
 
-has '_schedule_class' => is => 'lazy', isa => LoadableClass,
-   builder            => sub { $_[ 0 ]->schema_classes->{schedule} },
+has '_schedule_class' => is => 'lazy', isa => LoadableClass, builder => sub {
+   $_[ 0 ]->schema_classes->{schedule} },
    reader             => 'schedule_class';
 
 # Public methods
@@ -73,7 +73,8 @@ sub load_jobs : method {
 
 sub send_event : method {
    my $self     = shift;
-   my $job_name = $self->next_argv or throw $self->loc( 'No job name' );
+   my $job_name = $self->next_argv
+      or throw class => Unspecified, args => [ 'job name' ];
    my $trans    = $self->next_argv || 'start';
    my $fqjn     = qualify_job_name $job_name;
    my $schema   = $self->schedule;
@@ -125,7 +126,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $
+This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 
