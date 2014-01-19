@@ -1,31 +1,53 @@
-# @(#)Ident: Config.pm 2013-11-23 14:40 pjf ;
+# @(#)Ident: Config.pm 2014-01-19 01:55 pjf ;
 
 package App::MCP::Config;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
 use Class::Usul::Functions  qw( fqdn );
 use File::DataClass::Types  qw( ArrayRef Directory File HashRef
                                 NonEmptySimpleStr NonZeroPositiveInt
-                                PositiveInt );
+                                PositiveInt SimpleStr );
 
 extends q(Class::Usul::Config::Programs);
+
+has 'author'               => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'Dave';
 
 has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
 
+has 'common_links'         => is => 'ro',   isa => ArrayRef,
+   builder                 => sub { [ qw( css images js less ) ] };
+
 has 'connect_params'       => is => 'ro',   isa => HashRef,
    default                 => sub { { quote_names => TRUE } };
+
+has 'css'                  => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'css/';
 
 has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'schedule';
 
+has 'description'          => is => 'ro',   isa => SimpleStr, default => NUL;
+
 has 'identity_file'        => is => 'lazy', isa => File,
    builder                 => sub { [ $_[ 0 ]->ssh_dir, 'id_rsa' ] },
    coerce                  => File->coercion;
+
+has 'images'               => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'img/';
+
+has 'js'                   => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'js/';
+
+has 'keywords'             => is => 'ro',   isa => SimpleStr, default => NUL;
+
+has 'less'                 => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'less/';
 
 has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'App::MCP::SSHLibrary';
@@ -46,8 +68,14 @@ has 'max_ssh_workers'      => is => 'ro',   isa => NonZeroPositiveInt,
    documentation           => 'Maximum number of SSH worker processes',
    default                 => 3;
 
+has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => '/';
+
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
+
+has 'preferences'          => is => 'ro',   isa => ArrayRef,
+   builder                 => sub { [ qw( theme ) ] };
 
 has 'schema_classes'       => is => 'ro',   isa => HashRef,
    builder                 => sub { {
@@ -66,6 +94,15 @@ has 'ssh_dir'              => is => 'lazy', isa => Directory,
 
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
+
+has 'template'             => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'index';
+
+has 'title'                => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'MCP';
+
+has 'theme'                => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'green';
 
 1;
 
@@ -86,7 +123,7 @@ App::MCP::Config - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Config>
+This documents version v0.3.$Rev: 12 $ of L<App::MCP::Config>
 
 =head1 Description
 

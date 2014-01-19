@@ -1,9 +1,9 @@
-# @(#)$Ident: Schema.pm 2014-01-09 03:32 pjf ;
+# @(#)$Ident: Schema.pm 2014-01-17 15:41 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 27 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
@@ -42,7 +42,7 @@ has '_schedule'       => is => 'lazy', isa => Object, builder => sub {
    $self->schedule_class->connect( @{ $self->connect_info }, $extra ) },
    reader             => 'schedule';
 
-has '_schedule_class' => is => 'lazy', isa => LoadableClass, builder => sub {
+has '_schedule_class' => is => 'lazy', isa => LoadableClass, default => sub {
    $_[ 0 ]->schema_classes->{schedule} },
    reader             => 'schedule_class';
 
@@ -126,7 +126,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =head1 Version
 
-This documents version v0.3.$Rev: 11 $
+This documents version v0.3.$Rev: 27 $
 
 =head1 Synopsis
 

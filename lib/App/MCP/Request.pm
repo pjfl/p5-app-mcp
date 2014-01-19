@@ -1,10 +1,10 @@
-# @(#)Ident: Request.pm 2014-01-15 17:03 pjf ;
+# @(#)Ident: Request.pm 2014-01-19 01:47 pjf ;
 
 package App::MCP::Request;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
@@ -21,7 +21,8 @@ use TryCatch;
 use Unexpected::Functions   qw( ChecksumFailure MissingChecksum
                                 MissingDependency MissingKey
                                 SigParserFailure SigVerifyFailure Unspecified );
-use URI;
+use URI::http;
+use URI::https;
 
 extends q(App::MCP);
 
@@ -33,7 +34,7 @@ has 'base'     => is => 'ro',   isa => Object, required => TRUE;
 has 'content'  => is => 'lazy', isa => HashRef, init_arg => undef;
 
 has 'cookie'   => is => 'lazy', isa => HashRef, builder => sub {
-   { CGI::Simple::Cookie->parse( $_[ 0 ]->_env->{HTTP_COOKIE} ) } };
+   { CGI::Simple::Cookie->parse( $_[ 0 ]->_env->{HTTP_COOKIE} ) || {} } };
 
 has 'domain'   => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
@@ -68,8 +69,8 @@ around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = {};
 
    $attr->{builder} = shift @args;
-   $attr->{env    } = (is_hashref $args[ -1 ]) ? pop @args : {};
-   $attr->{params } = (is_hashref $args[ -1 ]) ? pop @args : {};
+   $attr->{env    } = ($args[ 0 ] and is_hashref $args[ -1 ]) ? pop @args : {};
+   $attr->{params } = ($args[ 0 ] and is_hashref $args[ -1 ]) ? pop @args : {};
    $attr->{args   } = [ split m{ / }mx, trim $args[ 0 ] // NUL ];
 
    my $env       = $attr->{env};
@@ -213,7 +214,7 @@ App::MCP::Request - Represents the request sent from the client to the server
 
 =head1 Version
 
-This documents version v0.3.$Rev: 11 $ of L<App::MCP::Request>
+This documents version v0.3.$Rev: 12 $ of L<App::MCP::Request>
 
 =head1 Description
 

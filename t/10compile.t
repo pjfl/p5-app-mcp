@@ -1,8 +1,8 @@
-# @(#)$Ident: 10compile.t 2013-11-04 17:44 pjf ;
+# @(#)$Ident: 10compile.t 2014-01-17 18:38 pjf ;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 27 $ =~ /\d+/gmx );
 use File::Spec::Functions   qw( catdir updir );
 use FindBin                 qw( $Bin );
 use lib                 catdir( $Bin, updir, 'lib' );
@@ -26,6 +26,7 @@ use_ok 'App::MCP::Daemon';
 use_ok 'App::MCP::Listener';
 use_ok 'App::MCP::Schema';
 use_ok 'App::MCP::Schema::Schedule';
+use_ok 'App::MCP::View::HTML';
 
 done_testing;
 

@@ -1,10 +1,10 @@
-# @(#)Ident: Application.pm 2014-01-15 02:23 pjf ;
+# @(#)Ident: Application.pm 2014-01-19 01:22 pjf ;
 
 package App::MCP::Application;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
@@ -70,7 +70,8 @@ sub create_event {
    catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
 
    trigger_input_handler $ENV{MCP_DAEMON_PID};
-   return ( HTTP_CREATED, 'Event '.$event->id.' created' );
+   return { code    => HTTP_CREATED,
+            content => { message => 'Event '.$event->id.' created' } };
 }
 
 sub create_job {
@@ -85,7 +86,8 @@ sub create_job {
    try        { $job = $self->schema->resultset( 'Job' )->create( $job ) }
    catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
 
-   return ( HTTP_CREATED, 'Job '.$job->id.' created' );
+   return { code    => HTTP_CREATED,
+            content => { message => 'Job '.$job->id.' created' } };
 }
 
 sub cron_job_handler {
@@ -128,10 +130,10 @@ sub find_or_create_session {
    my ($code, $sess) = $self->_find_or_create_session( $user );
 
    my $salt  = __get_salt( $user->password );
-   my $res   = { id => $sess->{id}, token => $sess->{token}, };
-   my $token = encrypt $user->password, $self->transcoder->encode( $res );
+   my $hash  = { id => $sess->{id}, token => $sess->{token}, };
+   my $token = encrypt $user->password, $self->transcoder->encode( $hash );
 
-   return ( $code, { salt => $salt, token => $token } );
+   return { code => $code, content => { salt => $salt, token => $token } };
 }
 
 sub input_handler {
@@ -227,6 +229,29 @@ sub output_handler {
    return OK;
 }
 
+sub snapshot_state {
+   my ($self, $req) = @_;
+
+   my $snapshot = {};
+   my $level    = $req->args->[ 0 ] // 1;
+   my $schema   = $self->schema;
+   my $job_rs   = $schema->resultset( 'Job' );
+   my $jobs     = $job_rs->search( {}, {
+         'columns' => [ qw( fqjn parent_id type state.updated state.name ) ],
+         'join'    => 'state' } );
+
+   try {
+      for my $job ($jobs->all) {
+         $snapshot->{ $job->fqjn } = { state   => NUL.$job->state->name,
+                                       type    => NUL.$job->type,
+                                       updated => NUL.$job->state->updated, };
+      }
+   }
+   catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
+
+   return { code => HTTP_OK, content => $snapshot };
+}
+
 # Private methods
 sub _authenticate_params {
    my ($self, $key, $token, $params) = @_;
@@ -263,7 +288,7 @@ sub _find_or_create_session {
          user_id   => $user->id, };
    }
 
-   return ($code, $sess);
+   return ( $code, $sess );
 }
 
 sub _get_session {
@@ -357,7 +382,7 @@ App::MCP::Application - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 1 $ of L<App::MCP::Application>
+This documents version v0.1.$Rev: 12 $ of L<App::MCP::Application>
 
 =head1 Description
 
