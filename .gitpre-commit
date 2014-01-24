@@ -62,8 +62,8 @@ if (defined $project_file) {
 }
 
 if (defined $rev and qx{ git branch 2>/dev/null } =~ m{ ^ [*] \s+ master }mx) {
-   my @stat   = (split m{ \n }mx, qx{ git status --porcelain }),
-                'M '.catfile( 'lib', split m{ :: }mx, "${module}.pm" );
+   my @stat   = ((split m{ \n }mx, qx{ git status --porcelain }),
+                 ('M '.catfile( 'lib', split m{ :: }mx, "${module}.pm" )));
    my $ignore = __get_ignore_rev_regex;
    my %seen   = ();
 

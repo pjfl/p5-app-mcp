@@ -1,6 +1,6 @@
 Revision history for App::MCP
 
-          - Updated git pre commit hook
+          - Updated git pre commit hook again
 
 0.4.1     2014-01-24 15:22:21
           - Removed version numbers from most files
