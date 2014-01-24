@@ -1,11 +1,10 @@
-# @(#)Ident: Constants.pm 2013-11-20 16:14 pjf ;
+# @(#)Ident: Constants.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Constants;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( Exporter::Tiny );
+use parent 'Exporter::Tiny';
 
 use App::MCP::Exception;
 use Class::Usul::Constants ();
@@ -42,10 +41,6 @@ App::MCP::Constants - One-line description of the modules purpose
 
    use App::MCP::Constants;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Constants>
 
 =head1 Description
 

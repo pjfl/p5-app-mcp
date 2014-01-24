@@ -1,15 +1,14 @@
-# @(#)Ident: User.pm 2013-11-18 15:34 pjf ;
+# @(#)Ident: User.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::User;
 
+use 5.01;
 use strict;
 use warnings;
-use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::ResultSet );
+use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
-use Class::Usul::Functions  qw( throw );
+use Class::Usul::Functions qw( throw );
 
 sub find_by_name {
    my ($self, $user_name) = @_;
@@ -40,10 +39,6 @@ App::MCP::Schema::Schedule::ResultSet::User - One-line description of the module
 
    use App::MCP::Schema::Schedule::ResultSet::User;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Schema::Schedule::ResultSet::User>
 
 =head1 Description
 

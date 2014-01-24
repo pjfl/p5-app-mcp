@@ -1,14 +1,14 @@
-# @(#)Ident: Routine.pm 2014-01-08 01:43 pjf ;
+# @(#)Ident: Routine.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Async::Routine;
 
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use namespace::sweep;
 
 use Moo;
 use App::MCP::Constants;
-use App::MCP::Functions     qw( log_leader );
-use Class::Usul::Types      qw( Object );
-use IPC::SysV               qw( IPC_CREAT S_IRUSR S_IWUSR );
+use App::MCP::Functions qw( log_leader );
+use Class::Usul::Types  qw( Object );
+use IPC::SysV           qw( IPC_CREAT S_IRUSR S_IWUSR );
 use IPC::Semaphore;
 
 extends q(App::MCP::Async::Process);
@@ -108,10 +108,6 @@ App::MCP::Async::Routine - One-line description of the modules purpose
 
    use App::MCP::Async::Routine;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $ of L<App::MCP::Async::Routine>
 
 =head1 Description
 

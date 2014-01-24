@@ -14,7 +14,7 @@ BEGIN {
    do $path or die $EVAL_ERROR || "Path ${path} not done\n";
 }
 
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 3 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 1 $ =~ /\d+/gmx );
 
 use App::MCP::Listener;
 
@@ -48,7 +48,7 @@ Lists the methods available in this program
 
 =head1 VERSION
 
-This documents version v0.3.$Rev: 3 $ of L<App::MCP>
+This documents version v0.4.$Rev: 1 $ of L<App::MCP>
 
 =head1 DESCRIPTION
 

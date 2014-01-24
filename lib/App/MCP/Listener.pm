@@ -1,34 +1,39 @@
-# @(#)$Ident: Listener.pm 2014-01-19 15:47 pjf ;
+# @(#)$Ident: Listener.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Listener;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
-use App::MCP::Application;
 use App::MCP::Constants;
-use App::MCP::Model::Schedule;
+use App::MCP::Model::API;
+use App::MCP::Model::Form;
 use App::MCP::Request;
 use App::MCP::View::HTML;
+use App::MCP::View::JSON;
 use Class::Usul;
 use Class::Usul::Functions  qw( exception find_apphome get_cfgfiles );
 use Class::Usul::Types      qw( BaseType HashRef NonZeroPositiveInt Object );
-use HTTP::Status            qw( HTTP_INTERNAL_SERVER_ERROR HTTP_NOT_FOUND );
+use HTTP::Status            qw( HTTP_BAD_REQUEST HTTP_INTERNAL_SERVER_ERROR
+                                HTTP_NOT_FOUND );
 use Plack::Builder;
 use TryCatch;
 use Web::Simple;
 
 # Public attributes
-has 'port'   => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
-   $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->usul->config->port };
+has 'port'    => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
+      $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->usul->config->port
+   };
 
 # Private attributes
-has '_api'   => is => 'lazy', isa => Object, reader => 'api', builder => sub {
-   App::MCP::Application->new
-      ( builder   => $_[ 0 ]->usul, port => $_[ 0 ]->port ) };
+has '_models' => is => 'lazy', isa => HashRef[Object], reader => 'models',
+   builder    => sub { {
+      'api'   => App::MCP::Model::API->new ( builder => $_[ 0 ]->usul,
+                                             port    => $_[ 0 ]->port ),
+      'form'  => App::MCP::Model::Form->new( builder => $_[ 0 ]->usul ),
+   } };
 
-has '_usul'  => is => 'lazy', isa => BaseType,
-   handles   => [ 'log' ], reader => 'usul', builder => sub {
+has '_usul'   => is => 'lazy', isa => BaseType, reader => 'usul',
+   handles    => [ 'log' ], builder => sub {
       my $self = shift;
       my $attr = {
          config       => { appclass => 'App::MCP', name => 'listener' },
@@ -39,15 +44,14 @@ has '_usul'  => is => 'lazy', isa => BaseType,
       $conf->{home    } = find_apphome $conf->{appclass};
       $conf->{cfgfiles} = get_cfgfiles $conf->{appclass}, $conf->{home};
 
-      return Class::Usul->new( $attr ) };
+      return Class::Usul->new( $attr );
+   };
 
-has '_views' => is => 'lazy', isa => HashRef[Object], builder => sub { {
-   'json'    => App::MCP::View::JSON->new,
-   'html'    => App::MCP::View::HTML->new( builder => $_[ 0 ]->usul ),
-   'text'    => App::MCP::View::Text->new, } };
-
-has '_web'   => is => 'lazy', isa => Object, reader => 'web', builder => sub {
-   App::MCP::Model::Schedule->new( builder => $_[ 0 ]->usul ) };
+has '_views'  => is => 'lazy', isa => HashRef[Object], reader => 'views',
+   builder    => sub { {
+      'json'  => App::MCP::View::JSON->new,
+      'html'  => App::MCP::View::HTML->new( builder => $_[ 0 ]->usul ),
+   } };
 
 # Construction
 around 'to_psgi_app' => sub {
@@ -79,79 +83,69 @@ around 'to_psgi_app' => sub {
 # Public methods
 sub dispatch_request {
    sub (POST + /api/event/*) {
-      return shift->_action( TRUE,  qw( json api create_event ), @_ );
+      return shift->_execute( qw( json api  create_event ), @_ );
    },
    sub (POST + /api/job/*) {
-      return shift->_action( TRUE,  qw( json api create_job ), @_ );
+      return shift->_execute( qw( json api  create_job ), @_ );
    },
    sub (POST + /api/session/*) {
-      return shift->_action( TRUE,  qw( json api find_or_create_session ), @_ );
+      return shift->_execute( qw( json api  find_or_create_session ), @_ );
    },
    sub (GET  + /api/state/*) {
-      return shift->_action( FALSE, qw( json api snapshot_state ), @_ );
+      return shift->_execute( qw( json api  snapshot_state ), @_ );
    },
    sub (GET  + /state) {
-      return shift->_action( FALSE, qw( html web state_diagram ), @_ );
+      return shift->_execute( qw( html form state_diagram ), @_ );
    },
    sub {
-      [ HTTP_NOT_FOUND, [ 'Content-Type', 'text/plain' ], [ "Not found\n" ] ];
+      [ HTTP_NOT_FOUND, __plain_header(), [ "Not found\n" ] ];
    };
 }
 
 # Private methods
-sub _action {
-   my ($self, $auth, $type, $model, $method, @args) = @_; my ($req, $res);
+sub _execute {
+   my ($self, $view, $model, $method, @args) = @_;
+
+   my $req = App::MCP::Request->new( $self->usul, @args ); my $res;
 
    try {
-      $req = App::MCP::Request->new( $self->usul, @args );
-      $auth and $req = $req->authenticate;
-      $res = $self->_render( $type, $req, $self->$model->$method( $req ) );
+      my $stash = $self->models->{ $model }->$method( $req );
+
+      $res = $self->views->{ $view }->render( $req, $stash );
    }
-   catch ($e) {
-      $e->can( 'rv' ) or $e = exception error => $e,
-                                           rv => HTTP_INTERNAL_SERVER_ERROR;
-      $self->log->error( $e );
-      $res = $self->_render( 'text', undef, {
-         code => $e->rv, content => "${e}" } );
-   }
+   catch ($e) { $res = $self->_render_exception( $view, $model, $req, $e ) }
 
    return $res;
 }
 
-sub _render {
-   my ($self, $type, $req, $stash) = @_;
+sub _render_exception {
+   my ($self, $view, $model, $req, $e) = @_; $self->log->error( "${e}" );
 
-   return [ $stash->{code}, $self->_views->{ $type }->render( $req, $stash ) ];
+   $e->can( 'rv' ) or $e = exception error => "${e}", rv => HTTP_BAD_REQUEST;
+
+   my $res;
+
+   try {
+      my $stash = $self->models->{ $model }->exception_handler( $req, $e );
+
+      $res = $self->views->{ $view }->render( $req, $stash );
+   }
+   catch ($render_error) { $res = __internal_server_error( $e, $render_error ) }
+
+   return $res;
 }
 
-package # Hide from indexer
-   App::MCP::View::JSON;
+# Private functions
+sub __internal_server_error {
+   my ($e, $render_error) = @_;
 
-use Moo;
-use Class::Usul::Types qw( Object );
-use JSON               qw();
+   my $message = "Original error: ${e}\r\nRendering error: ${render_error}";
 
-has 'transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
-
-sub render {
-   my ($self, $req, $stash) = @_;
-
-   my $content = $self->transcoder->encode( $stash->{content} );
-
-   return [ 'Content-Type' => 'application/json' ], [ $content ];
+   return [ HTTP_INTERNAL_SERVER_ERROR, __plain_header(), [ $message ] ];
 }
 
-package # Hide from indexer
-   App::MCP::View::Text;
-
-use Scalar::Util qw( blessed );
-
-sub new {
-   return bless {}, blessed $_[ 0 ] || $_[ 0 ];
-}
-
-sub render {
-   return [ 'Content-Type' => 'text/plain' ], [ $_[ 2 ]->{content} ];
+sub __plain_header {
+   return [ 'Content-Type', 'text/plain' ];
 }
 
 1;
@@ -163,10 +157,6 @@ __END__
 =head1 Name
 
 App::MCP::Listener - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 12 $
 
 =head1 Synopsis
 

@@ -1,11 +1,10 @@
-# @(#)Ident: Role.pm 2013-11-18 16:43 pjf ;
+# @(#)Ident: Role.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Role;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::ResultSet );
+use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
 use Class::Usul::Functions  qw( throw );
@@ -35,10 +34,6 @@ App::MCP::Schema::Schedule::ResultSet::Role - One-line description of the module
 
    use App::MCP::Schema::Schedule::ResultSet::Role;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.1.$Rev: 10 $ of L<App::MCP::Schema::Schedule::ResultSet::Role>
 
 =head1 Description
 

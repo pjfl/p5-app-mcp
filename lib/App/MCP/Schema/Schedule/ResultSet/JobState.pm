@@ -1,19 +1,18 @@
-# @(#)$Ident: JobState.pm 2014-01-15 17:04 pjf ;
+# @(#)$Ident: JobState.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
+use 5.01;
 use strict;
-use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::ResultSet );
+use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
 use App::MCP::Workflow;
-use Class::Usul::Functions  qw( exception );
+use Class::Usul::Functions qw( exception );
 use DateTime;
-use Scalar::Util            qw( blessed );
+use Scalar::Util           qw( blessed );
 use TryCatch;
-use Unexpected::Functions   qw( Unknown );
+use Unexpected::Functions  qw( Unknown );
 
 sub create_and_or_update {
    my ($self, $event) = @_;
@@ -87,10 +86,6 @@ __END__
 =head1 Name
 
 App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

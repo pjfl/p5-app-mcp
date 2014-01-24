@@ -1,11 +1,10 @@
-# @(#)$Ident: DaemonControl.pm 2013-05-29 20:55 pjf ;
+# @(#)$Ident: DaemonControl.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::DaemonControl;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use parent qw(Daemon::Control);
+use parent 'Daemon::Control';
 
 sub new {
    my ($self, $args) = @_; my $stop_signals = delete $args->{stop_signals};
@@ -63,10 +62,6 @@ __END__
 =head1 Name
 
 App::MCP::DaemonControl - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 1 $
 
 =head1 Synopsis
 

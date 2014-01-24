@@ -1,15 +1,14 @@
-# @(#)Ident: Functions.pm 2013-11-18 16:53 pjf ;
+# @(#)Ident: Functions.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Functions;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( Exporter::Tiny );
+use parent 'Exporter::Tiny';
 
 use App::MCP::Constants;
-use Class::Usul::Functions  qw( pad );
-use English                 qw( -no_match_vars );
+use Class::Usul::Functions qw( pad );
+use English                qw( -no_match_vars );
 
 our @EXPORT_OK = ( qw( log_leader qualify_job_name read_exactly recv_arg_error
                        recv_rv_error trigger_input_handler
@@ -99,10 +98,6 @@ App::MCP::Functions - One-line description of the modules purpose
 
    use App::MCP::Functions;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.1.$Rev: 10 $ of L<App::MCP::Functions>
 
 =head1 Description
 

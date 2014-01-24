@@ -2,10 +2,9 @@
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 1 $ =~ /\d+/gmx );
-use File::Spec::Functions   qw( catdir updir );
-use FindBin                 qw( $Bin );
-use lib                 catdir( $Bin, updir, 'lib' );
+use File::Spec::Functions qw( catdir updir );
+use FindBin               qw( $Bin );
+use lib               catdir( $Bin, updir, 'lib' );
 
 use Module::Build;
 use Test::More;

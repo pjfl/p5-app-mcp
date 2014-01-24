@@ -1,18 +1,17 @@
-# @(#)Ident: Process.pm 2014-01-08 01:43 pjf ;
+# @(#)Ident: Process.pm 2014-01-24 15:15 pjf ;
 
 package App::MCP::Async::Process;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
-use App::MCP::Functions     qw( log_leader read_exactly recv_rv_error );
-use Class::Usul::Functions  qw( throw );
-use Class::Usul::Types      qw( CodeRef FileHandle Undef );
-use English                 qw( -no_match_vars );
-use Scalar::Util            qw( weaken );
-use Storable                qw( nfreeze thaw );
+use App::MCP::Functions    qw( log_leader read_exactly recv_rv_error );
+use Class::Usul::Functions qw( throw );
+use Class::Usul::Types     qw( CodeRef FileHandle Undef );
+use English                qw( -no_match_vars );
+use Scalar::Util           qw( weaken );
+use Storable               qw( nfreeze thaw );
 use TryCatch;
 
 extends q(App::MCP::Async::Base);
@@ -130,10 +129,6 @@ App::MCP::Async::Process - One-line description of the modules purpose
 
    use App::MCP::Async::Process;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $ of L<App::MCP::Async::Process>
 
 =head1 Description
 

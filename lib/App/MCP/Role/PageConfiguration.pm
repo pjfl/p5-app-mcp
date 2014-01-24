@@ -1,9 +1,8 @@
-# @(#)Ident: PageConfiguration.pm 2014-01-19 02:17 pjf ;
+# @(#)Ident: PageConfiguration.pm 2014-01-24 14:33 pjf ;
 
 package App::MCP::Role::PageConfiguration;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 27 $ =~ /\d+/gmx );
 
 use Moo::Role;
 

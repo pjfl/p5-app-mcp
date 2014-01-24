@@ -1,36 +1,43 @@
-# @(#)Ident: Schedule.pm 2014-01-19 02:21 pjf ;
+# @(#)Ident: Form.pm 2014-01-24 15:12 pjf ;
 
-package App::MCP::Model::Schedule;
+package App::MCP::Model::Form;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Moo;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( throw );
-use HTTP::Status            qw( HTTP_OK );
+use Class::Usul::Functions qw( throw );
+use HTTP::Status           qw( HTTP_OK );
 
 extends q(App::MCP);
 with    q(App::MCP::Role::CommonLinks);
+with    q(App::MCP::Role::JavaScript);
 with    q(App::MCP::Role::PageConfiguration);
 with    q(App::MCP::Role::Preferences);
 
-sub get_stash {
-   my ($self, $req, $page) = @_;
+sub exception_handler {
+   my ($self, $req, $e) = @_;
 
-   return { code => HTTP_OK, page => $self->load_page( $req, $page ) };
+   my $stash = $self->get_stash( $req, { code    => $e->rv,
+                                         message => "${e}",
+                                         title   => 'Exception Handler' } );
+
+   $stash->{template} = 'exception';
+   return $stash;
+}
+
+sub get_stash {
+   my ($self, $req, $args) = @_;
+
+   return { code => HTTP_OK, page => $self->load_page( $req, $args ) };
 }
 
 sub load_page {
-   my ($self, $req, $page) = @_;
-
-   my $title = join SPC, map { ucfirst } split m{ _ }mx, $page;
-
-   return { title => $title };
+   my ($self, $req, $args) = @_; return $args;
 }
 
 sub state_diagram {
-   my ($self, $req) = @_; return $self->get_stash( $req, 'state_diagram' );
+   return $_[ 0 ]->get_stash( $_[ 1 ], { title => 'State Diagram' } );
 }
 
 1;
@@ -43,16 +50,12 @@ __END__
 
 =head1 Name
 
-App::MCP::Model::Schedule - One-line description of the modules purpose
+App::MCP::Model::Form - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Model::Schedule;
+   use App::MCP::Model::Form;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.1.$Rev: 12 $ of L<App::MCP::Model::Schedule>
 
 =head1 Description
 

@@ -1,19 +1,18 @@
-# @(#)$Ident: Daemon.pm 2013-12-21 04:07 pjf ;
+# @(#)$Ident: Daemon.pm 2014-01-24 15:12 pjf ;
 
 package App::MCP::Daemon;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Application;
 use App::MCP::Async;
 use App::MCP::Constants;
 use App::MCP::DaemonControl;
-use App::MCP::Functions     qw( log_leader );
+use App::MCP::Functions    qw( log_leader );
 use Class::Usul::Options;
-use English                 qw( -no_match_vars );
-use File::DataClass::Types  qw( NonZeroPositiveInt Object );
+use English                qw( -no_match_vars );
+use File::DataClass::Types qw( NonZeroPositiveInt Object );
 use Plack::Runner;
 
 extends q(Class::Usul::Programs);
@@ -235,10 +234,6 @@ __END__
 =head1 Name
 
 App::MCP::Daemon - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

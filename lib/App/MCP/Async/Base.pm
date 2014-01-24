@@ -1,14 +1,12 @@
-# @(#)Ident: Base.pm 2014-01-08 01:24 pjf ;
+# @(#)Ident: Base.pm 2014-01-24 15:15 pjf ;
 
 package App::MCP::Async::Base;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
-use Class::Usul::Types      qw( Bool NonEmptySimpleStr
-                                Object NonZeroPositiveInt );
+use Class::Usul::Types qw( Bool NonEmptySimpleStr Object NonZeroPositiveInt );
 
 has 'autostart'   => is => 'ro',   isa => Bool, default => TRUE;
 
@@ -38,10 +36,6 @@ App::MCP::Async::Base - One-line description of the modules purpose
 
    use App::MCP::Async::Base;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $ of L<App::MCP::Async::Base>
 
 =head1 Description
 

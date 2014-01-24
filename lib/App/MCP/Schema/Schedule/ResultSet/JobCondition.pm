@@ -1,13 +1,12 @@
-# @(#)$Ident: JobCondition.pm 2013-10-22 03:47 pjf ;
+# @(#)$Ident: JobCondition.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 6 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::ResultSet );
+use parent 'DBIx::Class::ResultSet';
 
-use Class::Usul::Functions  qw( throw );
+use Class::Usul::Functions qw( throw );
 
 sub create_dependents {
    my ($self, $depend) = @_; my $job_rs = $depend->result_source->resultset;
@@ -34,10 +33,6 @@ __END__
 =head1 Name
 
 App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 6 $
 
 =head1 Synopsis
 

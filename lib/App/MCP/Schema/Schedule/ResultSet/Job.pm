@@ -1,15 +1,14 @@
-# @(#)$Ident: Job.pm 2013-11-18 15:31 pjf ;
+# @(#)$Ident: Job.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
+use 5.01;
 use strict;
 use warnings;
-use feature                 qw( state );
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::ResultSet );
+use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
-use Class::Usul::Functions  qw( throw );
+use Class::Usul::Functions qw( throw );
 
 # Public methods
 sub assert_executable {
@@ -115,10 +114,6 @@ __END__
 =head1 Name
 
 App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

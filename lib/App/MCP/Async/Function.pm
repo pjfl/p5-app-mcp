@@ -1,20 +1,20 @@
-# @(#)Ident: Function.pm 2014-01-08 01:26 pjf ;
+# @(#)Ident: Function.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Async::Function;
 
 use 5.01;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
+use namespace::sweep;
 
 use Moo;
 use App::MCP::Constants;
-use App::MCP::Functions     qw( log_leader read_exactly recv_arg_error );
+use App::MCP::Functions    qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
-use Class::Usul::Functions  qw( throw );
-use Class::Usul::Types      qw( ArrayRef Bool HashRef
-                                NonZeroPositiveInt PositiveInt SimpleStr );
-use English                 qw( -no_match_vars );
-use Fcntl                   qw( F_SETFL O_NONBLOCK );
-use Storable                qw( nfreeze thaw );
+use Class::Usul::Functions qw( throw );
+use Class::Usul::Types     qw( ArrayRef Bool HashRef
+                               NonZeroPositiveInt PositiveInt SimpleStr );
+use English                qw( -no_match_vars );
+use Fcntl                  qw( F_SETFL O_NONBLOCK );
+use Storable               qw( nfreeze thaw );
 use TryCatch;
 
 extends q(App::MCP::Async::Base);
@@ -198,10 +198,6 @@ App::MCP::Async::Function - One-line description of the modules purpose
 
    use App::MCP::Async::Function;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $ of L<App::MCP::Async::Function>
 
 =head1 Description
 

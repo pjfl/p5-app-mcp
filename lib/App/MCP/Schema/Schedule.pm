@@ -1,14 +1,13 @@
-# @(#)$Ident: Schedule.pm 2013-09-16 16:46 pjf ;
+# @(#)$Ident: Schedule.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Schema::Schedule;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 2 $ =~ /\d+/gmx );
-use parent                  qw( DBIx::Class::Schema );
+use parent 'DBIx::Class::Schema';
 
-use File::Spec::Functions   qw( catfile );
-use Scalar::Util            qw( blessed );
+use File::Spec::Functions qw( catfile );
+use Scalar::Util          qw( blessed );
 
 __PACKAGE__->load_namespaces;
 
@@ -32,10 +31,6 @@ __END__
 =head1 Name
 
 App::MCP::Schema::Schedule - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 2 $
 
 =head1 Synopsis
 

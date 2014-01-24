@@ -1,5 +1,7 @@
 Revision history for App::MCP
 
+0.4.1     2014-01-24 15:22:21
+          - Removed version numbers from most files
           - Using Unexpected::has_exception as a function
           - Switched to Class::Usul::Constants
           - Added exception classes

@@ -1,12 +1,11 @@
-# @(#)Ident: Exception.pm 2014-01-15 17:05 pjf ;
+# @(#)Ident: Exception.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Exception;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use Moo;
-use Unexpected::Functions   qw( has_exception );
+use Unexpected::Functions qw( has_exception );
 
 extends q(Class::Usul::Exception);
 
@@ -71,10 +70,6 @@ App::MCP::Exception - One-line description of the modules purpose
 
    use App::MCP::Exception;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $ of L<App::MCP::Exception>
 
 =head1 Description
 

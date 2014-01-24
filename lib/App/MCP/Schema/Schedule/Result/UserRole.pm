@@ -1,11 +1,10 @@
-# @(#)$Ident: UserRole.pm 2013-11-18 16:42 pjf ;
+# @(#)$Ident: UserRole.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Schema::Schedule::Result::UserRole;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
-use parent                  qw( App::MCP::Schema::Base );
+use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants;
 
@@ -31,10 +30,6 @@ __END__
 =head1 Name
 
 App::MCP::Schema::Schedule::Result::UserRole - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

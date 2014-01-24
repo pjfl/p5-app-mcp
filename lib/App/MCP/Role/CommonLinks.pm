@@ -1,9 +1,8 @@
-# @(#)Ident: CommonLinks.pm 2014-01-19 02:17 pjf ;
+# @(#)Ident: CommonLinks.pm 2014-01-24 14:32 pjf ;
 
 package App::MCP::Role::CommonLinks;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 23 $ =~ /\d+/gmx );
 
 use Moo::Role;
 
@@ -18,6 +17,7 @@ around 'get_stash' => sub {
       $stash->{links}->{ $_ } = $req->uri_for( $conf->$_() );
    }
 
+   $stash->{links}->{base} = $req->base;
    return $stash;
 };
 

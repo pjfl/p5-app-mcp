@@ -1,24 +1,29 @@
-# @(#)Ident: HTML.pm 2014-01-19 02:15 pjf ;
+# @(#)Ident: HTML.pm 2014-01-24 15:12 pjf ;
 
 package App::MCP::View::HTML;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 27 $ =~ /\d+/gmx );
 
 use Moo;
 use CGI::Simple::Cookie;
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( base64_encode_ns throw );
+use Class::Usul::Functions qw( base64_encode_ns throw );
 use Encode;
-use File::DataClass::Types  qw( Directory Object );
-use HTTP::Status            qw( HTTP_INTERNAL_SERVER_ERROR );
-use Scalar::Util            qw( weaken );
-use Storable                qw( nfreeze );
+use File::DataClass::Types qw( Directory Object );
+use HTTP::Status           qw( HTTP_INTERNAL_SERVER_ERROR );
+use Scalar::Util           qw( weaken );
+use Storable               qw( nfreeze );
 use Template;
 
 extends q(App::MCP);
 
-has 'template'  => is => 'lazy', isa => Object, builder => sub {
+# Public attributes
+has 'template_dir' => is => 'lazy', isa => Directory,
+   builder         => sub { $_[ 0 ]->config->root->catdir( 'templates' ) },
+   coerce          => Directory->coercion;
+
+# Private attributes
+has '_template' => is => 'lazy', isa => Object, builder => sub {
    my $self     =  shift;
    my $args     =  { RELATIVE     => TRUE,
                      INCLUDE_PATH => [ $self->template_dir->pathname ],
@@ -29,29 +34,25 @@ has 'template'  => is => 'lazy', isa => Object, builder => sub {
    return $template;
 };
 
-has 'template_dir' => is => 'lazy', isa => Directory,
-   builder         => sub { $_[ 0 ]->config->root->catdir( 'templates' ) },
-   coerce          => Directory->coercion;
-
 # Public methods
 sub render {
    my ($self, $req, $stash) = @_; weaken( $req );
 
    my $html     = NUL;
-   my $prefs    = $stash->{prefs } // {};
-   my $conf     = $stash->{config} = $self->config;
-   my $cookie   = $self->_serialize_preferences( $req, $prefs );
-   my $header   = [ 'Content-Type', 'text/html', 'Set-Cookie', $cookie ];
+   my $prefs    =  $stash->{prefs   } //  {};
+   my $conf     =  $stash->{config  }   = $self->config;
    my $template = ($stash->{template} //= $conf->template).'.tt';
+   my $cookie   = $self->_serialize_preferences( $req, $prefs );
+   my $header   = __header( 'Set-Cookie', $cookie );
 
    $stash->{req    } = $req;
    $stash->{loc    } = sub { $req->loc( @_ ) };
    $stash->{uri_for} = sub { $req->uri_for( @_ ) };
 
-   $self->template->process( $template, $stash, \$html ) or
-      throw error => $self->template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
+   $self->_template->process( $template, $stash, \$html ) or
+      throw error => $self->_template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
 
-   return $header, [ encode( 'UTF-8', $html ) ];
+   return [ $stash->{code}, $header, [ encode( 'UTF-8', $html ) ] ];
 }
 
 # Private methods
@@ -63,6 +64,13 @@ sub _serialize_preferences {
                                     -name    => $self->config->name.'_prefs',
                                     -path    => $req->path,
                                     -value   => $value, );
+}
+
+# Private functions
+sub __header {
+   my @headers = ('Content-Type', 'text/html'); $_[ 0 ] and push @headers, @_;
+
+   return [ @headers ];
 }
 
 1;
@@ -81,10 +89,6 @@ App::MCP::View::HTML - One-line description of the modules purpose
 
    use App::MCP::View::HTML;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 27 $ of L<App::MCP::View::HTML>
 
 =head1 Description
 

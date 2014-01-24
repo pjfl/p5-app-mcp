@@ -1,17 +1,16 @@
-# @(#)$Ident: Workflow.pm 2014-01-15 16:58 pjf ;
+# @(#)$Ident: Workflow.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Workflow;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 11 $ =~ /\d+/gmx );
 
 use App::MCP::Constants;
 use App::MCP::Workflow::Transition;
-use Class::Usul::Functions  qw( throw );
+use Class::Usul::Functions qw( throw );
 use Moo;
-use Scalar::Util            qw( blessed );
+use Scalar::Util           qw( blessed );
 use TryCatch;
-use Unexpected::Functions   qw( Condition Crontab Illegal Retry );
+use Unexpected::Functions  qw( Condition Crontab Illegal Retry );
 
 extends q(Class::Workflow);
 
@@ -111,10 +110,6 @@ __END__
 =head1 Name
 
 App::MCP::Workflow - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 11 $
 
 =head1 Synopsis
 

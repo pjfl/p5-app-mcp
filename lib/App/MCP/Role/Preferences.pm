@@ -1,13 +1,12 @@
-# @(#)Ident: Preferences.pm 2014-01-19 02:16 pjf ;
+# @(#)Ident: Preferences.pm 2014-01-24 14:32 pjf ;
 
 package App::MCP::Role::Preferences;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 27 $ =~ /\d+/gmx );
 
 use Class::Usul::Constants;
-use Class::Usul::Functions  qw( base64_decode_ns );
-use Storable                qw( thaw );
+use Class::Usul::Functions qw( base64_decode_ns );
+use Storable               qw( thaw );
 use Moo::Role;
 
 requires qw( config get_stash );

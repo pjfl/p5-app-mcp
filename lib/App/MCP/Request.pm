@@ -1,26 +1,25 @@
-# @(#)Ident: Request.pm 2014-01-19 01:47 pjf ;
+# @(#)Ident: Request.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Request;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 12 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
 use CGI::Simple::Cookie;
-use Class::Usul::Functions  qw( class2appdir ensure_class_loaded is_arrayref
-                                is_hashref is_member throw trim );
-use Class::Usul::Types      qw( ArrayRef HashRef NonEmptySimpleStr
-                                Object SimpleStr Str );
-use File::DataClass::Types  qw( LoadableClass );
-use HTTP::Status            qw( HTTP_EXPECTATION_FAILED HTTP_FAILED_DEPENDENCY
-                                HTTP_UNAUTHORIZED );
-use JSON                    qw( );
+use Class::Usul::Functions qw( class2appdir ensure_class_loaded is_arrayref
+                               is_hashref is_member throw trim );
+use Class::Usul::Types     qw( ArrayRef HashRef NonEmptySimpleStr
+                               Object SimpleStr Str );
+use File::DataClass::Types qw( LoadableClass );
+use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_FAILED_DEPENDENCY
+                               HTTP_INTERNAL_SERVER_ERROR HTTP_UNAUTHORIZED );
+use JSON                   qw( );
 use TryCatch;
-use Unexpected::Functions   qw( ChecksumFailure MissingChecksum
-                                MissingDependency MissingKey
-                                SigParserFailure SigVerifyFailure Unspecified );
+use Unexpected::Functions  qw( ChecksumFailure MissingChecksum
+                               MissingDependency MissingKey
+                               SigParserFailure SigVerifyFailure Unspecified );
 use URI::http;
 use URI::https;
 
@@ -211,10 +210,6 @@ App::MCP::Request - Represents the request sent from the client to the server
 
    use App::MCP::Request;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 12 $ of L<App::MCP::Request>
 
 =head1 Description
 

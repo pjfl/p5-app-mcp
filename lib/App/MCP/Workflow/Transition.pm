@@ -1,9 +1,8 @@
-# @(#)$Ident: Transition.pm 2013-11-18 16:44 pjf ;
+# @(#)$Ident: Transition.pm 2014-01-24 15:14 pjf ;
 
 package App::MCP::Workflow::Transition;
 
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use App::MCP::Constants;
 use Moo;
@@ -29,10 +28,6 @@ __END__
 =head1 Name
 
 App::MCP::Workflow::Transition - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 10 $
 
 =head1 Synopsis
 

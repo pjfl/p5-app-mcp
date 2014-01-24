@@ -1,17 +1,16 @@
-# @(#)Ident: Loop.pm 2013-11-17 09:54 pjf ;
+# @(#)Ident: Loop.pm 2014-01-24 15:15 pjf ;
 
 package App::MCP::Async::Loop;
 
 use 5.01;
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.3.%d', q$Rev: 10 $ =~ /\d+/gmx );
 
 use AnyEvent;
 use Async::Interrupt;
-use Class::Usul::Functions  qw( arg_list );
-use English                 qw( -no_match_vars );
-use Scalar::Util            qw( blessed );
+use Class::Usul::Functions qw( arg_list );
+use English                qw( -no_match_vars );
+use Scalar::Util           qw( blessed );
 
 my $Events = {};
 
@@ -168,10 +167,6 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
    use App::MCP::Async::Loop;
    # Brief but working code examples
-
-=head1 Version
-
-This documents version v0.3.$Rev: 10 $ of L<App::MCP::Async::Loop>
 
 =head1 Description
 

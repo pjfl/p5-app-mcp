@@ -1,9 +1,9 @@
-# @(#)$Ident: Schema.pm 2014-01-17 15:41 pjf ;
+# @(#)$Ident: Schema.pm 2014-01-24 15:13 pjf ;
 
 package App::MCP::Schema;
 
 use namespace::sweep;
-use version;  our $VERSION = qv( sprintf '0.3.%d', q$Rev: 27 $ =~ /\d+/gmx );
+use version;
 
 use Moo;
 use App::MCP::Constants;
@@ -16,7 +16,8 @@ use Unexpected::Functions    qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::ClientAuth);
 
-my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
+my $version           = qv( sprintf '0.4.%d', q$Rev: 1 $ =~ /\d+/gmx );
+my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)
 option 'role_name'    => is => 'ro',   isa => NonEmptySimpleStr,
@@ -123,10 +124,6 @@ __END__
 =head1 Name
 
 App::MCP::Schema - <One-line description of module's purpose>
-
-=head1 Version
-
-This documents version v0.3.$Rev: 27 $
 
 =head1 Synopsis
 
