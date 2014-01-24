@@ -4,7 +4,7 @@ use 5.01;
 use strict;
 use warnings;
 use lib qw( lib );
-use version; our $VERSION = qv( '0.4' );
+use version; our $VERSION = qv( '0.5' );
 
 use Date::Format          qw( time2str );
 use English               qw( -no_match_vars );
@@ -62,12 +62,14 @@ if (defined $project_file) {
 }
 
 if (defined $rev and qx{ git branch 2>/dev/null } =~ m{ ^ [*] \s+ master }mx) {
-   my @stat   = split m{ \n }mx, qx{ git status --porcelain };
+   my @stat   = (split m{ \n }mx, qx{ git status --porcelain }),
+                catfile( 'lib', split m{ :: }mx, "${module}.pm" );
    my $ignore = __get_ignore_rev_regex;
-   my $found  = 0;
+   my %seen   = ();
 
    for my $path (map { s{ \A .+ \s+ }{}mx; $_ } grep { m{ \A [AM] }mx } @stat) {
       $ignore and $path =~ m{ (?: $ignore ) }mx and next;
+      $seen{ $path }++ and next;
 
       my $content = __read_all_from $path;
 
@@ -77,10 +79,10 @@ if (defined $rev and qx{ git branch 2>/dev/null } =~ m{ ^ [*] \s+ master }mx) {
       $content =~ s{ \$ (Rev (?:ision)?) \$ }{\$$1: $rev \$}gmx;
       __write_data_to $path, $content;
 
-      my $cmd = "git add ${path}"; qx{ $cmd }; $found = 1;
+      my $cmd = "git add ${path}"; qx{ $cmd };
    }
 
-   $found and __write_data_to $rev_file, "${rev}\n";
+   __write_data_to $rev_file, "${rev}\n";
 }
 
 my $change_file = 'Changes';
