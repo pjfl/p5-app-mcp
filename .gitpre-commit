@@ -84,13 +84,12 @@ if (defined $rev and qx{ git branch 2>/dev/null } =~ m{ ^ [*] \s+ master }mx) {
    my $found  = 0;
 
    for my $path (map { s{ \A .+ \s+ }{}mx; $_ } grep { m{ \A [AM] }mx } @stat) {
-      $ignore and $path =~ m{ (?: $ignore ) }mx and next;
-      __update_version \$rev, $path and not $found and $found = 1;
-      $found and $path eq $main and $found = 2;
+      $ignore and $path =~ m{ (?: $ignore ) }mx and next; $found = 1;
+      $main   ne  $path and __update_version \$rev, $path;
    }
 
-   $found == 1 and __update_version \$rev, $main;
-   $found      and __write_data_to   $rev_file, "${rev}\n";
+   $found and __update_version \$rev, $main
+          and __write_data_to $rev_file, "${rev}\n";
 }
 
 my $change_file = 'Changes';
