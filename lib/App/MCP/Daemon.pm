@@ -1,5 +1,3 @@
-# @(#)$Ident: Daemon.pm 2014-01-24 15:12 pjf ;
-
 package App::MCP::Daemon;
 
 use namespace::sweep;

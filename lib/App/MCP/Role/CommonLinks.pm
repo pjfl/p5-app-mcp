@@ -1,5 +1,3 @@
-# @(#)Ident: CommonLinks.pm 2014-01-24 14:32 pjf ;
-
 package App::MCP::Role::CommonLinks;
 
 use namespace::sweep;
@@ -17,7 +15,7 @@ around 'get_stash' => sub {
       $stash->{links}->{ $_ } = $req->uri_for( $conf->$_() );
    }
 
-   $stash->{links}->{base} = $req->base;
+   $stash->{links}->{base_uri} = $req->base;
    return $stash;
 };
 

@@ -1,5 +1,3 @@
-# @(#)$Ident: ProcessedEvent.pm 2014-01-24 15:13 pjf ;
-
 package App::MCP::Schema::Schedule::Result::ProcessedEvent;
 
 use strict;

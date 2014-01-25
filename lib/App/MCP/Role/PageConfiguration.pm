@@ -1,5 +1,3 @@
-# @(#)Ident: PageConfiguration.pm 2014-01-24 14:33 pjf ;
-
 package App::MCP::Role::PageConfiguration;
 
 use namespace::sweep;

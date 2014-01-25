@@ -1,5 +1,3 @@
-# @(#)Ident: 06yaml.t 2013-08-21 20:42 pjf ;
-
 use strict;
 use warnings;
 use File::Spec::Functions qw( catdir updir );

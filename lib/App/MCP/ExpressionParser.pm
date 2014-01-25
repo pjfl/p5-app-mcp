@@ -1,5 +1,3 @@
-# @(#)$Ident: ExpressionParser.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::ExpressionParser;
 
 use 5.010001;

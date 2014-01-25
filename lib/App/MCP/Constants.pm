@@ -1,5 +1,3 @@
-# @(#)Ident: Constants.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Constants;
 
 use strict;

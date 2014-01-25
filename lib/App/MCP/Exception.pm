@@ -1,5 +1,3 @@
-# @(#)Ident: Exception.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Exception;
 
 use namespace::sweep;

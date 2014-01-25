@@ -1,5 +1,3 @@
-# @(#)Ident: Periodical.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Async::Periodical;
 
 use namespace::sweep;

@@ -1,5 +1,3 @@
-# @(#)Ident: Loop.pm 2014-01-24 15:15 pjf ;
-
 package App::MCP::Async::Loop;
 
 use 5.01;

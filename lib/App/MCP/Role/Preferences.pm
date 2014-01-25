@@ -1,5 +1,3 @@
-# @(#)Ident: Preferences.pm 2014-01-24 14:32 pjf ;
-
 package App::MCP::Role::Preferences;
 
 use namespace::sweep;

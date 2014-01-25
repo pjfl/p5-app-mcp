@@ -1,5 +1,3 @@
-# @(#)$Ident: 20expression_parser.t 2013-08-21 20:40 pjf ;
-
 use strict;
 use warnings;
 use File::Spec::Functions qw( catdir updir );

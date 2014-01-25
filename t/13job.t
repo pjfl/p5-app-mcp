@@ -1,5 +1,3 @@
-# @(#)$Ident: 11job.t 2013-09-17 11:13 pjf ;
-
 use strict;
 use warnings;
 use File::Spec::Functions qw( catdir updir );

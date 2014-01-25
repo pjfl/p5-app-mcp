@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Removed Ident: lines
           - New pre commit hook with improved logic
           - Updated git pre commit hook again
 

@@ -1,5 +1,3 @@
-# @(#)Ident: 03podcoverage.t 2013-08-21 20:41 pjf ;
-
 use strict;
 use warnings;
 use File::Spec::Functions qw( catdir updir );

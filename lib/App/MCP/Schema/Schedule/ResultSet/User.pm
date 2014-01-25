@@ -1,5 +1,3 @@
-# @(#)Ident: User.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Schema::Schedule::ResultSet::User;
 
 use 5.01;

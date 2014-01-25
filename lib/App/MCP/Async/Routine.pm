@@ -1,5 +1,3 @@
-# @(#)Ident: Routine.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Async::Routine;
 
 use namespace::sweep;

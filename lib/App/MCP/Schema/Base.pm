@@ -1,5 +1,3 @@
-# @(#)$Ident: Base.pm 2014-01-24 15:12 pjf ;
-
 package App::MCP::Schema::Base;
 
 use strict;

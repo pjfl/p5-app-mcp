@@ -1,5 +1,3 @@
-# @(#)Ident: Function.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Async::Function;
 
 use 5.01;

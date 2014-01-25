@@ -1,5 +1,3 @@
-# @(#)Ident: Request.pm 2014-01-24 15:13 pjf ;
-
 package App::MCP::Request;
 
 use 5.010001;
@@ -17,9 +15,9 @@ use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_FAILED_DEPENDENCY
                                HTTP_INTERNAL_SERVER_ERROR HTTP_UNAUTHORIZED );
 use JSON                   qw( );
 use TryCatch;
-use Unexpected::Functions  qw( ChecksumFailure MissingChecksum
-                               MissingDependency MissingKey
-                               SigParserFailure SigVerifyFailure Unspecified );
+use Unexpected::Functions  qw( ChecksumFailure MissingChecksum MissingDependency
+                               MissingKey SigParserFailure SigVerifyFailure
+                               Unspecified );
 use URI::http;
 use URI::https;
 

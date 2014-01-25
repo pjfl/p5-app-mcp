@@ -1,5 +1,3 @@
-# @(#)$Ident: Schedule.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Schema::Schedule;
 
 use strict;

@@ -1,5 +1,3 @@
-# @(#)Ident: JavaScript.pm 2014-01-24 14:32 pjf ;
-
 package App::MCP::Role::JavaScript;
 
 use namespace::sweep;
@@ -22,6 +20,7 @@ around 'get_stash' => sub {
    my ($orig, $self, @args) = @_; my $stash = $orig->( $self, @args );
 
    $stash->{scripts} = [ @{ $self->_javascripts } ];
+
    return $stash;
 };
 

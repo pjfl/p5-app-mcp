@@ -1,5 +1,3 @@
-# @(#)Ident: API.pm 2014-01-24 14:58 pjf ;
-
 package App::MCP::Model::API;
 
 use 5.010001;

@@ -1,5 +1,3 @@
-# @(#)$Ident: Schema.pm 2014-01-24 15:13 pjf ;
-
 package App::MCP::Schema;
 
 use namespace::sweep;
@@ -16,7 +14,7 @@ use Unexpected::Functions    qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::ClientAuth);
 
-my $version           = qv( sprintf '0.4.%d', q$Rev: 1 $ =~ /\d+/gmx );
+my $version           = qv( sprintf '0.4.%d', q$Rev: 6 $ =~ /\d+/gmx );
 my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)

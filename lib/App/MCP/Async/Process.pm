@@ -1,5 +1,3 @@
-# @(#)Ident: Process.pm 2014-01-24 15:15 pjf ;
-
 package App::MCP::Async::Process;
 
 use namespace::sweep;

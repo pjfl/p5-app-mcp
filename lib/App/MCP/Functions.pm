@@ -1,5 +1,3 @@
-# @(#)Ident: Functions.pm 2014-01-24 15:13 pjf ;
-
 package App::MCP::Functions;
 
 use strict;

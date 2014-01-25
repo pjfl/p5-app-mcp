@@ -1,17 +1,15 @@
-# @(#)$Ident: MCP.pm 2014-01-24 15:13 pjf ;
-
 package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 5 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 6 $ =~ /\d+/gmx );
 
 use Moo;
 use App::MCP::Constants;
-use Class::Usul::Types      qw( BaseType );
+use Class::Usul::Types qw( BaseType );
 
 has '_usul' => is => 'ro', isa => BaseType,
-   handles  => [ qw( config debug localize log ) ],
+   handles  => [ qw( config debug localize lock log ) ],
    init_arg => 'builder', required => TRUE, weak_ref => TRUE;
 
 1;
@@ -26,7 +24,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-This documents version v0.4.$Rev: 5 $ of L<App::MCP>
+This documents version v0.4.$Rev: 6 $ of L<App::MCP>
 
 =head1 Synopsis
 

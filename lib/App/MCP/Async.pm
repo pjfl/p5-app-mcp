@@ -1,5 +1,3 @@
-# @(#)$Ident: Async.pm 2014-01-24 15:11 pjf ;
-
 package App::MCP::Async;
 
 use namespace::sweep;

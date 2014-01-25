@@ -1,9 +1,8 @@
-# @(#)$Ident: JobState.pm 2014-01-24 15:14 pjf ;
-
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use 5.01;
 use strict;
+use warnings;
 use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;

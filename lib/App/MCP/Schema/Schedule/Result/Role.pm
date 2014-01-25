@@ -1,5 +1,3 @@
-# @(#)$Ident: Role.pm 2014-01-24 15:13 pjf ;
-
 package App::MCP::Schema::Schedule::Result::Role;
 
 use strict;
