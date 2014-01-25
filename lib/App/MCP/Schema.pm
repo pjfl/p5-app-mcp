@@ -14,7 +14,7 @@ use Unexpected::Functions    qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::ClientAuth);
 
-my $version           = qv( sprintf '0.4.%d', q$Rev: 6 $ =~ /\d+/gmx );
+my $version           = qv( sprintf '0.4.%d', q$Rev: 7 $ =~ /\d+/gmx );
 my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)
@@ -172,7 +172,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2013 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
