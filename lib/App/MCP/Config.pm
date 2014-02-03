@@ -76,7 +76,7 @@ has 'preferences'          => is => 'ro',   isa => ArrayRef,
 
 has 'schema_classes'       => is => 'ro',   isa => HashRef,
    builder                 => sub { {
-      schedule             => 'App::MCP::Schema::Schedule', } };
+      'mcp-model'          => 'App::MCP::Schema::Schedule', } };
 
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
    documentation           => 'Plack server class used for the event listener',

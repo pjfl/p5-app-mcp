@@ -8,11 +8,13 @@ use App::MCP::Model::Form;
 use App::MCP::Request;
 use App::MCP::View::HTML;
 use App::MCP::View::JSON;
+use App::MCP::View::XML;
 use Class::Usul;
-use Class::Usul::Functions  qw( exception find_apphome get_cfgfiles );
+use Class::Usul::Functions  qw( exception find_apphome get_cfgfiles throw );
 use Class::Usul::Types      qw( BaseType HashRef NonZeroPositiveInt Object );
-use HTTP::Status            qw( HTTP_BAD_REQUEST HTTP_INTERNAL_SERVER_ERROR
-                                HTTP_NOT_FOUND );
+use HTTP::Status            qw( HTTP_BAD_REQUEST HTTP_FOUND
+                                HTTP_INTERNAL_SERVER_ERROR
+                                HTTP_METHOD_NOT_ALLOWED );
 use Plack::Builder;
 use TryCatch;
 use Web::Simple;
@@ -49,29 +51,34 @@ has '_views'  => is => 'lazy', isa => HashRef[Object], reader => 'views',
    builder    => sub { {
       'json'  => App::MCP::View::JSON->new,
       'html'  => App::MCP::View::HTML->new( builder => $_[ 0 ]->usul ),
+      'xml'   => App::MCP::View::XML->new,
    } };
 
 # Construction
 around 'to_psgi_app' => sub {
    my ($orig, $self, @args) = @_; my $app = $orig->( $self, @args );
 
+   my @types  = (qw(text/css text/html text/javascript application/javascript));
    my $debug  = $ENV{PLACK_ENV} eq 'development' ? TRUE : FALSE;
    my $conf   = $self->usul->config;
    my $point  = $conf->mount_point;
    my $logger = $self->usul->log;
+   my $root   = $conf->root;
+   my $secret = $conf->salt;
 
    builder {
       mount "${point}" => builder {
-         enable 'LogErrors', logger => sub {
-            my $p = shift; my $level = $p->{level};
-            $logger->$level( $p->{message} ) };
+         enable "LogDispatch", logger => $logger;
          enable 'Deflater',
-            content_type    => [ qw( text/css text/html text/javascript
-                                     application/javascript ) ],
-            vary_user_agent => TRUE;
+            content_type => [ @types ], vary_user_agent => TRUE;
          # TODO: User Plack::Middleware::Static::Minifier
          enable 'Static',
-            path => qr{ \A / (css | img | js | less) }mx, root => $conf->root;
+            path => qr{ \A / (css | img | js | less) }mx, root => $root;
+         # TODO: Need to add domain from the request which we dont have yet
+         enable 'Session::Cookie',
+            expires     => 7_776_000, httponly => TRUE,
+            path        => $point,    secret   => $secret,
+            session_key => 'mcp_session';
          enable_if { $debug } 'Debug';
          $app;
       };
@@ -92,11 +99,26 @@ sub dispatch_request {
    sub (GET  + /api/state/*) {
       return shift->_execute( qw( json api  snapshot_state ), @_ );
    },
+   sub (POST + (/job/* | /job) + ?*) {
+      return shift->_execute( qw( html form job_action ), @_ );
+   },
+   sub (GET  + (/job/* | /job) + ?*) {
+      return shift->_execute( qw( html form job ), @_ );
+   },
+   sub (GET  + /job_chooser + ?*) {
+      return shift->_execute( qw( xml  form job_chooser ), @_ );
+   },
+   sub (GET  + /job_grid_rows + ?*) {
+      return shift->_execute( qw( xml  form job_grid_rows ), @_ );
+   },
+   sub (GET  + /job_grid_table + ?*) {
+      return shift->_execute( qw( xml  form job_grid_table ), @_ );
+   },
    sub (GET  + /state) {
       return shift->_execute( qw( html form state_diagram ), @_ );
    },
-   sub {
-      [ HTTP_NOT_FOUND, __plain_header(), [ "Not found\n" ] ];
+   sub () {
+      [ HTTP_METHOD_NOT_ALLOWED, __plain_header(), [ 'Method not allowed' ] ];
    };
 }
 
@@ -104,16 +126,44 @@ sub dispatch_request {
 sub _execute {
    my ($self, $view, $model, $method, @args) = @_;
 
-   my $req = App::MCP::Request->new( $self->usul, @args ); my $res;
+   my $req = App::MCP::Request->new( $self->usul, $model, @args ); my $res;
 
    try {
+      $method =~ m{ _action \z }mx
+         and $method = $self->_modify( $method, $req );
+
       my $stash = $self->models->{ $model }->$method( $req );
 
-      $res = $self->views->{ $view }->render( $req, $stash );
+      exists $stash->{redirect} and $res = $self->_redirect( $req, $stash );
+
+      $res or $res = $self->views->{ $view }->serialize( $req, $stash )
+           or throw error => 'View [_1] returned false', args => [ $view ];
    }
    catch ($e) { $res = $self->_render_exception( $view, $model, $req, $e ) }
 
    return $res;
+}
+
+sub _modify {
+   my ($self, $method, $req) = @_;
+
+   my $action = $req->body->param->{_method} || NUL;
+
+   $action and $action = lc "_${action}"; $method =~ s{ _action \z }{$action}mx;
+
+   return $method;
+}
+
+sub _redirect {
+   my ($self, $req, $stash) = @_;
+
+   my $redirect = $stash->{redirect};
+   my $code     = $redirect->{code} || HTTP_FOUND;
+   my $tuple    = $redirect->{message};
+
+   $tuple and $req->session->{status_message} = $req->loc( @{ $tuple } );
+
+   return [ $code, [ 'Location', $redirect->{location} ], [] ];
 }
 
 sub _render_exception {
@@ -126,7 +176,8 @@ sub _render_exception {
    try {
       my $stash = $self->models->{ $model }->exception_handler( $req, $e );
 
-      $res = $self->views->{ $view }->render( $req, $stash );
+      $res = $self->views->{ $view }->serialize( $req, $stash )
+          or throw error => 'View [_1] returned false', args => [ $view ];
    }
    catch ($render_error) { $res = __internal_server_error( $e, $render_error ) }
 

@@ -2,6 +2,7 @@ package App::MCP::Schema::Schedule::Result::User;
 
 use strict;
 use warnings;
+use overload '""' => 'as_string', fallback => 1;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants;
@@ -71,6 +72,10 @@ sub add_member_to {
 
    throw error => 'User [_1] already a member of role [_2]',
          args  => [ $self->username, $role->rolename ];
+}
+
+sub as_string {
+   return $_[ 0 ]->username;
 }
 
 sub assert_member_of {

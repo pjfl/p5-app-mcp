@@ -8,32 +8,20 @@ use App::MCP::Constants;
 use App::MCP::Functions    qw( trigger_input_handler );
 use Class::Usul::Crypt     qw( encrypt decrypt );
 use Class::Usul::Functions qw( bson64id bson64id_time create_token throw );
-use Class::Usul::Types     qw( LoadableClass Object );
+use Class::Usul::Types     qw( Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
                                HTTP_OK HTTP_UNAUTHORIZED );
 use JSON                   qw( );
 use TryCatch;
 use Unexpected::Functions  qw( Unspecified );
 
-extends q(App::MCP);
+extends q(App::MCP::Model);
 
 my $Sessions = {}; my $Users = [];
 
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object,
-   builder          => sub {
-      my $self = shift; my $extra = $self->config->connect_params;
-      $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) },
-   reader           => 'schema';
-
-has '_schema_class' => is => 'lazy', isa => LoadableClass,
-   builder          => sub { $_[ 0 ]->config->schema_classes->{schedule} },
-   reader           => 'schema_class';
-
 has '_transcoder'   => is => 'lazy', isa => Object,
    builder          => sub { JSON->new }, reader => 'transcoder';
-
-with q(Class::Usul::TraitFor::ConnectInfo);
 
 # Public methods
 sub create_event {
@@ -48,7 +36,7 @@ sub create_event {
       or throw error => 'Runid [_1] not found',
                args  => [ $run_id ], rv => HTTP_NOT_FOUND;
    my $event  = $self->_authenticate_params
-      ( $run_id, $pevent->token, $req->content->{event} );
+      ( $run_id, $pevent->token, $req->body->param->{event} );
 
    try        { $event = $schema->resultset( 'Event' )->create( $event ) }
    catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
@@ -63,7 +51,7 @@ sub create_job {
 
    my $sess = $self->_get_session( $req->args->[ 0 ] // 'undef' );
    my $job  = $self->_authenticate_params
-      ( $sess->{key}, $sess->{token}, $req->content->{job} );
+      ( $sess->{key}, $sess->{token}, $req->body->param->{job} );
 
    $job->{owner} = $sess->{user_id}; $job->{group} = $sess->{role_id};
 

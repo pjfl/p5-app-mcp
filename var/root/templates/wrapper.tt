@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <meta name="description" content="[% page.description %]">
+   <meta name="keywords" content="[% page.keywords %]">
+   <meta name="author" content="[% page.author %]">
+   <link href="[% links.images %]favicon-[% prefs.theme %].png"
+          rel="icon" type="image/png">
+[% IF config.font -%]
+   <!-- Font -->
+   <link href="[% config.font %]" rel="stylesheet" type="text/css">
+[% END -%]
+   <!-- CSS -->
+   <link href="[% links.css %]theme-[% prefs.theme %].css"
+          rel="stylesheet" type="text/css">
+   <!-- JavaScript -->
+[% FOREACH file = scripts -%]
+   <script src="[% links.js %][% file %]"></script>
+[% END -%]
+   <script type="text/javascript"><!--//--><![CDATA[//><!--
+      var behaviour  = new Behaviour( {
+         baseURI     : '[% links.base_uri %]',
+         cookieDomain: '[% req.domain %]',
+         cookiePath  : '[% config.mount_point %]',
+         cookiePrefix: '[% config.prefix %]',
+         firstField  : '[% page.first_field %]',
+         formName    : '[% page.form_name %]' } );
+[% FOREACH line = page.literal_js; -%]
+      [%+ line | eval %]
+[% END -%]
+   //--><!]]></script>
+   <title>[% config.title %] - [% page.title %]</title>
+</head>
+<body>
+   [% content %]
+</body>
+</html>

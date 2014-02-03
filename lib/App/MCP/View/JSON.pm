@@ -10,7 +10,7 @@ use JSON               qw( );
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
 
 # Public methods
-sub render {
+sub serialize {
    my ($self, $req, $stash) = @_;
 
    my $content = $self->_transcoder->encode( $stash->{content} );

@@ -6,11 +6,12 @@ use namespace::sweep;
 use Moo;
 use App::MCP::Constants;
 use CGI::Simple::Cookie;
-use Class::Usul::Functions qw( class2appdir ensure_class_loaded is_arrayref
-                               is_hashref is_member throw trim );
+use Class::Usul::Functions qw( class2appdir ensure_class_loaded first_char
+                               is_arrayref is_hashref is_member throw trim );
 use Class::Usul::Types     qw( ArrayRef HashRef NonEmptySimpleStr
                                Object SimpleStr Str );
 use File::DataClass::Types qw( LoadableClass );
+use HTTP::Body;
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_FAILED_DEPENDENCY
                                HTTP_INTERNAL_SERVER_ERROR HTTP_UNAUTHORIZED );
 use JSON                   qw( );
@@ -24,30 +25,45 @@ use URI::https;
 extends q(App::MCP);
 
 # Public attributes
-has 'args'     => is => 'ro',   isa => ArrayRef, default => sub { [] };
+has 'args'        => is => 'ro',   isa => ArrayRef, default => sub { [] };
 
-has 'base'     => is => 'ro',   isa => Object, required => TRUE;
+has 'base'        => is => 'ro',   isa => Object, required => TRUE;
 
-has 'content'  => is => 'lazy', isa => HashRef, init_arg => undef;
+has 'body'        => is => 'lazy', isa => Object, init_arg => undef;
 
-has 'cookie'   => is => 'lazy', isa => HashRef, builder => sub {
+has 'cookie'      => is => 'lazy', isa => HashRef, builder => sub {
    { CGI::Simple::Cookie->parse( $_[ 0 ]->_env->{HTTP_COOKIE} ) || {} } };
 
-has 'domain'   => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+has 'domain'      => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
-has 'locale'   => is => 'lazy', isa => NonEmptySimpleStr,
-   builder     => sub { $_[ 0 ]->config->locale };
+has 'l10n_domain' => is => 'ro',   isa => NonEmptySimpleStr,
+   default        => sub { $_[ 0 ]->config->name };
 
-has 'params'   => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'locale'      => is => 'lazy', isa => NonEmptySimpleStr, init_arg => undef;
 
-has 'path'     => is => 'ro',   isa => SimpleStr, default => NUL;
+has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'protocol' => is => 'lazy', isa => SimpleStr,
-   builder     => sub { $_[ 0 ]->_env->{ 'SERVER_PROTOCOL' } };
+has 'path'        => is => 'ro',   isa => SimpleStr, default => NUL;
 
-has 'scheme'   => is => 'ro',   isa => NonEmptySimpleStr;
+has 'protocol'    => is => 'lazy', isa => SimpleStr,
+   builder        => sub { $_[ 0 ]->_env->{ 'SERVER_PROTOCOL' } };
 
-has 'uri'      => is => 'ro',   isa => Object, required => TRUE;
+has 'session'     => is => 'ro',   isa => HashRef, default => sub { {} };
+
+has 'scheme'      => is => 'ro',   isa => NonEmptySimpleStr;
+
+has 'ui_state'    => is => 'lazy', isa => HashRef, builder => sub {
+   my $self = shift; my $attr = {}; my $cookie = $self->config->prefix.'_state';
+
+   for (split m{ \+ }mx, $self->cookie->{ $cookie }->value) {
+      my ($key, $value) = split m{ ~ }mx, $_;
+      $key and $attr->{ $key } = $value;
+   }
+
+   return $attr;
+};
+
+has 'uri'         => is => 'ro',   isa => Object, required => TRUE;
 
 # Private attributes
 has '_content'      => is => 'lazy', isa => Str, init_arg => undef;
@@ -65,43 +81,48 @@ has '_transcoder'   => is => 'lazy', isa => Object,
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = {};
 
-   $attr->{builder} = shift @args;
+   $attr->{builder} = shift @args; $attr->{l10n_domain} = shift @args;
+
    $attr->{env    } = ($args[ 0 ] and is_hashref $args[ -1 ]) ? pop @args : {};
    $attr->{params } = ($args[ 0 ] and is_hashref $args[ -1 ]) ? pop @args : {};
    $attr->{args   } = [ split m{ / }mx, trim $args[ 0 ] // NUL ];
 
    my $env       = $attr->{env};
-   my $scheme    = $attr->{scheme} = $env->{ 'psgi.url_scheme' };
-   my $host      = $env->{ 'HTTP_HOST'    } || $env->{ 'SERVER_NAME' };
-   my $port      = $env->{ 'SERVER_PORT'  } || (split m{ : }mx, $host)[1] || 80;
-   my $base_path = $env->{ 'SCRIPT_NAME'  } || '/';
-      $base_path =~ s{ / \z }{}gmx;
-   my $req_uri   = $env->{ 'REQUEST_URI'  };
-      $req_uri   =~ s{ \A / }{}mx; $req_uri =~ s{ \? .* \z }{}mx;
+   my $scheme    = $attr->{scheme} = $env->{ 'psgi.url_scheme' } || 'http';
+   my $host      = $env->{ 'HTTP_HOST'   } || $env->{ 'SERVER_NAME' };
+   my $port      = $env->{ 'SERVER_PORT' } || (split m{ : }mx, $host)[1] || 80;
+   my $script    = $env->{ 'SCRIPT_NAME' } || '/'; $script =~ s{ / \z }{}gmx;
+   my $path_info = $env->{ 'PATH_INFO'   };
+      $path_info =~ s{ \A / }{}mx; $path_info =~ s{ \? .* \z }{}mx;
    my $query     = $env->{ 'QUERY_STRING' } ? '?'.$env->{ 'QUERY_STRING' } : '';
-   my $base_uri  = "${scheme}://${host}${base_path}/";
-   my $uri       = "${base_uri}${req_uri}${query}";
+   my $base_uri  = "${scheme}://${host}${script}/";
+   my $req_uri   = "${base_uri}${path_info}${query}";
    my $uri_class = "URI::${scheme}";
 
-   $attr->{path   } = $base_path;
-   $attr->{uri    } = bless \$uri, $uri_class;
+   $attr->{path   } = $script;
+   $attr->{uri    } = bless \$req_uri,  $uri_class;
    $attr->{base   } = bless \$base_uri, $uri_class;
    $attr->{domain } = (split m{ : }mx, $host)[ 0 ];
+   $attr->{session} = $env->{ 'psgix.session' } // {};
    return $attr;
 };
 
-sub _build_content {
-   my $self = shift; my $env = $self->_env; my $content = $self->_content;
+sub _build_body {
+   my $self = shift; my $env = $self->_env; my $in = $self->_content;
+
+   my $body = HTTP::Body->new( $env->{CONTENT_TYPE}, length $in );
+
+   length $in or return $body;
 
    try {
-      $content and $env->{CONTENT_TYPE} eq 'application/json'
-            and $content = $self->_transcoder->decode( $content );
+      if ($env->{CONTENT_TYPE} eq 'application/json') {
+         $body->{param} = $self->_transcoder->decode( $in );
+      }
+      else { $body->add( $in ) }
    }
-   catch ($e) { $self->log->error( $e ); $content = undef }
+   catch ($e) { $self->log->error( $e ) }
 
-   $content and not is_hashref $content and $content = { content => $content };
-
-   return $content ? $content : {};
+   return $body;
 }
 
 sub _build__content {
@@ -114,6 +135,16 @@ sub _build__content {
    catch ($e) { $self->log->error( $e ); $content = undef }
 
    return $content ? $content : NUL;
+}
+
+sub _build_locale {
+   my $self = shift;
+
+   for my $locale (@{ $self->_acceptable_locales }) {
+      is_member $locale, $self->config->locales and return $locale;
+   }
+
+   return $self->config->locale;
 }
 
 # Public methods
@@ -160,16 +191,23 @@ sub loc {
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
 
-   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->config->name ];
-   $args->{locale      } ||= $self->locale; # TODO: Make request dependent
+   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->l10n_domain ];
+   $args->{locale      } ||= $self->locale;
 
    return $self->localize( $key, $args );
 }
 
 sub uri_for {
-   my ($self, $args) = @_; my $uri = $self->base.$args;
+   my ($self, $path, $args, $query_params) = @_;
 
-   return bless \$uri, 'URI::'.$self->scheme;
+   $args and defined $args->[ 0 ] and $path = join '/', $path, @{ $args };
+   first_char $path ne '/' and $path = $self->base.$path;
+
+   my $uri = bless \$path, 'URI::'.$self->scheme;
+
+   $query_params and $uri->query_form( @{ $query_params } );
+
+   return $uri;
 }
 
 # Private methods
@@ -190,6 +228,16 @@ sub _read_public_key {
                       rv    => HTTP_UNAUTHORIZED }
 
    return $cache->{ $key_id } = $key;
+}
+
+sub _acceptable_locales {
+   my $self = shift; my $lang = $self->_env->{ 'HTTP_ACCEPT_LANGUAGE' } || NUL;
+
+   return [ map    { s{ _ \z }{}mx; $_ }
+            map    { join '_', $_->[ 0 ], uc $_->[ 1 ] }
+            map    { [ split m{ - }mx, $_ ] }
+            map    { ( split m{ ; }mx, $_ )[ 0 ] }
+            split m{ , }mx, lc $lang ];
 }
 
 1;

@@ -2,6 +2,7 @@ package App::MCP::Schema::Schedule::Result::Role;
 
 use strict;
 use warnings;
+use overload '""' => 'as_string', fallback => 1;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants;
@@ -21,6 +22,10 @@ $class->add_unique_constraint( [ 'rolename' ] );
 $class->has_many    ( user_role => "${result}::UserRole", 'role_id' );
 
 $class->many_to_many( users     => 'user_role',           'user_id' );
+
+sub as_string {
+   return $_[ 0 ]->rolename;
+}
 
 1;
 

@@ -1,5 +1,8 @@
 Revision history for App::MCP
 
+          - Added job definition form
+          - Added FormBuilder
+          - Using P::M::Session::Cookie
           - Updated copyright year
           - Removed Ident: lines
           - New pre commit hook with improved logic

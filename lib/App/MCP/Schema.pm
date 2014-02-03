@@ -14,7 +14,7 @@ use Unexpected::Functions    qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::ClientAuth);
 
-my $version           = qv( sprintf '0.4.%d', q$Rev: 7 $ =~ /\d+/gmx );
+my $version           = qv( sprintf '0.4.%d', q$Rev: 8 $ =~ /\d+/gmx );
 my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)
@@ -42,7 +42,7 @@ has '_schedule'       => is => 'lazy', isa => Object, builder => sub {
    reader             => 'schedule';
 
 has '_schedule_class' => is => 'lazy', isa => LoadableClass, default => sub {
-   $_[ 0 ]->schema_classes->{schedule} },
+   $_[ 0 ]->schema_classes->{ 'mcp-model' } },
    reader             => 'schedule_class';
 
 # Public methods

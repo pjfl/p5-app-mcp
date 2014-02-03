@@ -182,7 +182,7 @@ sub _get_listener_sub {
    my $args = {
       '--port'       => $self->port,
       '--server'     => $conf->server,
-      '--access-log' => $conf->logsdir->catfile( 'listener.log' ),
+      '--access-log' => $conf->logsdir->catfile( 'listener-access.log' ),
       '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
 
    my $daemon_pid = $PID; my $debug = $self->debug; my $port = $self->port;

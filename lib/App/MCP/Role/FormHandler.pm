@@ -1,16 +1,26 @@
-package App::MCP;
+package App::MCP::Role::FormHandler;
 
-use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 8 $ =~ /\d+/gmx );
 
-use Moo;
-use App::MCP::Constants;
-use Class::Usul::Types qw( BaseType );
+use HTML::FormWidgets;
+use Moo::Role;
 
-has 'usul'  => is => 'ro', isa => BaseType,
-   handles  => [ qw( config debug localize lock log ) ],
-   init_arg => 'builder', required => TRUE, weak_ref => TRUE;
+requires qw( serialize );
+
+around 'serialize' => sub {
+   my ($orig, $self, $req, $stash) = @_;
+
+   if (exists $stash->{form}) {
+      $stash->{template} //= $stash->{form}->{template} // 'form';
+
+      my $widgets = HTML::FormWidgets->build( $stash->{form} );
+
+      $stash->{page}->{literal_js} = $stash->{form}->{literal_js};
+      $stash->{form} = $widgets;
+   }
+
+   return $orig->( $self, $req, $stash );
+};
 
 1;
 
@@ -18,19 +28,26 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =head1 Name
 
-App::MCP - Master Control Program - Dependency and time based job scheduler
-
-=head1 Version
-
-Describes version v0.4.$Rev: 8 $ of L<App::MCP>
+App::MCP::Role::FormHandler - One-line description of the modules purpose
 
 =head1 Synopsis
+
+   use App::MCP::Role::FormHandler;
+   # Brief but working code examples
 
 =head1 Description
 
 =head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -50,8 +67,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
 Patches are welcome
 
 =head1 Acknowledgements
@@ -79,3 +96,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

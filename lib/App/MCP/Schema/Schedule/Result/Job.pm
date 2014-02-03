@@ -90,29 +90,39 @@ sub crontab {
    my @fields = split m{ \s+ }msx, ($crontab ? $self->_crontab( $crontab )
                                              : $self->_crontab || NUL);
 
-   $self->{ 'crontab_'.$names[ $_ ] } = $fields[ $_ ] for (0 .. 4);
+   $self->{ 'crontab_'.$names[ $_ ] } = ($fields[ $_ ] || NUL) for (0 .. 4);
 
    return $self->_crontab;
 }
 
 sub crontab_hour {
-   return $_[ 0 ]->{crontab_hour};
+   my $self = shift; defined $self->{crontab_hour} or $self->crontab;
+
+   return $self->{crontab_hour};
 }
 
 sub crontab_mday {
-   return $_[ 0 ]->{crontab_mday};
+   my $self = shift; defined $self->{crontab_mday} or $self->crontab;
+
+   return $self->{crontab_mday};
 }
 
 sub crontab_min {
-   return $_[ 0 ]->{crontab_min};
+   my $self = shift; defined $self->{crontab_min} or $self->crontab;
+
+   return $self->{crontab_min};
 }
 
 sub crontab_mon {
-   return $_[ 0 ]->{crontab_mon};
+   my $self = shift; defined $self->{crontab_mon} or $self->crontab;
+
+   return $self->{crontab_mon};
 }
 
 sub crontab_wday {
-   return $_[ 0 ]->{crontab_wday};
+   my $self = shift; defined $self->{crontab_wday} or $self->crontab;
+
+   return $self->{crontab_wday};
 }
 
 sub delete {
@@ -204,16 +214,14 @@ sub sqlt_deploy_hook {
 }
 
 sub update {
-   my ($self, $columns) = @_; my $update_condition = FALSE;
+   my ($self, $columns) = @_; my $condition = $self->condition;
 
-  ($columns->{condition} || NUL) ne $self->condition
-     and $update_condition = TRUE;
-
-   $self->set_inflated_columns( %{ $columns } ); $self->_validate;
+   $columns and $self->set_inflated_columns( $columns ); $self->_validate;
 
    my $job = $self->next::method;
 
-   $update_condition and $self->_delete_condition and $job->_insert_condition;
+   $condition ne $self->condition
+      and $self->_delete_condition and $job->_insert_condition;
 
    return $job;
 }
@@ -222,7 +230,8 @@ sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       fields         => {
          name        => {
-            validate => 'isMandatory isSimpleText isValidLength' }, },
+            validate => 'isMandatory isSimpleText isValidLength' },
+         permissions => { validate => 'isMandatory isValidInteger' }, },
       constraints    => {
          name        => { max_length => 126, min_length => 1, }, }, };
 }
@@ -254,7 +263,7 @@ sub _eval_condition {
 sub _insert_condition {
    my $self = shift; my $schema = $self->result_source->schema;
 
-   return $schema->resultset( 'JobCondition' )->create_dependents( $_[ 0 ] );
+   return $schema->resultset( 'JobCondition' )->create_dependents( $self );
 }
 
 sub _is_permitted {

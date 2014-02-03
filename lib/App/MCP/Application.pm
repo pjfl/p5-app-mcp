@@ -24,7 +24,7 @@ has '_schema'       => is => 'lazy', isa => Object, builder => sub {
    reader           => 'schema';
 
 has '_schema_class' => is => 'lazy', isa => LoadableClass, builder => sub {
-   $_[ 0 ]->config->schema_classes->{schedule} },
+   $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },
    reader           => 'schema_class';
 
 with q(Class::Usul::TraitFor::ConnectInfo);

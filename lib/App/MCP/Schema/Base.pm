@@ -9,6 +9,8 @@ use Data::Validation;
 
 __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 
+Data::Validation::Constants->Exception_Class( EXCEPTION_CLASS );
+
 sub varchar_max_size {
    return 255;
 }
@@ -94,7 +96,7 @@ sub varchar_data_type {
 sub _validate {
    my $self = shift; my $attr = $self->validation_attributes;
 
-   defined $attr->{fields} or return; $attr->{exception} = EXCEPTION_CLASS;
+   defined $attr->{fields} or return;
 
    my $columns = { $self->get_inflated_columns };
 

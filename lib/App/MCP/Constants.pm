@@ -5,11 +5,11 @@ use warnings;
 use parent 'Exporter::Tiny';
 
 use App::MCP::Exception;
-use Class::Usul::Constants ();
+use Class::Usul::Constants ( );
 
 Class::Usul::Constants->Exception_Class( 'App::MCP::Exception' );
 
-our @EXPORT = qw( SEPARATOR );
+our @EXPORT = qw( DOTS HASH_CHAR SEPARATOR );
 
 sub import {
    my $class       = shift;
@@ -21,7 +21,9 @@ sub import {
    return;
 }
 
-sub SEPARATOR () { '/' }
+sub HASH_CHAR () { chr 35     }
+sub DOTS      () { "\x{2026}" }
+sub SEPARATOR () { '/'        }
 
 1;
 

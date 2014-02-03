@@ -3,8 +3,6 @@ package App::MCP::Role::Preferences;
 use namespace::sweep;
 
 use Class::Usul::Constants;
-use Class::Usul::Functions qw( base64_decode_ns );
-use Storable               qw( thaw );
 use Moo::Role;
 
 requires qw( config get_stash );
@@ -15,12 +13,10 @@ around 'get_stash' => sub {
    my $stash  = $orig->( $self, $req, @args );
    my $params = $req->params;
    my $conf   = $self->config;
-   my $cookie = $req->cookie->{ $conf->name.'_prefs' };
-   my $frozen = $cookie ? base64_decode_ns( $cookie->value ) : FALSE;
-   my $prefs  = $frozen ? thaw $frozen : {};
+   my $prefs  = $req->session->{preferences} //= {};
 
    for my $k (@{ $conf->preferences }) {
-      $stash->{prefs}->{ $k }
+      $prefs->{ $k } = $stash->{prefs}->{ $k }
          = $params->{ $k } // $prefs->{ $k } // $conf->$k();
    }
 

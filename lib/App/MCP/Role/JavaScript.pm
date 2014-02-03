@@ -8,7 +8,7 @@ use Moo::Role;
 
 requires qw( config get_stash );
 
-has '_javascripts' => is => 'ro', isa => ArrayRef, builder => sub {
+has '_javascripts' => is => 'lazy', isa => ArrayRef, builder => sub {
    my $self  = shift;
    my $match = sub { m{ \b \d+ [_] .+? \.js \z }mx };
    my $dir   = $self->config->root->catdir( $self->config->js );

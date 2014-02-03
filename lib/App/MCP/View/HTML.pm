@@ -3,17 +3,16 @@ package App::MCP::View::HTML;
 use namespace::sweep;
 
 use Moo;
-use CGI::Simple::Cookie;
 use Class::Usul::Constants;
-use Class::Usul::Functions qw( base64_encode_ns throw );
+use Class::Usul::Functions qw( throw );
 use Encode;
 use File::DataClass::Types qw( Directory Object );
 use HTTP::Status           qw( HTTP_INTERNAL_SERVER_ERROR );
 use Scalar::Util           qw( weaken );
-use Storable               qw( nfreeze );
 use Template;
 
 extends q(App::MCP);
+with    q(App::MCP::Role::FormHandler);
 
 # Public attributes
 has 'template_dir' => is => 'lazy', isa => Directory,
@@ -33,42 +32,25 @@ has '_template' => is => 'lazy', isa => Object, builder => sub {
 };
 
 # Public methods
-sub render {
-   my ($self, $req, $stash) = @_; weaken( $req );
-
-   my $html     = NUL;
-   my $prefs    =  $stash->{prefs   } //  {};
-   my $conf     =  $stash->{config  }   = $self->config;
-   my $template = ($stash->{template} //= $conf->template).'.tt';
-   my $cookie   = $self->_serialize_preferences( $req, $prefs );
-   my $header   = __header( 'Set-Cookie', $cookie );
+sub serialize {
+   my ($self, $req, $stash) = @_; my $html = NUL; weaken( $req );
 
    $stash->{req    } = $req;
+   $stash->{config } = $self->config;
    $stash->{loc    } = sub { $req->loc( @_ ) };
    $stash->{uri_for} = sub { $req->uri_for( @_ ) };
+
+   my $template = ($stash->{template} //= $self->config->template).'.tt';
 
    $self->_template->process( $template, $stash, \$html ) or
       throw error => $self->_template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
 
-   return [ $stash->{code}, $header, [ encode( 'UTF-8', $html ) ] ];
-}
-
-# Private methods
-sub _serialize_preferences {
-   my ($self, $req, $prefs) = @_; my $value = base64_encode_ns nfreeze $prefs;
-
-   return CGI::Simple::Cookie->new( -domain  => $req->domain,
-                                    -expires => '+3M',
-                                    -name    => $self->config->name.'_prefs',
-                                    -path    => $req->path,
-                                    -value   => $value, );
+   return [ $stash->{code}, __header(), [ encode( 'UTF-8', $html ) ] ];
 }
 
 # Private functions
 sub __header {
-   my @headers = ('Content-Type', 'text/html'); $_[ 0 ] and push @headers, @_;
-
-   return [ @headers ];
+   return [ 'Content-Type', 'text/html' ];
 }
 
 1;
