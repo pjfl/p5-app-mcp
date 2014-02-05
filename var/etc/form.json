@@ -1,0 +1,148 @@
+{
+   "fields": {
+      "job.chooser": {
+         "container": "0",
+         "field": "name",
+         "href": "&_job_chooser_href",
+         "subtype": "modal",
+         "tiptype": "normal",
+         "type": "chooser"
+      },
+      "job.command": {
+         "clear": "left"
+      },
+      "job.condition": {
+         "clear": "left"
+      },
+      "job.created": {
+         "container": "1",
+         "container_class": "container last_field",
+         "pclass": "compact_prompt",
+         "type": "label"
+      },
+      "job.crontab_hour": {
+         "clear": "left"
+      },
+      "job.crontab_mday": {
+         "clear": "left"
+      },
+      "job.crontab_min": {
+         "clear": "left"
+      },
+      "job.crontab_mon": {
+         "clear": "left"
+      },
+      "job.crontab_wday": {
+         "clear": "left"
+      },
+      "job.directory": {
+         "clear": "left"
+      },
+      "job.expected_rv": {
+         "class": "ifield numeric",
+         "clear": "left",
+         "default": "0",
+         "width": "2"
+      },
+      "job.fqjn": {
+         "clear": "left",
+         "container": "1",
+         "type": "label"
+      },
+      "job.host": {
+         "clear": "left",
+         "default": "localhost",
+         "validate": "isMandatory isValidHostname"
+      },
+      "job.name": {
+         "check_field" : "1",
+         "default": "%",
+         "required" : "1",
+         "validate": "isMandatory isValidIdentifier"
+      },
+      "job.permissions": {
+         "class": "ifield numeric",
+         "container_class": "container last_field",
+         "default": "0750",
+         "pclass": "compact_prompt",
+         "width": "4"
+      },
+      "job.type": {
+         "clear": "left",
+         "default": "box",
+         "labels": { "box": "Box", "job": "Job" },
+         "type": "radioGroup",
+         "values": [ "box", "job" ]
+      },
+      "job.user": {
+         "clear": "left"
+      },
+      "job.owner_rel": {
+         "clear": "left",
+         "default": "unknown"
+      },
+      "job.group_rel": {
+         "clear": "left",
+         "default": "unknown"
+      },
+      "job_chooser.job_name": {
+         "class": "hidden live_grid",
+         "container": "0",
+         "href": "#top",
+         "subtype": "display",
+         "type": "chooser"
+      },
+      "job_grid_table.job_name_header": {
+         "class": "grid_subheader",
+         "container_class": "grid_header",
+         "href": "#top",
+         "type": "anchor"
+      },
+      "job_grid_table.job_name_grid": {
+         "container": "1",
+         "container_class": "grid_container",
+         "hclass": "",
+         "table_class": "grid",
+         "type": "table"
+      },
+      "job.clear_button": {
+         "name": "Clear",
+         "type": "button"
+      },
+      "job.delete_button": {
+         "clear": "left",
+         "config": {
+            "args": "[ 'delete', 'Are you sure you want to delete this job?' ]",
+            "method": "'confirmSubmit'" },
+         "name": "Delete",
+         "type": "button"
+      },
+      "job.save_button": {
+         "clear": "left",
+         "name": "Save",
+         "type": "button"
+      }
+   },
+   "first_fields": {
+      "job": "name"
+   },
+   "regions": {
+      "job": [
+         [ ],
+         [ "name", "fqjn", "created", "type", "command", "condition",
+           "crontab_min", "crontab_hour", "crontab_mday", "crontab_mon",
+           "crontab_wday", "host", "user", "directory", "expected_rv",
+           "permissions", "owner_rel", "group_rel" ],
+         [ "chooser", "clear_button", "save_button", "delete_button" ]
+      ],
+      "job_chooser": [
+         [ "job_name" ]
+      ],
+      "job_grid_rows": [
+         [ ]
+      ],
+      "job_grid_table": [
+         [ "job_name_header", "job_name_grid" ]
+      ]
+   }
+}

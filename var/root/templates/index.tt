@@ -1,0 +1,6 @@
+<!-- Index -->
+<div class="container">
+   <div id="state-diagram" class="state-diagram">
+   </div>
+</div>
+[% INCLUDE footer.tt %]

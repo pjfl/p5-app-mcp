@@ -1,0 +1,107 @@
+# GNU Gettext Portable Object.
+# Copyright (C) 2011 RoxSoft.
+# Lazarus Long <Support@RoxSoft.co.uk>, 2011.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: App::MCP 0.1.1\n"
+"PO-Revision-Date: 2014-01-29 23:07+0000\n"
+"Last-Translator: Lazarus Long <Support@RoxSoft.co.uk>\n"
+"Language-Team: English <Support@RoxSoft.co.uk>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "form_hint_title"
+msgstr "Hint"
+
+msgctxt "fields.tip"
+msgid "job.chooser"
+msgstr "Press the button to popup the selection window"
+
+msgctxt "fields.tip"
+msgid "job.clear_button"
+msgstr "Clears the form back to it's defaults"
+
+msgctxt "fields.tip"
+msgid "job.delete_button"
+msgstr "Deletes the currently selected job"
+
+msgctxt "fields.tip"
+msgid "job.save_button"
+msgstr "Saves or creates the job displayed on the form"
+
+msgctxt "fields.prompt"
+msgid "job.command"
+msgstr "Command"
+
+msgctxt "fields.prompt"
+msgid "job.condition"
+msgstr "Start condition"
+
+msgctxt "fields.prompt"
+msgid "job.created"
+msgstr "Creation date"
+
+msgctxt "fields.prompt"
+msgid "job.crontab_hour"
+msgstr "Start hour"
+
+msgctxt "fields.prompt"
+msgid "job.crontab_mday"
+msgstr "Start day"
+
+msgctxt "fields.prompt"
+msgid "job.crontab_min"
+msgstr "Start minute"
+
+msgctxt "fields.prompt"
+msgid "job.crontab_mon"
+msgstr "Start month"
+
+msgctxt "fields.prompt"
+msgid "job.crontab_wday"
+msgstr "Start week day"
+
+msgctxt "fields.prompt"
+msgid "job.directory"
+msgstr "Working directory"
+
+msgctxt "fields.prompt"
+msgid "job.expected_rv"
+msgstr "Expected return value"
+
+msgctxt "fields.prompt"
+msgid "job.fqjn"
+msgstr "Qualified name"
+
+msgctxt "fields.prompt"
+msgid "job.group_rel"
+msgstr "Group"
+
+msgctxt "fields.prompt"
+msgid "job.host"
+msgstr "Host"
+
+msgctxt "fields.prompt"
+msgid "job.name"
+msgstr "Name"
+
+msgctxt "fields.prompt"
+msgid "job.owner_rel"
+msgstr "Owner"
+
+msgctxt "fields.prompt"
+msgid "job.permissions"
+msgstr "Permissions"
+
+msgctxt "fields.prompt"
+msgid "job.type"
+msgstr "Type"
+
+msgctxt "fields.prompt"
+msgid "job.user"
+msgstr "User"
