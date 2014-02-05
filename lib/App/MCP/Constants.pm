@@ -9,7 +9,7 @@ use Class::Usul::Constants ( );
 
 Class::Usul::Constants->Exception_Class( 'App::MCP::Exception' );
 
-our @EXPORT = qw( DOTS HASH_CHAR SEPARATOR );
+our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR SEPARATOR );
 
 sub import {
    my $class       = shift;
@@ -24,6 +24,8 @@ sub import {
 sub HASH_CHAR () { chr 35     }
 sub DOTS      () { "\x{2026}" }
 sub SEPARATOR () { '/'        }
+
+sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
 
 1;
 

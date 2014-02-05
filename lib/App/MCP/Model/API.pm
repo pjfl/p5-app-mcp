@@ -20,8 +20,8 @@ extends q(App::MCP::Model);
 my $Sessions = {}; my $Users = [];
 
 # Private attributes
-has '_transcoder'   => is => 'lazy', isa => Object,
-   builder          => sub { JSON->new }, reader => 'transcoder';
+has '_transcoder' => is => 'lazy', isa => Object,
+   builder        => sub { JSON->new }, reader => 'transcoder';
 
 # Public methods
 sub create_event {

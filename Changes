@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Chooser on job form auto submits
           - Added job definition form
           - Added FormBuilder
           - Using P::M::Session::Cookie

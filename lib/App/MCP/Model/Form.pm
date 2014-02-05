@@ -3,10 +3,11 @@ package App::MCP::Model::Form;
 use namespace::sweep;
 
 use Moo;
-use Class::Usul::Constants;
+use App::MCP::Constants;
+use App::MCP::Functions    qw( get_or_throw );
 use Class::Usul::Functions qw( throw );
-use Data::Validation;
-use Unexpected::Functions  qw( Unspecified ValidationErrors );
+use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
+use Unexpected::Functions  qw( Unspecified );
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
@@ -16,20 +17,6 @@ with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
 
 # Public methods
-sub exception_handler {
-   my ($self, $req, $e) = @_;
-
-   my $title = $req->loc( 'Exception Handler' );
-   my $page  = { code => $e->rv, error => "${e}", title => $title };
-
-   $e->class eq ValidationErrors and $page->{validation_error} = $e->args;
-
-   my $stash = $self->get_stash( $req, $page );
-
-   $stash->{template} = 'exception';
-   return $stash;
-}
-
 sub job {
    my ($self, $req) = @_; my $id = $req->args->[ 0 ];
 
@@ -59,14 +46,23 @@ sub job_chooser {
    return $self->get_stash( $req, $page, 'job_chooser' => $chooser );
 }
 
-sub job_delete {
-   my ($self, $req) = @_; my $id = $req->args->[ 0 ];
+sub job_clear {
+   return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
+}
 
-   my $job      = $self->schema->resultset( 'Job' )->find( $id )
-      or throw error => 'Job id [_1] not found', args => [ $id ];
-   my $fqjn     = $job->fqjn; $job->delete;
-   my $message  = [ 'Job name [_1] deleted', $fqjn ];
+sub job_delete {
+   my ($self, $req) = @_;
+
+   my $id       = $req->args->[ 0 ]
+      or throw class => Unspecified, args => [ 'id' ],
+                  rv => HTTP_EXPECTATION_FAILED;
    my $location = $req->uri_for( 'job' );
+   my $message  = [ 'Job id [_1] not found', $id ];
+   my $job      = $self->schema->resultset( 'Job' )->find( $id )
+      or return { redirect => { location => $location, message => $message } };
+   my $fqjn     = $job->fqjn; $job->delete;
+
+   $message     = [ 'Job name [_1] deleted', $fqjn ];
 
    return { redirect => { location => $location, message => $message } };
 }
@@ -87,10 +83,13 @@ sub job_grid_rows {
 sub job_grid_table {
    my ($self, $req) = @_; my $params = $req->params;
 
+   my $field_value  = get_or_throw( $params, 'field_value' );
+
    $params->{form } = 'job';
-   $params->{label} = 'Job record keys';
+   $params->{label} = 'Job names';
    $params->{total} = $self->schema->resultset( 'Job' )
-      ->search( { name => { -like => $params->{field_value} } } )->count;
+                           ->search( { name => { -like => $field_value } } )
+                           ->count;
 
    my $grid_table = $self->build_grid_table( $req );
    my $page       = { meta => delete $grid_table->{meta} };
@@ -101,13 +100,14 @@ sub job_grid_table {
 sub job_save {
    my ($self, $req) = @_; my $id; my $job; my $message;
 
-   my $args = { deflate => \&__job_deflator,
+   my $args = { deflate => \&_job_deflator,
                 param   => $req->body->param,
                 rs      => $self->schema->resultset( 'Job' ) };
 
    if ($id = $req->args->[ 0 ]) {
-      $job     = $self->find_and_update_record( $args, $id )
-         or throw error => 'Job id [_1] not found', args => [ $id ];
+      $job     = $self->find_and_update_record( $args, $id ) or return {
+         redirect => { location => $req->uri_for( 'job' ),
+                       message  => [ 'Job id [_1] not found', $id ] } };
       $message = [ 'Job name [_1] updated', $job->fqjn ];
    }
    else {
@@ -130,41 +130,48 @@ sub _job_chooser_href {
 }
 
 sub _job_chooser_link_hash {
-   my ($self, $req, $params, $row, $link_num) = @_;
+   my ($self, $req, $link_num, $job) = @_;
 
    my $tip = $req->loc( 'Click to select this job' );
 
-   return { href => '#top', text => $row->name, tip => $tip, };
+   return { href => '#top', text => $job->name, tip => $tip, };
 }
 
 sub _job_chooser_search {
    my ($self, $params) = @_;
 
+   my $field_value = get_or_throw( $params, 'field_value' );
+   my $page        = get_or_throw( $params, 'page'        );
+   my $page_size   = get_or_throw( $params, 'page_size'   );
+
    return [ $self->schema->resultset( 'Job' )->search
-            ( { name     => { -like => $params->{field_value} } },
+            ( { name     => { -like => $field_value } },
               { order_by => 'name',
-                page     => $params->{page} + 1,
-                rows     => $params->{page_size} } )->all ];
+                page     => $page + 1,
+                rows     => $page_size } )->all ];
 }
 
-# Private functions
-sub __get_or_throw {
-   my ($params, $name) = @_;
+sub _job_deflator {
+   my ($self, $param, $col) = @_;
 
-   defined (my $param = $params->{ $name })
-      or throw class => Unspecified, args => [ $name ];
+   $col eq 'crontab' and
+      return join SPC, map { $param->{ "crontab_${_}" } } CRONTAB_FIELD_NAMES;
 
-   return $param;
-}
+   if ($col eq 'group') {
+      my $rs   = $self->schema->resultset( 'Role' );
+      my $role = $rs->find_by_name( $param->{ 'group_rel' } // 'unknown' );
 
-sub __job_deflator {
-   my ($param, $col) = @_;
-
-   if ($col eq 'crontab') {
-      return $param->{crontab_min }.SPC.$param->{crontab_hour}.SPC
-            .$param->{crontab_mday}.SPC.$param->{crontab_mon }.SPC
-            .$param->{crontab_wday}
+      return $role ? $role->id : undef;
    }
+
+   if ($col eq 'owner') {
+      my $rs   = $self->schema->resultset( 'User' );
+      my $user = $rs->find_by_name( $param->{ 'owner_rel' } // 'unknown' );
+
+      return $user ? $user->id : undef;
+   }
+
+   $col eq 'permissions' and return oct( $param->{ $col } // 0 );
 
    return exists $param->{ $col } ? $param->{ $col } : undef;
 }

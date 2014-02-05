@@ -8,8 +8,8 @@ use parent 'App::MCP::Schema::Base';
 use Algorithm::Cron;
 use App::MCP::Constants;
 use App::MCP::ExpressionParser;
-use App::MCP::Functions     qw( qualify_job_name );
-use Class::Usul::Functions  qw( is_arrayref is_hashref is_member throw );
+use App::MCP::Functions    qw( qualify_job_name );
+use Class::Usul::Functions qw( is_arrayref is_hashref is_member throw );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -22,23 +22,26 @@ $class->add_columns
      created     => $class->set_on_create_datetime_data_type,
      command     => $class->varchar_data_type,
      condition   => $class->varchar_data_type,
-     crontab     => { data_type   => 'varchar',
-                      accessor    => '_crontab',
-                      is_nullable => FALSE,
-                      size        => 127, },
+     crontab     => { accessor      => '_crontab',
+                      data_type     => 'varchar',
+                      is_nullable   => FALSE,
+                      size          => 127, },
      directory   => $class->varchar_data_type,
      expected_rv => $class->numerical_id_data_type( 0 ),
-     fqjn        => { data_type   => 'varchar',
-                      accessor    => '_fqjn',
-                      is_nullable => FALSE,
-                      size        => $class->varchar_max_size, },
+     fqjn        => { accessor      => '_fqjn',
+                      data_type     => 'varchar',
+                      is_nullable   => FALSE,
+                      size          => $class->varchar_max_size, },
      group       => $class->foreign_key_data_type( 1 ),
      host        => $class->varchar_data_type( 64, 'localhost' ),
      name        => $class->varchar_data_type( 126, undef ),
      owner       => $class->foreign_key_data_type( 1 ),
      parent_id   => $class->nullable_foreign_key_data_type,
      parent_path => $class->nullable_varchar_data_type,
-     permissions => $class->numerical_id_data_type( 488 ),
+     permissions => { accessor      => '_permissions',
+                      data_type     => 'smallint',
+                      default_value => 488,
+                      is_nullable   => FALSE, },
      type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
      user        => $class->varchar_data_type( 32 ), );
 
@@ -81,16 +84,16 @@ sub condition_dependencies {
 }
 
 sub crontab {
-   my ($self, $crontab) = @_; my @names = qw( min hour mday mon wday ); my $tmp;
+   my ($self, $crontab) = @_; my @names = CRONTAB_FIELD_NAMES; my $tmp;
 
    is_hashref  $crontab and $tmp = $crontab
-           and $crontab = join SPC, map { $tmp->{ $names[ $_ ] } } 0 .. 4;
+           and $crontab = join SPC, map { $tmp->{ $_ } } @names;
    is_arrayref $crontab and $crontab = join SPC, @{ $crontab };
 
    my @fields = split m{ \s+ }msx, ($crontab ? $self->_crontab( $crontab )
-                                             : $self->_crontab || NUL);
+                                             : $self->_crontab // NUL);
 
-   $self->{ 'crontab_'.$names[ $_ ] } = ($fields[ $_ ] || NUL) for (0 .. 4);
+   $self->{ 'crontab_'.$names[ $_ ] } = ($fields[ $_ ] // NUL) for (0 .. 4);
 
    return $self->_crontab;
 }
@@ -196,6 +199,12 @@ sub namespace {
    return $root ? $cache->{ $id } = $ns : $ns;
 }
 
+sub permissions {
+   my ($self, $perms) = @_; $perms and $self->_permissions( oct $perms );
+
+   return sprintf '0%o', $self->_permissions;
+}
+
 sub should_start_now {
    my $self      = shift;
    my $crontab   = $self->crontab or return TRUE;
@@ -231,7 +240,7 @@ sub validation_attributes {
       fields         => {
          name        => {
             validate => 'isMandatory isSimpleText isValidLength' },
-         permissions => { validate => 'isMandatory isValidInteger' }, },
+         permissions => { validate => 'isValidInteger' }, },
       constraints    => {
          name        => { max_length => 126, min_length => 1, }, }, };
 }
@@ -267,7 +276,7 @@ sub _insert_condition {
 }
 
 sub _is_permitted {
-   my ($self, $user_id, $mask) = @_; my $perms = $self->permissions;
+   my ($self, $user_id, $mask) = @_; my $perms = $self->_permissions;
 
    my $user_rs = $self->result_source->schema->resultset( 'User' );
    my $user    = $user_rs->find( $user_id );

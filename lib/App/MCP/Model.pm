@@ -4,8 +4,10 @@ use namespace::sweep;
 
 use Moo;
 use Class::Usul::Constants;
-use Class::Usul::Types qw( LoadableClass Object );
-use HTTP::Status       qw( HTTP_OK );
+use Class::Usul::Types    qw( LoadableClass Object );
+use Data::Validation;
+use HTTP::Status          qw( HTTP_OK );
+use Unexpected::Functions qw( ValidationErrors );
 
 extends q(App::MCP);
 
@@ -22,6 +24,20 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass,
 
 with q(Class::Usul::TraitFor::ConnectInfo);
 
+sub exception_handler {
+   my ($self, $req, $e) = @_;
+
+   my $title = $req->loc( 'Exception Handler' );
+   my $page  = { code => $e->rv, error => "${e}", title => $title };
+
+   $e->class eq ValidationErrors and $page->{validation_error} = $e->args;
+
+   my $stash = $self->get_stash( $req, $page );
+
+   $stash->{template} = 'exception';
+   return $stash;
+}
+
 sub get_stash {
    my ($self, $req, @args) = @_;
 
@@ -29,7 +45,7 @@ sub get_stash {
 }
 
 sub load_page {
-   my ($self, $req, $args) = @_; my $page = $args;
+   my ($self, $req, $args) = @_; my $page = $args // {};
 
    $page->{status_message} = delete $req->session->{status_message} || NUL;
 

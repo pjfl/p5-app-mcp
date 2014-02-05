@@ -4,11 +4,11 @@ use 5.01;
 use namespace::sweep;
 
 use App::MCP::Constants;
+use App::MCP::Functions    qw( get_or_throw );
 use Class::Usul::Functions qw( is_arrayref is_hashref first_char pad throw );
 use Class::Usul::Response::Table;
 use File::Gettext::Schema;
 use Scalar::Util           qw( blessed weaken );
-use Unexpected::Functions  qw( Unspecified );
 use Moo::Role;
 
 requires qw( config get_stash log usul );
@@ -19,7 +19,7 @@ around 'get_stash' => sub {
 
    $form_name or return $orig->( $self, $req, $page );
 
-   my $form = $self->_build_form( $req, $form_name, $rec );
+   my $form = $self->_new_form( $req, $form_name, $rec );
 
    $page->{first_field} = $form->{first_field};
 
@@ -32,55 +32,37 @@ around 'get_stash' => sub {
 sub build_chooser {
    my ($self, $req) = @_; my $params = $req->params;
 
-   my $form  = __get_or_throw( $params, 'form'  );
-   my $field = __get_or_throw( $params, 'field' );
-   my $show  = "function() { this.window.dialogs[ '${field}' ].show() }";
-   my $id    = "${form}_${field}";
+   my $form   = get_or_throw( $params, 'form'  );
+   my $field  = get_or_throw( $params, 'field' );
+   my $show   = "function() { this.window.dialogs[ '${field}' ].show() }";
+   my $id     = "${form}_${field}";
 
    return {
-      'meta' => { id => __get_or_throw( $params, 'id' ) },
-      $id    => { id     => $id,
-               config => { event      => $params->{event} || "'load'",
-                           fieldValue => "'".($params->{val} || NUL)."'",
-                           gridToggle => $params->{toggle} ? 'true' : 'false',
-                           onComplete => $show, }, } };
+      'meta'    => { id => get_or_throw( $params, 'id' ) },
+      $id       => {
+         id     => $id,
+         config => { button     => "'".($params->{button} // NUL)."'",
+                     event      => $params->{event} || "'load'",
+                     fieldValue => "'".($params->{val} // NUL)."'",
+                     gridToggle => $params->{toggle} ? 'true' : 'false',
+                     onComplete => $show }, } };
 }
 
 sub build_grid_rows {
    my ($self, $req) = @_; my $params = $req->params;
 
-   my $id        = __get_or_throw( $params, 'id'        );
-   my $cb_method = __get_or_throw( $params, 'method'    );
-   my $form      = __get_or_throw( $params, 'form'      );
-   my $page      = __get_or_throw( $params, 'page'      ) || 0;
-   my $page_size = __get_or_throw( $params, 'page_size' ) || 10;
-  (my $field     = $id) =~ s{ _grid \z }{}msx;
-      $field     = (split m{ _ }mx, $field)[ 1 ];
+   my $id        = get_or_throw( $params, 'id'        );
+   my $page      = get_or_throw( $params, 'page'      ) || 0;
+   my $page_size = get_or_throw( $params, 'page_size' ) || 10;
    my $start     = $page * $page_size;
    my $rows      = {};
    my $count     = 0;
 
-   for my $value (@{ $params->{values} || [] }) {
+   for my $row (@{ $params->{values} // [] }) {
       my $link_num = $start + $count;
-      my $item     = $self->$cb_method( $req, $params, $value, $link_num );
-      my $rv       = (delete $item->{value}) || $item->{text};
-      my $rowid    = "row_${link_num}";
+      my $rowid    = 'row_'.(pad $link_num, 5, 0, 'left');
 
-      $item->{class    } ||= 'chooser_grid fade submit';
-      $item->{config   }   = { args   => "[ '${form}', '${field}', '${rv}' ]",
-                               method => "'returnValue'", };
-      $item->{container}   = FALSE;
-      $item->{id       }   = "${id}_link${link_num}";
-      $item->{type     }   = 'anchor';
-      $item->{widget   }   = TRUE;
-      $rows->{ $rowid  }   = {
-         class   => 'grid',
-         classes => { item     => 'grid_cell',
-                      item_num => 'grid_cell lineNumber first' },
-         fields  => [ qw( item_num item ) ],
-         id      => $rowid,
-         type    => 'tableRow',
-         values  => { item => $item, item_num => $link_num + 1, }, };
+      $rows->{ $rowid } = $self->_new_grid_row( $req, $link_num, $rowid, $row );
       $count++;
    }
 
@@ -92,12 +74,12 @@ sub build_grid_rows {
 sub build_grid_table {
    my ($self, $req) = @_; my $params = $req->params;
 
-   my $field  = __get_or_throw( $params, 'id' );
-   my $form   = __get_or_throw( $params, 'form' );
-   my $label  = __get_or_throw( $params, 'label' );
-   my $total  = __get_or_throw( $params, 'total' );
-   my $psize  = __get_or_throw( $params, 'page_size'   ) || 10;
-   my $value  = __get_or_throw( $params, 'field_value' ) || NUL;
+   my $field  = get_or_throw( $params, 'id' );
+   my $form   = get_or_throw( $params, 'form' );
+   my $label  = get_or_throw( $params, 'label' );
+   my $total  = get_or_throw( $params, 'total' );
+   my $psize  = get_or_throw( $params, 'page_size'   ) || 10;
+   my $value  = get_or_throw( $params, 'field_value' ) || NUL;
    my $id     = "${form}_${field}";
    my $count  = 0;
    my @values = ();
@@ -105,8 +87,6 @@ sub build_grid_table {
    while ($count < $total && $count < $psize) {
       push @values, { item => DOTS, item_num => ++$count, };
    }
-
-   my $grid = $self->_new_grid_table( $req->loc( $label ), \@values );
 
    return {
       'meta'         => {
@@ -118,7 +98,7 @@ sub build_grid_table {
          text        => $req->loc( 'Loading' ).DOTS, },
       "${id}_grid"   => {
          id          => "${id}_grid",
-         data        => $grid, },
+         data        => __new_grid_table( $req->loc( $label ), \@values ), },
    };
 }
 
@@ -127,10 +107,10 @@ sub create_record {
 
    my $param = $args->{param}; my $rec = {};
 
-   my $deflate = $args->{deflate} // sub { $_[ 0 ]->{ $_[ 1 ] } };
+   my $deflate = $args->{deflate} // sub { $_[ 1 ]->{ $_[ 2 ] } };
 
    for my $col ($rs->result_source->columns) {
-      my $value = NUL; defined( $value = $deflate->( $param, $col ) )
+      my $value = NUL; defined( $value = $deflate->( $self, $param, $col ) )
          and $rec->{ $col } = "${value}";
    }
 
@@ -142,10 +122,10 @@ sub find_and_update_record {
 
    my $param = $args->{param}; my $rec = $rs->find( $id ) or return;
 
-   my $deflate = $args->{deflate} // sub { $_[ 0 ]->{ $_[ 1 ] } };
+   my $deflate = $args->{deflate} // sub { $_[ 1 ]->{ $_[ 2 ] } };
 
    for my $col ($rs->result_source->columns) {
-      my $value = NUL; defined( $value = $deflate->( $param, $col ) )
+      my $value = NUL; defined( $value = $deflate->( $self, $param, $col ) )
          and $rec->$col( "${value}" );
    }
 
@@ -154,50 +134,6 @@ sub find_and_update_record {
 }
 
 # Private methods
-sub _build_field {
-   my ($self, $req, $forms, $form_name, $field_name, $rec) = @_;
-
-   my $fqfn  = first_char $field_name eq '+'
-             ? substr $field_name, 1 : "${form_name}.${field_name}";
-   my $col   = $field_name; $col =~ s{ \A \+ }{}mx;
-   my $field = { %{ $forms->{fields}->{ $fqfn } // {} }, name => $col };
-
-   exists $field->{form} or exists $field->{group} or exists $field->{widget}
-       or $field->{widget} = TRUE;
-
-   my $key   = __make_key( $field );
-   my $value = $self->_extract_value( $rec, $col, $field->{ $key } );
-
-   defined $value and $self->_deref_value( $req, $field, $key, $value );
-
-   return { content => $field };
-}
-
-sub _build_form {
-   my ($self, $req, $form_name, $rec) = @_;
-
-   my $count = 0;
-   my $forms = $self->_forms( $req );
-   my $form  = $self->_new_form( $req, $form_name );
-
-   exists $forms->{regions}->{ $form_name }
-      or throw error => 'Form name [_1] unknown', args => [ $form_name ];
-
-   $form->{first_field} = $forms->{first_fields}->{ $form_name } || NUL;
-
-   for my $fields (@{ $forms->{regions}->{ $form_name }}) {
-      my $region = $form->{data}->[ $count++ ] = { fields => [] };
-      my @keys   = $fields->[ 0 ] ? @{ $fields } : sort keys %{ $rec };
-
-      for my $name (@keys) {
-         push @{ $region->{fields} },
-            $self->_build_field( $req, $forms, $form_name, $name, $rec );
-      }
-   }
-
-   return $form;
-}
-
 sub _deref_value {
    my ($self, $req, $field, $key, $value) = @_;
 
@@ -211,19 +147,6 @@ sub _deref_value {
    else { $field->{ $key } = "${value}" }
 
    return;
-}
-
-sub _extract_value {
-   my ($self, $rec, $col, $default) = @_; my $value = $default;
-
-   if ($rec and blessed $rec and $rec->can( $col )) {
-      $value = $rec->$col();
-   }
-   elsif (is_hashref $rec and exists $rec->{ $col }) {
-      $value = $rec->{ $col };
-   }
-
-   return $value;
 }
 
 sub _forms {
@@ -246,8 +169,118 @@ sub _forms {
    return $cache->{ $locale } = $forms;
 }
 
+sub _new_field {
+   my ($self, $req, $forms, $form_name, $field_name, $rec) = @_;
+
+   my $fqfn  = first_char $field_name eq '+'
+             ? substr $field_name, 1 : "${form_name}.${field_name}";
+   my $col   = $field_name; $col =~ s{ \A \+ }{}mx;
+   my $field = { %{ $forms->{fields}->{ $fqfn } // {} } };
+
+   exists $field->{name} or $field->{name} = $col;
+   exists $field->{form} or exists $field->{group} or exists $field->{widget}
+       or $field->{widget} = TRUE;
+
+   my $key   = __extract_key  ( $field );
+   my $value = __extract_value( $field->{ $key }, $rec, $col );
+
+   defined $value and $self->_deref_value( $req, $field, $key, $value );
+
+   return { content => $field };
+}
+
 sub _new_form {
-   my ($self, $req, $form_name) = @_; weaken( $req );
+   my ($self, $req, $form_name, $rec) = @_;
+
+   my $count = 0;
+   my $forms = $self->_forms( $req );
+   my $form  = __new_form( $req, $form_name );
+
+   exists $forms->{regions}->{ $form_name }
+      or throw error => 'Form name [_1] unknown', args => [ $form_name ];
+
+   $form->{first_field} = $forms->{first_fields}->{ $form_name } || NUL;
+
+   for my $fields (@{ $forms->{regions}->{ $form_name }}) {
+      my $region = $form->{data}->[ $count++ ] = { fields => [] };
+      my @keys   = $fields->[ 0 ] ? @{ $fields } : sort keys %{ $rec };
+
+      for my $name (@keys) {
+         push @{ $region->{fields} },
+            $self->_new_field( $req, $forms, $form_name, $name, $rec );
+      }
+   }
+
+   return $form;
+}
+
+sub _new_grid_row {
+   my ($self, $req, $link_num, $rowid, $row) = @_; my $params = $req->params;
+
+   my $id     = get_or_throw( $params, 'id'     );
+   my $form   = get_or_throw( $params, 'form'   );
+   my $method = get_or_throw( $params, 'method' );
+   my $button = $params->{button} // NUL;
+  (my $field  = $id) =~ s{ _grid \z }{}msx;
+      $field  = (split m{ _ }mx, $field)[ 1 ];
+   my $item   = $self->$method( $req, $link_num, $row );
+   my $rv     = (delete $item->{value}) || $item->{text};
+   my $args   = "[ '${form}', '${field}', '${rv}', '${button}' ]";
+
+   $item->{class    } //= 'chooser_grid fade submit';
+   $item->{config   }   = { args => $args, method => "'returnValue'", };
+   $item->{container}   = FALSE;
+   $item->{id       }   = "${id}_link${link_num}";
+   $item->{type     }   = 'anchor';
+   $item->{widget   }   = TRUE;
+
+   return {
+      class   => 'grid',
+      classes => { item     => 'grid_cell',
+                   item_num => 'grid_cell lineNumber first' },
+      fields  => [ qw( item_num item ) ],
+      id      => $rowid,
+      type    => 'tableRow',
+      values  => { item => $item, item_num => $link_num + 1, }, };
+}
+
+# Private functions
+sub __extract_key {
+   my $field = shift; my $type = $field->{type} // NUL;
+
+   return $type eq 'button'  ? 'name'
+        : $type eq 'chooser' ? 'href'
+        : $type eq 'label'   ? 'text'
+                             : 'default';
+}
+
+sub __extract_value {
+   my ($default, $rec, $col) = @_; my $value = $default;
+
+   if ($rec and blessed $rec and $rec->can( $col )) {
+      $value = $rec->$col();
+   }
+   elsif (is_hashref $rec and exists $rec->{ $col }) {
+      $value = $rec->{ $col };
+   }
+
+   return $value;
+}
+
+sub __loc { # Localize the key and substitute the placeholder args
+   my ($req, $opts, $key, @args) = @_; my $car = $args[ 0 ];
+
+   my $args = (is_hashref $car) ? { %{ $car } }
+            : { params => (is_arrayref $car) ? $car : [ @args ] };
+
+   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
+   $args->{locale      } ||= $opts->{language};
+
+   return $req->localize( $key, $args );
+}
+
+sub __new_form {
+   my ($req, $form_name) = @_; weaken( $req );
 
    return { data       => [],
             js_object  => 'behaviour',
@@ -259,8 +292,8 @@ sub _new_form {
             width      => $req->ui_state->{width} || 1024, };
 }
 
-sub _new_grid_table {
-   my ($self, $label, $values) = @_;
+sub __new_grid_table {
+   my ($label, $values) = @_;
 
    return Class::Usul::Response::Table->new( {
       class    => { item     => 'grid_cell',
@@ -274,36 +307,6 @@ sub _new_grid_table {
       typelist => { item_num => 'numeric', },
       values   => $values,
    } );
-}
-
-# Private functions
-sub __get_or_throw {
-   my ($params, $name) = @_;
-
-   defined (my $param = $params->{ $name })
-      or throw class => Unspecified, args => [ $name ];
-
-   return $param;
-}
-
-sub __make_key {
-   my $field = shift; my $type = $field->{type} // NUL;
-
-   return $type eq 'label'   ? 'text'
-        : $type eq 'chooser' ? 'href'
-                             : 'default';
-}
-
-sub __loc { # Localize the key and substitute the placeholder args
-   my ($req, $opts, $key, @args) = @_; my $car = $args[ 0 ];
-
-   my $args = (is_hashref $car) ? { %{ $car } }
-            : { params => (is_arrayref $car) ? $car : [ @args ] };
-
-   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
-   $args->{locale      } ||= $opts->{language};
-
-   return $req->localize( $key, $args );
 }
 
 1;
@@ -325,7 +328,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 8 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 9 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

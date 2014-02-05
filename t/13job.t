@@ -31,28 +31,28 @@ $job and $job->delete; # Left over job and event from previous run
 
 eval { $job = $rs->create( {} ) }; my $e = $@; $@ = undef;
 
-like $e, qr{ Validation \s+ errors }msx, 'Validation errors';
+like $e, qr{ \Qvalidation error\E }msx, 'Validation errors';
 
-like $e && $e->args->[ 0 ], qr{ eMandatory }msx, 'Job name mandatory';
+like $e && $e->args->[ 0 ], qr{ mandatory }msx, 'Job name mandatory';
 
 $job and $job->in_storage and $job->delete; $job = undef;
 
 eval { $job = $rs->create( { name => '~' } ) }; $e = $@; $@ = undef;
 
-like $e && $e->args->[ 0 ], qr{ eSimpleText }msx,
+like $e && $e->args->[ 0 ], qr{ \Qnot simple text\E }msx,
    'Job name must be simple text';
 
 $job and $job->delete; $job = undef;
 
 eval { $job = $rs->create( { name => 'x' x 127 } ) }; $e = $@; $@ = undef;
 
-like $e && $e->args->[ 0 ], qr{ eValidLength }msx,
+like $e && $e->args->[ 0 ], qr{ \Qnot a valid length\E }msx,
    'Job name must be less than 127 characters';
 
 $job and $job->delete; $job = undef;
 
 $job = $rs->create( { command => 'sleep 1', name => 'test',
-                      type    => 'job',     user => 'mcp' } );
+                            type    => 'job',     user => 'mcp' } );
 
 ok $job->id > 0, 'Creates a job';
 

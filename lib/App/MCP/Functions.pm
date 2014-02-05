@@ -5,14 +5,24 @@ use warnings;
 use parent 'Exporter::Tiny';
 
 use App::MCP::Constants;
-use Class::Usul::Functions qw( pad );
+use Class::Usul::Functions qw( pad throw );
 use English                qw( -no_match_vars );
+use Unexpected::Functions  qw( Unspecified );
 
-our @EXPORT_OK = ( qw( log_leader qualify_job_name read_exactly recv_arg_error
-                       recv_rv_error trigger_input_handler
-                       trigger_output_handler ) );
+our @EXPORT_OK = ( qw( get_or_throw log_leader qualify_job_name
+                       read_exactly recv_arg_error recv_rv_error
+                       trigger_input_handler trigger_output_handler ) );
 
 # Public functions
+sub get_or_throw {
+   my ($params, $name) = @_;
+
+   defined (my $param = $params->{ $name })
+      or throw class => Unspecified, args => [ $name ];
+
+   return $param;
+}
+
 sub log_leader ($$;$) {
    my ($level, $key, $id) = @_;
 
