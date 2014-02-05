@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added job summary
           - Added some asset files to git
           - Chooser on job form auto submits
           - Added job definition form

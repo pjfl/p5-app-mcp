@@ -222,6 +222,16 @@ sub sqlt_deploy_hook {
   return;
 }
 
+sub summary {
+   my $self = shift; my $text;
+
+   $text  = 'Type: '.$self->type.' ... ';
+   $text .= 'Command: '.$self->command.' ... ';
+   $text .= 'Host: '.$self->host.' ... ';
+   $text .= 'User: '.$self->user;
+   return $text;
+}
+
 sub update {
    my ($self, $columns) = @_; my $condition = $self->condition;
 

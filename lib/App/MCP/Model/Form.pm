@@ -132,9 +132,7 @@ sub _job_chooser_href {
 sub _job_chooser_link_hash {
    my ($self, $req, $link_num, $job) = @_;
 
-   my $tip = $req->loc( 'Click to select this job' );
-
-   return { href => '#top', text => $job->name, tip => $tip, };
+   return { href => '#top', text => $job->name, tip => $job->summary, };
 }
 
 sub _job_chooser_search {
