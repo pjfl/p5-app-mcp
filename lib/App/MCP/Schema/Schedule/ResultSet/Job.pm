@@ -6,7 +6,8 @@ use warnings;
 use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
-use Class::Usul::Functions qw( throw );
+use Class::Usul::Functions qw( first_char throw );
+use HTTP::Status           qw( HTTP_NOT_FOUND );
 
 # Public methods
 sub assert_executable {
@@ -41,11 +42,20 @@ sub dump {
    return \@jobs;
 }
 
+sub find_by_id_or_name {
+   my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $job;
+
+   (first_char $arg) =~ m{ \d }mx and $job = $self->find( $arg );
+   $job or $job = $self->find_by_name( $arg );
+   return $job;
+}
+
 sub find_by_name {
    my ($self, $fqjn) = @_;
 
    my $job = $self->search( { fqjn => $fqjn } )->single
-      or throw error => 'Job [_1] unknown', args => [ $fqjn ];
+      or throw error => 'Job [_1] unknown', args => [ $fqjn ],
+                  rv => HTTP_NOT_FOUND;
 
    return $job;
 }

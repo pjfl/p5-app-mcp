@@ -32,10 +32,11 @@ around 'get_stash' => sub {
 sub build_chooser {
    my ($self, $req) = @_; my $params = $req->params;
 
-   my $form   = get_or_throw( $params, 'form'  );
-   my $field  = get_or_throw( $params, 'field' );
-   my $show   = "function() { this.window.dialogs[ '${field}' ].show() }";
-   my $id     = "${form}_${field}";
+   my $form  = get_or_throw( $params, 'form'  );
+   my $field = get_or_throw( $params, 'field' );
+   my $show  = "function() { this.window.dialogs[ '${field}' ].show() }";
+   my $val   = $params->{val} // NUL; $val =~ s{ [\*] }{%}gmx;
+   my $id    = "${form}_${field}";
 
    return {
       'meta'    => { id => get_or_throw( $params, 'id' ) },
@@ -43,7 +44,7 @@ sub build_chooser {
          id     => $id,
          config => { button     => "'".($params->{button} // NUL)."'",
                      event      => $params->{event} || "'load'",
-                     fieldValue => "'".($params->{val} // NUL)."'",
+                     fieldValue => "'${val}'",
                      gridToggle => $params->{toggle} ? 'true' : 'false',
                      onComplete => $show }, } };
 }
@@ -103,15 +104,10 @@ sub build_grid_table {
 }
 
 sub create_record {
-   my ($self, $args) = @_; my $rs = $args->{rs};
-
-   my $param = $args->{param}; my $rec = {};
-
-   my $deflate = $args->{deflate} // sub { $_[ 1 ]->{ $_[ 2 ] } };
+   my ($self, $args) = @_; my $rs = $args->{rs}; my $rec = {};
 
    for my $col ($rs->result_source->columns) {
-      my $value = NUL; defined( $value = $deflate->( $self, $param, $col ) )
-         and $rec->{ $col } = "${value}";
+      $self->_set_column( $args, $rec, $col );
    }
 
    return $rs->create( $rec );
@@ -120,13 +116,10 @@ sub create_record {
 sub find_and_update_record {
    my ($self, $args, $id) = @_; my $rs = $args->{rs};
 
-   my $param = $args->{param}; my $rec = $rs->find( $id ) or return;
-
-   my $deflate = $args->{deflate} // sub { $_[ 1 ]->{ $_[ 2 ] } };
+   my $rec = $rs->find( $id ) or return;
 
    for my $col ($rs->result_source->columns) {
-      my $value = NUL; defined( $value = $deflate->( $self, $param, $col ) )
-         and $rec->$col( "${value}" );
+      $self->_set_column( $args, $rec, $col );
    }
 
    $rec->update;
@@ -244,6 +237,22 @@ sub _new_grid_row {
       values  => { item => $item, item_num => $link_num + 1, }, };
 }
 
+sub _set_column {
+   my ($self, $args, $rec, $col) = @_;
+
+   my $prefix = $args->{method};
+   my $method = $prefix ? "${prefix}${col}" : undef;
+   my $value  = $method && $self->can( $method )
+              ? $self->$method( $args->{param} ) : $args->{param}->{ $col };
+
+   defined $value or return;
+
+   if (blessed $rec) { $rec->$col( "${value}" ) }
+   else { $rec->{ $col } = "${value}" }
+
+   return;
+}
+
 # Private functions
 sub __extract_key {
    my $field = shift; my $type = $field->{type} // NUL;
@@ -328,7 +337,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 9 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 12 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

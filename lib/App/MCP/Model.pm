@@ -3,13 +3,18 @@ package App::MCP::Model;
 use namespace::sweep;
 
 use Moo;
-use Class::Usul::Constants;
-use Class::Usul::Types    qw( LoadableClass Object );
+use App::MCP::Constants;
+use App::MCP::Functions    qw( get_or_throw );
+use Class::Usul::Functions qw( ensure_class_loaded throw );
+use Class::Usul::Types     qw( LoadableClass Object );
 use Data::Validation;
-use HTTP::Status          qw( HTTP_OK );
-use Unexpected::Functions qw( ValidationErrors );
+use HTTP::Status           qw( HTTP_OK );
+use TryCatch;
+use Unexpected::Functions  qw( ValidationErrors );
 
 extends q(App::MCP);
+
+Data::Validation::Constants->Exception_Class( EXCEPTION_CLASS );
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object,
@@ -23,6 +28,28 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass,
    reader           => 'schema_class';
 
 with q(Class::Usul::TraitFor::ConnectInfo);
+
+sub check_field {
+   my ($self, $req) = @_; my $params = $req->params; my $mesg;
+
+   my $form = get_or_throw( $params, 'form' );
+   my $id   = get_or_throw( $params, 'id'   );
+   my $val  = get_or_throw( $params, 'val'  );
+   my $meta = { id => "${id}_ajax" };
+
+   try        { $self->_check_field( $form, $id, $val ) }
+   catch ($e) {
+      my $args = { params => $e->args, quote_bind_values => TRUE };
+
+      $mesg = $req->loc( $e->error, $args );
+      $self->debug and $self->log->debug( $mesg );
+      $meta->{class_name} = 'field_error';
+   }
+
+   return { code => HTTP_OK,
+            form => [ { fields => [ $mesg ] } ],
+            page => { meta => $meta } };
+}
 
 sub exception_handler {
    my ($self, $req, $e) = @_;
@@ -50,6 +77,19 @@ sub load_page {
    $page->{status_message} = delete $req->session->{status_message} || NUL;
 
    return $page;
+}
+
+# Private methods
+sub _check_field {
+   my ($self, $form, @args) = @_;
+
+   my $result_class = $self->schema_class.'::Result::'.(ucfirst $form);
+
+   ensure_class_loaded( $result_class );
+
+   my $attr = $result_class->validation_attributes;
+
+   return Data::Validation->new( $attr )->check_field( @args );
 }
 
 1;

@@ -50,15 +50,18 @@
          "type": "label"
       },
       "job.host": {
+         "check_field" : "1",
          "clear": "left",
          "default": "localhost",
-         "validate": "isMandatory isValidHostname"
+         "required" : "1"
       },
       "job.name": {
          "check_field" : "1",
-         "default": "%",
-         "required" : "1",
-         "validate": "isMandatory isValidIdentifier"
+         "default": "*",
+         "required" : "1"
+      },
+      "job.parent_name": {
+         "clear": "left"
       },
       "job.permissions": {
          "class": "ifield numeric",
@@ -75,7 +78,8 @@
          "values": [ "box", "job" ]
       },
       "job.user": {
-         "clear": "left"
+         "clear": "left",
+         "default": "mcp"
       },
       "job.owner_rel": {
          "clear": "left",
@@ -129,10 +133,10 @@
    "regions": {
       "job": [
          [ ],
-         [ "name", "fqjn", "created", "type", "command", "condition",
-           "crontab_min", "crontab_hour", "crontab_mday", "crontab_mon",
-           "crontab_wday", "host", "user", "directory", "expected_rv",
-           "permissions", "owner_rel", "group_rel" ],
+         [ "name", "fqjn", "type", "created", "parent_name", "command",
+           "condition", "crontab_min", "crontab_hour", "crontab_mday",
+           "crontab_mon", "crontab_wday", "host", "user", "directory",
+           "expected_rv", "permissions", "owner_rel", "group_rel" ],
          [ "chooser", "clear_button", "save_button", "delete_button" ]
       ],
       "job_chooser": [

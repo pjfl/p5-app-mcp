@@ -94,14 +94,14 @@ th { padding: 3px 6px; }
 ul { list-style-position: outside; list-style-type: disc; }
 
 /* Classes */
-.compact_prompt, .container, .dialog-field, .dialog-group, .field_group,
-.label_text, .prompt, .page, .region, .separator {
+.compact_prompt, .container, .dialog-field, .dialog-group,
+.field_group, .label_text, .prompt, .page, .region, .separator {
    display: inline-block; float: left; position: relative;
 }
 .compact_prompt, .label_text, .prompt, .separator {
    margin: 9px 0; padding: 3px 0;
 }
-.dialog, .tips-container {
+.dialog, .field_error, .tips-container {
    -khtml-border-radius: 4px; -moz-border-radius: 4px;
    -webkit-border-radius: 4px; border-radius: 4px;
  }
@@ -132,6 +132,10 @@ ul { list-style-position: outside; list-style-type: disc; }
 }
 .dialog-title {
    display: block; font-size: 20px; line-height: 24px;
+}
+.field_error {
+   border: 1px solid; clear: left; display: block; font-size: 14px;
+   margin: 5px 0; padding: 6px; white-space: nowrap;
 }
 .grid_cell { height: 24px; white-space: nowrap; }
 .grid_cell .chooser_grid { padding-left: 6px; }
@@ -189,8 +193,10 @@ th.grid_header  {
 }
 .dialog-close { background-color: #f00; color: #fff; }
 .dialog-title, .tips-term { color: #336; }
+.field_error { background-color: #fcc; border-color: #336; }
 .grid_subheader { background-color: #9c9; color: #000; }
 .required {    border-right-color: #f00; }
 .tips-mark0 { border-color: transparent transparent #336 #336; }
 .tips-mark1 { border-color: transparent transparent #9c9 #9c9; }
 .tips-defn { color: #000; }
+

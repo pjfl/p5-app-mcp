@@ -95,6 +95,10 @@ msgid "job.owner_rel"
 msgstr "Owner"
 
 msgctxt "fields.prompt"
+msgid "job.parent_name"
+msgstr "Parent name"
+
+msgctxt "fields.prompt"
 msgid "job.permissions"
 msgstr "Permissions"
 

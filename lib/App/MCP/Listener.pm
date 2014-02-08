@@ -4,7 +4,7 @@ use namespace::sweep;
 
 use App::MCP::Constants;
 use App::MCP::Model::API;
-use App::MCP::Model::Form;
+use App::MCP::Model::Job;
 use App::MCP::Request;
 use App::MCP::View::HTML;
 use App::MCP::View::JSON;
@@ -27,9 +27,9 @@ has 'port'    => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
 # Private attributes
 has '_models' => is => 'lazy', isa => HashRef[Object], reader => 'models',
    builder    => sub { {
-      'api'   => App::MCP::Model::API->new ( builder => $_[ 0 ]->usul,
-                                             port    => $_[ 0 ]->port ),
-      'form'  => App::MCP::Model::Form->new( builder => $_[ 0 ]->usul ),
+      'api'   => App::MCP::Model::API->new( builder => $_[ 0 ]->usul,
+                                            port    => $_[ 0 ]->port ),
+      'job'   => App::MCP::Model::Job->new( builder => $_[ 0 ]->usul ),
    } };
 
 has '_usul'   => is => 'lazy', isa => BaseType, reader => 'usul',
@@ -99,20 +99,23 @@ sub dispatch_request {
    sub (GET  + /api/state/*) {
       return shift->_execute( qw( json api  snapshot_state ), @_ );
    },
+   sub (GET  + /check_field + ?*) {
+      return shift->_execute( qw( xml  job  check_field ), @_ );
+   },
    sub (POST + (/job/* | /job) + ?*) {
-      return shift->_execute( qw( html form job_action ), @_ );
+      return shift->_execute( qw( html job  job_action ), @_ );
    },
    sub (GET  + (/job/* | /job) + ?*) {
-      return shift->_execute( qw( html form job ), @_ );
+      return shift->_execute( qw( html job  form ), @_ );
    },
    sub (GET  + /job_chooser + ?*) {
-      return shift->_execute( qw( xml  form job_chooser ), @_ );
+      return shift->_execute( qw( xml  job  chooser ), @_ );
    },
    sub (GET  + /job_grid_rows + ?*) {
-      return shift->_execute( qw( xml  form job_grid_rows ), @_ );
+      return shift->_execute( qw( xml  job  grid_rows ), @_ );
    },
    sub (GET  + /job_grid_table + ?*) {
-      return shift->_execute( qw( xml  form job_grid_table ), @_ );
+      return shift->_execute( qw( xml  job  grid_table ), @_ );
    },
    sub (GET  + /state) {
       return shift->_execute( qw( html form state_diagram ), @_ );
@@ -130,7 +133,7 @@ sub _execute {
 
    try {
       $method =~ m{ _action \z }mx
-         and $method = $self->_modify( $method, $req );
+         and $method = $self->_modify_action( $method, $req );
 
       my $stash = $self->models->{ $model }->$method( $req );
 
@@ -144,7 +147,7 @@ sub _execute {
    return $res;
 }
 
-sub _modify {
+sub _modify_action {
    my ($self, $method, $req) = @_;
 
    my $action = $req->body->param->{_method} || NUL;
@@ -159,9 +162,9 @@ sub _redirect {
 
    my $redirect = $stash->{redirect};
    my $code     = $redirect->{code} || HTTP_FOUND;
-   my $tuple    = $redirect->{message};
+   my $message  = $redirect->{message};
 
-   $tuple and $req->session->{status_message} = $req->loc( @{ $tuple } );
+   $message and $req->session->{status_message} = $req->loc( @{ $message } );
 
    return [ $code, [ 'Location', $redirect->{location} ], [] ];
 }

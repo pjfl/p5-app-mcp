@@ -1,5 +1,7 @@
 Revision history for App::MCP
 
+          - Renamed form files to job
+          - Implemented check field on the web forms
           - Added job summary
           - Added some asset files to git
           - Chooser on job form auto submits

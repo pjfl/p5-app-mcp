@@ -200,7 +200,7 @@ sub namespace {
 }
 
 sub permissions {
-   my ($self, $perms) = @_; $perms and $self->_permissions( oct $perms );
+   my ($self, $perms) = @_; $perms and $self->_permissions( $perms );
 
    return sprintf '0%o', $self->_permissions;
 }
@@ -225,7 +225,9 @@ sub sqlt_deploy_hook {
 sub summary {
    my $self = shift; my $text;
 
-   $text  = 'Type: '.$self->type.' ... ';
+   $text  = 'Qualified name: '.$self->fqjn.' ... ';
+   $self->type eq 'box' and $text .= 'Type: '.$self->type.' ... '
+      and return $text;
    $text .= 'Command: '.$self->command.' ... ';
    $text .= 'Host: '.$self->host.' ... ';
    $text .= 'User: '.$self->user;
@@ -247,12 +249,17 @@ sub update {
 
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
-      fields         => {
-         name        => {
-            validate => 'isMandatory isSimpleText isValidLength' },
-         permissions => { validate => 'isValidInteger' }, },
       constraints    => {
-         name        => { max_length => 126, min_length => 1, }, }, };
+         name        => { max_length => 126, min_length => 1, } },
+      fields         => {
+         host        => { validate => 'isMandatory isValidHostname' },
+         name        => {
+            filters  => 'filterReplaceRegex',
+            validate => 'isMandatory isValidIdentifier isValidLength' },
+         permissions => { validate => 'isValidInteger' }, },
+      filters        => {
+         name        => { pattern => '[\%\*]', replace => q() }, },
+   };
 }
 
 # Private methods
