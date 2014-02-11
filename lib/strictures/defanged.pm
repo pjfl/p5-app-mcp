@@ -1,16 +1,14 @@
-package App::MCP;
+package strictures::defanged;
 
-use 5.010001;
-use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use strict;
+use warnings;
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 13 $ =~ /\d+/gmx );
 
-use Moo;
-use App::MCP::Constants;
-use Class::Usul::Types qw( BaseType );
+require strictures;
 
-has 'usul'  => is => 'ro', isa => BaseType,
-   handles  => [ qw( config debug localize lock log ) ],
-   init_arg => 'builder', required => TRUE, weak_ref => TRUE;
+no warnings 'redefine';
+
+*strictures::import = sub { strict->import; warnings->import };
 
 1;
 
@@ -18,31 +16,44 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =head1 Name
 
-App::MCP - Master Control Program - Dependency and time based job scheduler
-
-=head1 Version
-
-Describes version v0.4.$Rev: 13 $ of L<App::MCP>
+strictures::defanged - Make strictures the same as just use strict warnings
 
 =head1 Synopsis
 
+   require strictures::defanged;
+
+=head1 Version
+
+This documents version v0.1.$Rev: 13 $ of L<strictures::defanged>
+
 =head1 Description
 
-=for html <p><center><img src="http://cpan.org/authors/id/P/PJ/PJFL/images/one_thousand_words.png" width="882" height="462" /></center></p>
+Monkey patch the L<strictures> import method. Make it the same as just
+
+   use strict;
+   use warnings;
 
 =head1 Configuration and Environment
 
+Defines no attributes
+
 =head1 Subroutines/Methods
 
+None
+
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<strictures>
 
 =back
 
@@ -52,8 +63,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
 Patches are welcome
 
 =head1 Acknowledgements
@@ -81,3 +92,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

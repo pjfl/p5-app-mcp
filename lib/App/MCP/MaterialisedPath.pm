@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use parent 'DBIx::Class::Helper::Row::OnColumnChange';
 
+# Construction
 use Class::C3::Componentised::ApplyHooks
    -before_apply => sub {
       $_[ 0 ]->can( 'materialised_path_columns' )
@@ -19,6 +20,7 @@ use Class::C3::Componentised::ApplyHooks
       }
    };
 
+# Public methods
 sub insert {
    my $self = shift; my $ret = $self->next::method;
 
@@ -32,7 +34,6 @@ sub insert {
 }
 
 # Private methods
-
 sub _install_after_column_change {
    my ($self, $path_info) = @_;
 
@@ -48,7 +49,7 @@ sub _install_after_column_change {
    };
 
    for my $column (map $path_info->{ $_ },
-                   qw(parent_column materialised_path_column)) {
+                   qw( parent_column materialised_path_column )) {
       $self->after_column_change( $column => {
          method => $method, txn_wrap => 1, } );
    }
@@ -130,7 +131,6 @@ sub _set_materialised_path {
 }
 
 # Private functions
-
 {  my %concat_operators = ( 'DBIx::Class::Storage::DBI::MSSQL' => '+', );
 
    sub __get_concat {

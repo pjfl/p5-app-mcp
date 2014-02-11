@@ -8,6 +8,7 @@ use App::MCP::Constants;
 use App::MCP::Functions    qw( trigger_input_handler );
 use Class::Usul::Crypt     qw( encrypt decrypt );
 use Class::Usul::Functions qw( bson64id bson64id_time create_token throw );
+use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
                                HTTP_OK HTTP_UNAUTHORIZED );
@@ -92,24 +93,31 @@ sub find_or_create_session {
 sub snapshot_state {
    my ($self, $req) = @_;
 
-   my $snapshot = {};
-   my $level    = $req->args->[ 0 ] // 1;
-   my $schema   = $self->schema;
-   my $job_rs   = $schema->resultset( 'Job' );
-   my $jobs     = $job_rs->search( {}, {
-         'columns' => [ qw( fqjn parent_id type state.updated state.name ) ],
-         'join'    => 'state' } );
+   my $frames = [];
+   my $id     = bson64id;
+   my $schema = $self->schema;
+   my $level  = $req->args->[ 0 ] // 1;
+   my $job_rs = $schema->resultset( 'Job' );
+   my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
+         'columns'  => [ qw( fqjn id parent_id state.name type ) ],
+         'join'     => 'state',
+         'order_by' => [ 'parent_id', 'id' ], } );
 
    try {
       for my $job ($jobs->all) {
-         $snapshot->{ $job->fqjn } = { state   => NUL.$job->state->name,
-                                       type    => NUL.$job->type,
-                                       updated => NUL.$job->state->updated, };
+         push @{ $frames }, { fqjn      => $job->fqjn,
+                              id        => $job->id,
+                              parent_id => $job->parent_id,
+                              state     => NUL.$job->state->name,
+                              type      => NUL.$job->type, };
       }
    }
    catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
 
-   return { code => HTTP_OK, content => $snapshot };
+   my $minted  = time2str undef, bson64id_time( $id );
+   my $content = { id => $id, jobs => $frames, minted => $minted };
+
+   return { code => HTTP_OK, content => $content };
 }
 
 # Private methods

@@ -57,6 +57,8 @@ lib->import( $libdir );
 
 $ENV{PATH} = $bindir.$path_sep.$ENV{PATH};
 
+require strictures::defanged; # Make strictures the same as use strict warnings
+
 not $was_called and @ARGV and exec @ARGV;
 
 1;

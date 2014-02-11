@@ -20,39 +20,39 @@ $class->load_components( '+App::MCP::MaterialisedPath' );
 $class->add_columns
    ( id          => $class->serial_data_type,
      created     => $class->set_on_create_datetime_data_type,
-     command     => $class->varchar_data_type,
-     condition   => $class->varchar_data_type,
-     crontab     => { accessor      => '_crontab',
-                      data_type     => 'varchar',
-                      is_nullable   => FALSE,
-                      size          => 127, },
-     directory   => $class->varchar_data_type,
-     expected_rv => $class->numerical_id_data_type( 0 ),
      fqjn        => { accessor      => '_fqjn',
                       data_type     => 'varchar',
                       is_nullable   => FALSE,
                       size          => $class->varchar_max_size, },
-     group       => $class->foreign_key_data_type( 1 ),
-     host        => $class->varchar_data_type( 64, 'localhost' ),
-     name        => $class->varchar_data_type( 126, undef ),
+     type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
      owner       => $class->foreign_key_data_type( 1 ),
-     parent_id   => $class->nullable_foreign_key_data_type,
-     parent_path => $class->nullable_varchar_data_type,
+     group       => $class->foreign_key_data_type( 1 ),
      permissions => { accessor      => '_permissions',
                       data_type     => 'smallint',
                       default_value => 488,
                       is_nullable   => FALSE, },
-     type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
-     user        => $class->varchar_data_type( 32 ), );
+     expected_rv => $class->numerical_id_data_type( 0 ),
+     parent_id   => $class->nullable_foreign_key_data_type,
+     parent_path => $class->nullable_varchar_data_type,
+     host        => $class->varchar_data_type( 64, 'localhost' ),
+     user        => $class->varchar_data_type( 32 ),
+     name        => $class->varchar_data_type( 126, undef ),
+     command     => $class->varchar_data_type,
+     directory   => $class->varchar_data_type,
+     condition   => $class->varchar_data_type,
+     crontab     => { accessor      => '_crontab',
+                      data_type     => 'varchar',
+                      is_nullable   => FALSE,
+                      size          => 127, }, );
 
 $class->set_primary_key( 'id' );
 
 $class->add_unique_constraint( [ 'fqjn' ] );
 
-$class->belongs_to( parent_category  => "${result}::Job",         'parent_id',
+$class->belongs_to( parent_box       => "${result}::Job",         'parent_id',
                     { join_type      => 'left' } );
 
-$class->has_many  ( child_categories => "${result}::Job",         'parent_id' );
+$class->has_many  ( child_jobs       => "${result}::Job",         'parent_id' );
 
 $class->has_many  ( dependents       => "${result}::JobCondition",   'job_id' );
 
@@ -67,7 +67,11 @@ $class->belongs_to( owner_rel        => "${result}::User",            'owner' );
 $class->belongs_to( group_rel        => "${result}::Role",            'group' );
 
 sub new {
-   my ($class, $attr) = @_; my $parent_name = delete $attr->{parent_name};
+   my ($class, $attr) = @_;
+
+   my $parent_name = delete $attr->{parent_name};
+
+   $attr->{name} ne 'Main' and not $parent_name and $parent_name = 'Main::Main';
 
    my $new = $class->next::method( $attr );
 
@@ -176,8 +180,8 @@ sub materialised_path_columns {
          materialised_path_column     => 'parent_path',
          include_self_in_path         => TRUE,
          include_self_in_reverse_path => TRUE,
-         parent_relationship          => 'parent_category',
-         children_relationship        => 'child_categories',
+         parent_relationship          => 'parent_box',
+         children_relationship        => 'child_jobs',
          full_path                    => 'ancestors',
          reverse_full_path            => 'descendants',
          separator                    => SEPARATOR,
@@ -194,9 +198,18 @@ sub namespace {
    state $cache //= {}; $id and $cache->{ $id } and return $cache->{ $id };
 
    my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
-   my $ns   = $root ? $root->id != $id ? $root->name : 'main' : 'main';
+   my $ns   = $root ? $root->id != $id ? $root->name : 'Main' : 'Main';
 
    return $root ? $cache->{ $id } = $ns : $ns;
+}
+
+sub parent_name {
+   my $self      = shift;
+   my $parent_id = $self->parent_id or return NUL;
+   my $parent    = $self->result_source->resultset->find( $parent_id )
+      or throw error => 'Parent job [_1] unknown', args => [ $parent_id ];
+
+   return $parent->fqjn eq 'Main::Main' ? NUL: $parent->fqjn;
 }
 
 sub permissions {

@@ -32,7 +32,7 @@ sub log_leader ($$;$) {
 }
 
 sub qualify_job_name (;$$) {
-   my ($name, $ns) = @_; my $sep = '::'; $name //= 'void'; $ns //= 'main';
+   my ($name, $ns) = @_; my $sep = '::'; $name //= 'void'; $ns //= 'Main';
 
    return $name =~ m{ $sep }mx ? $name : "${ns}${sep}${name}";
 }

@@ -1,16 +1,22 @@
-package App::MCP;
+package App::MCP::Model::State;
 
-use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 13 $ =~ /\d+/gmx );
 
 use Moo;
-use App::MCP::Constants;
-use Class::Usul::Types qw( BaseType );
+use Class::Usul::Constants;
+use Class::Usul::Functions qw( throw );
+use HTTP::Status           qw( HTTP_OK );
 
-has 'usul'  => is => 'ro', isa => BaseType,
-   handles  => [ qw( config debug localize lock log ) ],
-   init_arg => 'builder', required => TRUE, weak_ref => TRUE;
+extends q(App::MCP::Model);
+with    q(App::MCP::Role::CommonLinks);
+with    q(App::MCP::Role::JavaScript);
+with    q(App::MCP::Role::PageConfiguration);
+with    q(App::MCP::Role::Preferences);
+with    q(App::MCP::Role::FormBuilder);
+
+sub diagram {
+   return $_[ 0 ]->get_stash( $_[ 1 ], { title => 'State Diagram' } );
+}
 
 1;
 
@@ -18,21 +24,26 @@ __END__
 
 =pod
 
+=encoding utf8
+
 =head1 Name
 
-App::MCP - Master Control Program - Dependency and time based job scheduler
-
-=head1 Version
-
-Describes version v0.4.$Rev: 13 $ of L<App::MCP>
+App::MCP::Model::State - One-line description of the modules purpose
 
 =head1 Synopsis
 
+   use App::MCP::Model::State;
+   # Brief but working code examples
+
 =head1 Description
 
-=for html <p><center><img src="http://cpan.org/authors/id/P/PJ/PJFL/images/one_thousand_words.png" width="882" height="462" /></center></p>
-
 =head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -52,8 +63,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
 Patches are welcome
 
 =head1 Acknowledgements
@@ -81,3 +92,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

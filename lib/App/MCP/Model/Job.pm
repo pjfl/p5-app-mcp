@@ -58,7 +58,8 @@ sub grid_table {
    $params->{form } = 'job';
    $params->{label} = 'Job names';
    $params->{total} = $self->schema->resultset( 'Job' )
-                           ->search( { name => { -like => $field_value } } )
+                           ->search( { id   => { '>' => 1 },
+                                       name => { -like => $field_value } } )
                            ->count;
 
    my $grid_table = $self->build_grid_table( $req );
@@ -121,10 +122,6 @@ sub job_save {
    return { redirect => { location => $location, message => $message } };
 }
 
-sub state_diagram {
-   return $_[ 0 ]->get_stash( $_[ 1 ], { title => 'State Diagram' } );
-}
-
 # Private methods
 sub _job_chooser_href {
    my ($self, $req) = @_; return $req->uri_for( 'job_chooser' );
@@ -144,7 +141,8 @@ sub _job_chooser_search {
    my $page_size   = get_or_throw( $params, 'page_size'   );
 
    return [ $self->schema->resultset( 'Job' )->search
-            ( { name     => { -like => $field_value } },
+            ( { id       => { '>' => 1 },
+                name     => { -like => $field_value } },
               { order_by => 'name',
                 page     => $page + 1,
                 rows     => $page_size } )->all ];
@@ -167,6 +165,13 @@ sub _job_deflate_owner {
    my $user = $rs->find_by_name( $_[ 1 ]->{ 'owner_rel' } // 'unknown' );
 
    return $user ? $user->id : undef;
+}
+
+sub _job_deflate_parent_id {
+   my $rs   = $_[ 0 ]->schema->resultset( 'Job' );
+   my $name = $_[ 1 ]->{ 'parent_name' } || 'Main::Main';
+
+   return $rs->find_by_name( $name )->id;
 }
 
 sub _job_deflate_permissions {

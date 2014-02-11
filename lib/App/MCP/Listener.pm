@@ -5,6 +5,7 @@ use namespace::sweep;
 use App::MCP::Constants;
 use App::MCP::Model::API;
 use App::MCP::Model::Job;
+use App::MCP::Model::State;
 use App::MCP::Request;
 use App::MCP::View::HTML;
 use App::MCP::View::JSON;
@@ -27,9 +28,10 @@ has 'port'    => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
 # Private attributes
 has '_models' => is => 'lazy', isa => HashRef[Object], reader => 'models',
    builder    => sub { {
-      'api'   => App::MCP::Model::API->new( builder => $_[ 0 ]->usul,
-                                            port    => $_[ 0 ]->port ),
-      'job'   => App::MCP::Model::Job->new( builder => $_[ 0 ]->usul ),
+      'api'   => App::MCP::Model::API->new  ( builder => $_[ 0 ]->usul,
+                                              port    => $_[ 0 ]->port ),
+      'job'   => App::MCP::Model::Job->new  ( builder => $_[ 0 ]->usul ),
+      'state' => App::MCP::Model::State->new( builder => $_[ 0 ]->usul ),
    } };
 
 has '_usul'   => is => 'lazy', isa => BaseType, reader => 'usul',
@@ -88,37 +90,37 @@ around 'to_psgi_app' => sub {
 # Public methods
 sub dispatch_request {
    sub (POST + /api/event/*) {
-      return shift->_execute( qw( json api  create_event ), @_ );
+      return shift->_execute( qw( json api   create_event ), @_ );
    },
    sub (POST + /api/job/*) {
-      return shift->_execute( qw( json api  create_job ), @_ );
+      return shift->_execute( qw( json api   create_job ), @_ );
    },
    sub (POST + /api/session/*) {
-      return shift->_execute( qw( json api  find_or_create_session ), @_ );
+      return shift->_execute( qw( json api   find_or_create_session ), @_ );
    },
    sub (GET  + /api/state/*) {
-      return shift->_execute( qw( json api  snapshot_state ), @_ );
+      return shift->_execute( qw( json api   snapshot_state ), @_ );
    },
    sub (GET  + /check_field + ?*) {
-      return shift->_execute( qw( xml  job  check_field ), @_ );
+      return shift->_execute( qw( xml  job   check_field ), @_ );
    },
    sub (POST + (/job/* | /job) + ?*) {
-      return shift->_execute( qw( html job  job_action ), @_ );
+      return shift->_execute( qw( html job   job_action ), @_ );
    },
    sub (GET  + (/job/* | /job) + ?*) {
-      return shift->_execute( qw( html job  form ), @_ );
+      return shift->_execute( qw( html job   form ), @_ );
    },
    sub (GET  + /job_chooser + ?*) {
-      return shift->_execute( qw( xml  job  chooser ), @_ );
+      return shift->_execute( qw( xml  job   chooser ), @_ );
    },
    sub (GET  + /job_grid_rows + ?*) {
-      return shift->_execute( qw( xml  job  grid_rows ), @_ );
+      return shift->_execute( qw( xml  job   grid_rows ), @_ );
    },
    sub (GET  + /job_grid_table + ?*) {
-      return shift->_execute( qw( xml  job  grid_table ), @_ );
+      return shift->_execute( qw( xml  job   grid_table ), @_ );
    },
    sub (GET  + /state) {
-      return shift->_execute( qw( html form state_diagram ), @_ );
+      return shift->_execute( qw( html state diagram ), @_ );
    },
    sub () {
       [ HTTP_METHOD_NOT_ALLOWED, __plain_header(), [ 'Method not allowed' ] ];

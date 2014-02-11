@@ -1,36 +1,131 @@
 var StateDiagram = new Class( {
-   Implements: [ Options ],
+   Implements: [ Events, Options ],
 
-   options        : {
-      height      : 600,
-      selector    : '.state-diagram',
-      updatePeriod: 3,
+   Binds: [ '_updater' ],
+
+   options            : {
+      colour_map      : { active:   '#fff', hold:       '#00f',
+                          failed:   '',     finished:   '#99f',
+                          inactive: '',     running:    '#0f0',
+                          starting: '',     terminated: '#f00' },
+      height          : 600,
+      selector        : '.state-diagram',
+      style           : {
+         border_colour: '#000',
+         border_width : 2,
+         border_radius: 3,
+         col_width    : 500,
+         font_size    : 16,
+         font_family  : 'Verdana',
+         leading      : 16,
+         line_height  : 24,
+         margin       : 12,
+         padding      : 12 },
+      updatePeriod: 10000,
+      url         : null,
       width       : 800
    },
 
    initialize: function( options ) {
-      this.aroundSetOptions( options ); this.build(); this.start();
+      this.aroundSetOptions( options ); this.build();
+
+      if (this.paper) this.start();
    },
 
    attach: function( el ) {
       var opt = this.options;
 
-      if (!this.paper) this.paper = Raphael( el.id, opt.width, opt.height );
+      if (!this.paper) this.paper = SVG( el.id ).size( opt.width, opt.height );
 
    },
 
    start: function() {
-      var opt = this.options;
+      if (this.is_running) return;
 
-      if (!this.timer)
-         this.timer = this.updater.periodical( opt.updatePeriod, this );
+      this.unloadHandler = function() { this.stop() }.bind( this );
+      window.addEvent( 'unload', this.unloadHandler );
+      this.is_running = true; this._updater();
    },
 
    stop: function() {
-      if (this.timer) { clearInterval( this.timer ); this.timer = null; }
+      this.is_running = false;
+      window.removeEvent( 'unload', this.unloadHandler );
    },
 
-   updater: function() {
+   _updater: function() {
+      var level     = 1;
+      var url       = this.options.url + 'api/state/' + level;
+      var headers   = { 'Accept': 'application/json' };
+      var onSuccess = this._response.bind( this );
+
+      new Request( {
+         'headers': headers, 'onSuccess': onSuccess, 'url': url } ).get();
+   },
+
+   _render_frame: function( frame, i, x, y ) {
+      var paper      = this.paper;
+      var opts       = this.options;
+      var style      = opts.style;
+      var text_style = { 'family'      : style.font_family,
+                         'leading'     : style.leading,
+                         'size'        : style.font_size };
+      var rect_style = { 'stroke'      : style.border_colour,
+                         'stroke-width': style.border_width };
+
+      for (var max = frame.jobs.length; i < max; i++) {
+         var job         = frame.jobs[ i ];
+         var name        = job.fqjn;
+         var label       = paper.text( name ).font( text_style ).center( x, y );
+         var label_width = label.bbox().width;
+         var left        = x - style.padding - label_width / 2;
+         var box_width   = label_width + 2 * style.padding;
+
+         rect_style.fill = opts.colour_map[ job.state ];
+         paper.rect( box_width, style.line_height )
+              .style( rect_style )
+              .radius( style.border_radius )
+              .move( left, y - style.padding );
+         paper.use( label );
+
+         if (job.type == 'box') {
+            var content = paper.rect( box_width, style.line_height )
+                               .style( rect_style )
+                               .radius( style.border_radius )
+                               .move( left, y + style.padding );
+
+            y += content.bbox().height;
+         }
+
+         y += style.margin + 2 * style.padding + style.line_height;
+      }
+
+      return { x: x, y: y };
+   },
+
+   _response: function( text, xml ) {
+      if (!text) return; Browser.exec( 'var current_frame = ' + text );
+
+      if (this.last_frame_id && this.last_frame_id == current_frame.id) return;
+
+      this.last_frame_id = current_frame.id;
+
+      var paper      = this.paper;
+      var opts       = this.options;
+      var style      = opts.style;
+      var caption    = 'Last updated: ' + current_frame.minted;
+      var text_style = { 'family' : style.font_family,
+                         'leading': style.leading,
+                         'size'   : style.font_size };
+      var x          = style.padding;
+      var y          = style.padding;
+
+      paper.clear(); paper.text( caption ).font( text_style ).move( x, y );
+      x = style.col_width / 2;
+      y = style.margin + 2 * style.padding + style.line_height;
+
+      this._render_frame( current_frame, 0, x, y );
+
+      if (this.is_running) this._updater.delay( this.options.updatePeriod );
    }
 } );
 
@@ -98,7 +193,9 @@ var Behaviour = new Class( {
          context       : this,
          iconClasses   : opt.iconClasses,
          url           : opt.baseURI } );
-      this.diagram     = new StateDiagram( { context: this } );
+      this.diagram     = new StateDiagram( {
+         context       : this,
+         url           : opt.baseURI } );
       this.replacement = new Replacements( { context: this } );
       this.server      = new ServerUtils( {
          context       : this,

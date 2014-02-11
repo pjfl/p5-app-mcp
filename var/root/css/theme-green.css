@@ -95,7 +95,7 @@ ul { list-style-position: outside; list-style-type: disc; }
 
 /* Classes */
 .compact_prompt, .container, .dialog-field, .dialog-group,
-.field_group, .label_text, .prompt, .page, .region, .separator {
+.field_group, .label_text, .prompt, .page, .region, .separator, .state-diagram {
    display: inline-block; float: left; position: relative;
 }
 .compact_prompt, .label_text, .prompt, .separator {
@@ -157,6 +157,7 @@ ul { list-style-position: outside; list-style-type: disc; }
 .region1 { clear: left; }
 .region2 { float: right; padding: 0 12px; }
 .required { border-right: 3px solid; }
+.state-diagram { padding: 24px; }
 .status_message { display: inline-block; position: relative; width: 100%; }
 .status_message > h5 { text-align: center; }
 .tips-container {
@@ -196,6 +197,7 @@ th.grid_header  {
 .field_error { background-color: #fcc; border-color: #336; }
 .grid_subheader { background-color: #9c9; color: #000; }
 .required {    border-right-color: #f00; }
+.state-diagram { background-color: #e9f7dc; }
 .tips-mark0 { border-color: transparent transparent #336 #336; }
 .tips-mark1 { border-color: transparent transparent #9c9 #9c9; }
 .tips-defn { color: #000; }
