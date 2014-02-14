@@ -45,12 +45,14 @@ sub serialize {
    $self->_template->process( $template, $stash, \$html ) or
       throw error => $self->_template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
 
-   return [ $stash->{code}, __header(), [ encode( 'UTF-8', $html ) ] ];
+   my $content  = encode( 'UTF-8', $html );
+
+   return [ $stash->{code}, __header( $stash->{http_headers} ), [ $content ] ];
 }
 
 # Private functions
 sub __header {
-   return [ 'Content-Type', 'text/html' ];
+   return [ 'Content-Type' => 'text/html', @{ $_[ 0 ] || [] } ];
 }
 
 1;

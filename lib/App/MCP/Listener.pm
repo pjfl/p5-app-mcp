@@ -89,14 +89,14 @@ around 'to_psgi_app' => sub {
 
 # Public methods
 sub dispatch_request {
+   sub (POST + /api/authenticate/*) {
+      return shift->_execute( qw( json api   authenticate ), @_ );
+   },
    sub (POST + /api/event/*) {
       return shift->_execute( qw( json api   create_event ), @_ );
    },
    sub (POST + /api/job/*) {
       return shift->_execute( qw( json api   create_job ), @_ );
-   },
-   sub (POST + /api/session/*) {
-      return shift->_execute( qw( json api   find_or_create_session ), @_ );
    },
    sub (GET  + /api/state/*) {
       return shift->_execute( qw( json api   snapshot_state ), @_ );
@@ -172,9 +172,11 @@ sub _redirect {
 }
 
 sub _render_exception {
-   my ($self, $view, $model, $req, $e) = @_; $self->log->error( "${e}" );
+   my ($self, $view, $model, $req, $e) = @_;
 
-   $e->can( 'rv' ) or $e = exception error => "${e}", rv => HTTP_BAD_REQUEST;
+   my $msg = "${e}"; chomp $msg; $self->log->error( $msg );
+
+   $e->can( 'rv' ) or $e = exception error => $msg, rv => HTTP_BAD_REQUEST;
 
    my $res;
 

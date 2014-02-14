@@ -35,8 +35,8 @@ $class->add_columns
      parent_id   => $class->nullable_foreign_key_data_type,
      parent_path => $class->nullable_varchar_data_type,
      host        => $class->varchar_data_type( 64, 'localhost' ),
-     user        => $class->varchar_data_type( 32 ),
-     name        => $class->varchar_data_type( 126, undef ),
+     user        => $class->varchar_data_type( 32, 'mcp' ),
+     name        => $class->varchar_data_type( 126 ),
      command     => $class->varchar_data_type,
      directory   => $class->varchar_data_type,
      condition   => $class->varchar_data_type,
@@ -67,9 +67,7 @@ $class->belongs_to( owner_rel        => "${result}::User",            'owner' );
 $class->belongs_to( group_rel        => "${result}::Role",            'group' );
 
 sub new {
-   my ($class, $attr) = @_;
-
-   my $parent_name = delete $attr->{parent_name};
+   my ($class, $attr) = @_; my $parent_name = delete $attr->{parent_name};
 
    $attr->{name} ne 'Main' and not $parent_name and $parent_name = 'Main::Main';
 
@@ -149,11 +147,7 @@ sub fqjn { # Fully qualified job name
 }
 
 sub insert {
-   my $self = shift; my $columns = { $self->get_inflated_columns };
-
-   $self->set_inflated_columns( $columns ); $self->_validate;
-
-   my $job = $self->next::method;
+   my $self = shift; $self->_validate; my $job = $self->next::method;
 
    $self->condition and $self->_insert_condition( $job );
    $self->_create_job_state( $job );
@@ -265,13 +259,14 @@ sub validation_attributes {
       constraints    => {
          name        => { max_length => 126, min_length => 1, } },
       fields         => {
-         host        => { validate => 'isMandatory isValidHostname' },
+         host        => { validate => 'isValidHostname' },
          name        => {
             filters  => 'filterReplaceRegex',
             validate => 'isMandatory isValidIdentifier isValidLength' },
-         permissions => { validate => 'isValidInteger' }, },
+         permissions => { validate => 'isValidInteger' },
+         user        => { validate => 'isValidIdentifier' }, },
       filters        => {
-         name        => { pattern => '[\%\*]', replace => q() }, },
+         name        => { pattern => '[\%\*]', replace => NUL }, },
    };
 }
 

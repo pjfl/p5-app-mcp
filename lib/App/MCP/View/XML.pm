@@ -24,14 +24,14 @@ sub serialize {
    $content->{ $_ } = $meta->{ $_ } for (keys %{ $meta });
 
    $js and $content->{script} //= [] and push @{ $content->{script} }, $js;
-   $content = $self->_transcoder->xml_out( $content );
+   $content = encode( 'UTF-8', $self->_transcoder->xml_out( $content ) );
 
-   return [ $stash->{code}, __header(), [ encode( 'UTF-8', $content ) ] ];
+   return [ $stash->{code}, __header( $stash->{http_headers} ), [ $content ] ];
 }
 
 # Private functions
 sub __header {
-   return [ 'Content-Type' => 'text/xml' ];
+   return [ 'Content-Type' => 'text/xml', @{ $_[ 0 ] || [] } ];
 }
 
 1;

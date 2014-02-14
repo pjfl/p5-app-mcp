@@ -15,12 +15,12 @@ sub serialize {
 
    my $content = $self->_transcoder->encode( $stash->{content} );
 
-   return [ $stash->{code}, __header(), [ $content ] ];
+   return [ $stash->{code}, __header( $stash->{http_headers} ), [ $content ] ];
 }
 
 # Private functions
 sub __header {
-   return [ 'Content-Type' => 'application/json' ];
+   return [ 'Content-Type' => 'application/json', @{ $_[ 0 ] || [] } ];
 }
 
 1;

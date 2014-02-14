@@ -44,7 +44,8 @@ var StateDiagram = new Class( {
 
       this.unloadHandler = function() { this.stop() }.bind( this );
       window.addEvent( 'unload', this.unloadHandler );
-      this.is_running = true; this._updater();
+      this.is_running = true;
+      this._updater();
    },
 
    stop: function() {
@@ -62,8 +63,7 @@ var StateDiagram = new Class( {
          'headers': headers, 'onSuccess': onSuccess, 'url': url } ).get();
    },
 
-   _render_frame: function( frame, i, x, y ) {
-      var paper      = this.paper;
+   _render_frame: function( frame, i, paper, x, y ) {
       var opts       = this.options;
       var style      = opts.style;
       var text_style = { 'family'      : style.font_family,
@@ -99,7 +99,7 @@ var StateDiagram = new Class( {
          y += style.margin + 2 * style.padding + style.line_height;
       }
 
-      return { x: x, y: y };
+      return { i: i, x: x, y: y };
    },
 
    _response: function( text, xml ) {
@@ -123,7 +123,7 @@ var StateDiagram = new Class( {
       x = style.col_width / 2;
       y = style.margin + 2 * style.padding + style.line_height;
 
-      this._render_frame( current_frame, 0, x, y );
+      this._render_frame( current_frame, 0, this.paper, x, y );
 
       if (this.is_running) this._updater.delay( this.options.updatePeriod );
    }

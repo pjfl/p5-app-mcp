@@ -5,20 +5,19 @@ use namespace::sweep;
 
 use Moo;
 use App::MCP::Constants;
+use Authen::HTTP::Signature::Parser;
 use CGI::Simple::Cookie;
-use Class::Usul::Functions qw( class2appdir ensure_class_loaded first_char
-                               is_arrayref is_hashref is_member throw trim );
+use Class::Usul::Functions qw( class2appdir first_char is_arrayref is_hashref
+                               is_member throw trim );
 use Class::Usul::Types     qw( ArrayRef HashRef NonEmptySimpleStr
                                Object SimpleStr Str );
-use File::DataClass::Types qw( LoadableClass );
+use Convert::SSH2;
 use HTTP::Body;
-use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_FAILED_DEPENDENCY
-                               HTTP_INTERNAL_SERVER_ERROR HTTP_UNAUTHORIZED );
+use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_UNAUTHORIZED );
 use JSON                   qw( );
 use TryCatch;
-use Unexpected::Functions  qw( ChecksumFailure MissingChecksum MissingDependency
-                               MissingKey SigParserFailure SigVerifyFailure
-                               Unspecified );
+use Unexpected::Functions  qw( ChecksumFailure MissingChecksum MissingKey
+                               SigParserFailure SigVerifyFailure Unspecified );
 use URI::http;
 use URI::https;
 
@@ -56,8 +55,7 @@ has 'ui_state'    => is => 'lazy', isa => HashRef, builder => sub {
    my $self = shift; my $attr = {}; my $cookie = $self->config->prefix.'_state';
 
    for (split m{ \+ }mx, $self->cookie->{ $cookie }->value) {
-      my ($key, $value) = split m{ ~ }mx, $_;
-      $key and $attr->{ $key } = $value;
+      my ($key, $value) = split m{ ~ }mx, $_; $key and $attr->{ $key } = $value;
    }
 
    return $attr;
@@ -66,16 +64,13 @@ has 'ui_state'    => is => 'lazy', isa => HashRef, builder => sub {
 has 'uri'         => is => 'ro',   isa => Object, required => TRUE;
 
 # Private attributes
-has '_content'      => is => 'lazy', isa => Str, init_arg => undef;
+has '_content'    => is => 'lazy', isa => Str, init_arg => undef;
 
-has '_env'          => is => 'ro',   isa => HashRef, default => sub { {} },
-   init_arg         => 'env';
+has '_env'        => is => 'ro',   isa => HashRef, default => sub { {} },
+   init_arg       => 'env';
 
-has '_parser_class' => is => 'lazy', isa => LoadableClass,
-   default          => 'Authen::HTTP::Signature::Parser';
-
-has '_transcoder'   => is => 'lazy', isa => Object,
-   builder          => sub { JSON->new }, init_arg => undef;
+has '_transcoder' => is => 'lazy', isa => Object,
+   builder        => sub { JSON->new }, init_arg => undef;
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -151,7 +146,7 @@ sub _build_locale {
 sub authenticate {
    my $self = shift; my $sig;
 
-   try        { $sig = $self->_parser_class->new( $self )->parse() }
+   try        { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
    catch ($e) { throw class => SigParserFailure, error => $e,
                       rv    => HTTP_EXPECTATION_FAILED }
 
@@ -211,25 +206,6 @@ sub uri_for {
 }
 
 # Private methods
-sub _read_public_key {
-   my ($self, $key_id) = @_; state $cache //= {};
-
-   my $key      = $cache->{ $key_id }; $key and return $key;
-   my $ssh_dir  = $self->config->my_home->catdir( '.ssh' );
-   my $prefix   = class2appdir $self->config->appclass;
-   my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
-
-   try        { ensure_class_loaded( 'Convert::SSH2' ) }
-   catch ($e) { throw class => MissingDependency, error => $e,
-                      rv    => HTTP_FAILED_DEPENDENCY }
-
-   try        { $key = Convert::SSH2->new( $key_file->all )->format_output }
-   catch ($e) { throw class => MissingKey, error => $e,
-                      rv    => HTTP_UNAUTHORIZED }
-
-   return $cache->{ $key_id } = $key;
-}
-
 sub _acceptable_locales {
    my $self = shift; my $lang = $self->_env->{ 'HTTP_ACCEPT_LANGUAGE' } || NUL;
 
@@ -238,6 +214,21 @@ sub _acceptable_locales {
             map    { [ split m{ - }mx, $_ ] }
             map    { ( split m{ ; }mx, $_ )[ 0 ] }
             split m{ , }mx, lc $lang ];
+}
+
+sub _read_public_key {
+   my ($self, $key_id) = @_; state $cache //= {};
+
+   my $key      = $cache->{ $key_id }; $key and return $key;
+   my $ssh_dir  = $self->config->my_home->catdir( '.ssh' );
+   my $prefix   = class2appdir $self->config->appclass;
+   my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
+
+   try        { $key = Convert::SSH2->new( $key_file->all )->format_output }
+   catch ($e) { throw class => MissingKey, error => $e,
+                      rv    => HTTP_UNAUTHORIZED }
+
+   return $cache->{ $key_id } = $key;
 }
 
 1;
