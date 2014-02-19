@@ -16,7 +16,7 @@ use HTTP::Body;
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_UNAUTHORIZED );
 use JSON                   qw( );
 use TryCatch;
-use Unexpected::Functions  qw( ChecksumFailure MissingChecksum MissingKey
+use Unexpected::Functions  qw( ChecksumFailure MissingHeader MissingKey
                                SigParserFailure SigVerifyFailure Unspecified );
 use URI::http;
 use URI::https;
@@ -40,6 +40,9 @@ has 'l10n_domain' => is => 'ro',   isa => NonEmptySimpleStr,
 
 has 'locale'      => is => 'lazy', isa => NonEmptySimpleStr, init_arg => undef;
 
+has 'method'      => is => 'lazy', isa => NonEmptySimpleStr,
+   builder        => sub { lc $_[ 0 ]->_env->{ 'REQUEST_METHOD' } };
+
 has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };
 
 has 'path'        => is => 'ro',   isa => SimpleStr, default => NUL;
@@ -47,19 +50,12 @@ has 'path'        => is => 'ro',   isa => SimpleStr, default => NUL;
 has 'protocol'    => is => 'lazy', isa => SimpleStr,
    builder        => sub { $_[ 0 ]->_env->{ 'SERVER_PROTOCOL' } };
 
-has 'session'     => is => 'ro',   isa => HashRef, default => sub { {} };
+has 'session'     => is => 'lazy', isa => HashRef,
+   builder        => sub { $_[ 0 ]->_env->{ 'psgix.session' } // {} };
 
 has 'scheme'      => is => 'ro',   isa => NonEmptySimpleStr;
 
-has 'ui_state'    => is => 'lazy', isa => HashRef, builder => sub {
-   my $self = shift; my $attr = {}; my $cookie = $self->config->prefix.'_state';
-
-   for (split m{ \+ }mx, $self->cookie->{ $cookie }->value) {
-      my ($key, $value) = split m{ ~ }mx, $_; $key and $attr->{ $key } = $value;
-   }
-
-   return $attr;
-};
+has 'ui_state'    => is => 'lazy', isa => HashRef;
 
 has 'uri'         => is => 'ro',   isa => Object, required => TRUE;
 
@@ -85,7 +81,6 @@ around 'BUILDARGS' => sub {
    my $env       = $attr->{env};
    my $scheme    = $attr->{scheme} = $env->{ 'psgi.url_scheme' } || 'http';
    my $host      = $env->{ 'HTTP_HOST'   } || $env->{ 'SERVER_NAME' };
-   my $port      = $env->{ 'SERVER_PORT' } || (split m{ : }mx, $host)[1] || 80;
    my $script    = $env->{ 'SCRIPT_NAME' } || '/'; $script =~ s{ / \z }{}gmx;
    my $path_info = $env->{ 'PATH_INFO'   };
       $path_info =~ s{ \A / }{}mx; $path_info =~ s{ \? .* \z }{}mx;
@@ -98,7 +93,6 @@ around 'BUILDARGS' => sub {
    $attr->{uri    } = bless \$req_uri,  $uri_class;
    $attr->{base   } = bless \$base_uri, $uri_class;
    $attr->{domain } = (split m{ : }mx, $host)[ 0 ];
-   $attr->{session} = $env->{ 'psgix.session' } // {};
    return $attr;
 };
 
@@ -142,33 +136,47 @@ sub _build_locale {
    return $self->config->locale;
 }
 
+sub _build_ui_state {
+   my $self = shift; my $attr = {}; my $name = $self->config->prefix.'_state';
+
+   my $cookie = $self->cookie->{ $name } or return $attr;
+
+   for (split m{ \+ }mx, $cookie->value) {
+      my ($k, $v) = split m{ ~ }mx, $_; $k and $attr->{ $k } = $v;
+   }
+
+   return $attr;
+}
+
 # Public methods
 sub authenticate {
    my $self = shift; my $sig;
 
    try        { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
-   catch ($e) { throw class => SigParserFailure, error => $e,
-                      rv    => HTTP_EXPECTATION_FAILED }
+   catch ($e) { throw class => SigParserFailure,
+                      error => $e, rv => HTTP_EXPECTATION_FAILED }
 
-   $sig->key_id or throw class => Unspecified, args => [ 'key id' ],
-                         rv    => HTTP_EXPECTATION_FAILED;
+   $sig->key_id or throw class => Unspecified,
+                         args  => [ 'key id' ], rv => HTTP_EXPECTATION_FAILED;
 
-   is_member 'content-sha512', $sig->headers
-      or throw class => MissingChecksum, args => [ $sig->key_id ],
-               rv    => HTTP_EXPECTATION_FAILED;
+   if (is_member 'content-sha512', $sig->headers) {
+      my $digest = Digest->new( 'SHA-512' ); $digest->add( $self->_content );
 
-   my $digest = Digest->new( 'SHA-512' ); $digest->add( $self->_content );
-
-   $self->header( 'content-sha512' ) eq $digest->hexdigest
-      or throw class => ChecksumFailure, args => [ $sig->key_id ],
-               rv    => HTTP_UNAUTHORIZED;
+      $self->header( 'content-sha512' ) eq $digest->hexdigest
+         or throw class => ChecksumFailure,
+                  args  => [ $sig->key_id ], rv => HTTP_UNAUTHORIZED;
+   }
+   elsif ($sig->headers->[ 0 ] ne 'request-line') {
+      throw class => MissingHeader,
+            args  => [ $sig->key_id ], rv => HTTP_EXPECTATION_FAILED;
+   }
 
    $sig->key( $self->_read_public_key( $sig->key_id ) );
 
-   $sig->verify or throw class => SigVerifyFailure, args => [ $sig->key_id ],
-                         rv    => HTTP_UNAUTHORIZED;
+   $sig->verify or throw class => SigVerifyFailure,
+                         args  => [ $sig->key_id ], rv => HTTP_UNAUTHORIZED;
 
-   return $self; # Authentication was successful
+   return; # Authentication was successful
 }
 
 sub header {

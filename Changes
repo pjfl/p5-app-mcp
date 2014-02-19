@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Going to use Crypt::SRP instead of DH key exchange
           - Using DH key exchange in API authentication
           - Using svg.js in state diagram
           - Wrote strictures::defanged

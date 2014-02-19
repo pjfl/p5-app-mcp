@@ -39,7 +39,7 @@ $job and $job->in_storage and $job->delete; $job = undef;
 
 eval { $job = $rs->create( { name => '~' } ) }; $e = $@; $@ = undef;
 
-like $e && $e->args->[ 0 ], qr{ \Qnot simple text\E }msx,
+like $e && $e->args->[ 0 ], qr{ \Qnot a valid identifier\E }msx,
    'Job name must be simple text';
 
 $job and $job->delete; $job = undef;
@@ -56,7 +56,7 @@ $job = $rs->create( { command => 'sleep 1', name => 'test',
 
 ok $job->id > 0, 'Creates a job';
 
-is $job->fqjn, 'main::test', 'Sets fully qualified job name';
+is $job->fqjn, 'Main::test', 'Sets fully qualified job name';
 
 my $job1 = $rs->search( { fqjn => 'main::test1' } )->first;
 
@@ -66,7 +66,7 @@ $job1 = $rs->create( { condition => 'finished( test )',
                        command   => 'sleep 1', name => 'test1',
                        type      => 'job',     user => 'mcp' } );
 
-is $job1->fqjn, 'main::test1', 'Creates job with condition';
+is $job1->fqjn, 'Main::test1', 'Creates job with condition';
 
 my $job2 = $rs->search( { fqjn => 'main::test2' } )->first;
 
@@ -78,7 +78,7 @@ $job2 = $rs->create( { crontab => ($min + 1).' '.$hour.' * * *',
                        command => 'sleep 1', name => 'test2',
                        type    => 'job',     user => 'mcp' } );
 
-is $job2->fqjn, 'main::test2', 'Creates job with crontab';
+is $job2->fqjn, 'Main::test2', 'Creates job with crontab';
 
 done_testing;
 

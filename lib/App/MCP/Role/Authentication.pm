@@ -23,10 +23,7 @@ my $Sessions = {}; my $Users = [];
 sub authenticate {
    my ($self, $req) = @_; $req->authenticate;
 
-   exists $req->body->param->{public_key}
-      and return $self->_exchange_key( $req );
-
-   my $user      = $self->_find_user_by_name( $req );
+   my $user      = $self->_find_user_from( $req );
    my $sess      = $self->_find_or_create_session( $user );
    my $user_name = $user->username;
    my $token     = $req->body->param->{authenticate}
@@ -60,6 +57,25 @@ sub authenticate_params {
    return $params;
 }
 
+sub exchange_key {
+   my ($self, $req) = @_; $req->authenticate;
+
+   my $client_pub_key = $req->params->{public_key};
+   my $user           = $self->_find_user_from( $req );
+   my $sess           = $self->_find_or_create_session( $user );
+   my $dh             = Crypt::DH->new( g => dh_base, p => dh_mod );
+
+   $dh->generate_keys;
+
+   my $salt           = __get_salt( $user->password );
+   my $server_pub_key = encrypt $user->password, NUL.$dh->pub_key;
+   my $content        = { public_key => $server_pub_key, salt => $salt, };
+
+   $sess->{shared_secret} = $dh->compute_secret( $client_pub_key );
+
+   return { code => HTTP_OK, content => $content, };
+}
+
 sub get_session {
    my ($self, $id) = @_;
 
@@ -81,25 +97,6 @@ sub get_session {
 }
 
 # Private methods
-sub _exchange_key {
-   my ($self, $req) = @_;
-
-   my $client_pub_key = $req->body->param->{public_key};
-   my $user           = $self->_find_user_by_name( $req );
-   my $sess           = $self->_find_or_create_session( $user );
-   my $dh             = Crypt::DH->new( g => dh_base, p => dh_mod );
-
-   $dh->generate_keys;
-
-   my $server_pub_key = encrypt $user->password, NUL.$dh->pub_key;
-   my $salt           = __get_salt( $user->password );
-   my $content        = { public_key => $server_pub_key, salt => $salt, };
-
-   $sess->{shared_secret} = $dh->compute_secret( $client_pub_key );
-
-   return { code => HTTP_OK, content => $content, };
-}
-
 sub _find_or_create_session {
    my ($self, $user) = @_; my $sess;
 
@@ -122,7 +119,7 @@ sub _find_or_create_session {
    return $sess;
 }
 
-sub _find_user_by_name {
+sub _find_user_from {
    my ($self, $req) = @_;
 
    my $user_name = $req->args->[ 0 ] // 'undef';

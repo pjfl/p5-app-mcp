@@ -1,5 +1,6 @@
 package App::MCP::Listener;
 
+use strictures::defanged; # Make strictures the same as use strict warnings
 use namespace::sweep;
 
 use App::MCP::Constants;
@@ -11,11 +12,11 @@ use App::MCP::View::HTML;
 use App::MCP::View::JSON;
 use App::MCP::View::XML;
 use Class::Usul;
-use Class::Usul::Functions  qw( exception find_apphome get_cfgfiles throw );
-use Class::Usul::Types      qw( BaseType HashRef NonZeroPositiveInt Object );
-use HTTP::Status            qw( HTTP_BAD_REQUEST HTTP_FOUND
-                                HTTP_INTERNAL_SERVER_ERROR
-                                HTTP_METHOD_NOT_ALLOWED );
+use Class::Usul::Functions qw( exception find_apphome get_cfgfiles throw );
+use Class::Usul::Types     qw( BaseType HashRef NonZeroPositiveInt Object );
+use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_FOUND
+                               HTTP_INTERNAL_SERVER_ERROR
+                               HTTP_METHOD_NOT_ALLOWED );
 use Plack::Builder;
 use TryCatch;
 use Web::Simple;
@@ -89,45 +90,64 @@ around 'to_psgi_app' => sub {
 
 # Public methods
 sub dispatch_request {
+   my $self = shift; my @actions;
+
+   for my $controller (map { "_controller_${_}" } qw( api form default )) {
+      push @actions, $self->$controller();
+   }
+
+   return @actions;
+}
+
+# Private methods
+sub _controller_api {
+   sub (GET  + /api/authenticate/* + ?*) {
+      return shift->_execute( qw( json api exchange_key ), @_ );
+   },
    sub (POST + /api/authenticate/*) {
-      return shift->_execute( qw( json api   authenticate ), @_ );
+      return shift->_execute( qw( json api authenticate ), @_ );
    },
-   sub (POST + /api/event/*) {
-      return shift->_execute( qw( json api   create_event ), @_ );
+   sub (POST + /api/event + ?*) {
+      return shift->_execute( qw( json api create_event ), @_ );
    },
-   sub (POST + /api/job/*) {
-      return shift->_execute( qw( json api   create_job ), @_ );
+   sub (POST + /api/job + ?*) {
+      return shift->_execute( qw( json api create_job ), @_ );
    },
    sub (GET  + /api/state/*) {
-      return shift->_execute( qw( json api   snapshot_state ), @_ );
-   },
-   sub (GET  + /check_field + ?*) {
-      return shift->_execute( qw( xml  job   check_field ), @_ );
+      return shift->_execute( qw( json api snapshot_state ), @_ );
+   };
+}
+
+sub _controller_form {
+   sub (GET  + (/job/* | /job) + ?*) {
+      return shift->_execute( qw( html job form ), @_ );
    },
    sub (POST + (/job/* | /job) + ?*) {
-      return shift->_execute( qw( html job   job_action ), @_ );
-   },
-   sub (GET  + (/job/* | /job) + ?*) {
-      return shift->_execute( qw( html job   form ), @_ );
+      return shift->_execute( qw( html job job_action ), @_ );
    },
    sub (GET  + /job_chooser + ?*) {
-      return shift->_execute( qw( xml  job   chooser ), @_ );
+      return shift->_execute( qw( xml  job chooser ), @_ );
    },
    sub (GET  + /job_grid_rows + ?*) {
-      return shift->_execute( qw( xml  job   grid_rows ), @_ );
+      return shift->_execute( qw( xml  job grid_rows ), @_ );
    },
    sub (GET  + /job_grid_table + ?*) {
-      return shift->_execute( qw( xml  job   grid_table ), @_ );
+      return shift->_execute( qw( xml  job grid_table ), @_ );
    },
    sub (GET  + /state) {
       return shift->_execute( qw( html state diagram ), @_ );
+   };
+}
+
+sub _controller_default {
+   sub (GET  + /check_field + ?*) {
+      return shift->_execute( qw( xml job check_field ), @_ );
    },
    sub () {
       [ HTTP_METHOD_NOT_ALLOWED, __plain_header(), [ 'Method not allowed' ] ];
    };
 }
 
-# Private methods
 sub _execute {
    my ($self, $view, $model, $method, @args) = @_;
 
@@ -172,13 +192,11 @@ sub _redirect {
 }
 
 sub _render_exception {
-   my ($self, $view, $model, $req, $e) = @_;
+   my ($self, $view, $model, $req, $e) = @_; my $res;
 
    my $msg = "${e}"; chomp $msg; $self->log->error( $msg );
 
    $e->can( 'rv' ) or $e = exception error => $msg, rv => HTTP_BAD_REQUEST;
-
-   my $res;
 
    try {
       my $stash = $self->models->{ $model }->exception_handler( $req, $e );

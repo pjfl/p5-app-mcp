@@ -141,7 +141,7 @@ sub _default_role_id {
 sub _encrypt_password {
    my ($self, $password, $salt) = @_;
 
-   $salt ||= __get_salt( $self->result_source->resultset->load_factor );
+   $salt //= __get_salt( $self->result_source->resultset->load_factor );
 
    return bcrypt( $password, $salt );
 }

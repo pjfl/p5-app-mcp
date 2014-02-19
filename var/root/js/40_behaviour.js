@@ -21,9 +21,9 @@ var StateDiagram = new Class( {
          line_height  : 24,
          margin       : 12,
          padding      : 12 },
-      updatePeriod: 10000,
-      url         : null,
-      width       : 800
+      update_period   : 10000,
+      url             : null,
+      width           : 800
    },
 
    initialize: function( options ) {
@@ -42,25 +42,25 @@ var StateDiagram = new Class( {
    start: function() {
       if (this.is_running) return;
 
-      this.unloadHandler = function() { this.stop() }.bind( this );
-      window.addEvent( 'unload', this.unloadHandler );
+      this.unload_handler = function() { this.stop() }.bind( this );
+      window.addEvent( 'unload', this.unload_handler );
       this.is_running = true;
       this._updater();
    },
 
    stop: function() {
       this.is_running = false;
-      window.removeEvent( 'unload', this.unloadHandler );
+      window.removeEvent( 'unload', this.unload_handler );
    },
 
    _updater: function() {
-      var level     = 1;
-      var url       = this.options.url + 'api/state/' + level;
-      var headers   = { 'Accept': 'application/json' };
-      var onSuccess = this._response.bind( this );
+      var level      = 1;
+      var url        = this.options.url + 'api/state/' + level;
+      var headers    = { 'Accept': 'application/json' };
+      var on_success = this._response.bind( this );
 
       new Request( {
-         'headers': headers, 'onSuccess': onSuccess, 'url': url } ).get();
+         'headers': headers, 'onSuccess': on_success, 'url': url } ).get();
    },
 
    _render_frame: function( frame, i, paper, x, y ) {
@@ -125,7 +125,7 @@ var StateDiagram = new Class( {
 
       this._render_frame( current_frame, 0, this.paper, x, y );
 
-      if (this.is_running) this._updater.delay( this.options.updatePeriod );
+      if (this.is_running) this._updater.delay( this.options.update_period );
    }
 } );
 

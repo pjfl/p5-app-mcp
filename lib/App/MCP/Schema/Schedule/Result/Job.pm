@@ -69,7 +69,8 @@ $class->belongs_to( group_rel        => "${result}::Role",            'group' );
 sub new {
    my ($class, $attr) = @_; my $parent_name = delete $attr->{parent_name};
 
-   $attr->{name} ne 'Main' and not $parent_name and $parent_name = 'Main::Main';
+   exists $attr->{name} and $attr->{name} ne 'Main'
+      and not $parent_name and $parent_name = 'Main::Main';
 
    my $new = $class->next::method( $attr );
 
@@ -321,7 +322,7 @@ sub _set_parent_id {
    my $parent = $job_rs->search( { fqjn => $parent_name } )->single
       or throw error => 'Job [_1] unknown', args => [ $parent_name ];
 
-   $parent->is_writable_by( $columns->{owner} )
+   $parent->is_writable_by( $columns->{owner} // 1 )
       or throw error => 'Job [_1] write permission denied to [_1]',
                args  => [ $parent_name, $columns->{owner} ];
    $columns->{parent_id} = $parent->id;

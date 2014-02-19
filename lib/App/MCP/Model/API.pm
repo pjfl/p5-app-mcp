@@ -26,7 +26,7 @@ sub create_event {
    my ($self, $req) = @_; my $event; $req->authenticate;
 
    my $schema = $self->schema;
-   my $run_id = $req->args->[ 0 ] // 'undef';
+   my $run_id = $req->params->{runid} // 'undef';
    my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
                         ->search( { runid   => $run_id },
                                   { columns => [ 'token' ] } );
@@ -48,7 +48,7 @@ sub create_event {
 sub create_job {
    my ($self, $req) = @_; my $job; $req->authenticate;
 
-   my $sess   = $self->get_session( $req->args->[ 0 ] // 'undef' );
+   my $sess   = $self->get_session( $req->params->{sessionid} // 'undef' );
    my $params = $self->authenticate_params
       ( $sess->{key}, $sess->{token}, $req->body->param->{job} );
 

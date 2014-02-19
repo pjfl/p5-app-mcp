@@ -162,13 +162,8 @@ sub _forms {
    return $cache->{ $locale } = $forms;
 }
 
-sub _new_field {
-   my ($self, $req, $forms, $form_name, $field_name, $rec) = @_;
-
-   my $fqfn  = first_char $field_name eq '+'
-             ? substr $field_name, 1 : "${form_name}.${field_name}";
-   my $col   = $field_name; $col =~ s{ \A \+ }{}mx;
-   my $field = { %{ $forms->{fields}->{ $fqfn } // {} } };
+sub _instantiate_field {
+   my ($self, $field, $req, $col, $rec) = @_;
 
    exists $field->{name} or $field->{name} = $col;
    exists $field->{form} or exists $field->{group} or exists $field->{widget}
@@ -179,32 +174,38 @@ sub _new_field {
 
    defined $value and $self->_deref_value( $req, $field, $key, $value );
 
-   return { content => $field };
+   return;
 }
 
 sub _new_form {
-   my ($self, $req, $form_name, $rec) = @_;
+   my ($self, $req, $form_name, $rec) = @_; my $cache = {}; my $count = 0;
 
-   my $count = 0;
-   my $forms = $self->_forms( $req );
-   my $form  = __new_form( $req, $form_name );
+   my $forms = $self->_forms( $req ); my $new = __new_form( $req, $form_name );
 
    exists $forms->{regions}->{ $form_name }
       or throw error => 'Form name [_1] unknown', args => [ $form_name ];
 
-   $form->{first_field} = $forms->{first_fields}->{ $form_name } || NUL;
+   $new->{first_field} = $forms->{first_fields}->{ $form_name } || NUL;
 
    for my $fields (@{ $forms->{regions}->{ $form_name }}) {
-      my $region = $form->{data}->[ $count++ ] = { fields => [] };
+      my $region = $new->{data}->[ $count++ ] = { fields => [] };
       my @keys   = $fields->[ 0 ] ? @{ $fields } : sort keys %{ $rec };
 
       for my $name (@keys) {
-         push @{ $region->{fields} },
-            $self->_new_field( $req, $forms, $form_name, $name, $rec );
+         my $field = __new_field( $forms, $form_name, $name );
+         my $col   = $name; $col =~ s{ \A \+ }{}mx;
+
+         $self->_instantiate_field( $field, $req, $col, $rec );
+
+         my $hook  = "_${form_name}_field_hook_".$field->{name};
+
+         $self->can( $hook ) and $field = $self->$hook( $cache, $field );
+         $field and $cache->{ $field->{name} } = $field
+                and push @{ $region->{fields} }, { content => $field };
       }
    }
 
-   return $form;
+   return $new;
 }
 
 sub _new_grid_row {
@@ -288,6 +289,15 @@ sub __loc { # Localize the key and substitute the placeholder args
    return $req->localize( $key, $args );
 }
 
+sub __new_field {
+   my ($forms, $form_name, $field_name) = @_;
+
+   my $fqfn = first_char $field_name eq '+'
+            ? substr $field_name, 1 : "${form_name}.${field_name}";
+
+   return { %{ $forms->{fields}->{ $fqfn } // {} } };
+}
+
 sub __new_form {
    my ($req, $form_name) = @_; weaken( $req );
 
@@ -337,7 +347,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 12 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 15 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

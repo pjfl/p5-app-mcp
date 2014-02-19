@@ -26,8 +26,8 @@ has_exception 'ChecksumFailure'   => parents => [ 'Authentication' ],
 has_exception 'IncorrectPassword' => parents => [ 'Authentication' ],
    error   => 'User [_1] authentication failed';
 
-has_exception 'MissingChecksum'   => parents => [ 'Authentication' ],
-   error   => 'Signature [_1] missing checksum';
+has_exception 'MissingHeader'     => parents => [ 'Authentication' ],
+   error   => 'Signature [_1] missing header field';
 
 has_exception 'MissingKey'        => parents => [ 'Authentication' ];
 

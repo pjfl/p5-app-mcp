@@ -2,13 +2,16 @@ package strictures::defanged;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 13 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 15 $ =~ /\d+/gmx );
 
-require strictures;
+sub import {
+   require strictures; no warnings 'redefine';
 
-no warnings 'redefine';
+   $ENV{PERL_STRICTURES_WITH_FANGS}
+      or *strictures::import = sub { strict->import; warnings->import };
 
-*strictures::import = sub { strict->import; warnings->import };
+   return;
+}
 
 1;
 
@@ -24,11 +27,13 @@ strictures::defanged - Make strictures the same as just use strict warnings
 
 =head1 Synopsis
 
-   require strictures::defanged;
+   use strictures::defanged;
+
+   use Moo;
 
 =head1 Version
 
-This documents version v0.1.$Rev: 13 $ of L<strictures::defanged>
+This documents version v0.1.$Rev: 15 $ of L<strictures::defanged>
 
 =head1 Description
 
@@ -37,9 +42,24 @@ Monkey patch the L<strictures> import method. Make it the same as just
    use strict;
    use warnings;
 
+This stops new warnings that appear in new versions of Perl5 from breaking
+working programs, which is what happens when warnings are made fatal
+
+L<Strictures|strictures> also has some heuristic involving version control
+directories that I don't care for so that gets patched out also
+
+The C<use strictures::defanged> line needs to appear before the C<use Moo>
+line, or whatever is using L<strictures>
+
+Using L<strictures::defanged> has the same program wide scope as L<strictures>.
+Once you've used it in your module B<every> moodule that uses L<strictures>
+will be using this instead
+
 =head1 Configuration and Environment
 
-Defines no attributes
+Setting the environment variable C<PERL_STRICTURES_WITH_FANGS> to true
+skips the patching of the L<strictures> import subroutine and turns
+this module into a no-op
 
 =head1 Subroutines/Methods
 
@@ -62,6 +82,9 @@ None
 There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
+
+This module uses monkey patching, which is bad because it is action at a
+distance
 
 There are no known bugs in this module. Please report problems to
 http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
