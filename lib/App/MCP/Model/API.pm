@@ -50,7 +50,7 @@ sub create_job {
 
    my $sess   = $self->get_session( $req->params->{sessionid} // 'undef' );
    my $params = $self->authenticate_params
-      ( $sess->{key}, $sess->{token}, $req->body->param->{job} );
+      ( $sess->{key}, $sess->{shared_secret}, $req->body->param->{job} );
 
    $params->{owner} = $sess->{user_id}; $params->{group} = $sess->{role_id};
 

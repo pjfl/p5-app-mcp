@@ -3,12 +3,11 @@ package App::MCP::Role::Authentication;
 use 5.010001;
 use namespace::sweep;
 
+use App::MCP::Worker::Crypt::SRP::Blowfish;
+use App::MCP::Functions        qw( get_salt );
 use Class::Usul::Constants;
-use Class::Usul::Crypt         qw( encrypt decrypt );
-use Class::Usul::Crypt::Util   qw( dh_base dh_mod );
-use Class::Usul::Functions     qw( bson64id bson64id_time create_token throw );
-use Crypt::DH;
-use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
+use Class::Usul::Crypt         qw( decrypt );
+use Class::Usul::Functions     qw( bson64id bson64id_time throw );
 use HTTP::Status               qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
                                    HTTP_OK HTTP_UNAUTHORIZED );
 use TryCatch;
@@ -26,32 +25,34 @@ sub authenticate {
    my $user      = $self->_find_user_from( $req );
    my $sess      = $self->_find_or_create_session( $user );
    my $user_name = $user->username;
-   my $token     = $req->body->param->{authenticate}
-      or throw error => 'User [_1] no password',
-                args => [ $user_name ], rv => HTTP_EXPECTATION_FAILED;
-   my $password  = decrypt $sess->{shared_secret}, $token;
+   my $token     = $req->body->param->{M1_token}
+      or throw error => 'User [_1] no M1 token',
+               args  => [ $user_name ], rv => HTTP_EXPECTATION_FAILED;
+   my $srp       = App::MCP::Worker::Crypt::SRP::Blowfish->new;
 
-   $user->password eq bcrypt( $password, $user->password )
-      or throw error => 'User [_1] authentication failed',
-                args => [ $user_name ], rv => HTTP_UNAUTHORIZED;
+   $srp->server_init( $user_name, $user->password, @{ $sess->{auth_keys} } );
+   $srp->server_verify_M1( $token )
+      or throw error => 'User [_1] M1 token verification failed',
+               args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
 
-   $token = encrypt $sess->{shared_secret}, $self->transcoder->encode
-      ( { id => $sess->{id}, token => $sess->{token}, } );
+   my $content   = { id => $sess->{id}, M2_token => $srp->server_compute_M2, };
 
-   return { code => HTTP_OK, content => { token => $token } };
+   $sess->{shared_secret} = $srp->get_secret_K;
+
+   return { code => HTTP_OK, content => $content, };
 }
 
 sub authenticate_params {
-   my ($self, $key, $token, $params) = @_;
+   my ($self, $id, $key, $params) = @_;
 
    $params or throw error => 'Request [_1] has no content',
-                     args => [ $key ], rv => HTTP_UNAUTHORIZED;
+                    args  => [ $id ], rv => HTTP_UNAUTHORIZED;
 
-   try { $params = $self->transcoder->decode( decrypt $token, $params ) }
+   try { $params = $self->transcoder->decode( decrypt $key, $params ) }
    catch ($e) {
       $self->log->error( $e );
-      throw error => 'Request [_1] authentication failed with token [_2]',
-             args => [ $key, $token ], rv => HTTP_UNAUTHORIZED;
+      throw error => 'Request [_1] authentication failed with key [_2]',
+            args  => [ $id, $key ], rv => HTTP_UNAUTHORIZED;
    }
 
    return $params;
@@ -63,15 +64,20 @@ sub exchange_key {
    my $client_pub_key = $req->params->{public_key};
    my $user           = $self->_find_user_from( $req );
    my $sess           = $self->_find_or_create_session( $user );
-   my $dh             = Crypt::DH->new( g => dh_base, p => dh_mod );
+   my $srp            = App::MCP::Worker::Crypt::SRP::Blowfish->new;
+   my $user_name      = $user->username;
 
-   $dh->generate_keys;
+   $srp->server_verify_A( $client_pub_key )
+      or throw error => 'User [_1] client public key verification failed',
+               args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
+   $srp->server_init( $user_name, $user->password );
 
-   my $salt           = __get_salt( $user->password );
-   my $server_pub_key = encrypt $user->password, NUL.$dh->pub_key;
-   my $content        = { public_key => $server_pub_key, salt => $salt, };
+   my ($server_pub_key, $server_priv_key) = $srp->server_compute_B;
 
-   $sess->{shared_secret} = $dh->compute_secret( $client_pub_key );
+   $sess->{auth_keys} = [ $client_pub_key, $server_pub_key, $server_priv_key ];
+
+   my $salt    = get_salt $user->password;
+   my $content = { public_key => $server_pub_key, salt => $salt, };
 
    return { code => HTTP_OK, content => $content, };
 }
@@ -112,7 +118,6 @@ sub _find_or_create_session {
          last_used => bson64id_time( $id ),
          max_age   => $self->config->max_session_age,
          role_id   => $user->role_id,
-         token     => create_token,
          user_id   => $user->id, };
    }
 
@@ -129,15 +134,6 @@ sub _find_user_from {
    $user->active or throw error => 'User [_1] account inactive',
                           args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
    return $user;
-}
-
-# Private functions
-sub __get_salt {
-   my $password = shift; my @parts = split m{ [\$] }mx, $password;
-
-   $parts[ -1 ] = substr $parts[ -1 ], 0, 22;
-
-   return join '$', @parts;
 }
 
 1;
