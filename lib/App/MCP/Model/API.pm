@@ -73,7 +73,7 @@ sub snapshot_state {
    my $frames = [];
    my $id     = bson64id;
    my $schema = $self->schema;
-   my $level  = $req->args->[ 0 ] // 1;
+   my $level  = $req->params->{level} // 1;
    my $job_rs = $schema->resultset( 'Job' );
    my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
          'columns'  => [ qw( fqjn id parent_id state.name type ) ],

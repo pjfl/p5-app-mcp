@@ -1,24 +1,29 @@
 <!-- [% page.form_name %] -->
-<form action="[% page.action %]" enctype="application/x-www-form-urlencoded"
-      method="post" name="[% page.form_name %]">
-   <div class="page">
+<div class="page">
 [% region_count = 0 -%]
 [% FOR region = form -%]
-      <div class="region region[% region_count %]">
    [% IF region_count == 0 -%]
-         <h3>[% config.title %] - [% page.title %]</h3>
+   <div class="region region[% region_count %]">
+      <h3>[% config.title %] - [% page.title %]</h3>
       [% IF page.status_message -%]
-         <div class="status_message">
-            <h5>[% page.status_message %]</h5>
-         </div>
+      <div class="status_message">
+         <h5>[% page.status_message %]</h5>
+      </div>
       [% END -%]
+      [% field = region.fields.0; IF field -%]
+         [% field.content -%]
+      [% END -%]
+   </div>
+   <form action="[% page.action %]" enctype="application/x-www-form-urlencoded"
+         method="post" name="[% page.form_name %]">
    [% ELSE -%]
+      <div class="region region[% region_count %]">
       [% FOR field = region.fields -%]
          [% field.content -%]
       [% END -%]
-   [% END -%]
       </div>
+   [% END -%]
 [% region_count = region_count + 1; END -%]
-   </div>
-</form>
+   </form>
+</div>
 [% INCLUDE footer.tt %]

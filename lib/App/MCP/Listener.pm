@@ -6,6 +6,7 @@ use namespace::sweep;
 use App::MCP::Constants;
 use App::MCP::Model::API;
 use App::MCP::Model::Job;
+use App::MCP::Model::Root;
 use App::MCP::Model::State;
 use App::MCP::Request;
 use App::MCP::View::HTML;
@@ -27,14 +28,6 @@ has 'port'    => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
    };
 
 # Private attributes
-has '_models' => is => 'lazy', isa => HashRef[Object], reader => 'models',
-   builder    => sub { {
-      'api'   => App::MCP::Model::API->new  ( builder => $_[ 0 ]->usul,
-                                              port    => $_[ 0 ]->port ),
-      'job'   => App::MCP::Model::Job->new  ( builder => $_[ 0 ]->usul ),
-      'state' => App::MCP::Model::State->new( builder => $_[ 0 ]->usul ),
-   } };
-
 has '_usul'   => is => 'lazy', isa => BaseType, reader => 'usul',
    handles    => [ 'log' ], builder => sub {
       my $self = shift;
@@ -50,10 +43,19 @@ has '_usul'   => is => 'lazy', isa => BaseType, reader => 'usul',
       return Class::Usul->new( $attr );
    };
 
+has '_models' => is => 'lazy', isa => HashRef[Object], reader => 'models',
+   builder    => sub { {
+      'api'   => App::MCP::Model::API->new  ( builder => $_[ 0 ]->usul,
+                                              port    => $_[ 0 ]->port ),
+      'job'   => App::MCP::Model::Job->new  ( builder => $_[ 0 ]->usul ),
+      'root'  => App::MCP::Model::Root->new ( builder => $_[ 0 ]->usul ),
+      'state' => App::MCP::Model::State->new( builder => $_[ 0 ]->usul ),
+   } };
+
 has '_views'  => is => 'lazy', isa => HashRef[Object], reader => 'views',
    builder    => sub { {
-      'json'  => App::MCP::View::JSON->new,
       'html'  => App::MCP::View::HTML->new( builder => $_[ 0 ]->usul ),
+      'json'  => App::MCP::View::JSON->new,
       'xml'   => App::MCP::View::XML->new,
    } };
 
@@ -67,7 +69,7 @@ around 'to_psgi_app' => sub {
    my $point  = $conf->mount_point;
    my $logger = $self->usul->log;
    my $root   = $conf->root;
-   my $secret = $conf->salt;
+   my $secret = $conf->salt.$self->models->{root}->get_connect_info->[ 2 ];
 
    builder {
       mount "${point}" => builder {
@@ -92,7 +94,7 @@ around 'to_psgi_app' => sub {
 sub dispatch_request {
    my $self = shift; my @actions;
 
-   for my $controller (map { "_controller_${_}" } qw( api form default )) {
+   for my $controller (map { "_controller_${_}" } qw( api job state root )) {
       push @actions, $self->$controller();
    }
 
@@ -102,7 +104,7 @@ sub dispatch_request {
 # Private methods
 sub _controller_api {
    sub (GET  + /api/authenticate/* + ?*) {
-      return shift->_execute( qw( json api exchange_key ), @_ );
+      return shift->_execute( qw( json api exchange_pub_keys ), @_ );
    },
    sub (POST + /api/authenticate/*) {
       return shift->_execute( qw( json api authenticate ), @_ );
@@ -113,12 +115,12 @@ sub _controller_api {
    sub (POST + /api/job + ?*) {
       return shift->_execute( qw( json api create_job ), @_ );
    },
-   sub (GET  + /api/state/*) {
+   sub (GET  + /api/state + ?*) {
       return shift->_execute( qw( json api snapshot_state ), @_ );
    };
 }
 
-sub _controller_form {
+sub _controller_job {
    sub (GET  + (/job/* | /job) + ?*) {
       return shift->_execute( qw( html job form ), @_ );
    },
@@ -133,15 +135,27 @@ sub _controller_form {
    },
    sub (GET  + /job_grid_table + ?*) {
       return shift->_execute( qw( xml  job grid_table ), @_ );
-   },
+   };
+}
+
+sub _controller_state {
    sub (GET  + /state) {
       return shift->_execute( qw( html state diagram ), @_ );
    };
 }
 
-sub _controller_default {
+sub _controller_root {
    sub (GET  + /check_field + ?*) {
-      return shift->_execute( qw( xml job check_field ), @_ );
+      return shift->_execute( qw( xml  root check_field ), @_ );
+   },
+   sub (GET  + (/login/* | /login) + ?*) {
+      return shift->_execute( qw( html root login_form ), @_ );
+   },
+   sub (POST + (/login/* | /login) + ?*) {
+      return shift->_execute( qw( html root authenticate_action ), @_ );
+   },
+   sub (POST + /logout) {
+      return shift->_execute( qw( html root logout ), @_ );
    },
    sub () {
       [ HTTP_METHOD_NOT_ALLOWED, __plain_header(), [ 'Method not allowed' ] ];
@@ -157,7 +171,7 @@ sub _execute {
       $method =~ m{ _action \z }mx
          and $method = $self->_modify_action( $method, $req );
 
-      my $stash = $self->models->{ $model }->$method( $req );
+      my $stash = $self->models->{ $model }->execute( $method, $req );
 
       exists $stash->{redirect} and $res = $self->_redirect( $req, $stash );
 

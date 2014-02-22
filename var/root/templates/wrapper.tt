@@ -5,6 +5,7 @@
    <meta name="description" content="[% page.description %]">
    <meta name="keywords" content="[% page.keywords %]">
    <meta name="author" content="[% page.author %]">
+   <meta name="viewport" content="initial-scale=1">
    <link href="[% links.images %]favicon-[% prefs.theme %].png"
           rel="icon" type="image/png">
 [% IF config.font -%]

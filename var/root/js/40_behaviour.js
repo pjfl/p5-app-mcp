@@ -55,7 +55,7 @@ var StateDiagram = new Class( {
 
    _updater: function() {
       var level      = 1;
-      var url        = this.options.url + 'api/state/' + level;
+      var url        = this.options.url + 'api/state?level=' + level;
       var headers    = { 'Accept': 'application/json' };
       var on_success = this._response.bind( this );
 

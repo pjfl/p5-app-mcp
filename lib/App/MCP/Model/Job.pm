@@ -15,9 +15,10 @@ with    q(App::MCP::Role::JavaScript);
 with    q(App::MCP::Role::PageConfiguration);
 with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
+with    q(App::MCP::Role::WebAuthentication);
 
 # Public methods
-sub chooser {
+sub chooser : Role(users) {
    my ($self, $req) = @_;
 
    my $chooser = $self->build_chooser( $req );
@@ -26,7 +27,7 @@ sub chooser {
    return $self->get_stash( $req, $page, 'job_chooser' => $chooser );
 }
 
-sub form {
+sub form : Role(users) {
    my ($self, $req) = @_;
 
    my $arg   = $req->args->[ 0 ];
@@ -34,10 +35,10 @@ sub form {
    my $page  = { action => $req->uri, form_name => 'job', title => $title, };
    my $job   = $self->schema->resultset( 'Job' )->find_by_id_or_name( $arg );
 
-   return $self->get_stash( $req, $page, job => $job );
+   return $self->get_stash( $req, $page, 'job' => $job );
 }
 
-sub grid_rows {
+sub grid_rows : Role(users) {
    my ($self, $req) = @_; my $params = $req->params;
 
    $params->{form  } = 'job';
@@ -50,7 +51,7 @@ sub grid_rows {
    return $self->get_stash( $req, $page, 'job_grid_rows' => $grid_rows );
 }
 
-sub grid_table {
+sub grid_table : Role(users) {
    my ($self, $req) = @_; my $params = $req->params;
 
    my $field_value  = get_or_throw( $params, 'field_value' );
@@ -68,38 +69,40 @@ sub grid_table {
    return $self->get_stash( $req, $page, 'job_grid_table' => $grid_table );
 }
 
-sub job_choose {
+sub job_choose : Role(users) {
    my ($self, $req) = @_;
 
-   my $job = $self->schema->resultset( 'Job' )->search( {
-      name => $req->body->param->{name} }, { columns => [ 'id' ] } )->first;
+   my $name     = $req->body->param->{name};
+   my $job_rs   = $self->schema->resultset( 'Job' );
+   my $where    = $name =~ m{ :: }mx ? { fqjn => $name } : { name => $name };
+   my $job      = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
    my $location = $req->uri_for( 'job', [ $job ? $job->id : undef ] );
 
    return { redirect => { location => $location } };
 }
 
-sub job_clear {
+sub job_clear : Role(users) {
    return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
 }
 
-sub job_delete {
+sub job_delete : Role(users) {
    my ($self, $req) = @_;
 
    my $id       = $req->args->[ 0 ]
-      or throw class => Unspecified, args => [ 'id' ],
-                  rv => HTTP_EXPECTATION_FAILED;
+      or throw class => Unspecified,
+               args  => [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
    my $location = $req->uri_for( 'job' );
    my $message  = [ 'Job id [_1] not found', $id ];
    my $job      = $self->schema->resultset( 'Job' )->find( $id )
       or return { redirect => { location => $location, message => $message } };
    my $fqjn     = $job->fqjn; $job->delete;
 
-   $message     = [ 'Job name [_1] deleted', $fqjn ];
+   $message = [ 'Job name [_1] deleted', $fqjn ];
 
    return { redirect => { location => $location, message => $message } };
 }
 
-sub job_save {
+sub job_save : Role(users) {
    my ($self, $req) = @_; my $id; my $job; my $message;
 
    my $args = { method => '_job_deflate_',
@@ -130,7 +133,8 @@ sub _job_chooser_href {
 sub _job_chooser_link_hash {
    my ($self, $req, $link_num, $job) = @_;
 
-   return { href => '#top', text => $job->name, tip => $job->summary, };
+   return { href => '#top',        text  => $job->name,
+            tip  => $job->summary, value => $job->fqjn, };
 }
 
 sub _job_chooser_search {

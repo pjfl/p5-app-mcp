@@ -1,17 +1,21 @@
 package App::MCP::Role::FormBuilder;
 
-use 5.01;
+use 5.010001;
 use namespace::sweep;
 
 use App::MCP::Constants;
 use App::MCP::Functions    qw( get_or_throw );
-use Class::Usul::Functions qw( is_arrayref is_hashref first_char pad throw );
+use Class::Usul::Functions qw( ensure_class_loaded is_arrayref
+                               is_hashref first_char pad throw );
 use Class::Usul::Response::Table;
+use Data::Validation;
 use File::Gettext::Schema;
+use HTTP::Status           qw( HTTP_OK );
 use Scalar::Util           qw( blessed weaken );
+use TryCatch;
 use Moo::Role;
 
-requires qw( config get_stash log usul );
+requires qw( check_field config debug get_stash log usul );
 
 # Construction
 around 'get_stash' => sub {
@@ -126,7 +130,43 @@ sub find_and_update_record {
    return $rec;
 }
 
+sub formbuilder_check_field {
+   my ($self, $req) = @_; my $mesg;
+
+   my $id   = get_or_throw( $req->params, 'id' );
+   my $meta = { id => "${id}_ajax" };
+
+   try        { $self->_check_field( $req ) }
+   catch ($e) {
+      my $args = { params => $e->args, quote_bind_values => TRUE };
+
+      $self->debug and $self->log->debug( "${e}" );
+      $mesg = $req->loc( $e->error, $args );
+      $meta->{class_name} = 'field_error';
+   }
+
+   return { code => HTTP_OK,
+            form => [ { fields => [ $mesg ] } ],
+            page => { meta => $meta } };
+}
+
 # Private methods
+sub _check_field {
+   my ($self, $req) = @_; my $params = $req->params;
+
+   my $domain = get_or_throw( $params, 'domain' );
+   my $form   = get_or_throw( $params, 'form'   );
+   my $id     = get_or_throw( $params, 'id'     );
+   my $val    = get_or_throw( $params, 'val'    );
+   my $meta   = $self->_forms( $domain, $req->locale )->{meta};
+   my $class  = $self->schema_class.'::Result::'
+               .$meta->{ $form }->{result_class};
+
+   ensure_class_loaded( $class ); my $attr = $class->validation_attributes;
+
+   return Data::Validation->new( $attr )->check_field( $id, $val );
+}
+
 sub _deref_value {
    my ($self, $req, $field, $key, $value) = @_;
 
@@ -143,12 +183,13 @@ sub _deref_value {
 }
 
 sub _forms {
-   my ($self, $req) = @_; state $cache //= {}; my $locale = $req->locale;
+   my ($self, $domain, $locale) = @_; state $cache //= {};
 
-   exists $cache->{ $locale } and return $cache->{ $locale };
+   my $key   = $domain.$locale;
 
-   my $file = $req->l10n_domain;
-   my $path = $self->config->ctrldir->catfile( "${file}.json" );
+   exists $cache->{ $key } and return $cache->{ $key };
+
+   my $path  = $self->config->ctrldir->catfile( "${domain}.json" );
 
    $path->exists
       or ($self->log->warn( "File ${path} not found" ) and return {});
@@ -159,7 +200,27 @@ sub _forms {
                  localedir   => $self->config->localedir };
    my $forms = File::Gettext::Schema->new( $attr )->load( $path );
 
-   return $cache->{ $locale } = $forms;
+   return $cache->{ $key } = $forms;
+}
+
+sub _initialize_form {
+   my ($self, $req, $form_name) = @_; weaken( $req );
+
+   my $domain = $req->l10n_domain;
+   my $form   = { data        => [],
+                  js_object   => 'behaviour',
+                  l10n        => sub { __loc( $req, @_ ) },
+                  list_key    => 'fields',
+                  literal_js  => [],
+                  name        => $form_name,
+                  ns          => $domain,
+                  width       => $req->ui_state->{width} // 1024, };
+   my $locale = $req->locale;
+   my $meta   = $self->_forms( $domain, $locale )->{meta}->{ $form_name };
+
+   $form->{ $_ } = $meta->{ $_ } for (keys %{ $meta });
+
+   return $form;
 }
 
 sub _instantiate_field {
@@ -180,12 +241,12 @@ sub _instantiate_field {
 sub _new_form {
    my ($self, $req, $form_name, $rec) = @_; my $cache = {}; my $count = 0;
 
-   my $forms = $self->_forms( $req ); my $new = __new_form( $req, $form_name );
+   my $forms = $self->_forms( $req->l10n_domain, $req->locale );
 
    exists $forms->{regions}->{ $form_name }
       or throw error => 'Form name [_1] unknown', args => [ $form_name ];
 
-   $new->{first_field} = $forms->{first_fields}->{ $form_name } || NUL;
+   my $new = $self->_initialize_form( $req, $form_name );
 
    for my $fields (@{ $forms->{regions}->{ $form_name }}) {
       my $region = $new->{data}->[ $count++ ] = { fields => [] };
@@ -298,19 +359,6 @@ sub __new_field {
    return { %{ $forms->{fields}->{ $fqfn } // {} } };
 }
 
-sub __new_form {
-   my ($req, $form_name) = @_; weaken( $req );
-
-   return { data       => [],
-            js_object  => 'behaviour',
-            l10n       => sub { __loc( $req, @_ ) },
-            list_key   => 'fields',
-            literal_js => [],
-            name       => $form_name,
-            ns         => $req->l10n_domain,
-            width      => $req->ui_state->{width} || 1024, };
-}
-
 sub __new_grid_table {
    my ($label, $values) = @_;
 
@@ -347,7 +395,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 15 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 17 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

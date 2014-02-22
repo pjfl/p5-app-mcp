@@ -8,6 +8,7 @@ use parent 'App::MCP::Schema::Base';
 use App::MCP::Constants;
 use Class::Usul::Functions     qw( create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
+use HTTP::Status               qw( HTTP_UNAUTHORIZED );
 use TryCatch;
 use Unexpected::Functions      qw( AccountInactive IncorrectPassword );
 
@@ -53,9 +54,11 @@ $class->set_primary_key( 'id' );
 
 $class->add_unique_constraint( [ 'username' ] );
 
-$class->has_many    ( user_role => "${result}::UserRole", 'user_id' );
+$class->belongs_to  ( primary_role => "${result}::Role",     'role_id' );
 
-$class->many_to_many( roles     => 'user_role',              'role' );
+$class->has_many    ( user_role    => "${result}::UserRole", 'user_id' );
+
+$class->many_to_many( roles        => 'user_role',              'role' );
 
 sub activate {
    my $self = shift; $self->active( TRUE ); return $self->update;
@@ -93,13 +96,15 @@ sub assert_member_of {
 sub authenticate {
    my ($self, $password) = @_;
 
-   $self->active or throw class => AccountInactive, args => [ $self->username ];
+   $self->active or throw class => AccountInactive,
+                          args  => [ $self->username ], rv => HTTP_UNAUTHORIZED;
 
    my $stored   = $self->password || NUL;
    my $supplied = $self->_encrypt_password( $password, $stored );
 
    $supplied eq $stored
-      or throw class => IncorrectPassword, args => [ $self->username ];
+      or throw class => IncorrectPassword,
+               args  => [ $self->username ], rv => HTTP_UNAUTHORIZED;
 
    return;
 }
@@ -131,6 +136,24 @@ sub insert {
    $self->set_inflated_columns( $columns );
 
    return $self->next::method;
+}
+
+sub list_other_roles {
+   my $self = shift;
+
+   return [ map { NUL.$_->role }
+            $self->user_role->search( { user_id => $self->id } )->all ];
+}
+
+sub validation_attributes {
+   return { # Keys: constraints, fields, and filters (all hashes)
+      constraints    => {
+         username    => { max_length => 64, min_length => 1, } },
+      fields         => {
+         password    => { validate => 'isMandatory' },
+         username    => {
+            validate => 'isMandatory isValidIdentifier isValidLength' }, },
+   };
 }
 
 # Private methods

@@ -6,13 +6,23 @@ use warnings;
 use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
-use Class::Usul::Functions qw( throw );
+use Class::Usul::Functions qw( first_char throw );
+use HTTP::Status           qw( HTTP_NOT_FOUND );
+
+sub find_by_id_or_name {
+   my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $user;
+
+   (first_char $arg) =~ m{ \d }mx and $user = $self->find( $arg );
+   $user or $user = $self->find_by_name( $arg );
+   return $user;
+}
 
 sub find_by_name {
    my ($self, $user_name) = @_;
 
    my $user = $self->search( { username => $user_name } )->single
-      or throw error => 'User [_1] unknown', args => [ $user_name ];
+      or throw error => 'User [_1] unknown',
+               args  => [ $user_name ], rv => HTTP_NOT_FOUND;
 
    return $user;
 }

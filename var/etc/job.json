@@ -125,19 +125,41 @@
          "clear": "left",
          "name": "Save",
          "type": "button"
+      },
+      "logout_button": {
+         "clear": "left",
+         "name": "Logout",
+         "type": "button"
+      },
+      "root_form": {
+         "attrs": {
+            "action": "/logout",
+            "class": "opposite-flow",
+            "enctype": "application/x-www-form-urlencoded",
+            "method": "post",
+            "name": "logout"
+         },
+         "form": "1",
+         "nitems": "1"
       }
    },
-   "first_fields": {
-      "job": "name"
+   "meta": {
+      "job": {
+         "first_field": "name",
+         "max_pwidth": "320",
+         "pwidth": "20",
+         "result_class": "Job"
+      }
    },
    "regions": {
       "job": [
-         [ ],
+         [ "+logout_button", "+root_form" ],
+         [ "chooser", "clear_button", "save_button",
+           "delete_button" ],
          [ "name", "fqjn", "type", "created", "parent_name", "command",
            "condition", "crontab_min", "crontab_hour", "crontab_mday",
            "crontab_mon", "crontab_wday", "host", "user", "directory",
-           "expected_rv", "permissions", "owner_rel", "group_rel" ],
-         [ "chooser", "clear_button", "save_button", "delete_button" ]
+           "expected_rv", "permissions", "owner_rel", "group_rel" ]
       ],
       "job_chooser": [
          [ "job_name" ]

@@ -15,5 +15,14 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "form_hint_title"
-msgstr "Hint"
+msgctxt "fields.prompt"
+msgid "login.password"
+msgstr "Password"
+
+msgctxt "fields.prompt"
+msgid "login.username"
+msgstr "User name"
+
+msgctxt "fields.tip"
+msgid "login.login_button"
+msgstr "Login as this user"

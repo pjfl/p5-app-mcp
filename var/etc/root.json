@@ -1,0 +1,35 @@
+{
+   "fields": {
+      "login.login_button": {
+         "clear": "left",
+         "name": "Login",
+         "type": "button"
+      },
+      "login.password": {
+         "check_field" : "1",
+         "default": "",
+         "required" : "1",
+         "type": "password"
+      },
+      "login.username": {
+         "check_field" : "1",
+         "default": "",
+         "required" : "1"
+      }
+   },
+   "meta": {
+      "login": {
+         "first_field": "username",
+         "max_pwidth": "320",
+         "pwidth": "20",
+         "result_class": "User"
+      }
+  },
+   "regions": {
+      "login": [
+         [ ],
+         [ "login_button" ],
+         [ "username", "password" ]
+      ]
+   }
+}

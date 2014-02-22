@@ -58,7 +58,7 @@ sub authenticate_params {
    return $params;
 }
 
-sub exchange_key {
+sub exchange_pub_keys {
    my ($self, $req) = @_; $req->authenticate;
 
    my $client_pub_key = $req->params->{public_key};

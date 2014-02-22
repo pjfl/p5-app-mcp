@@ -15,25 +15,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid "form_hint_title"
-msgstr "Hint"
-
-msgctxt "fields.tip"
-msgid "job.chooser"
-msgstr "Press the button to popup the selection window"
-
-msgctxt "fields.tip"
-msgid "job.clear_button"
-msgstr "Clears the form back to it's defaults"
-
-msgctxt "fields.tip"
-msgid "job.delete_button"
-msgstr "Deletes the currently selected job"
-
-msgctxt "fields.tip"
-msgid "job.save_button"
-msgstr "Saves or creates the job displayed on the form"
-
 msgctxt "fields.prompt"
 msgid "job.command"
 msgstr "Command"
@@ -109,3 +90,19 @@ msgstr "Type"
 msgctxt "fields.prompt"
 msgid "job.user"
 msgstr "User"
+
+msgctxt "fields.tip"
+msgid "job.chooser"
+msgstr "Press the button to popup the selection window"
+
+msgctxt "fields.tip"
+msgid "job.clear_button"
+msgstr "Clears the form back to it's defaults"
+
+msgctxt "fields.tip"
+msgid "job.delete_button"
+msgstr "Deletes the currently selected job"
+
+msgctxt "fields.tip"
+msgid "job.save_button"
+msgstr "Saves or creates the job displayed on the form"
