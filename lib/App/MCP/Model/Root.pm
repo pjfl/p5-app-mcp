@@ -50,7 +50,7 @@ sub logout : Role(any) {
 
    my $session   = $req->session;
    my $user_name = $session->{user_name};
-   my $location  = $req->uri_for( 'job' );
+   my $location  = $req->uri_for( 'login' );
    my $message   = [ 'User [_1] logged out', $user_name ];
 
    delete $session->{user_name}; delete $session->{user_roles};

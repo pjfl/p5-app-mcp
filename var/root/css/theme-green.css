@@ -106,6 +106,7 @@ ul { list-style-position: outside; list-style-type: disc; }
    -webkit-border-radius: 4px; border-radius: 4px;
 }
 
+.body { margin: 0 auto; width: 90%; }
 .checkbox {
    background: url(../img/icons.png) -90px -300px no-repeat; cursor: pointer;
    display: inline-block; height: 16px; vertical-align: middle; width: 16px;
@@ -154,15 +155,15 @@ ul { list-style-position: outside; list-style-type: disc; }
 .message_text { max-width: 800px; }
 .numeric { text-align: right; }
 .opposite-flow { float: right; }
-.page { margin: 0 auto; width: 90%; }
 .radio_group { margin-left: 6px; vertical-align: middle; }
 .region0 { width: 100%; }
-.region1 { float: right; padding: 0 12px; }
-.region2 { clear: left; }
+.region2 { float: right; padding: 0 12px; }
+.region3 { clear: left; }
 .required { border-right: 3px solid; }
 .state-diagram { padding: 24px; }
-.status_message { display: inline-block; position: relative; width: 100%; }
-.status_message > h5 { text-align: center; }
+.status_message {
+   display: inline-block; position: relative; text-align: center; width: 100%;
+}
 .tips-container {
    border: 2px solid transparent; text-align: center; z-index: 10000;
 }

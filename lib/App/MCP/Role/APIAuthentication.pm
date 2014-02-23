@@ -1,4 +1,4 @@
-package App::MCP::Role::Authentication;
+package App::MCP::Role::APIAuthentication;
 
 use 5.010001;
 use namespace::sweep;
@@ -146,11 +146,11 @@ __END__
 
 =head1 Name
 
-App::MCP::Role::Authentication - One-line description of the modules purpose
+App::MCP::Role::APIAuthentication - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Role::Authentication;
+   with App::MCP::Role::APIAuthentication;
    # Brief but working code examples
 
 =head1 Description

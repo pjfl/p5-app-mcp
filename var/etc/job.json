@@ -79,7 +79,8 @@
       },
       "job.user": {
          "clear": "left",
-         "default": "mcp"
+         "default": "mcp",
+         "required" : "1"
       },
       "job.owner_rel": {
          "clear": "left",
@@ -127,14 +128,12 @@
          "type": "button"
       },
       "logout_button": {
-         "clear": "left",
          "name": "Logout",
          "type": "button"
       },
-      "root_form": {
-         "attrs": {
-            "action": "/logout",
-            "class": "opposite-flow",
+      "logout_form": {
+         "config": {
+            "action": "[% links.base_uri %]logout",
             "enctype": "application/x-www-form-urlencoded",
             "method": "post",
             "name": "logout"
@@ -153,7 +152,8 @@
    },
    "regions": {
       "job": [
-         [ "+logout_button", "+root_form" ],
+         [],
+         [ "+logout_button", "+logout_form" ],
          [ "chooser", "clear_button", "save_button",
            "delete_button" ],
          [ "name", "fqjn", "type", "created", "parent_name", "command",

@@ -1,29 +1,28 @@
 <!-- [% page.form_name %] -->
-<div class="page">
-[% region_count = 0 -%]
-[% FOR region = form -%]
-   [% IF region_count == 0 -%]
-   <div class="region region[% region_count %]">
-      <h3>[% config.title %] - [% page.title %]</h3>
-      [% IF page.status_message -%]
-      <div class="status_message">
-         <h5>[% page.status_message %]</h5>
-      </div>
-      [% END -%]
-      [% field = region.fields.0; IF field -%]
-         [% field.content -%]
-      [% END -%]
+<div class="body">
+   <div class="region region0">
+      <h3 class="page-header">[% config.title %] - [% page.title %]</h3>
+[% IF page.status_message -%]
+      <h5 class="status_message">[% page.status_message %]</h5>
+[% END -%]
+   </div>
+   <div class="region region1">
+[% FOR field = form.1.fields -%]
+   [% field.content | eval -%]
+[% END -%]
    </div>
    <form action="[% page.action %]" enctype="application/x-www-form-urlencoded"
          method="post" name="[% page.form_name %]">
-   [% ELSE -%]
-      <div class="region region[% region_count %]">
-      [% FOR field = region.fields -%]
-         [% field.content -%]
-      [% END -%]
+      <div class="region region2">
+[% FOR field = form.2.fields -%]
+   [% field.content -%]
+[% END -%]
       </div>
-   [% END -%]
-[% region_count = region_count + 1; END -%]
+      <div class="region region3">
+[% FOR field = form.3.fields -%]
+   [% field.content -%]
+[% END -%]
+      </div>
    </form>
-</div>
 [% INCLUDE footer.tt %]
+</div>

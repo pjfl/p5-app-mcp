@@ -19,7 +19,7 @@ extends q(App::MCP::Model);
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new },
    reader         => 'transcoder';
 
-with q(App::MCP::Role::Authentication);
+with q(App::MCP::Role::APIAuthentication);
 
 # Public methods
 sub create_event {

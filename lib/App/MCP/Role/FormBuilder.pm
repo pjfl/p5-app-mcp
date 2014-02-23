@@ -252,7 +252,7 @@ sub _new_form {
       my $region = $new->{data}->[ $count++ ] = { fields => [] };
       my @keys   = $fields->[ 0 ] ? @{ $fields } : sort keys %{ $rec };
 
-      for my $name (@keys) {
+      for my $name (grep { not m{ \A _ }mx } @keys) {
          my $field = __new_field( $forms, $form_name, $name );
          my $col   = $name; $col =~ s{ \A \+ }{}mx;
 
@@ -395,7 +395,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 17 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 18 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

@@ -1,7 +1,6 @@
 {
    "fields": {
       "login.login_button": {
-         "clear": "left",
          "name": "Login",
          "type": "button"
       },
@@ -27,6 +26,7 @@
   },
    "regions": {
       "login": [
+         [ ],
          [ ],
          [ "login_button" ],
          [ "username", "password" ]
