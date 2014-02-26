@@ -2,8 +2,9 @@ package App::MCP::Role::FormHandler;
 
 use namespace::sweep;
 
-use Class::Usul::Functions qw( is_hashref );
+use Class::Usul::Constants;
 use HTML::FormWidgets;
+use Scalar::Util qw( blessed );
 use Moo::Role;
 
 requires qw( serialize );
@@ -11,9 +12,7 @@ requires qw( serialize );
 around 'serialize' => sub {
    my ($orig, $self, $req, $stash) = @_;
 
-   if (exists $stash->{form} and is_hashref $stash->{form}) {
-      $stash->{template} //= $stash->{form}->{template} // 'form';
-
+   if (exists $stash->{form} and blessed $stash->{form}) {
       my $widgets = HTML::FormWidgets->build( $stash->{form} );
 
       $stash->{page}->{literal_js} = $stash->{form}->{literal_js};

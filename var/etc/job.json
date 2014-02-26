@@ -1,9 +1,9 @@
 {
-   "fields": {
+   "_fields": {
       "job.chooser": {
          "container": "0",
          "field": "name",
-         "href": "&_job_chooser_href",
+         "href": "...",
          "subtype": "modal",
          "tiptype": "normal",
          "type": "chooser"
@@ -126,33 +126,17 @@
          "clear": "left",
          "name": "Save",
          "type": "button"
-      },
-      "logout_button": {
-         "name": "Logout",
-         "type": "button"
-      },
-      "logout_form": {
-         "config": {
-            "action": "[% links.base_uri %]logout",
-            "enctype": "application/x-www-form-urlencoded",
-            "method": "post",
-            "name": "logout"
-         },
-         "form": "1",
-         "nitems": "1"
       }
    },
-   "meta": {
-      "job": {
+   "job": {
+      "meta": {
          "first_field": "name",
          "max_pwidth": "320",
          "pwidth": "20",
          "result_class": "Job"
-      }
-   },
-   "regions": {
-      "job": [
-         [],
+      },
+      "regions": [
+         "header_fields",
          [ "+logout_button", "+logout_form" ],
          [ "chooser", "clear_button", "save_button",
            "delete_button" ],
@@ -160,14 +144,20 @@
            "condition", "crontab_min", "crontab_hour", "crontab_mday",
            "crontab_mon", "crontab_wday", "host", "user", "directory",
            "expected_rv", "permissions", "owner_rel", "group_rel" ]
-      ],
-      "job_chooser": [
+      ]
+   },
+   "job_chooser": {
+      "regions": [
          [ "job_name" ]
-      ],
-      "job_grid_rows": [
+      ]
+   },
+   "job_grid_rows": {
+      "regions": [
          [ ]
-      ],
-      "job_grid_table": [
+      ]
+   },
+   "job_grid_table": {
+      "regions": [
          [ "job_name_header", "job_name_grid" ]
       ]
    }

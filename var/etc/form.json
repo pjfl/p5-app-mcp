@@ -1,0 +1,26 @@
+{
+   "_fields": {
+      "header_fields": [
+         "+help_link"
+      ],
+      "help_link": {
+         "container_class": "container opposite-flow",
+         "href": "[% links.base_uri %]help",
+         "type": "anchor"
+      },
+      "logout_button": {
+         "name": "Logout",
+         "type": "button"
+      },
+      "logout_form": {
+         "config": {
+            "action": "[% links.base_uri %]logout",
+            "enctype": "application/x-www-form-urlencoded",
+            "method": "post",
+            "name": "logout"
+         },
+         "form": "1",
+         "nitems": "1"
+      }
+   }
+}

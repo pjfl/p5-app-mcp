@@ -15,94 +15,94 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.command"
 msgstr "Command"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.condition"
 msgstr "Start condition"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.created"
 msgstr "Creation date"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.crontab_hour"
 msgstr "Start hour"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.crontab_mday"
 msgstr "Start day"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.crontab_min"
 msgstr "Start minute"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.crontab_mon"
 msgstr "Start month"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.crontab_wday"
 msgstr "Start week day"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.directory"
 msgstr "Working directory"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.expected_rv"
 msgstr "Expected return value"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.fqjn"
 msgstr "Qualified name"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.group_rel"
 msgstr "Group"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.host"
 msgstr "Host"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.name"
 msgstr "Name"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.owner_rel"
 msgstr "Owner"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.parent_name"
 msgstr "Parent name"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.permissions"
 msgstr "Permissions"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.type"
 msgstr "Type"
 
-msgctxt "fields.prompt"
+msgctxt "_fields.prompt"
 msgid "job.user"
 msgstr "User"
 
-msgctxt "fields.tip"
+msgctxt "_fields.tip"
 msgid "job.chooser"
 msgstr "Press the button to popup the selection window"
 
-msgctxt "fields.tip"
+msgctxt "_fields.tip"
 msgid "job.clear_button"
 msgstr "Clears the form back to it's defaults"
 
-msgctxt "fields.tip"
+msgctxt "_fields.tip"
 msgid "job.delete_button"
 msgstr "Deletes the currently selected job"
 
-msgctxt "fields.tip"
+msgctxt "_fields.tip"
 msgid "job.save_button"
 msgstr "Saves or creates the job displayed on the form"

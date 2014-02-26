@@ -1,5 +1,5 @@
 {
-   "fields": {
+   "_fields": {
       "login.login_button": {
          "name": "Login",
          "type": "button"
@@ -16,17 +16,15 @@
          "required" : "1"
       }
    },
-   "meta": {
-      "login": {
+   "login": {
+      "meta": {
          "first_field": "username",
          "max_pwidth": "320",
          "pwidth": "20",
          "result_class": "User"
-      }
-  },
-   "regions": {
-      "login": [
-         [ ],
+      },
+      "regions": [
+         "header_fields",
          [ ],
          [ "login_button" ],
          [ "username", "password" ]

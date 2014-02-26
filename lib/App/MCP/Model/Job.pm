@@ -126,7 +126,7 @@ sub job_save : Role(users) {
 }
 
 # Private methods
-sub _job_chooser_href {
+sub _job_chooser_assign_hook {
    my ($self, $req) = @_; return $req->uri_for( 'job_chooser' );
 }
 

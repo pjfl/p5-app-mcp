@@ -4,14 +4,14 @@ use 5.010001;
 use namespace::sweep;
 
 use App::MCP::Constants;
+use App::MCP::Form;
 use App::MCP::Functions    qw( get_or_throw );
-use Class::Usul::Functions qw( ensure_class_loaded is_arrayref
-                               is_hashref first_char pad throw );
+use Class::Usul::Functions qw( ensure_class_loaded first_char pad throw );
 use Class::Usul::Response::Table;
 use Data::Validation;
 use File::Gettext::Schema;
 use HTTP::Status           qw( HTTP_OK );
-use Scalar::Util           qw( blessed weaken );
+use Scalar::Util           qw( blessed );
 use TryCatch;
 use Moo::Role;
 
@@ -19,15 +19,17 @@ requires qw( check_field config debug get_stash log usul );
 
 # Construction
 around 'get_stash' => sub {
-   my ($orig, $self, $req, $page, $form_name, $rec) = @_;
+   my ($orig, $self, $req, $page, $form_name, $row) = @_;
 
    $form_name or return $orig->( $self, $req, $page );
 
-   my $form = $self->_new_form( $req, $form_name, $rec );
+   my $form = App::MCP::Form->new( $self, $req, $form_name, $row );
 
-   $page->{first_field} = $form->{first_field};
+   $page->{first_field} = $form->first_field;
 
-   my $stash = $orig->( $self, $req, $page ); $stash->{form} = $form;
+   my $stash = $orig->( $self, $req, $page );
+
+   $stash->{form} = $form; $stash->{template} //= $form->template;
 
    return $stash;
 };
@@ -158,115 +160,14 @@ sub _check_field {
    my $form   = get_or_throw( $params, 'form'   );
    my $id     = get_or_throw( $params, 'id'     );
    my $val    = get_or_throw( $params, 'val'    );
-   my $meta   = $self->_forms( $domain, $req->locale )->{meta};
+   my $config = App::MCP::Form->load_config
+      ( $self->usul, $domain, $req->locale );
    my $class  = $self->schema_class.'::Result::'
-               .$meta->{ $form }->{result_class};
+               .$config->{ $form }->{meta}->{result_class};
 
    ensure_class_loaded( $class ); my $attr = $class->validation_attributes;
 
    return Data::Validation->new( $attr )->check_field( $id, $val );
-}
-
-sub _deref_value {
-   my ($self, $req, $field, $key, $value) = @_;
-
-   if (first_char "${value}" eq '&') {
-      my $method = substr "${value}", 1; $value = $self->$method( $req );
-   }
-
-   if (is_hashref $value) {
-      $field->{ $_ } = $value->{ $_ } for (keys %{ $value });
-   }
-   else { $field->{ $key } = "${value}" }
-
-   return;
-}
-
-sub _forms {
-   my ($self, $domain, $locale) = @_; state $cache //= {};
-
-   my $key   = $domain.$locale;
-
-   exists $cache->{ $key } and return $cache->{ $key };
-
-   my $path  = $self->config->ctrldir->catfile( "${domain}.json" );
-
-   $path->exists
-      or ($self->log->warn( "File ${path} not found" ) and return {});
-
-   my $attr  = { builder     => $self->usul,
-                 cache_class => 'none',
-                 lang        => $locale,
-                 localedir   => $self->config->localedir };
-   my $forms = File::Gettext::Schema->new( $attr )->load( $path );
-
-   return $cache->{ $key } = $forms;
-}
-
-sub _initialize_form {
-   my ($self, $req, $form_name) = @_; weaken( $req );
-
-   my $domain = $req->l10n_domain;
-   my $form   = { data        => [],
-                  js_object   => 'behaviour',
-                  l10n        => sub { __loc( $req, @_ ) },
-                  list_key    => 'fields',
-                  literal_js  => [],
-                  name        => $form_name,
-                  ns          => $domain,
-                  width       => $req->ui_state->{width} // 1024, };
-   my $locale = $req->locale;
-   my $meta   = $self->_forms( $domain, $locale )->{meta}->{ $form_name };
-
-   $form->{ $_ } = $meta->{ $_ } for (keys %{ $meta });
-
-   return $form;
-}
-
-sub _instantiate_field {
-   my ($self, $field, $req, $col, $rec) = @_;
-
-   exists $field->{name} or $field->{name} = $col;
-   exists $field->{form} or exists $field->{group} or exists $field->{widget}
-       or $field->{widget} = TRUE;
-
-   my $key   = __extract_key  ( $field );
-   my $value = __extract_value( $field->{ $key }, $rec, $col );
-
-   defined $value and $self->_deref_value( $req, $field, $key, $value );
-
-   return;
-}
-
-sub _new_form {
-   my ($self, $req, $form_name, $rec) = @_; my $cache = {}; my $count = 0;
-
-   my $forms = $self->_forms( $req->l10n_domain, $req->locale );
-
-   exists $forms->{regions}->{ $form_name }
-      or throw error => 'Form name [_1] unknown', args => [ $form_name ];
-
-   my $new = $self->_initialize_form( $req, $form_name );
-
-   for my $fields (@{ $forms->{regions}->{ $form_name }}) {
-      my $region = $new->{data}->[ $count++ ] = { fields => [] };
-      my @keys   = $fields->[ 0 ] ? @{ $fields } : sort keys %{ $rec };
-
-      for my $name (grep { not m{ \A _ }mx } @keys) {
-         my $field = __new_field( $forms, $form_name, $name );
-         my $col   = $name; $col =~ s{ \A \+ }{}mx;
-
-         $self->_instantiate_field( $field, $req, $col, $rec );
-
-         my $hook  = "_${form_name}_field_hook_".$field->{name};
-
-         $self->can( $hook ) and $field = $self->$hook( $cache, $field );
-         $field and $cache->{ $field->{name} } = $field
-                and push @{ $region->{fields} }, { content => $field };
-      }
-   }
-
-   return $new;
 }
 
 sub _new_grid_row {
@@ -316,49 +217,6 @@ sub _set_column {
 }
 
 # Private functions
-sub __extract_key {
-   my $field = shift; my $type = $field->{type} // NUL;
-
-   return $type eq 'button'  ? 'name'
-        : $type eq 'chooser' ? 'href'
-        : $type eq 'label'   ? 'text'
-                             : 'default';
-}
-
-sub __extract_value {
-   my ($default, $rec, $col) = @_; my $value = $default;
-
-   if ($rec and blessed $rec and $rec->can( $col )) {
-      $value = $rec->$col();
-   }
-   elsif (is_hashref $rec and exists $rec->{ $col }) {
-      $value = $rec->{ $col };
-   }
-
-   return $value;
-}
-
-sub __loc { # Localize the key and substitute the placeholder args
-   my ($req, $opts, $key, @args) = @_; my $car = $args[ 0 ];
-
-   my $args = (is_hashref $car) ? { %{ $car } }
-            : { params => (is_arrayref $car) ? $car : [ @args ] };
-
-   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
-   $args->{locale      } ||= $opts->{language};
-
-   return $req->localize( $key, $args );
-}
-
-sub __new_field {
-   my ($forms, $form_name, $field_name) = @_;
-
-   my $fqfn = first_char $field_name eq '+'
-            ? substr $field_name, 1 : "${form_name}.${field_name}";
-
-   return { %{ $forms->{fields}->{ $fqfn } // {} } };
-}
-
 sub __new_grid_table {
    my ($label, $values) = @_;
 
@@ -395,7 +253,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 18 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 19 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

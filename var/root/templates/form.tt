@@ -5,6 +5,7 @@
 [% IF page.status_message -%]
       <h5 class="status_message">[% page.status_message %]</h5>
 [% END -%]
+      [% form.0.fields.0.content | eval -%]
    </div>
    <div class="region region1">
 [% FOR field = form.1.fields -%]
