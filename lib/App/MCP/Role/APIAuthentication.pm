@@ -3,11 +3,12 @@ package App::MCP::Role::APIAuthentication;
 use 5.010001;
 use namespace::sweep;
 
-use App::MCP::Worker::Crypt::SRP::Blowfish;
-use App::MCP::Functions        qw( get_salt );
+use App::MCP::Functions        qw( get_hashed_pw get_salt );
 use Class::Usul::Constants;
 use Class::Usul::Crypt         qw( decrypt );
-use Class::Usul::Functions     qw( bson64id bson64id_time throw );
+use Class::Usul::Functions     qw( base64_decode_ns base64_encode_ns
+                                   bson64id bson64id_time throw );
+use Crypt::SRP;
 use HTTP::Status               qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
                                    HTTP_OK HTTP_UNAUTHORIZED );
 use TryCatch;
@@ -28,16 +29,19 @@ sub authenticate {
    my $token     = $req->body->param->{M1_token}
       or throw error => 'User [_1] no M1 token',
                args  => [ $user_name ], rv => HTTP_EXPECTATION_FAILED;
-   my $srp       = App::MCP::Worker::Crypt::SRP::Blowfish->new;
+   my $srp       = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
+   my $verifier  = base64_decode_ns get_hashed_pw $user->password;
+   my $salt      = get_salt $user->password;
 
-   $srp->server_init( $user_name, $user->password, @{ $sess->{auth_keys} } );
-   $srp->server_verify_M1( $token )
+   $srp->server_init( $user_name, $verifier, $salt, @{ $sess->{auth_keys} } );
+   $srp->server_verify_M1( base64_decode_ns $token )
       or throw error => 'User [_1] M1 token verification failed',
                args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
+   $token        = base64_encode_ns $srp->server_compute_M2;
 
-   my $content   = { id => $sess->{id}, M2_token => $srp->server_compute_M2, };
+   my $content   = { id => $sess->{id}, M2_token => $token, };
 
-   $sess->{shared_secret} = $srp->get_secret_K;
+   $sess->{shared_secret} = base64_encode_ns $srp->get_secret_K;
 
    return { code => HTTP_OK, content => $content, };
 }
@@ -61,23 +65,27 @@ sub authenticate_params {
 sub exchange_pub_keys {
    my ($self, $req) = @_; $req->authenticate;
 
-   my $client_pub_key = $req->params->{public_key};
    my $user           = $self->_find_user_from( $req );
    my $sess           = $self->_find_or_create_session( $user );
-   my $srp            = App::MCP::Worker::Crypt::SRP::Blowfish->new;
-   my $user_name      = $user->username;
+   my $srp            = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
+   my $client_pub_key = base64_decode_ns( $req->params->{public_key} );
+   my $username       = $user->username;
 
    $srp->server_verify_A( $client_pub_key )
       or throw error => 'User [_1] client public key verification failed',
-               args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
-   $srp->server_init( $user_name, $user->password );
+               args  => [ $username ], rv => HTTP_UNAUTHORIZED;
+
+   my $verifier = base64_decode_ns( get_hashed_pw $user->password );
+   my $salt     = get_salt $user->password;
+
+   $srp->server_init( $username, $verifier, $salt );
 
    my ($server_pub_key, $server_priv_key) = $srp->server_compute_B;
 
    $sess->{auth_keys} = [ $client_pub_key, $server_pub_key, $server_priv_key ];
 
-   my $salt    = get_salt $user->password;
-   my $content = { public_key => $server_pub_key, salt => $salt, };
+   my $pub_key = base64_encode_ns( $server_pub_key );
+   my $content = { public_key => $pub_key, salt => $salt, };
 
    return { code => HTTP_OK, content => $content, };
 }
@@ -127,12 +135,12 @@ sub _find_or_create_session {
 sub _find_user_from {
    my ($self, $req) = @_;
 
-   my $user_name = $req->args->[ 0 ] // 'undef';
-   my $user_rs   = $self->schema->resultset( 'User' );
-   my $user      = $user_rs->find_by_name( $user_name );
+   my $username = $req->args->[ 0 ] // 'undef';
+   my $user_rs  = $self->schema->resultset( 'User' );
+   my $user     = $user_rs->find_by_name( $username );
 
    $user->active or throw error => 'User [_1] account inactive',
-                          args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
+                          args  => [ $username ], rv => HTTP_UNAUTHORIZED;
    return $user;
 }
 

@@ -9,11 +9,18 @@ use Class::Usul::Functions qw( pad throw );
 use English                qw( -no_match_vars );
 use Unexpected::Functions  qw( Unspecified );
 
-our @EXPORT_OK = ( qw( get_or_throw get_salt log_leader qualify_job_name
-                       read_exactly recv_arg_error recv_rv_error
-                       trigger_input_handler trigger_output_handler ) );
+our @EXPORT_OK = ( qw( get_hashed_pw get_or_throw get_salt log_leader
+                       qualify_job_name read_exactly recv_arg_error
+                       recv_rv_error trigger_input_handler
+                       trigger_output_handler ) );
 
 # Public functions
+sub get_hashed_pw ($) {
+   my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
+
+   return substr $parts[ -1 ], 22;
+}
+
 sub get_or_throw ($$) {
    my ($params, $name) = @_;
 
@@ -24,7 +31,7 @@ sub get_or_throw ($$) {
 }
 
 sub get_salt ($) {
-   my $password = shift; my @parts = split m{ [\$] }mx, $password;
+   my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
 
    $parts[ -1 ] = substr $parts[ -1 ], 0, 22;
 

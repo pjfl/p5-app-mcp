@@ -57,7 +57,6 @@ del { text-decoration: line-through; }
 dl, ol, ul { margin-bottom: 24px; }
 dfn { font-style: italic; }
 fieldset { border: 1px solid; margin-bottom: 24px; padding: 6px; }
-form { display: inline-block; overflow: auto; }
 h1, h2, h3, h4, h5, h6 {
    font-family: "Helvetica Neue", Helvetica, Verdana, tahoma, arial, sans-serif;
    font-weight: normal;
@@ -95,7 +94,7 @@ ul { list-style-position: outside; list-style-type: disc; }
 
 /* Classes */
 .compact_prompt, .container, .dialog-field, .dialog-group,
-.field_group, .label_text, .prompt, .region, .separator, .state-diagram {
+.field_group, .label_text, .prompt, .separator, .state-diagram {
    display: inline-block; float: left; position: relative;
 }
 .compact_prompt, .label_text, .prompt, .separator {
@@ -106,7 +105,7 @@ ul { list-style-position: outside; list-style-type: disc; }
    -webkit-border-radius: 4px; border-radius: 4px;
 }
 
-.body { margin: 0 auto; width: 90%; }
+.body { margin: 0 auto; width: 95%; }
 .checkbox {
    background: url(../img/icons.png) -90px -300px no-repeat; cursor: pointer;
    display: inline-block; height: 16px; vertical-align: middle; width: 16px;
@@ -117,12 +116,14 @@ ul { list-style-position: outside; list-style-type: disc; }
 .checked  {
    background: url(../img/icons.png) -120px -300px no-repeat transparent;
 }
-.chooser_button, .submit_button { margin: 12px 12px 11px 12px; }
+.chooser_button, .submit_button {
+    margin: 12px 12px 11px 12px; padding: 0 6px 0 6px;
+}
 .compact_prompt { margin-left: 24px; max-width: 200px; width: auto !important; }
 .compact_prompt, .prompt {
    cursor: pointer; font-size: 14px; text-align: right; width: auto;
 }
-.container + .last_field { float: right; margin-right: 0px; }
+.container + .last_field { float: right; }
 .dialog { border: 2px solid transparent; max-width: 40%; padding: 12px; }
 .dialog-body { position: relative; }
 .dialog-close {
@@ -153,16 +154,27 @@ ul { list-style-position: outside; list-style-type: disc; }
 .ifield { margin: 12px 0 11px 0; }
 .lineNumber { padding-right: 6px; text-align: right; }
 .message_text { max-width: 800px; }
+.nav_list { list-style-type: none; margin: 0; }
+.nav_list li { display: table-row; }
+.nav_list .anchor_button {
+   display: block; font-size: 16px; margin: 9px 12px 9px 12px;
+   padding: 3px 6px 3px 6px;
+}
 .numeric { text-align: right; }
 .opposite-flow { float: right; }
 .radio_group { margin-left: 6px; vertical-align: middle; }
+.region { float: left; }
 .region0 { width: 100%; }
-.region2 { float: right; padding: 0 12px; }
-.region3 { clear: left; }
+.region1 {
+   border-right: 1px solid; height: 100%; position: fixed;
+   top: 72px; width: 10%;
+}
+.region2 { margin: 0 15% 0 10%; }
+.region3 { position: fixed; right: 5%; top: 72px; width: 15%; }
 .required { border-right: 3px solid; }
 .state-diagram { padding: 24px; }
 .status_message {
-   display: inline-block; position: relative; text-align: center; width: 100%;
+   display: block; position: relative; text-align: center;
 }
 .tips-container {
    border: 2px solid transparent; text-align: center; z-index: 10000;
@@ -200,6 +212,7 @@ th.grid_header  {
 .dialog-title, .tips-term { color: #336; }
 .field_error { background-color: #fcc; border-color: #336; }
 .grid_subheader { background-color: #9c9; color: #000; }
+.region1 { border-right-color: #336; }
 .required {    border-right-color: #f00; }
 .state-diagram { background-color: #e9f7dc; }
 .tips-mark0 { border-color: transparent transparent #336 #336; }

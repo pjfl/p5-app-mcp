@@ -131,19 +131,19 @@
    "job": {
       "meta": {
          "first_field": "name",
-         "max_pwidth": "320",
+         "max_pwidth": "200",
          "pwidth": "20",
          "result_class": "Job"
       },
       "regions": [
          "header_fields",
-         [ "+logout_button", "+logout_form" ],
-         [ "chooser", "clear_button", "save_button",
-           "delete_button" ],
+         [ "+nav_panel", "+logout_button", "+logout_form" ],
          [ "name", "fqjn", "type", "created", "parent_name", "command",
            "condition", "crontab_min", "crontab_hour", "crontab_mday",
            "crontab_mon", "crontab_wday", "host", "user", "directory",
-           "expected_rv", "permissions", "owner_rel", "group_rel" ]
+           "expected_rv", "permissions", "owner_rel", "group_rel" ],
+         [ "chooser", "clear_button", "save_button",
+           "delete_button" ]
       ]
    },
    "job_chooser": {

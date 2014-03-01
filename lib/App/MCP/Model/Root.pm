@@ -4,7 +4,9 @@ use namespace::sweep;
 
 use Moo;
 use App::MCP::Constants;
+use App::MCP::Functions    qw( get_or_throw );
 use Class::Usul::Functions qw( throw );
+use HTTP::Status           qw( HTTP_NOT_FOUND );
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
@@ -32,6 +34,39 @@ sub authenticate_login : Role(any) {
    $session->{user_roles} = [ $primary_role, @{ $user->list_other_roles } ];
 
    return { redirect => { location => $location, message => $message } };
+}
+
+sub nav_list : Role(any) {
+   my ($self, $req) = @_; my $data = [];
+
+   for my $action (@{ $self->config->nav_list }) {
+      my $text = $req->loc( "${action}_nav_link_text", { no_default => TRUE } )
+              || ucfirst $action;
+      my $tip  = $req->loc( "${action}_nav_link_tip",  { no_default => TRUE } )
+              || $req->loc( 'Goto this page in the application' );
+      my $href = $req->uri_for( $action );
+
+      push @{ $data }, { content => {
+         container => FALSE, href => $href,    text   => $text,
+         tip       => $tip,  type => 'anchor', widget => TRUE } };
+   }
+
+   my $list = { list => { class => 'nav_list', data => $data } };
+   my $page = { meta => { id    => 'nav_panel' } };
+
+   return $self->get_stash( $req, $page, 'nav' => $list );
+}
+
+sub not_found : Role(any) {
+   my ($self, $req) = @_;
+
+   my $stash = $self->get_stash( $req, { code  => HTTP_NOT_FOUND,
+                                         error => $req->uri,
+                                         title => $req->loc( 'Not found' ) } );
+
+   $stash->{template} = 'exception';
+
+   return $stash;
 }
 
 sub login_form : Role(any) {

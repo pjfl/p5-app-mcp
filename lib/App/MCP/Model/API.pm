@@ -52,7 +52,8 @@ sub create_job {
    my $params = $self->authenticate_params
       ( $sess->{key}, $sess->{shared_secret}, $req->body->param->{job} );
 
-   $params->{owner} = $sess->{user_id}; $params->{group} = $sess->{role_id};
+   $params->{owner_id} = $sess->{user_id};
+   $params->{group_id} = $sess->{role_id};
 
    try        { $job = $self->schema->resultset( 'Job' )->create( $params ) }
    catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }

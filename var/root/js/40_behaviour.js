@@ -202,6 +202,11 @@ var Behaviour = new Class( {
          url           : opt.baseURI } );
       this.sliders     = new Sliders( { context: this } );
       this.togglers    = new Togglers( { context: this } );
+      this.trees       = new Trees( {
+         context       : this,
+         cookieDomain  : opt.cookieDomain,
+         cookiePath    : opt.cookiePath,
+         cookiePrefix  : opt.cookiePrefix } );
 
       this.resize();
 

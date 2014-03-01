@@ -40,12 +40,16 @@ sub enumerated_data_type {
 }
 
 sub foreign_key_data_type {
-   my ($self, $default) = @_;
+   my ($self, $default, $accessor) = @_;
 
-   return { data_type         => 'integer',
-            default_value     => $default,
-            extra             => { unsigned => TRUE },
-            is_nullable       => FALSE, };
+   my $type_info = { data_type     => 'integer',
+                     default_value => $default,
+                     extra         => { unsigned => TRUE },
+                     is_nullable   => FALSE, };
+
+   defined $accessor and $type_info->{accessor} = $accessor;
+
+   return $type_info;
 }
 
 sub nullable_foreign_key_data_type {

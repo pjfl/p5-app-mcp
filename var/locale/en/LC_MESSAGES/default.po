@@ -17,3 +17,12 @@ msgstr ""
 
 msgid "form_hint_title"
 msgstr "Hint"
+
+msgid "help_nav_link_tip"
+msgstr "Application help"
+
+msgid "job_nav_link_tip"
+msgstr "Job definitions"
+
+msgid "state_nav_link_tip"
+msgstr "Realtime state diagram"

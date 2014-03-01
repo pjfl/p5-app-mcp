@@ -25,8 +25,8 @@ $class->add_columns
                       is_nullable   => FALSE,
                       size          => $class->varchar_max_size, },
      type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
-     owner       => $class->foreign_key_data_type( 1 ),
-     group       => $class->foreign_key_data_type( 1 ),
+     owner_id    => $class->foreign_key_data_type( 1, 'owner' ),
+     group_id    => $class->foreign_key_data_type( 1, 'group' ),
      permissions => { accessor      => '_permissions',
                       data_type     => 'smallint',
                       default_value => 488,
@@ -62,9 +62,9 @@ $class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
 $class->might_have( state            => "${result}::JobState",       'job_id' );
 
-$class->belongs_to( owner_rel        => "${result}::User",            'owner' );
+$class->belongs_to( owner_rel        => "${result}::User",         'owner_id' );
 
-$class->belongs_to( group_rel        => "${result}::Role",            'group' );
+$class->belongs_to( group_rel        => "${result}::Role",         'group_id' );
 
 sub new {
    my ($class, $attr) = @_; my $parent_name = delete $attr->{parent_name};

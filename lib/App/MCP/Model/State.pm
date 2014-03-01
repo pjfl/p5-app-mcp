@@ -15,7 +15,13 @@ with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
 
 sub diagram {
-   return $_[ 0 ]->get_stash( $_[ 1 ], { title => 'State Diagram' } );
+   my ($self, $req) = @_;
+
+   my $stash = $self->get_stash( $req, { title => 'State Diagram' } );
+
+   $stash->{template} = 'index';
+
+   return $stash;
 }
 
 1;

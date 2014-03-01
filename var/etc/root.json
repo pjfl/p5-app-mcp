@@ -14,6 +14,11 @@
          "check_field" : "1",
          "default": "",
          "required" : "1"
+      },
+      "nav.list": {
+         "container": "0",
+         "id": "nav_list",
+         "type": "list"
       }
    },
    "login": {
@@ -25,9 +30,14 @@
       },
       "regions": [
          "header_fields",
-         [ ],
-         [ "login_button" ],
-         [ "username", "password" ]
+         [ "+nav_panel" ],
+         [ "username", "password" ],
+         [ "login_button" ]
+      ]
+   },
+   "nav": {
+      "regions": [
+         [ "list" ]
       ]
    }
 }

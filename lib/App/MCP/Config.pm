@@ -68,6 +68,9 @@ has 'max_ssh_workers'      => is => 'ro',   isa => NonZeroPositiveInt,
 has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => '/';
 
+has 'nav_list'             => is => 'ro',   isa => ArrayRef,
+   builder                 => sub { [ qw( job state help ) ] };
+
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
 
@@ -93,7 +96,7 @@ has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
 
 has 'template'             => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'index';
+   default                 => 'form';
 
 has 'title'                => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'MCP';

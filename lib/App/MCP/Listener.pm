@@ -16,8 +16,7 @@ use Class::Usul;
 use Class::Usul::Functions qw( exception find_apphome get_cfgfiles throw );
 use Class::Usul::Types     qw( BaseType HashRef NonZeroPositiveInt Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_FOUND
-                               HTTP_INTERNAL_SERVER_ERROR
-                               HTTP_METHOD_NOT_ALLOWED );
+                               HTTP_INTERNAL_SERVER_ERROR );
 use Plack::Builder;
 use TryCatch;
 use Web::Simple;
@@ -157,8 +156,11 @@ sub _controller_root {
    sub (POST + /logout) {
       return shift->_execute( qw( html root logout ), @_ );
    },
+   sub (GET  + /nav_list) {
+      return shift->_execute( qw( xml  root nav_list ), @_ );
+   },
    sub () {
-      [ HTTP_METHOD_NOT_ALLOWED, __plain_header(), [ 'Method not allowed' ] ];
+      return shift->_execute( qw( html root not_found ), @_ );
    };
 }
 

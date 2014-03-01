@@ -6,8 +6,10 @@ use overload '""' => 'as_string', fallback => 1;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants;
-use Class::Usul::Functions     qw( create_token throw );
+use App::MCP::Functions        qw( get_salt );
+use Class::Usul::Functions     qw( base64_encode_ns create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
+use Crypt::SRP;
 use HTTP::Status               qw( HTTP_UNAUTHORIZED );
 use TryCatch;
 use Unexpected::Functions      qw( AccountInactive IncorrectPassword );
@@ -18,19 +20,11 @@ $class->table( 'user' );
 
 $class->add_columns
    ( id            => $class->serial_data_type,
+     username      => $class->varchar_data_type( 64, NUL ),
      active        => { data_type     => 'boolean',
                         default_value => FALSE,
                         is_nullable   => FALSE, },
      role_id       => $class->foreign_key_data_type,
-     username      => $class->varchar_data_type( 64, NUL ),
-     password      => $class->varchar_data_type( 64, NUL ),
-     email_address => $class->varchar_data_type( 64, NUL ),
-     first_name    => $class->varchar_data_type( 64, NUL ),
-     last_name     => $class->varchar_data_type( 64, NUL ),
-     home_phone    => $class->varchar_data_type( 64, NUL ),
-     location      => $class->varchar_data_type( 64, NUL ),
-     project       => $class->varchar_data_type( 64, NUL ),
-     work_phone    => $class->varchar_data_type( 64, NUL ),
      pwlast        => { data_type     => 'mediumint',
                         default_value => 0,
                         is_nullable   => FALSE, },
@@ -48,7 +42,15 @@ $class->add_columns
                         is_nullable   => FALSE, },
      pwdisable     => { data_type     => 'mediumint',
                         default_value => undef,
-                        is_nullable   => TRUE, }, );
+                        is_nullable   => TRUE, },
+     password      => $class->varchar_data_type( 384, NUL ),
+     email_address => $class->varchar_data_type( 64, NUL ),
+     first_name    => $class->varchar_data_type( 64, NUL ),
+     last_name     => $class->varchar_data_type( 64, NUL ),
+     home_phone    => $class->varchar_data_type( 64, NUL ),
+     location      => $class->varchar_data_type( 64, NUL ),
+     project       => $class->varchar_data_type( 64, NUL ),
+     work_phone    => $class->varchar_data_type( 64, NUL ), );
 
 $class->set_primary_key( 'id' );
 
@@ -99,8 +101,9 @@ sub authenticate {
    $self->active or throw class => AccountInactive,
                           args  => [ $self->username ], rv => HTTP_UNAUTHORIZED;
 
+   my $username = $self->username;
    my $stored   = $self->password || NUL;
-   my $supplied = $self->_encrypt_password( $password, $stored );
+   my $supplied = $self->_encrypt_password( $username, $password, $stored );
 
    $supplied eq $stored
       or throw class => IncorrectPassword,
@@ -129,9 +132,10 @@ sub insert {
    my $self     = shift;
    my $columns  = { $self->get_inflated_columns };
    my $password = $columns->{password};
+   my $username = $columns->{username};
 
-   $password and not __is_encrypted( $password )
-      and $columns->{password} = $self->_encrypt_password( $password );
+   $password and not __is_encrypted( $password ) and $columns->{password}
+      = $self->_encrypt_password( $username, $password );
    $columns->{role_id} ||= $self->_default_role_id;
    $self->set_inflated_columns( $columns );
 
@@ -162,15 +166,25 @@ sub _default_role_id {
 }
 
 sub _encrypt_password {
-   my ($self, $password, $salt) = @_;
+   my ($self, $username, $password, $stored) = @_;
 
-   $salt //= __get_salt( $self->result_source->resultset->load_factor );
+   my $salt     = defined $stored ? get_salt( $stored )
+                : __new_salt( $self->result_source->resultset->load_factor );
+   my $crypted  = __get_hashed_pw( bcrypt( $password, $salt ) );
+   my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
+   my $verifier = $srp->compute_verifier( $username, $crypted, $salt );
 
-   return bcrypt( $password, $salt );
+   return $salt.base64_encode_ns( $verifier );
 }
 
 # Private functions
-sub __get_salt {
+sub __get_hashed_pw {
+   my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
+
+   return substr $parts[ -1 ], 22;
+}
+
+sub __new_salt {
    my $lf = shift;
 
    return "\$2a\$${lf}\$"
@@ -178,7 +192,7 @@ sub __get_salt {
 }
 
 sub __is_encrypted {
-   return $_[ 0 ] =~ m{ \A \$2a }mx ? TRUE : FALSE;
+   return $_[ 0 ] =~ m{ \A \$\d+[a]?\$ }mx ? TRUE : FALSE;
 }
 
 1;
