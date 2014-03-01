@@ -3,9 +3,7 @@ package App::MCP::Model::State;
 use namespace::sweep;
 
 use Moo;
-use Class::Usul::Constants;
-use Class::Usul::Functions qw( throw );
-use HTTP::Status           qw( HTTP_OK );
+use App::MCP::Constants;
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
@@ -13,15 +11,12 @@ with    q(App::MCP::Role::JavaScript);
 with    q(App::MCP::Role::PageConfiguration);
 with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
+with    q(App::MCP::Role::WebAuthentication);
 
-sub diagram {
-   my ($self, $req) = @_;
+sub diagram : Role(users) {
+   my ($self, $req) = @_; my $page = { title => 'State Diagram' };
 
-   my $stash = $self->get_stash( $req, { title => 'State Diagram' } );
-
-   $stash->{template} = 'index';
-
-   return $stash;
+   return $self->get_stash( $req, $page, diagram => {} );
 }
 
 1;

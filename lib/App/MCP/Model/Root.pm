@@ -60,13 +60,11 @@ sub nav_list : Role(any) {
 sub not_found : Role(any) {
    my ($self, $req) = @_;
 
-   my $stash = $self->get_stash( $req, { code  => HTTP_NOT_FOUND,
-                                         error => $req->uri,
-                                         title => $req->loc( 'Not found' ) } );
+   my $page = { code  => HTTP_NOT_FOUND,
+                error => $req->loc( 'Resource [_1] not found', $req->uri ),
+                title => $req->loc( 'Not found' ) };
 
-   $stash->{template} = 'exception';
-
-   return $stash;
+   return $self->get_stash( $req, $page, exception => {} );
 }
 
 sub login_form : Role(any) {

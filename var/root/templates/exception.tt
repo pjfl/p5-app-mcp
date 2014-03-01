@@ -1,13 +1,9 @@
 <!-- Exception -->
-<div class="container">
-   <h3>[% config.title %] - [% page.title %]</h3>
 [% IF page.validation_error -%]
    [% FOR error = page.validation_error -%]
-   <p class="message_text">[% error.as_string %]</p>
+<p class="message_text">[% error.as_string %]</p>
    [% END -%]
 [% ELSE -%]
-   <p class="message_text">[% page.error %]</p>
+<p class="message_text">[% page.error %]</p>
 [% END -%]
-   <h5>Code [% page.code %]</h5>
-</div>
-[% INCLUDE footer.tt -%]
+<h5>Code [% page.code %]</h5>

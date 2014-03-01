@@ -38,10 +38,7 @@ sub exception_handler {
 
    $e->class eq ValidationErrors and $page->{validation_error} = $e->args;
 
-   my $stash = $self->get_stash( $req, $page );
-
-   $stash->{template} = 'exception';
-   return $stash;
+   return $self->get_stash( $req, $page, exception => {} );
 }
 
 sub execute {

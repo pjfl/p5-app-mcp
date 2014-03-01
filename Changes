@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Exception and state pages use template widgets
           - Added web app navigation
           - Added ::Form and ::Form::Field classes
           - Going to create ::Form class

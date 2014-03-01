@@ -15,12 +15,12 @@
          <h5 class="status_message">[% page.status_message %]</h5>
 [% END -%]
 [% FOR field = form.2.fields -%]
-   [% field.content -%]
+   [% field.content | eval -%]
 [% END -%]
       </div>
       <div class="region region3">
 [% FOR field = form.3.fields -%]
-   [% field.content -%]
+   [% field.content | eval -%]
 [% END -%]
       </div>
    </form>

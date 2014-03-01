@@ -1,5 +1,10 @@
 {
    "_fields": {
+      "exception.template": {
+         "container_class": "container template",
+         "name": "exception",
+         "type": "template"
+      },
       "header_fields": [
       ],
       "nav_panel": {
@@ -29,5 +34,13 @@
          "form": "1",
          "nitems": "1"
       }
+   },
+   "exception": {
+      "regions": [
+         "header_fields",
+         [ "+nav_panel" ],
+         [ "template" ],
+         [ ]
+      ]
    }
 }

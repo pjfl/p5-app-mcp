@@ -8,6 +8,7 @@ use Class::Usul::Constants;
 use Class::Usul::Functions qw( first_char is_arrayref is_hashref throw );
 use Class::Usul::Types     qw( ArrayRef CodeRef HashRef Int
                                NonEmptySimpleStr SimpleStr Object );
+use File::DataClass::Types qw( Directory );
 use Scalar::Util           qw( blessed weaken );
 
 has 'config'       => is => 'ro',   isa => HashRef, default => sub { {} };
@@ -46,6 +47,11 @@ has 'result_class' => is => 'ro',   isa => SimpleStr;
 
 has 'template'     => is => 'ro',   isa => NonEmptySimpleStr, default => 'form';
 
+has 'template_dir' => is => 'lazy', isa => Directory,
+   builder         => sub {
+      $_[ 0 ]->model->config->root->catdir( 'templates' ) },
+   coerce          => Directory->coercion;
+
 has 'width'        => is => 'lazy', isa => Int,
    builder         => sub { $_[ 0 ]->req->ui_state->{width} // 1024 };
 
@@ -56,14 +62,14 @@ around 'BUILDARGS' => sub {
    $attr->{model } = $model,
    $attr->{name  } = $form_name;
    $attr->{req   } = $req;
-   $attr->{row   } = $row,
+   $attr->{row   } = $row;
    $attr->{config} = $self->load_config
       ( $model->usul, $req->l10n_domain, $req->locale );
 
    exists $attr->{config}->{ $form_name }
       or throw error => 'Form name [_1] unknown', args => [ $form_name ];
 
-   my $meta = $attr->{config}->{ $form_name }->{meta};
+   my $meta = $attr->{config}->{ $form_name }->{meta} // {};
 
    $attr->{ $_ } //= $meta->{ $_ } for (keys %{ $meta });
 
@@ -75,7 +81,7 @@ sub BUILD {
 
    my $cache = {}; my $count = 0; my $form_name = $self->name;
 
-   $self->l10n; $self->ns; $self->width; # Visit the lazy
+   $self->l10n; $self->ns; $self->template_dir; $self->width; # Visit the lazy
 
    for my $fields (@{ $config->{ $form_name }->{regions}}) {
       my $region = $self->data->[ $count++ ] = { fields => [] };
