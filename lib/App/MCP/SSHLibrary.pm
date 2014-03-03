@@ -1,7 +1,6 @@
 package App::MCP::SSHLibrary;
 
-use strict;
-use warnings;
+use strictures;
 
 use IPC::PerlSSH::Library;
 

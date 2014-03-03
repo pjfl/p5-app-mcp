@@ -1,8 +1,7 @@
 package App::MCP::ExpressionParser;
 
 use 5.010001;
-use strict;
-use warnings;
+use strictures;
 
 use Class::Usul::Functions  qw( arg_list throw );
 use Marpa::R2;

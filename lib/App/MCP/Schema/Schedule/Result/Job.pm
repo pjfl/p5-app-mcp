@@ -1,8 +1,7 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
 use 5.01;
-use strict;
-use warnings;
+use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use Algorithm::Cron;

@@ -50,6 +50,8 @@ sub _list_roles_of {
 
    my $code_ref = $class->can( $method ) or return ();
 
+   $method eq 'check_field' and return [ 'any' ]; # TODO: Fix this
+
    return [ map  { m{ \A Role [\(] ([^\)]+) [\)] \z }mx }
             grep { m{ \A Role }mx } @{ attributes::get( $code_ref ) || [] } ];
 }

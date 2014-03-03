@@ -1,7 +1,6 @@
 package App::MCP::Schema::Schedule;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'DBIx::Class::Schema';
 
 use File::Spec::Functions qw( catfile );

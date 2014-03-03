@@ -1,7 +1,6 @@
 package App::MCP::Schema::Base;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'DBIx::Class::Core';
 
 use App::MCP::Constants;

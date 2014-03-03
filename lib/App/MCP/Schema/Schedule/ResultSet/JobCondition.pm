@@ -1,7 +1,6 @@
 package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'DBIx::Class::ResultSet';
 
 use Class::Usul::Functions qw( throw );

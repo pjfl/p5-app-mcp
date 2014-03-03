@@ -1,7 +1,6 @@
 package App::MCP::Schema::Schedule::ResultSet::Role;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;

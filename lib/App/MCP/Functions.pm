@@ -1,7 +1,6 @@
 package App::MCP::Functions;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'Exporter::Tiny';
 
 use App::MCP::Constants;

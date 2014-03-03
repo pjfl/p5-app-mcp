@@ -1,7 +1,6 @@
 package App::MCP::Schema::Schedule::Result::Role;
 
-use strict;
-use warnings;
+use strictures;
 use overload '""' => 'as_string', fallback => 1;
 use parent 'App::MCP::Schema::Base';
 

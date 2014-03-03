@@ -26,10 +26,6 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass,
 
 with q(Class::Usul::TraitFor::ConnectInfo);
 
-sub check_field : Role(any) { # TODO: This not work in a role or with modifier
-   return $_[ 0 ]->formbuilder_check_field( $_[ 1 ] );
-}
-
 sub exception_handler {
    my ($self, $req, $e) = @_;
 

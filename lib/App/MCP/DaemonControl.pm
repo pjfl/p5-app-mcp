@@ -1,7 +1,6 @@
 package App::MCP::DaemonControl;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'Daemon::Control';
 
 sub new {

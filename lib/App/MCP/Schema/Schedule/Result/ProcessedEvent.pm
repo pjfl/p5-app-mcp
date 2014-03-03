@@ -1,7 +1,6 @@
 package App::MCP::Schema::Schedule::Result::ProcessedEvent;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants;

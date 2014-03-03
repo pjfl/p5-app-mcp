@@ -1,7 +1,6 @@
 package App::MCP::MaterialisedPath;
 
-use strict;
-use warnings;
+use strictures;
 use parent 'DBIx::Class::Helper::Row::OnColumnChange';
 
 # Construction

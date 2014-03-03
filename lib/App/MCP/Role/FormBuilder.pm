@@ -15,7 +15,7 @@ use Scalar::Util           qw( blessed );
 use TryCatch;
 use Moo::Role;
 
-requires qw( check_field config debug get_stash log usul );
+requires qw( config debug get_stash log schema_class usul );
 
 # Construction
 around 'get_stash' => sub {
@@ -132,7 +132,7 @@ sub find_and_update_record {
    return $rec;
 }
 
-sub formbuilder_check_field {
+sub check_field : Role(any) {
    my ($self, $req) = @_; my $mesg;
 
    my $id   = get_or_throw( $req->params, 'id' );
@@ -253,7 +253,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 19 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 22 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

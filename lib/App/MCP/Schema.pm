@@ -6,16 +6,16 @@ use version;
 
 use Moo;
 use App::MCP::Constants;
-use App::MCP::Functions      qw( qualify_job_name trigger_output_handler );
-use Class::Usul::Functions   qw( throw );
+use App::MCP::Functions    qw( qualify_job_name trigger_output_handler );
+use Class::Usul::Functions qw( throw );
 use Class::Usul::Options;
-use Class::Usul::Types       qw( LoadableClass NonEmptySimpleStr Object );
-use Unexpected::Functions    qw( Unspecified );
+use Class::Usul::Types     qw( LoadableClass NonEmptySimpleStr Object );
+use Unexpected::Functions  qw( Unspecified );
 
 extends q(Class::Usul::Schema);
-with    q(App::MCP::Worker::ClientAuth);
+with    q(App::MCP::Worker::Role::UserPassword);
 
-my $version           = qv( sprintf '0.4.%d', q$Rev: 15 $ =~ /\d+/gmx );
+my $version           = qv( sprintf '0.4.%d', q$Rev: 22 $ =~ /\d+/gmx );
 my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)

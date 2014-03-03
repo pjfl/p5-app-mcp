@@ -1,8 +1,7 @@
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use 5.01;
-use strict;
-use warnings;
+use strictures;
 use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
