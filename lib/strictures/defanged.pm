@@ -2,12 +2,12 @@ package strictures::defanged;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 23 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 24 $ =~ /\d+/gmx );
 
 sub import {
    require strictures; no warnings 'redefine';
 
-   $ENV{PERL_STRICTURES_WITH_FANGS}
+   $ENV{PERL_STRICTURES_ENABLED}
       or *strictures::import = sub { strict->import; warnings->import };
 
    return;
@@ -32,7 +32,7 @@ strictures::defanged - Make strictures the same as just use strict warnings
 
 =head1 Version
 
-This documents version v0.1.$Rev: 23 $ of L<strictures::defanged>
+This documents version v0.1.$Rev: 24 $ of L<strictures::defanged>
 
 =head1 Description
 
@@ -56,12 +56,12 @@ Once you've used it in your program B<every> package that uses L<strictures>
 will be using this instead
 
 If you put this in your script wrappers and not your package code then
-programs are unaffected the additional constraints that C<strictures>
+programs are unaffected by the additional constraints that C<strictures>
 imposes but the package code, and the tests, still get the "benefit"
 
 =head1 Configuration and Environment
 
-Setting the environment variable C<PERL_STRICTURES_WITH_FANGS> to true
+Setting the environment variable C<PERL_STRICTURES_ENABLED> to true
 skips the patching of the L<strictures> import subroutine and turns
 this module into a no-op
 
