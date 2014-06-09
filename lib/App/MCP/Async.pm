@@ -6,7 +6,7 @@ use Moo;
 use App::MCP::Async::Loop;
 use App::MCP::Constants;
 use App::MCP::Functions    qw( log_leader );
-use Class::Usul::Functions qw( ensure_class_loaded );
+use Class::Usul::Functions qw( ensure_class_loaded first_char );
 use Class::Usul::Types     qw( BaseType Object );
 use POSIX                  qw( WEXITSTATUS );
 
@@ -41,7 +41,7 @@ sub new_notifier {
 
    if ($type eq 'function') { $desc .= ' worker'; $ddesc = $desc.' pool' }
 
-   my $class = (substr $type, 0, 1) eq '+'
+   my $class = first_char $type eq '+'
              ? (substr $type, 1) : __PACKAGE__.'::'.(ucfirst $type);
 
    ensure_class_loaded( $class );

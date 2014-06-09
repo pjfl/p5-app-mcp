@@ -16,9 +16,68 @@ $class->add_columns
 
 $class->set_primary_key( 'job_id' );
 
-$class->belongs_to( job_rel   => "${schema}::Result::Job",   'job_id' );
+$class->belongs_to( job    => "${schema}::Result::Job",     'job_id' );
 
-$class->has_many  ( event_rel => "${schema}::Result::Event", 'job_id' );
+$class->has_many  ( events => "${schema}::Result::Event",   'job_id' );
+
+$class->has_many  ( processed_events =>
+                       "${schema}::Result::ProcessedEvent", 'job_id' );
+
+# Public methods
+sub fqjn {
+   return $_[ 0 ]->job->fqjn;
+}
+
+sub last_finish {
+   my $self = shift; my $event = $self->_last_finish_event;
+
+   return $event ? $event->processed : 'never';
+}
+
+sub last_pid {
+   my $self = shift; my $event = $self->_last_finish_event;
+
+   return $event ? $event->pid : 'none';
+}
+
+sub last_runid {
+   my $self = shift; my $event = $self->_last_finish_event;
+
+   return $event ? $event->runid : 'none';
+}
+
+sub last_rv {
+   my $self = shift; my $event = $self->_last_finish_event;
+
+   return $event ? $event->rv : 'none';
+}
+
+sub last_start {
+   my $self = shift; my $event = $self->_last_start_event;
+
+   return $event ? $event->created : 'never';
+}
+
+# Private methods
+sub _last_finish_event {
+   my $self = shift;
+
+   exists $self->{_last_finish_event} and return $self->{_last_finish_event};
+
+   return $self->{_last_finish_event} = $self->processed_events->search
+      ( { transition => 'finish' },
+        { order_by   => { -desc => 'runid' } } )->first;
+}
+
+sub _last_start_event {
+   my $self = shift;
+
+   exists $self->{_last_start_event} and return $self->{_last_start_event};
+
+   return $self->{_last_start_event} = $self->processed_events->search
+      ( { transition => 'start' },
+        { order_by   => { -desc => 'runid' } } )->first;
+}
 
 1;
 

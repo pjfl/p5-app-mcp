@@ -1,6 +1,5 @@
 package App::MCP::Daemon;
 
-use strictures::defanged; # Make strictures the same as use strict warnings
 use namespace::sweep;
 
 use Moo;

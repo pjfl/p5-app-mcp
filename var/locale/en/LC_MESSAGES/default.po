@@ -21,8 +21,20 @@ msgstr "Hint"
 msgid "help_nav_link_tip"
 msgstr "Application help"
 
-msgid "job_nav_link_tip"
-msgstr "Job definitions"
+msgid "job_nav_link_text"
+msgstr "Job Definitions"
 
-msgid "state_nav_link_tip"
+msgid "job_nav_link_tip"
+msgstr "Manage job definitions"
+
+msgid "job_state_nav_link_text"
+msgstr "Job State"
+
+msgid "job_state_nav_link_tip"
+msgstr "Current state for the select job"
+
+msgid "state_diagram_nav_link_text"
+msgstr "State Diagram"
+
+msgid "state_diagram_nav_link_tip"
 msgstr "Realtime state diagram"

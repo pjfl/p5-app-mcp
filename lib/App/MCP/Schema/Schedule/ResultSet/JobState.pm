@@ -6,8 +6,9 @@ use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
 use App::MCP::Workflow;
-use Class::Usul::Functions qw( exception );
+use Class::Usul::Functions qw( exception throw );
 use DateTime;
+use HTTP::Status           qw( HTTP_NOT_FOUND );
 use Scalar::Util           qw( blessed );
 use TryCatch;
 use Unexpected::Functions  qw( Unknown );
@@ -34,6 +35,27 @@ sub create_and_or_update {
    $job_state->update;
    $self->_trigger_update_cascade( $event );
    return;
+}
+
+sub find_by_id_or_name {
+   my ($self, $arg) = @_; (defined $arg and length $arg) or return;
+
+   my $job_state;
+
+   $arg =~ m{ \A \d+ \z }mx and $job_state = $self->find( $arg );
+   $job_state or $job_state = $self->find_by_name( $arg );
+   return $job_state;
+}
+
+sub find_by_name {
+   my ($self, $job_name) = @_;
+
+   my $job_state = $self->search
+      ( { 'job.fqjn' => $job_name }, { join => 'job' } )->single
+      or throw error => 'Job [_1] unknown',
+               args  => [ $job_name ], rv => HTTP_NOT_FOUND;
+
+   return $job_state;
 }
 
 sub find_or_create {

@@ -8,6 +8,11 @@
          "tiptype": "normal",
          "type": "chooser"
       },
+      "job.clear_button": {
+         "class": "submit_button submit fade",
+         "name": "Clear",
+         "type": "button"
+      },
       "job.command": {
          "clear": "left"
       },
@@ -35,6 +40,15 @@
       "job.crontab_wday": {
          "clear": "left"
       },
+      "job.delete_button": {
+         "class": "submit_button submit fade",
+         "clear": "left",
+         "config": {
+            "args": "[ 'delete', 'Are you sure you want to delete this job?' ]",
+            "method": "'confirmSubmit'" },
+         "name": "Delete",
+         "type": "button"
+      },
       "job.directory": {
          "clear": "left"
       },
@@ -49,6 +63,10 @@
          "container": "1",
          "type": "label"
       },
+      "job.group_rel": {
+         "clear": "left",
+         "default": "unknown"
+      },
       "job.host": {
          "check_field" : "1",
          "clear": "left",
@@ -60,6 +78,10 @@
          "default": "*",
          "required" : "1"
       },
+      "job.owner_rel": {
+         "clear": "left",
+         "default": "unknown"
+      },
       "job.parent_name": {
          "clear": "left"
       },
@@ -69,6 +91,22 @@
          "default": "0750",
          "pclass": "compact_prompt",
          "width": "4"
+      },
+      "job.save_button": {
+         "class": "submit_button submit fade",
+         "clear": "left",
+         "name": "Save",
+         "type": "button"
+      },
+      "job.state_button": {
+         "class": "submit_button windows fade",
+         "clear": "left",
+         "config": {
+            "args": "[ '[% links.base_uri -%]job_state/[% page.job_id -%]', { 'name': 'job_state', 'title': 'Job State' } ]",
+            "method": "'modalDialog'"
+         },
+         "name": "State",
+         "type": "button"
       },
       "job.type": {
          "clear": "left",
@@ -81,14 +119,6 @@
          "clear": "left",
          "default": "mcp",
          "required" : "1"
-      },
-      "job.owner_rel": {
-         "clear": "left",
-         "default": "unknown"
-      },
-      "job.group_rel": {
-         "clear": "left",
-         "default": "unknown"
       },
       "job_chooser.job_name": {
          "class": "hidden live_grid",
@@ -110,22 +140,37 @@
          "table_class": "grid",
          "type": "table"
       },
-      "job.clear_button": {
-         "name": "Clear",
-         "type": "button"
+      "job_state_dialog.fqjn": {
+         "container": "1",
+         "type": "label"
       },
-      "job.delete_button": {
+      "job_state_dialog.last_finish": {
          "clear": "left",
-         "config": {
-            "args": "[ 'delete', 'Are you sure you want to delete this job?' ]",
-            "method": "'confirmSubmit'" },
-         "name": "Delete",
-         "type": "button"
+         "type": "label"
       },
-      "job.save_button": {
+      "job_state_dialog.last_pid": {
          "clear": "left",
-         "name": "Save",
-         "type": "button"
+         "type": "label"
+      },
+      "job_state_dialog.last_runid": {
+         "clear": "left",
+         "type": "label"
+      },
+      "job_state_dialog.last_rv": {
+         "clear": "left",
+         "type": "label"
+      },
+      "job_state_dialog.last_start": {
+         "clear": "left",
+         "type": "label"
+      },
+      "job_state_dialog.name": {
+         "clear": "left",
+         "type": "label"
+      },
+      "job_state_dialog.updated": {
+         "clear": "left",
+         "type": "label"
       }
    },
    "job": {
@@ -143,7 +188,7 @@
            "crontab_mon", "crontab_wday", "host", "user", "directory",
            "expected_rv", "permissions", "owner_rel", "group_rel" ],
          [ "chooser", "clear_button", "save_button",
-           "delete_button" ]
+           "delete_button", "state_button" ]
       ]
    },
    "job_chooser": {
@@ -159,6 +204,16 @@
    "job_grid_table": {
       "regions": [
          [ "job_name_header", "job_name_grid" ]
+      ]
+   },
+   "job_state_dialog": {
+      "meta": {
+         "max_pwidth": "150",
+         "pwidth": "20"
+      },
+      "regions": [
+         [ "fqjn", "name", "updated", "last_start", "last_finish",
+           "last_runid", "last_rv", "last_pid" ]
       ]
    }
 }

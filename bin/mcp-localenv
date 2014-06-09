@@ -23,7 +23,7 @@ use English               qw( -no_match_vars );
 use File::Basename        qw( basename dirname );
 use File::Spec::Functions qw( catdir catfile );
 
-my $LOCAL_LIB  = 'local';
+my $LOCAL_LIB  = 'local'; # This is the only configurable
 
 my $was_called = caller() ? 1 : 0;
 my $our_path   = $was_called ? (caller())[ 1 ] : $PROGRAM_NAME;

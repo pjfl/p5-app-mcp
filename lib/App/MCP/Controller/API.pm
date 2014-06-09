@@ -5,11 +5,11 @@ use namespace::sweep;
 use Web::Simple;
 
 sub dispatch_request {
-   sub (GET  + /api/authenticate/* + ?*) {
-      return shift->execute( qw( json api exchange_pub_keys ), @_ );
-   },
    sub (POST + /api/authenticate/*) {
       return shift->execute( qw( json api authenticate ), @_ );
+   },
+   sub (GET  + /api/authenticate/* + ?*) {
+      return shift->execute( qw( json api exchange_pub_keys ), @_ );
    },
    sub (POST + /api/event + ?*) {
       return shift->execute( qw( json api create_event ), @_ );

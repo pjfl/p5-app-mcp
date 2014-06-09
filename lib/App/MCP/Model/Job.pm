@@ -27,13 +27,15 @@ sub chooser : Role(users) {
    return $self->get_stash( $req, $page, 'job_chooser' => $chooser );
 }
 
-sub form : Role(users) {
+sub definition_form : Role(users) {
    my ($self, $req) = @_;
 
    my $arg   = $req->args->[ 0 ];
    my $title = $req->loc( 'Job Definition' );
    my $page  = { action => $req->uri, form_name => 'job', title => $title, };
    my $job   = $self->schema->resultset( 'Job' )->find_by_id_or_name( $arg );
+
+   $job and $page->{job_id} = $job->id;
 
    return $self->get_stash( $req, $page, 'job' => $job );
 }
@@ -125,6 +127,17 @@ sub job_save : Role(users) {
    return { redirect => { location => $location, message => $message } };
 }
 
+sub job_state : Role(users) {
+   my ($self, $req) = @_;
+
+   my $form      = 'job_state_dialog';
+   my $page      = { meta => { id => get_or_throw( $req->params, 'id' ) } };
+   my $rs        = $self->schema->resultset( 'JobState' );
+   my $job_state = $rs->find_by_id_or_name( $req->args->[ 0 ] );
+
+   return $self->get_stash( $req, $page, $form => $job_state );
+}
+
 # Private methods
 sub _job_chooser_assign_hook {
    my ($self, $req) = @_; return $req->uri_for( 'job_chooser' );
@@ -180,6 +193,18 @@ sub _job_deflate_parent_id {
 
 sub _job_deflate_permissions {
    return oct( $_[ 1 ]->{ 'permissions' } // 0 );
+}
+
+sub _job_state_job_fqjn_assign_hook {
+   my ($self, $req, $field, $row, $value) = @_;
+
+   return defined $row ? $row->job->fqjn : undef;
+}
+
+sub _job_state_job_name_assign_hook {
+   my ($self, $req, $field, $row, $value) = @_;
+
+   return defined $row ? $row->job->name : undef;
 }
 
 1;

@@ -69,7 +69,8 @@ has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => '/';
 
 has 'nav_list'             => is => 'ro',   isa => ArrayRef,
-   builder                 => sub { [ qw( job state help ) ] };
+   builder                 => sub {
+      [ qw( job state_diagram help ) ] };
 
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;

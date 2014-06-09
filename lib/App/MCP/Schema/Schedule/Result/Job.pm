@@ -235,7 +235,7 @@ sub summary {
    $text  = 'Qualified name: '.$self->fqjn.' ... ';
    $self->type eq 'box' and $text .= 'Type: '.$self->type.' ... '
       and return $text;
-   $text .= 'Command: '.$self->command.' ... ';
+   $text .= 'Command: '.(substr $self->command, 0, 50).' ... ';
    $text .= 'Host: '.$self->host.' ... ';
    $text .= 'User: '.$self->user;
    return $text;

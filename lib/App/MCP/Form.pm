@@ -133,10 +133,13 @@ sub load_config {
 sub _assign_value {
    my ($self, $field, $row) = @_;
 
-   my $value = __extract_value( $field, $row ); defined $value or return;
-   my $hook  = '_'.$self->name.'_'.$field->name.'_assign_hook';
+   my $value = __extract_value( $field, $row );
+   my $name  = $field->name; $name =~ s{ \. }{_}gmx;
+   my $hook  = '_'.$self->name.'_'.$name.'_assign_hook';
    my $code; $code = $self->model->can( $hook )
-      and $value = $code->( $self->model, $self->req, $value );
+      and $value = $code->( $self->model, $self->req, $field, $row, $value );
+
+   defined $value or return;
 
    if (is_hashref $value) { $field->add_properties( $value ) }
    else { $field->key_value( "${value}" ) }
@@ -168,7 +171,7 @@ sub __field_list {
    }
    else { $names = $conf->{ $fields } };
 
-   return grep { not m{ \A _ }mx } @{ $names };
+   return grep { not m{ \A (?: _ | related_resultsets ) }mx } @{ $names };
 }
 
 sub __loc { # Localize the key and substitute the placeholder args

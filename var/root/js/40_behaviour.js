@@ -12,7 +12,7 @@ var StateDiagram = new Class( {
       selector        : '.state-diagram',
       style           : {
          border_colour: '#000',
-         border_width : 2,
+         border_width : 1,
          border_radius: 3,
          col_width    : 500,
          font_size    : 16,
@@ -125,7 +125,7 @@ var StateDiagram = new Class( {
 
       this._render_frame( current_frame, 0, this.paper, x, y );
 
-      if (this.is_running) this._updater.delay( this.options.update_period );
+      if (this.is_running) this._updater.delay( opts.update_period );
    }
 } );
 
@@ -207,6 +207,7 @@ var Behaviour = new Class( {
          cookieDomain  : opt.cookieDomain,
          cookiePath    : opt.cookiePath,
          cookiePrefix  : opt.cookiePrefix } );
+      this.linkFade    = new LinkFader( { context: this } );
 
       this.resize();
 

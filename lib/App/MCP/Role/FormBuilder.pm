@@ -207,7 +207,7 @@ sub _set_column {
    my $method = $prefix ? "${prefix}${col}" : undef;
    my $value  = $method && $self->can( $method )
               ? $self->$method( $args->{param} ) : $args->{param}->{ $col };
-
+   warn "$col $value\n";
    defined $value or return;
 
    if (blessed $rec) { $rec->$col( "${value}" ) }
@@ -253,7 +253,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 22 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 23 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

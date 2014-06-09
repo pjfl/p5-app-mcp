@@ -1,6 +1,5 @@
 package App::MCP::Schema;
 
-use strictures::defanged; # Make strictures the same as use strict warnings
 use namespace::sweep;
 use version;
 
@@ -15,7 +14,7 @@ use Unexpected::Functions  qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::Role::UserPassword);
 
-my $version           = qv( sprintf '0.4.%d', q$Rev: 22 $ =~ /\d+/gmx );
+my $version           = qv( sprintf '0.4.%d', q$Rev: 23 $ =~ /\d+/gmx );
 my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)

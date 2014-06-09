@@ -50,10 +50,15 @@ has 'path'        => is => 'ro',   isa => SimpleStr, default => NUL;
 has 'protocol'    => is => 'lazy', isa => SimpleStr,
    builder        => sub { $_[ 0 ]->_env->{ 'SERVER_PROTOCOL' } };
 
+has 'scheme'      => is => 'ro',   isa => NonEmptySimpleStr;
+
 has 'session'     => is => 'lazy', isa => HashRef,
    builder        => sub { $_[ 0 ]->_env->{ 'psgix.session' } // {} };
 
-has 'scheme'      => is => 'ro',   isa => NonEmptySimpleStr;
+has 'tunnel_method' => is => 'lazy', isa => NonEmptySimpleStr,
+   builder        => sub {
+         delete $_[ 0 ]->body->param->{_method}
+      || delete $_[ 0 ]->params->{_method} || 'not_found' };
 
 has 'ui_state'    => is => 'lazy', isa => HashRef;
 

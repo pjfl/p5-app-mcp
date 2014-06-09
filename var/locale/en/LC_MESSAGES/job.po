@@ -91,6 +91,38 @@ msgctxt "_fields.prompt"
 msgid "job.user"
 msgstr "User"
 
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.fqjn"
+msgstr "Qualified name"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.last_finish"
+msgstr "Last finish time"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.last_pid"
+msgstr "Last process id"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.last_runid"
+msgstr "Last run id"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.last_rv"
+msgstr "Last return value"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.last_start"
+msgstr "Last start time"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.name"
+msgstr "State"
+
+msgctxt "_fields.prompt"
+msgid "job_state_dialog.updated"
+msgstr "Last updated"
+
 msgctxt "_fields.tip"
 msgid "job.chooser"
 msgstr "Press the button to popup the selection window"
@@ -106,3 +138,7 @@ msgstr "Deletes the currently selected job"
 msgctxt "_fields.tip"
 msgid "job.save_button"
 msgstr "Saves or creates the job displayed on the form"
+
+msgctxt "_fields.tip"
+msgid "job.state_button"
+msgstr "State and event infomation"

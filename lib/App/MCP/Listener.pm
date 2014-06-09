@@ -1,6 +1,5 @@
 package App::MCP::Listener;
 
-use strictures::defanged; # Make strictures the same as use strict warnings
 use namespace::sweep;
 
 use App::MCP::Constants;
@@ -17,7 +16,8 @@ use App::MCP::View::JSON;
 use App::MCP::View::XML;
 use Class::Usul;
 use Class::Usul::Functions qw( exception find_apphome get_cfgfiles throw );
-use Class::Usul::Types     qw( BaseType HashRef NonZeroPositiveInt Object );
+use Class::Usul::Types     qw( ArrayRef BaseType HashRef
+                               NonZeroPositiveInt Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_FOUND
                                HTTP_INTERNAL_SERVER_ERROR );
 use Plack::Builder;
@@ -36,7 +36,7 @@ has '_usul' => is => 'lazy', isa => BaseType, reader => 'usul',
       my $attr = {
          config       => { appclass => 'App::MCP', name => 'listener' },
          config_class => 'App::MCP::Config',
-         debug        => $ENV{MCP_DEBUG} || FALSE };
+         debug        => $ENV{MCP_DEBUG} // FALSE };
       my $conf = $attr->{config};
 
       $conf->{home    } = find_apphome $conf->{appclass};
@@ -45,12 +45,12 @@ has '_usul' => is => 'lazy', isa => BaseType, reader => 'usul',
       return Class::Usul->new( $attr );
    };
 
-has '_controllers' => is => 'lazy', isa => HashRef[Object],
-   reader     => 'controllers', builder => sub { {
-      'api'   => App::MCP::Controller::API->new,
-      'forms' => App::MCP::Controller::Forms->new,
-      'root'  => App::MCP::Controller::Root->new,
-   } };
+has '_controllers' => is => 'lazy', isa => ArrayRef[Object],
+   reader     => 'controllers', builder => sub { [
+      App::MCP::Controller::API->new,
+      App::MCP::Controller::Forms->new,
+      App::MCP::Controller::Root->new,
+   ] };
 
 has '_models' => is => 'lazy', isa => HashRef[Object], reader => 'models',
    builder    => sub { {
@@ -73,8 +73,8 @@ around 'to_psgi_app' => sub {
    my ($orig, $self, @args) = @_; my $app = $orig->( $self, @args );
 
    my @types  = (qw(text/css text/html text/javascript application/javascript));
-   my $debug  = $ENV{PLACK_ENV} eq 'development' ? TRUE : FALSE;
    my $conf   = $self->usul->config;
+   my $debug  = $self->usul->debug;
    my $point  = $conf->mount_point;
    my $logger = $self->usul->log;
    my $root   = $conf->root;
@@ -101,23 +101,17 @@ around 'to_psgi_app' => sub {
 
 # Public methods
 sub dispatch_request {
-   my $self = shift; my @actions;
-
-   for my $controller (sort keys %{ $self->controllers }) {
-      push @actions, $self->controllers->{ $controller }->dispatch_request;
-   }
-
-   return @actions;
+   return map { $_->dispatch_request } @{ $_[ 0 ]->controllers };
 }
 
 sub execute {
-   my ($self, $view, $model, $method, @args) = @_;
+   my ($self, $view, $model, $method, @args) = @_; my ($req, $res);
 
-   my $req = App::MCP::Request->new( $self->usul, $model, @args ); my $res;
+   try        { $req = App::MCP::Request->new( $self->usul, $model, @args ) }
+   catch ($e) { return __internal_server_error( $e ) }
 
    try {
-      $method =~ m{ _action \z }mx
-         and $method = $self->_modify_action( $method, $req );
+      $method eq 'from_request' and $method = $req->tunnel_method.'_action';
 
       my $stash = $self->models->{ $model }->execute( $method, $req );
 
@@ -126,28 +120,16 @@ sub execute {
       $res or $res = $self->views->{ $view }->serialize( $req, $stash )
            or throw error => 'View [_1] returned false', args => [ $view ];
    }
-   catch ($e) { $res = $self->_render_exception( $view, $model, $req, $e ) }
+   catch ($e) { return $self->_render_exception( $view, $model, $req, $e ) }
 
    return $res;
 }
 
 # Private methods
-sub _modify_action {
-   my ($self, $method, $req) = @_;
-
-   my $action = $req->body->param->{_method} || NUL;
-
-   $action and $action = lc "_${action}"; $method =~ s{ _action \z }{$action}mx;
-
-   return $method;
-}
-
 sub _redirect {
-   my ($self, $req, $stash) = @_;
+   my ($self, $req, $stash) = @_; my $code = $stash->{code} || HTTP_FOUND;
 
-   my $redirect = $stash->{redirect};
-   my $code     = $redirect->{code} || HTTP_FOUND;
-   my $message  = $redirect->{message};
+   my $redirect = $stash->{redirect}; my $message = $redirect->{message};
 
    $message and $req->session->{status_message} = $req->loc( @{ $message } );
 
@@ -167,16 +149,16 @@ sub _render_exception {
       $res = $self->views->{ $view }->serialize( $req, $stash )
           or throw error => 'View [_1] returned false', args => [ $view ];
    }
-   catch ($render_error) { $res = __internal_server_error( $e, $render_error ) }
+   catch ($render_error) { return __internal_server_error( $e, $render_error ) }
 
    return $res;
 }
 
 # Private functions
 sub __internal_server_error {
-   my ($e, $render_error) = @_;
+   my ($e, $secondary_error) = @_; my $message = "${e}\r\n";
 
-   my $message = "Original error: ${e}\r\nRendering error: ${render_error}";
+   $secondary_error and $message .= "Secondary error: ${secondary_error}";
 
    return [ HTTP_INTERNAL_SERVER_ERROR, __plain_header(), [ $message ] ];
 }

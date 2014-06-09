@@ -2,7 +2,7 @@ package strictures::defanged;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 15 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 23 $ =~ /\d+/gmx );
 
 sub import {
    require strictures; no warnings 'redefine';
@@ -28,12 +28,11 @@ strictures::defanged - Make strictures the same as just use strict warnings
 =head1 Synopsis
 
    use strictures::defanged;
-
-   use Moo;
+   use strictures;
 
 =head1 Version
 
-This documents version v0.1.$Rev: 15 $ of L<strictures::defanged>
+This documents version v0.1.$Rev: 23 $ of L<strictures::defanged>
 
 =head1 Description
 
@@ -48,12 +47,17 @@ working programs, which is what happens when warnings are made fatal
 L<Strictures|strictures> also has some heuristic involving version control
 directories that I don't care for so that gets patched out also
 
-The C<use strictures::defanged> line needs to appear before the C<use Moo>
-line, or whatever is using L<strictures>
+The C<use strictures::defanged> line needs to appear before the
+C<use strictures> line. Once the C<strictures::defanged> import method
+has run the C<strictures> import method will have been replaced
 
 Using L<strictures::defanged> has the same program wide scope as L<strictures>.
-Once you've used it in your module B<every> moodule that uses L<strictures>
+Once you've used it in your program B<every> package that uses L<strictures>
 will be using this instead
+
+If you put this in your script wrappers and not your package code then
+programs are unaffected the additional constraints that C<strictures>
+imposes but the package code, and the tests, still get the "benefit"
 
 =head1 Configuration and Environment
 
@@ -87,7 +91,7 @@ This module uses monkey patching, which is bad because it is action at a
 distance
 
 There are no known bugs in this module. Please report problems to
-http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=strictures-defanged.
 Patches are welcome
 
 =head1 Acknowledgements

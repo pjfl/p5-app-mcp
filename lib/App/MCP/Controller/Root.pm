@@ -8,11 +8,11 @@ sub dispatch_request {
    sub (GET  + /check_field + ?*) {
       return shift->execute( qw( xml  root check_field ), @_ );
    },
+   sub (POST + (/login/* | /login) + ?*) {
+      return shift->execute( qw( html root from_request ), @_ );
+   },
    sub (GET  + (/login/* | /login) + ?*) {
       return shift->execute( qw( html root login_form ), @_ );
-   },
-   sub (POST + (/login/* | /login) + ?*) {
-      return shift->execute( qw( html root authenticate_action ), @_ );
    },
    sub (POST + /logout) {
       return shift->execute( qw( html root logout ), @_ );

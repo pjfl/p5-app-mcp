@@ -21,6 +21,7 @@
          "type": "async"
       },
       "logout_button": {
+         "class": "submit_button submit fade",
          "name": "Logout",
          "type": "button"
       },
