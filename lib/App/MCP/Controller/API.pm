@@ -1,25 +1,17 @@
 package App::MCP::Controller::API;
 
-use namespace::sweep;
-
 use Web::Simple;
 
+with q(App::MCP::Role::Component);
+
+has '+moniker' => default => 'api';
+
 sub dispatch_request {
-   sub (POST + /api/authenticate/*) {
-      return shift->execute( qw( json api authenticate ), @_ );
-   },
-   sub (GET  + /api/authenticate/* + ?*) {
-      return shift->execute( qw( json api exchange_pub_keys ), @_ );
-   },
-   sub (POST + /api/event + ?*) {
-      return shift->execute( qw( json api create_event ), @_ );
-   },
-   sub (POST + /api/job + ?*) {
-      return shift->execute( qw( json api create_job ), @_ );
-   },
-   sub (GET  + /api/state + ?*) {
-      return shift->execute( qw( json api snapshot_state ), @_ );
-   };
+   sub (POST + /api/authenticate/*     ) { [ 'api', 'authenticate',      @_ ] },
+   sub (GET  + /api/authenticate/* + ?*) { [ 'api', 'exchange_pub_keys', @_ ] },
+   sub (POST + /api/event          + ?*) { [ 'api', 'create_event',      @_ ] },
+   sub (POST + /api/job            + ?*) { [ 'api', 'create_job',        @_ ] },
+   sub (GET  + /api/state          + ?*) { [ 'api', 'snapshot_state',    @_ ] };
 }
 
 1;

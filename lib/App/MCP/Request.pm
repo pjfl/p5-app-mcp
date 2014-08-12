@@ -6,6 +6,7 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Constants    qw( EXCEPTION_CLASS NUL SPC TRUE );
 use App::MCP::Functions    qw( extract_lang );
+use App::MCP::Session;
 use Authen::HTTP::Signature::Parser;
 use CGI::Simple::Cookie;
 use Class::Usul::Functions qw( class2appdir first_char is_arrayref is_hashref
@@ -20,7 +21,7 @@ use HTTP::Status           qw( HTTP_EXPECTATION_FAILED
                                HTTP_REQUEST_ENTITY_TOO_LARGE
                                HTTP_UNAUTHORIZED );
 use JSON                   qw( );
-use Scalar::Util           qw( blessed );
+use Scalar::Util           qw( blessed weaken );
 use Try::Tiny;
 use Unexpected::Functions  qw( ChecksumFailure MissingHeader MissingKey
                                SigParserFailure SigVerifyFailure Unspecified );
@@ -75,8 +76,9 @@ has 'script'      => is => 'lazy', isa => SimpleStr, builder => sub {
    my $v          =  $_[ 0 ]->env->{ 'SCRIPT_NAME' } // '/';
       $v          =~ s{ / \z }{}gmx; $v };
 
-has 'session'     => is => 'lazy', isa => HashRef,
-   builder        => sub { $_[ 0 ]->env->{ 'psgix.session' } // {} };
+has 'session'     => is => 'lazy', isa => Object, builder => sub {
+   App::MCP::Session->new( builder => $_[ 0 ]->usul, env => $_[ 0 ]->env ) },
+   handles        => [ qw( authenticated username ) ];
 
 has 'ui_state'    => is => 'lazy', isa => HashRef;
 
@@ -116,7 +118,11 @@ around 'BUILDARGS' => sub {
 sub BUILD {
    my $self = shift; $self->tunnel_method; # Coz it's destructive
 
-   $self->log->debug( join SPC, (uc $self->method), $self->uri );
+   my $username      = $self->session->username // 'unknown';
+   my $authenticated = $username ne 'unknown' ? TRUE : FALSE;
+
+   $self->log->debug( join SPC, (uc $self->method), $self->uri,
+                      ($authenticated ? "(${username})" : NUL) );
 
    return;
 }

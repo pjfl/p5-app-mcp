@@ -1,6 +1,8 @@
 Revision history for App::MCP
 
-          - Addded Attributes class
+          - Added ComponentLoading role
+          - Added Session class
+          - Added Attributes class
           - Uprated Request class
           - Long pause checkin
           - Using strictures

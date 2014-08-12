@@ -5,13 +5,16 @@ use App::MCP::Attributes;
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
+with    q(App::MCP::Role::Component);
 with    q(App::MCP::Role::JavaScript);
 with    q(App::MCP::Role::PageConfiguration);
 with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
 with    q(App::MCP::Role::WebAuthentication);
 
-sub diagram : Role(users) {
+has '+moniker' => default => 'state';
+
+sub diagram : Role(any) {
    my ($self, $req) = @_; my $page = { title => 'State Diagram' };
 
    return $self->get_stash( $req, $page, diagram => {} );

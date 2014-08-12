@@ -21,24 +21,26 @@ around 'execute' => sub {
       or throw error => 'Class [_1] method [_2] is private',
                args  => [ $class, $method ], rv => HTTP_FORBIDDEN;
 
-   is_member 'any', $method_roles and return $orig->( $self, $method, $req );
+   is_member 'anon', $method_roles and return $orig->( $self, $method, $req );
 
    my $sess = $req->session;
 
-   unless (exists $sess->{user_name} and $sess->{user_name} ne 'unknown') {
+   unless ($sess->authenticated) {
       my $location = $req->uri_for( 'login' );
       my $message  = [ 'Authentication required' ];
 
       return { redirect => { location => $location, message => $message } };
    }
 
-   for my $role_name (@{ $sess->{user_roles} }) {
+   is_member 'any', $method_roles and return $orig->( $self, $method, $req );
+
+   for my $role_name (@{ $sess->user_roles }) {
       is_member $role_name, $method_roles
-         and return $orig->( $self, $method, $req );
+            and return $orig->( $self, $method, $req );
    }
 
    throw error => 'User [_1] permission denied',
-         args  => [ $sess->{user_name} ], rv => HTTP_FORBIDDEN;
+         args  => [ $sess->username ], rv => HTTP_FORBIDDEN;
    return; # Never reached
 };
 

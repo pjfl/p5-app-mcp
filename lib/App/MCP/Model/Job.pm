@@ -16,8 +16,10 @@ with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
 with    q(App::MCP::Role::WebAuthentication);
 
+has '+moniker' => default => 'job';
+
 # Public methods
-sub choose_action : Role(users) {
+sub choose_action : Role(any) {
    my ($self, $req) = @_;
 
    my $name     = $req->body->param->{name};
@@ -29,20 +31,22 @@ sub choose_action : Role(users) {
    return { redirect => { location => $location } };
 }
 
-sub chooser : Role(users) {
+sub chooser : Role(any) {
    my ($self, $req) = @_;
 
    my $chooser = $self->build_chooser( $req );
    my $page    = { meta => delete $chooser->{meta} };
+   my $stash   = $self->get_stash( $req, $page, 'job_chooser' => $chooser );
 
-   return $self->get_stash( $req, $page, 'job_chooser' => $chooser );
+   $stash->{view} = 'xml';
+   return $stash;
 }
 
-sub clear_action : Role(users) {
+sub clear_action : Role(any) {
    return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
 }
 
-sub delete_action : Role(users) {
+sub delete_action : Role(any) {
    my ($self, $req) = @_;
 
    my $id       = $req->args->[ 0 ]
@@ -59,7 +63,7 @@ sub delete_action : Role(users) {
    return { redirect => { location => $location, message => $message } };
 }
 
-sub definition_form : Role(users) {
+sub definition_form : Role(any) {
    my ($self, $req) = @_;
 
    my $arg   = $req->args->[ 0 ];
@@ -72,20 +76,22 @@ sub definition_form : Role(users) {
    return $self->get_stash( $req, $page, 'job' => $job );
 }
 
-sub grid_rows : Role(users) {
+sub grid_rows : Role(any) {
    my ($self, $req) = @_; my $params = $req->params;
 
    $params->{form  } = 'job';
    $params->{method} = '_job_chooser_link_hash';
    $params->{values} = $self->_job_chooser_search( $params );
 
-   my $grid_rows = $self->build_grid_rows( $req );
-   my $page      = { meta => delete $grid_rows->{meta} };
+   my $rows  = $self->build_grid_rows( $req );
+   my $page  = { meta => delete $rows->{meta} };
+   my $stash = $self->get_stash( $req, $page, 'job_grid_rows' => $rows );
 
-   return $self->get_stash( $req, $page, 'job_grid_rows' => $grid_rows );
+   $stash->{view} = 'xml';
+   return $stash;
 }
 
-sub grid_table : Role(users) {
+sub grid_table : Role(any) {
    my ($self, $req) = @_; my $params = $req->params;
 
    my $field_value  = get_or_throw( $params, 'field_value' );
@@ -97,24 +103,28 @@ sub grid_table : Role(users) {
                                        name => { -like => $field_value } } )
                            ->count;
 
-   my $grid_table = $self->build_grid_table( $req );
-   my $page = { meta => delete $grid_table->{meta} };
+   my $table = $self->build_grid_table( $req );
+   my $page  = { meta => delete $table->{meta} };
+   my $stash = $self->get_stash( $req, $page, 'job_grid_table' => $table );
 
-   return $self->get_stash( $req, $page, 'job_grid_table' => $grid_table );
+   $stash->{view} = 'xml';
+   return $stash;
 }
 
-sub job_state : Role(users) {
+sub job_state : Role(any) {
    my ($self, $req) = @_;
 
    my $form      = 'job_state_dialog';
    my $page      = { meta => { id => get_or_throw( $req->params, 'id' ) } };
    my $rs        = $self->schema->resultset( 'JobState' );
    my $job_state = $rs->find_by_id_or_name( $req->args->[ 0 ] );
+   my $stash     = $self->get_stash( $req, $page, $form => $job_state );
 
-   return $self->get_stash( $req, $page, $form => $job_state );
+   $stash->{view} = 'xml';
+   return $stash;
 }
 
-sub save_action : Role(users) {
+sub save_action : Role(any) {
    my ($self, $req) = @_; my $id; my $job; my $message;
 
    my $args = { method => '_job_deflate_',

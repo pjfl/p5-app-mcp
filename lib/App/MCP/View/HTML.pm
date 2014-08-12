@@ -1,6 +1,6 @@
 package App::MCP::View::HTML;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Class::Usul::Constants qw( NUL TRUE );
@@ -11,8 +11,10 @@ use HTTP::Status           qw( HTTP_INTERNAL_SERVER_ERROR );
 use Scalar::Util           qw( weaken );
 use Template;
 
-extends q(App::MCP);
-with    q(App::MCP::Role::FormHandler);
+with q(App::MCP::Role::Component);
+with q(App::MCP::Role::FormHandler);
+
+has '+moniker' => default => 'html';
 
 # Public attributes
 has 'template_dir' => is => 'lazy', isa => Directory,

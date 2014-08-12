@@ -7,33 +7,37 @@ use HTTP::Status        qw( HTTP_NOT_FOUND );
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
+with    q(App::MCP::Role::Component);
 with    q(App::MCP::Role::JavaScript);
 with    q(App::MCP::Role::PageConfiguration);
 with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
 with    q(App::MCP::Role::WebAuthentication);
 
-sub login_action : Role(any) {
+has '+moniker' => default => 'root';
+
+sub login_action : Role(anon) {
    my ($self, $req) = @_;
 
-   my $user_name    = $req->body->param->{username};
+   my $username     = $req->body->param->{username};
    my $user_rs      = $self->schema->resultset( 'User' );
-   my $user         = $user_rs->find_by_name( $user_name );
+   my $user         = $user_rs->find_by_name( $username );
 
    $user->authenticate( $req->body->param->{password} );
 
    my $session      = $req->session;
    my $location     = $req->uri_for( 'job' );
    my $primary_role = NUL.$user->primary_role;
-   my $message      = [ 'User [_1] logged in', $user_name ];
+   my $message      = [ 'User [_1] logged in', $username ];
 
-   $session->{user_name } = $user_name;
-   $session->{user_roles} = [ $primary_role, @{ $user->list_other_roles } ];
+   $session->authenticated( TRUE );
+   $session->username( $username );
+   $session->user_roles( [ $primary_role, @{ $user->list_other_roles } ] );
 
    return { redirect => { location => $location, message => $message } };
 }
 
-sub nav_list : Role(any) {
+sub nav_list : Role(anon) {
    my ($self, $req) = @_; my $data = [];
 
    for my $action (@{ $self->config->nav_list }) {
@@ -48,13 +52,15 @@ sub nav_list : Role(any) {
          tip       => $tip,  type => 'anchor', widget => TRUE } };
    }
 
-   my $list = { list => { class => 'nav_list', data => $data } };
-   my $page = { meta => { id    => 'nav_panel' } };
+   my $list  = { list => { class => 'nav_list', data => $data } };
+   my $page  = { meta => { id    => 'nav_panel' } };
+   my $stash = $self->get_stash( $req, $page, 'nav' => $list );
 
-   return $self->get_stash( $req, $page, 'nav' => $list );
+   $stash->{view} = 'xml';
+   return $stash;
 }
 
-sub login_form : Role(any) {
+sub login_form : Role(anon) {
    my ($self, $req) = @_;
 
    my $arg   = $req->args->[ 0 ];
@@ -65,20 +71,20 @@ sub login_form : Role(any) {
    return $self->get_stash( $req, $page, login => $user );
 }
 
-sub logout_action : Role(any) {
+sub logout : Role(anon) {
    my ($self, $req) = @_;
 
-   my $session   = $req->session;
-   my $user_name = $session->{user_name};
-   my $location  = $req->uri_for( 'login' );
-   my $message   = [ 'User [_1] logged out', $user_name ];
+   my $session  = $req->session;
+   my $username = $session->username;
+   my $location = $req->uri_for( 'login' );
+   my $message  = [ 'User [_1] logged out', $username ];
 
-   delete $session->{user_name}; delete $session->{user_roles};
+   $session->authenticated( FALSE );
 
    return { redirect => { location => $location, message => $message } };
 }
 
-sub not_found : Role(any) {
+sub not_found : Role(anon) {
    my ($self, $req) = @_;
 
    my $page = { code  => HTTP_NOT_FOUND,

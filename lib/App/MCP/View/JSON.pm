@@ -6,6 +6,10 @@ use Moo;
 use Class::Usul::Types qw( Object );
 use JSON               qw( );
 
+with q(App::MCP::Role::Component);
+
+has '+moniker' => default => 'json';
+
 # Private attributes
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new };
 

@@ -11,11 +11,11 @@ use Class::Usul::Types     qw( LoadableClass NonZeroPositiveInt Object );
 use IPC::PerlSSH;
 use Try::Tiny;
 
-extends q(App::MCP);
+with q(App::MCP::Role::Component);
 
 # Public attributes
-has 'port' => is => 'lazy', isa => NonZeroPositiveInt,
-   builder => sub { $_[ 0 ]->config->port };
+has 'port' => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
+   $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->usul->config->port };
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, builder => sub {

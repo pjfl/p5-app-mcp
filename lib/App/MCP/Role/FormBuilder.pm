@@ -109,6 +109,27 @@ sub build_grid_table {
    };
 }
 
+sub check_field : Role(anon) {
+   my ($self, $req) = @_; my $mesg;
+
+   my $id   = get_or_throw( $req->params, 'id' );
+   my $meta = { id => "${id}_ajax" };
+
+   try   { $self->_check_field( $req ) }
+   catch {
+      my $e = $_; my $args = { params => $e->args, quote_bind_values => TRUE };
+
+      $self->debug and $self->log->debug( "${e}" );
+      $mesg = $req->loc( $e->error, $args );
+      $meta->{class_name} = 'field_error';
+   };
+
+   return { code => HTTP_OK,
+            form => [ { fields => [ $mesg ] } ],
+            page => { meta => $meta },
+            view => 'xml' };
+}
+
 sub create_record {
    my ($self, $args) = @_; my $rs = $args->{rs}; my $rec = {};
 
@@ -130,26 +151,6 @@ sub find_and_update_record {
 
    $rec->update;
    return $rec;
-}
-
-sub check_field : Role(any) {
-   my ($self, $req) = @_; my $mesg;
-
-   my $id   = get_or_throw( $req->params, 'id' );
-   my $meta = { id => "${id}_ajax" };
-
-   try   { $self->_check_field( $req ) }
-   catch {
-      my $e = $_; my $args = { params => $e->args, quote_bind_values => TRUE };
-
-      $self->debug and $self->log->debug( "${e}" );
-      $mesg = $req->loc( $e->error, $args );
-      $meta->{class_name} = 'field_error';
-   };
-
-   return { code => HTTP_OK,
-            form => [ { fields => [ $mesg ] } ],
-            page => { meta => $meta } };
 }
 
 # Private methods
@@ -207,8 +208,7 @@ sub _set_column {
    my $method = $prefix ? "${prefix}${col}" : undef;
    my $value  = $method && $self->can( $method )
               ? $self->$method( $args->{param} ) : $args->{param}->{ $col };
-   # TODO: And we left this here because?
-   warn "$col $value\n";
+
    defined $value or return;
 
    if (blessed $rec) { $rec->$col( "${value}" ) }
@@ -254,7 +254,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 25 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 26 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

@@ -30,6 +30,12 @@ has 'css'                  => is => 'ro',   isa => NonEmptySimpleStr,
 has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'schedule';
 
+has 'default_view'         => is => 'ro',   isa => SimpleStr, default => 'html';
+
+has 'deflate_types'        => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
+   builder                 => sub {
+      [ qw( text/css text/html text/javascript application/javascript ) ] };
+
 has 'description'          => is => 'ro',   isa => SimpleStr, default => NUL;
 
 has 'identity_file'        => is => 'lazy', isa => File,
@@ -59,7 +65,12 @@ has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
 has 'max_asset_size'       => is => 'ro',   isa => PositiveInt,
    default                 => 4_194_304;
 
-has 'max_session_age'      => is => 'ro',   isa => PositiveInt,
+has 'max_messages'         => is => 'ro',   isa => NonZeroPositiveInt,
+   default                 => 3;
+
+has 'max_web_session_time' => is => 'ro',  isa => PositiveInt, default => 3_600;
+
+has 'max_api_session_time' => is => 'ro',   isa => PositiveInt,
    default                 => 300;
 
 has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveInt,
@@ -68,6 +79,9 @@ has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveInt,
 has 'max_ssh_workers'      => is => 'ro',   isa => NonZeroPositiveInt,
    documentation           => 'Maximum number of SSH worker processes',
    default                 => 3;
+
+has 'monikers'             => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
+   builder                 => sub { {} };
 
 has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => '/';
@@ -82,6 +96,9 @@ has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
 has 'preferences'          => is => 'ro',   isa => ArrayRef,
    builder                 => sub { [ qw( theme ) ] };
 
+has 'request_class'        => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'App::MCP::Request';
+
 has 'secret'               => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => hostname;
 
@@ -95,6 +112,9 @@ has 'scrubber'             => is => 'ro',   isa => Str,
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
    documentation           => 'Plack server class used for the event listener',
    default                 => 'Twiggy';
+
+has 'serve_as_static'      => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'css | favicon.ico | img | js | less';
 
 has 'servers'              => is => 'ro',   isa => ArrayRef,
    builder                 => sub { [ fqdn ] };

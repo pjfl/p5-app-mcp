@@ -7,7 +7,10 @@ use Class::Usul::Types qw( Object );
 use Encode             qw( encode );
 use XML::Simple;
 
+with q(App::MCP::Role::Component);
 with q(App::MCP::Role::FormHandler);
+
+has '+moniker' => default => 'xml';
 
 # Private attributes
 has '_transcoder' => is => 'lazy', isa => Object,

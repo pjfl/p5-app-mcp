@@ -23,23 +23,23 @@ my $Sessions = {}; my $Users = [];
 sub authenticate {
    my ($self, $req) = @_; $req->authenticate;
 
-   my $user      = $self->_find_user_from( $req );
-   my $sess      = $self->_find_or_create_session( $user );
-   my $user_name = $user->username;
-   my $token     = $req->body->param->{M1_token}
+   my $user     = $self->_find_user_from( $req );
+   my $sess     = $self->_find_or_create_session( $user );
+   my $username = $user->username;
+   my $token    = $req->body->param->{M1_token}
       or throw error => 'User [_1] no M1 token',
-               args  => [ $user_name ], rv => HTTP_EXPECTATION_FAILED;
-   my $srp       = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
-   my $verifier  = base64_decode_ns get_hashed_pw $user->password;
-   my $salt      = get_salt $user->password;
+               args  => [ $username ], rv => HTTP_EXPECTATION_FAILED;
+   my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
+   my $verifier = base64_decode_ns get_hashed_pw $user->password;
+   my $salt     = get_salt $user->password;
 
-   $srp->server_init( $user_name, $verifier, $salt, @{ $sess->{auth_keys} } );
+   $srp->server_init( $username, $verifier, $salt, @{ $sess->{auth_keys} } );
    $srp->server_verify_M1( base64_decode_ns $token )
       or throw error => 'User [_1] M1 token verification failed',
-               args  => [ $user_name ], rv => HTTP_UNAUTHORIZED;
-   $token        = base64_encode_ns $srp->server_compute_M2;
+               args  => [ $username ], rv => HTTP_UNAUTHORIZED;
+   $token       = base64_encode_ns $srp->server_compute_M2;
 
-   my $content   = { id => $sess->{id}, M2_token => $token, };
+   my $content  = { id => $sess->{id}, M2_token => $token, };
 
    $sess->{shared_secret} = base64_encode_ns $srp->get_secret_K;
 
@@ -124,7 +124,7 @@ sub _find_or_create_session {
          id        => $id,
          key       => $user->username,
          last_used => bson64id_time( $id ),
-         max_age   => $self->config->max_session_age,
+         max_age   => $self->config->max_api_session_time,
          role_id   => $user->role_id,
          user_id   => $user->id, };
    };

@@ -1,28 +1,18 @@
 package App::MCP::Controller::Root;
 
-use namespace::sweep;
-
 use Web::Simple;
 
+with q(App::MCP::Role::Component);
+
+has '+moniker' => default => 'root';
+
 sub dispatch_request {
-   sub (GET  + /check_field + ?*) {
-      return shift->execute( qw( xml  root check_field ), @_ );
-   },
-   sub (POST + (/login/* | /login) + ?*) {
-      return shift->execute( qw( html root from_request ), @_ );
-   },
-   sub (GET  + (/login/* | /login) + ?*) {
-      return shift->execute( qw( html root login_form ), @_ );
-   },
-   sub (POST + /logout) {
-      return shift->execute( qw( html root logout ), @_ );
-   },
-   sub (GET  + /nav_list) {
-      return shift->execute( qw( xml  root nav_list ), @_ );
-   },
-   sub () {
-      return shift->execute( qw( html root not_found ), @_ );
-   };
+   sub (GET  + /check_field      + ?*) { [ 'root', 'check_field',  @_ ] },
+   sub (POST + /login/* | /login + ?*) { [ 'root', 'from_request', @_ ] },
+   sub (GET  + /login/* | /login + ?*) { [ 'root', 'login_form',   @_ ] },
+   sub (POST + /logout               ) { [ 'root', 'logout',       @_ ] },
+   sub (GET  + /nav_list             ) { [ 'root', 'nav_list',     @_ ] },
+   sub ()                              { [ 'root', 'not_found',    @_ ] };
 }
 
 1;

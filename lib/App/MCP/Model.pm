@@ -9,9 +9,9 @@ use Data::Validation;
 use HTTP::Status          qw( HTTP_OK );
 use Unexpected::Functions qw( ValidationErrors );
 
-extends q(App::MCP);
-
 Data::Validation::Constants->Exception_Class( EXCEPTION_CLASS );
+
+with q(App::MCP::Role::Component);
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object,
@@ -44,13 +44,15 @@ sub execute {
 sub get_stash {
    my ($self, $req, @args) = @_;
 
-   return { code => HTTP_OK, page => $self->load_page( $req, @args ) };
+   return { code => HTTP_OK,
+            page => $self->load_page( $req, @args ),
+            view => $self->config->default_view, };
 }
 
 sub load_page {
    my ($self, $req, $args) = @_; my $page = $args // {};
 
-   $page->{status_message} = delete $req->session->{status_message} || NUL;
+   $page->{status_message} = $req->session->clear_status_message( $req );
 
    return $page;
 }

@@ -1,7 +1,16 @@
-package App::MCP;
+package App::MCP::Role::Component;
 
-use 5.010001;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 26 $ =~ /\d+/gmx );
+use namespace::autoclean;
+
+use Class::Usul::Constants qw( TRUE );
+use Class::Usul::Types     qw( BaseType SimpleStr );
+use Moo::Role;
+
+has 'moniker' => is => 'ro', isa => SimpleStr, required => TRUE;
+
+has 'usul'    => is => 'ro', isa => BaseType,
+   handles    => [ qw( config debug l10n lock log ) ],
+   init_arg   => 'builder', required => TRUE;
 
 1;
 
@@ -9,21 +18,26 @@ __END__
 
 =pod
 
+=encoding utf-8
+
 =head1 Name
 
-App::MCP - Master Control Program - Dependency and time based job scheduler
-
-=head1 Version
-
-Describes version v0.4.$Rev: 26 $ of L<App::MCP>
+App::MCP::Role::Component - One-line description of the modules purpose
 
 =head1 Synopsis
 
+   use App::MCP::Role::Component;
+   # Brief but working code examples
+
 =head1 Description
 
-=for html <p><center><img src="http://cpan.org/authors/id/P/PJ/PJFL/images/one_thousand_words.png" width="882" height="462" /></center></p>
-
 =head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=back
 
 =head1 Subroutines/Methods
 
@@ -43,8 +57,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
+There are no known bugs in this module. Please report problems to
+http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-MCP.
 Patches are welcome
 
 =head1 Acknowledgements
@@ -72,3 +86,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

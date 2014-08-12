@@ -11,11 +11,10 @@ BEGIN {
 }
 
 use strictures::defanged; # Make strictures the same as use strict warnings
-use strictures;
 
 use App::MCP::Listener;
 
-App::MCP::Listener->new->run_if_script;
+App::MCP::Listener->new( config => { appclass => 'App::MCP' } )->run_if_script;
 
 __END__
 

@@ -15,6 +15,8 @@ use Try::Tiny;
 
 extends q(App::MCP::Model);
 
+has '+moniker' => default => 'api';
+
 # Private attributes
 has '_transcoder' => is => 'lazy', isa => Object, builder => sub { JSON->new },
    reader         => 'transcoder';
@@ -95,7 +97,7 @@ sub snapshot_state {
    my $minted  = time2str undef, bson64id_time( $id );
    my $content = { id => $id, jobs => $frames, minted => $minted };
 
-   return { code => HTTP_OK, content => $content };
+   return { code => HTTP_OK, content => $content, view => 'json' };
 }
 
 1;
