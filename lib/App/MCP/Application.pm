@@ -4,12 +4,12 @@ use 5.010001;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( FALSE NUL TRUE );
 use App::MCP::Functions    qw( log_leader trigger_output_handler );
-use Class::Usul::Functions qw( bson64id create_token elapsed throw );
+use Class::Usul::Functions qw( bson64id create_token elapsed );
 use Class::Usul::Types     qw( LoadableClass NonZeroPositiveInt Object );
 use IPC::PerlSSH;
-use TryCatch;
+use Try::Tiny;
 
 extends q(App::MCP);
 
@@ -95,7 +95,9 @@ sub input_handler {
 }
 
 sub ipc_ssh_handler {
-   my ($self, $runid, $user, $host, $calls) = @_; my $log = $self->log;
+   my ($self, $runid, $user, $host, $calls) = @_;
+
+   my $failed = FALSE; my $log = $self->log;
 
    my $logger = sub {
       my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
@@ -108,16 +110,18 @@ sub ipc_ssh_handler {
         User       => $user,
         SshOptions => [ '-i', $self->config->identity_file ], );
 
-   try        { $ips->use_library( $self->config->library_class ) }
-   catch ($e) { $logger->( 'error', 'STORE', $e ); return FALSE }
+   try   { $ips->use_library( $self->config->library_class ) }
+   catch { $logger->( 'error', 'STORE', $_ ); $failed = TRUE };
+
+   $failed and return FALSE;
 
    for my $call (@{ $calls }) {
       my $result;
 
-      try        { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
-      catch ($e) { $logger->( 'error', 'CALL', $e ); return FALSE }
+      try   { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
+      catch { $logger->( 'error', 'CALL', $_ ); $failed = TRUE };
 
-      $logger->( 'debug', 'CALL', $result );
+      $failed and return FALSE; $logger->( 'debug', 'CALL', $result );
    }
 
    return TRUE;
@@ -238,8 +242,6 @@ Defines the following attributes;
 =item L<Class::Usul>
 
 =item L<IPC::PerlSSH>
-
-=item L<TryCatch>
 
 =back
 

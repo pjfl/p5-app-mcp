@@ -1,9 +1,8 @@
 package App::MCP::Role::WebAuthentication;
 
 use attributes ();
-use namespace::sweep;
+use namespace::autoclean;
 
-use Class::Usul::Constants;
 use Class::Usul::Functions qw( is_member throw );
 use HTTP::Status           qw( HTTP_FORBIDDEN HTTP_NOT_FOUND );
 use Scalar::Util           qw( blessed );
@@ -14,15 +13,13 @@ requires qw( execute );
 around 'execute' => sub {
    my ($orig, $self, $method, $req) = @_; my $class = blessed $self || $self;
 
-   $self->can( $method )
+   my $code_ref = $self->can( $method )
       or throw error => 'Class [_1] has no method [_2]',
                args  => [ $class, $method ], rv => HTTP_NOT_FOUND;
 
-   my $method_roles = $self->_list_roles_of( $method );
-
-   $method_roles->[ 0 ]
-      or throw error => 'Method [_1] is private',
-               args  => [ $method ], rv => HTTP_FORBIDDEN;
+   my $method_roles = __list_roles_of( $code_ref ); $method_roles->[ 0 ]
+      or throw error => 'Class [_1] method [_2] is private',
+               args  => [ $class, $method ], rv => HTTP_FORBIDDEN;
 
    is_member 'any', $method_roles and return $orig->( $self, $method, $req );
 
@@ -45,15 +42,8 @@ around 'execute' => sub {
    return; # Never reached
 };
 
-sub _list_roles_of {
-   my ($self, $method) = @_; my $class = blessed $self || $self;
-
-   my $code_ref = $class->can( $method ) or return ();
-
-   $method eq 'check_field' and return [ 'any' ]; # TODO: Fix this
-
-   return [ map  { m{ \A Role [\(] ([^\)]+) [\)] \z }mx }
-            grep { m{ \A Role }mx } @{ attributes::get( $code_ref ) || [] } ];
+sub __list_roles_of {
+   my $attr = attributes::get( shift ) // {}; return $attr->{Role} // [];
 }
 
 1;

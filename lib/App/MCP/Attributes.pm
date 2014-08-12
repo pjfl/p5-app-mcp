@@ -1,32 +1,42 @@
-package App::MCP::Schema::Schedule::ResultSet::User;
+package App::MCP::Attributes;
 
-use 5.01;
 use strictures;
-use parent 'DBIx::Class::ResultSet';
+use namespace::autoclean ();
+use parent 'Exporter::Tiny';
 
-use Class::Usul::Functions qw( throw );
-use HTTP::Status           qw( HTTP_NOT_FOUND );
+our @EXPORT = qw( FETCH_CODE_ATTRIBUTES MODIFY_CODE_ATTRIBUTES );
 
-sub find_by_id_or_name {
-   my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $user;
+my $Code_Attr = {};
 
-   $arg =~ m{ \A \d+ \z }mx and $user = $self->find( $arg );
-   $user or $user = $self->find_by_name( $arg );
-   return $user;
+sub import {
+   my $class = shift;
+   my $global_opts = { $_[ 0 ] && ref $_[ 0 ] eq 'HASH' ? %{+ shift } : () };
+
+   namespace::autoclean->import
+      ( -cleanee => scalar caller, -except => [ @EXPORT ] );
+   $global_opts->{into} //= caller;
+   $class->SUPER::import( $global_opts );
+   return;
 }
 
-sub find_by_name {
-   my ($self, $user_name) = @_;
-
-   my $user = $self->search( { username => $user_name } )->single
-      or throw error => 'User [_1] unknown',
-               args  => [ $user_name ], rv => HTTP_NOT_FOUND;
-
-   return $user;
+sub FETCH_CODE_ATTRIBUTES {
+   my ($class, $code) = @_; return $Code_Attr->{ 0 + $code } // {};
 }
 
-sub load_factor {
-   return 14;
+sub MODIFY_CODE_ATTRIBUTES {
+   my ($class, $code, @attrs) = @_;
+
+   for my $attr (@attrs) {
+      my ($k, $v) = $attr =~ m{ \A ([^\(]+) (?: [\(] ([^\)]+) [\)] )? \z }mx;
+
+      my $vals = $Code_Attr->{ 0 + $code }->{ $k } // [];
+
+      defined $v and push @{ $vals }, $v;
+
+      $Code_Attr->{ 0 + $code }->{ $k } = $vals;
+   }
+
+   return ();
 }
 
 1;
@@ -35,15 +45,15 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 
-App::MCP::Schema::Schedule::ResultSet::User - One-line description of the modules purpose
+App::MCP::Attributes - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::ResultSet::User;
+   use App::MCP::Attributes;
    # Brief but working code examples
 
 =head1 Description
@@ -103,3 +113,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

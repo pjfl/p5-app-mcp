@@ -49,8 +49,8 @@ if ($active) {
 
    require local::lib; local::lib->import( $local_lib );
 
-   $ENV{PERL_MM_OPT} .= ' INSTALLMAN1DIR=none INSTALLMAN3DIR=none';
-   $ENV{PERL5LIB   }  = $libdir.$path_sep.$ENV{PERL5LIB};
+   $ENV{PERL5_MB_OPT} .= ' INSTALLMAN1DIR=none INSTALLMAN3DIR=none';
+   $ENV{PERL5LIB    }  = $libdir.$path_sep.$ENV{PERL5LIB};
 }
 
 lib->import( $libdir );

@@ -8,8 +8,7 @@ use Class::Usul::Constants ( );
 
 Class::Usul::Constants->Exception_Class( 'App::MCP::Exception' );
 
-our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS FETCH_CODE_ATTRIBUTES HASH_CHAR
-                  MODIFY_CODE_ATTRIBUTES SEPARATOR );
+our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR SEPARATOR );
 
 my $Code_Attr = {};
 
@@ -28,18 +27,6 @@ sub DOTS      () { "\x{2026}" }
 sub SEPARATOR () { '/'        }
 
 sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
-
-sub FETCH_CODE_ATTRIBUTES {
-   my ($class, $code) = @_; return $Code_Attr->{ 0 + $code } // [];
-}
-
-sub MODIFY_CODE_ATTRIBUTES {
-   my ($class, $code, @attrs) = @_;
-
-   $Code_Attr->{ 0 + $code } = [ @attrs ];
-
-   return ();
-}
 
 1;
 

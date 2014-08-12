@@ -3,14 +3,14 @@ package App::MCP::Async::Process;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( TRUE );
 use App::MCP::Functions    qw( log_leader read_exactly recv_rv_error );
 use Class::Usul::Functions qw( throw );
 use Class::Usul::Types     qw( CodeRef FileHandle Undef );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( weaken );
 use Storable               qw( nfreeze thaw );
-use TryCatch;
+use Try::Tiny;
 
 extends q(App::MCP::Async::Base);
 
@@ -102,8 +102,8 @@ sub _watch_read_handle {
       $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
       defined ($rv = recv_rv_error( $log, $pid, $red )) and return $rv;
 
-      try        { $code->( @{ $args ? thaw $args : [] } ) }
-      catch ($e) { $log->error( $lead.$e ) }
+      try   { $code->( @{ $args ? thaw $args : [] } ) }
+      catch { $log->error( $lead.$_ ) };
 
       return;
    } );

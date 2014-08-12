@@ -1,9 +1,7 @@
 package App::MCP::Model::State;
 
-use namespace::sweep;
-
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Attributes;
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);

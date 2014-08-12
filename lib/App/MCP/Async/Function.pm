@@ -4,7 +4,7 @@ use 5.01;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( FALSE OK TRUE );
 use App::MCP::Functions    qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
 use Class::Usul::Functions qw( throw );
@@ -13,7 +13,7 @@ use Class::Usul::Types     qw( ArrayRef Bool HashRef
 use English                qw( -no_match_vars );
 use Fcntl                  qw( F_SETFL O_NONBLOCK );
 use Storable               qw( nfreeze thaw );
-use TryCatch;
+use Try::Tiny;
 
 extends q(App::MCP::Async::Base);
 
@@ -112,7 +112,7 @@ sub _call_handler {
 
             $writer and __send_rv( $writer, $log, $runid, $rv );
          }
-         catch ($e) { $log->error( $lead.$e ) }
+         catch { $log->error( $lead.$_ ) };
 
          $max_calls and ++$count >= $max_calls and return OK;
       }

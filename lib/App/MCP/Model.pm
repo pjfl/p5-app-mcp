@@ -3,7 +3,7 @@ package App::MCP::Model;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants   qw( EXCEPTION_CLASS NUL );
 use Class::Usul::Types    qw( LoadableClass Object );
 use Data::Validation;
 use HTTP::Status          qw( HTTP_OK );

@@ -3,7 +3,7 @@ package App::MCP::View::HTML;
 use namespace::sweep;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( NUL TRUE );
 use Class::Usul::Functions qw( throw );
 use Encode;
 use File::DataClass::Types qw( Directory Object );

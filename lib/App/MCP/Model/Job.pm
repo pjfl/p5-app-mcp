@@ -1,9 +1,8 @@
 package App::MCP::Model::Job;
 
-use namespace::sweep;
-
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Attributes;
+use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES EXCEPTION_CLASS NUL SPC );
 use App::MCP::Functions    qw( get_or_throw );
 use Class::Usul::Functions qw( throw );
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
@@ -18,6 +17,18 @@ with    q(App::MCP::Role::FormBuilder);
 with    q(App::MCP::Role::WebAuthentication);
 
 # Public methods
+sub choose_action : Role(users) {
+   my ($self, $req) = @_;
+
+   my $name     = $req->body->param->{name};
+   my $job_rs   = $self->schema->resultset( 'Job' );
+   my $where    = $name =~ m{ :: }mx ? { fqjn => $name } : { name => $name };
+   my $job      = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
+   my $location = $req->uri_for( 'job', [ $job ? $job->id : undef ] );
+
+   return { redirect => { location => $location } };
+}
+
 sub chooser : Role(users) {
    my ($self, $req) = @_;
 
@@ -25,6 +36,27 @@ sub chooser : Role(users) {
    my $page    = { meta => delete $chooser->{meta} };
 
    return $self->get_stash( $req, $page, 'job_chooser' => $chooser );
+}
+
+sub clear_action : Role(users) {
+   return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
+}
+
+sub delete_action : Role(users) {
+   my ($self, $req) = @_;
+
+   my $id       = $req->args->[ 0 ]
+      or throw class => Unspecified,
+               args  => [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
+   my $location = $req->uri_for( 'job' );
+   my $message  = [ 'Job id [_1] not found', $id ];
+   my $job      = $self->schema->resultset( 'Job' )->find( $id )
+      or return { redirect => { location => $location, message => $message } };
+   my $fqjn     = $job->fqjn; $job->delete;
+
+   $message = [ 'Job name [_1] deleted', $fqjn ];
+
+   return { redirect => { location => $location, message => $message } };
 }
 
 sub definition_form : Role(users) {
@@ -71,40 +103,18 @@ sub grid_table : Role(users) {
    return $self->get_stash( $req, $page, 'job_grid_table' => $grid_table );
 }
 
-sub job_choose : Role(users) {
+sub job_state : Role(users) {
    my ($self, $req) = @_;
 
-   my $name     = $req->body->param->{name};
-   my $job_rs   = $self->schema->resultset( 'Job' );
-   my $where    = $name =~ m{ :: }mx ? { fqjn => $name } : { name => $name };
-   my $job      = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
-   my $location = $req->uri_for( 'job', [ $job ? $job->id : undef ] );
+   my $form      = 'job_state_dialog';
+   my $page      = { meta => { id => get_or_throw( $req->params, 'id' ) } };
+   my $rs        = $self->schema->resultset( 'JobState' );
+   my $job_state = $rs->find_by_id_or_name( $req->args->[ 0 ] );
 
-   return { redirect => { location => $location } };
+   return $self->get_stash( $req, $page, $form => $job_state );
 }
 
-sub job_clear : Role(users) {
-   return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
-}
-
-sub job_delete : Role(users) {
-   my ($self, $req) = @_;
-
-   my $id       = $req->args->[ 0 ]
-      or throw class => Unspecified,
-               args  => [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
-   my $location = $req->uri_for( 'job' );
-   my $message  = [ 'Job id [_1] not found', $id ];
-   my $job      = $self->schema->resultset( 'Job' )->find( $id )
-      or return { redirect => { location => $location, message => $message } };
-   my $fqjn     = $job->fqjn; $job->delete;
-
-   $message = [ 'Job name [_1] deleted', $fqjn ];
-
-   return { redirect => { location => $location, message => $message } };
-}
-
-sub job_save : Role(users) {
+sub save_action : Role(users) {
    my ($self, $req) = @_; my $id; my $job; my $message;
 
    my $args = { method => '_job_deflate_',
@@ -125,17 +135,6 @@ sub job_save : Role(users) {
    my $location = $req->uri_for( 'job', [ $job->id ] );
 
    return { redirect => { location => $location, message => $message } };
-}
-
-sub job_state : Role(users) {
-   my ($self, $req) = @_;
-
-   my $form      = 'job_state_dialog';
-   my $page      = { meta => { id => get_or_throw( $req->params, 'id' ) } };
-   my $rs        = $self->schema->resultset( 'JobState' );
-   my $job_state = $rs->find_by_id_or_name( $req->args->[ 0 ] );
-
-   return $self->get_stash( $req, $page, $form => $job_state );
 }
 
 # Private methods

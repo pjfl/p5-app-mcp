@@ -3,11 +3,12 @@ package App::MCP::Config;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( NUL TRUE );
 use Class::Usul::Functions qw( fqdn );
 use File::DataClass::Types qw( ArrayRef Directory File HashRef
                                NonEmptySimpleStr NonZeroPositiveInt
-                               PositiveInt SimpleStr );
+                               PositiveInt SimpleStr Str );
+use Sys::Hostname          qw( hostname );
 
 extends q(Class::Usul::Config::Programs);
 
@@ -55,6 +56,9 @@ has 'load_factor'          => is => 'ro',   isa => NonZeroPositiveInt,
 has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'DAEMON';
 
+has 'max_asset_size'       => is => 'ro',   isa => PositiveInt,
+   default                 => 4_194_304;
+
 has 'max_session_age'      => is => 'ro',   isa => PositiveInt,
    default                 => 300;
 
@@ -78,9 +82,15 @@ has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
 has 'preferences'          => is => 'ro',   isa => ArrayRef,
    builder                 => sub { [ qw( theme ) ] };
 
+has 'secret'               => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => hostname;
+
 has 'schema_classes'       => is => 'ro',   isa => HashRef,
    builder                 => sub { {
       'mcp-model'          => 'App::MCP::Schema::Schedule', } };
+
+has 'scrubber'             => is => 'ro',   isa => Str,
+   default                 => '[^ +\-\./0-9@A-Z\\_a-z~]';
 
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
    documentation           => 'Plack server class used for the event listener',

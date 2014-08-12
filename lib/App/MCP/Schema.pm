@@ -4,7 +4,7 @@ use namespace::sweep;
 use version;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( EXCEPTION_CLASS OK );
 use App::MCP::Functions    qw( qualify_job_name trigger_output_handler );
 use Class::Usul::Functions qw( throw );
 use Class::Usul::Options;
@@ -14,7 +14,7 @@ use Unexpected::Functions  qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::Role::UserPassword);
 
-my $version           = qv( sprintf '0.4.%d', q$Rev: 23 $ =~ /\d+/gmx );
+my $version           = qv( sprintf '0.4.%d', q$Rev: 25 $ =~ /\d+/gmx );
 my ($schema_version)  = $version =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)

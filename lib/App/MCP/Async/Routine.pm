@@ -3,7 +3,7 @@ package App::MCP::Async::Routine;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants qw( FALSE TRUE );
 use App::MCP::Functions qw( log_leader );
 use Class::Usul::Types  qw( Object );
 use IPC::SysV           qw( IPC_CREAT S_IRUSR S_IWUSR );

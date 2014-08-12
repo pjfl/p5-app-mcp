@@ -1,5 +1,7 @@
 Revision history for App::MCP
 
+          - Addded Attributes class
+          - Uprated Request class
           - Long pause checkin
           - Using strictures
           - Exception and state pages use template widgets

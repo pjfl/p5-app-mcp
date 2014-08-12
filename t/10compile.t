@@ -21,6 +21,7 @@ use_ok 'App::MCP';
 use_ok 'App::MCP::Functions';
 use_ok 'App::MCP::Daemon';
 use_ok 'App::MCP::Listener';
+use_ok 'App::MCP::Model::API';
 use_ok 'App::MCP::Schema';
 use_ok 'App::MCP::Schema::Schedule';
 use_ok 'App::MCP::View::HTML';

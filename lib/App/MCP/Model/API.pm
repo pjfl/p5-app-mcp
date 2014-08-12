@@ -1,9 +1,9 @@
 package App::MCP::Model::API;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( NUL );
 use App::MCP::Functions    qw( trigger_input_handler );
 use Class::Usul::Functions qw( bson64id bson64id_time throw );
 use Class::Usul::Time      qw( time2str );
@@ -11,7 +11,7 @@ use Class::Usul::Types     qw( Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED
                                HTTP_NOT_FOUND   HTTP_OK );
 use JSON                   qw( );
-use TryCatch;
+use Try::Tiny;
 
 extends q(App::MCP::Model);
 
@@ -28,16 +28,16 @@ sub create_event {
    my $schema = $self->schema;
    my $run_id = $req->params->{runid} // 'undef';
    my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
-                        ->search( { runid   => $run_id },
-                                  { columns => [ 'token' ] } );
+                       ->search( { runid   => $run_id },
+                                 { columns => [ 'token' ] } );
    my $pevent = $pe_rs->first
       or throw error => 'Runid [_1] not found',
                args  => [ $run_id ], rv => HTTP_NOT_FOUND;
    my $params = $self->authenticate_params
       ( $run_id, $pevent->token, $req->body->param->{event} );
 
-   try        { $event = $schema->resultset( 'Event' )->create( $params ) }
-   catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
+   try   { $event = $schema->resultset( 'Event' )->create( $params ) }
+   catch { throw error => $_, rv => HTTP_BAD_REQUEST };
 
    trigger_input_handler $ENV{MCP_DAEMON_PID};
 
@@ -55,8 +55,8 @@ sub create_job {
    $params->{owner_id} = $sess->{user_id};
    $params->{group_id} = $sess->{role_id};
 
-   try        { $job = $self->schema->resultset( 'Job' )->create( $params ) }
-   catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
+   try   { $job = $self->schema->resultset( 'Job' )->create( $params ) }
+   catch { throw error => $_, rv => HTTP_BAD_REQUEST };
 
    return { code    => HTTP_CREATED,
             content => { message => 'Job '.$job->id.' created' } };
@@ -90,7 +90,7 @@ sub snapshot_state {
                               type      => NUL.$job->type, };
       }
    }
-   catch ($e) { throw error => $e, rv => HTTP_BAD_REQUEST }
+   catch { throw error => $_, rv => HTTP_BAD_REQUEST };
 
    my $minted  = time2str undef, bson64id_time( $id );
    my $content = { id => $id, jobs => $frames, minted => $minted };

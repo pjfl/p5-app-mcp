@@ -1,12 +1,9 @@
 package App::MCP::Model::Root;
 
-use namespace::sweep;
-
 use Moo;
-use App::MCP::Constants;
-use App::MCP::Functions    qw( get_or_throw );
-use Class::Usul::Functions qw( throw );
-use HTTP::Status           qw( HTTP_NOT_FOUND );
+use App::MCP::Attributes;
+use App::MCP::Constants qw( FALSE NUL TRUE );
+use HTTP::Status        qw( HTTP_NOT_FOUND );
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
@@ -16,7 +13,7 @@ with    q(App::MCP::Role::Preferences);
 with    q(App::MCP::Role::FormBuilder);
 with    q(App::MCP::Role::WebAuthentication);
 
-sub authenticate_login : Role(any) {
+sub login_action : Role(any) {
    my ($self, $req) = @_;
 
    my $user_name    = $req->body->param->{username};
@@ -57,16 +54,6 @@ sub nav_list : Role(any) {
    return $self->get_stash( $req, $page, 'nav' => $list );
 }
 
-sub not_found : Role(any) {
-   my ($self, $req) = @_;
-
-   my $page = { code  => HTTP_NOT_FOUND,
-                error => $req->loc( 'Resource [_1] not found', $req->uri ),
-                title => $req->loc( 'Not found' ) };
-
-   return $self->get_stash( $req, $page, exception => {} );
-}
-
 sub login_form : Role(any) {
    my ($self, $req) = @_;
 
@@ -78,7 +65,7 @@ sub login_form : Role(any) {
    return $self->get_stash( $req, $page, login => $user );
 }
 
-sub logout : Role(any) {
+sub logout_action : Role(any) {
    my ($self, $req) = @_;
 
    my $session   = $req->session;
@@ -89,6 +76,16 @@ sub logout : Role(any) {
    delete $session->{user_name}; delete $session->{user_roles};
 
    return { redirect => { location => $location, message => $message } };
+}
+
+sub not_found : Role(any) {
+   my ($self, $req) = @_;
+
+   my $page = { code  => HTTP_NOT_FOUND,
+                error => $req->loc( 'Resource [_1] not found', $req->uri ),
+                title => $req->loc( 'Not found' ) };
+
+   return $self->get_stash( $req, $page, exception => {} );
 }
 
 1;

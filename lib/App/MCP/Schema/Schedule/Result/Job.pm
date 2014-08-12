@@ -5,7 +5,7 @@ use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use Algorithm::Cron;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE NUL SEPARATOR TRUE );
 use App::MCP::ExpressionParser;
 use App::MCP::Functions    qw( qualify_job_name );
 use Class::Usul::Functions qw( is_arrayref is_hashref is_member throw );

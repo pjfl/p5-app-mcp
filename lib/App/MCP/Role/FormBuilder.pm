@@ -1,9 +1,9 @@
 package App::MCP::Role::FormBuilder;
 
 use 5.010001;
-use namespace::sweep;
 
-use App::MCP::Constants;
+use App::MCP::Attributes;
+use App::MCP::Constants    qw( DOTS FALSE HASH_CHAR NUL TRUE );
 use App::MCP::Form;
 use App::MCP::Functions    qw( get_or_throw );
 use Class::Usul::Functions qw( ensure_class_loaded first_char pad throw );
@@ -12,7 +12,7 @@ use Data::Validation;
 use File::Gettext::Schema;
 use HTTP::Status           qw( HTTP_OK );
 use Scalar::Util           qw( blessed );
-use TryCatch;
+use Try::Tiny;
 use Moo::Role;
 
 requires qw( config debug get_stash log schema_class usul );
@@ -138,14 +138,14 @@ sub check_field : Role(any) {
    my $id   = get_or_throw( $req->params, 'id' );
    my $meta = { id => "${id}_ajax" };
 
-   try        { $self->_check_field( $req ) }
-   catch ($e) {
-      my $args = { params => $e->args, quote_bind_values => TRUE };
+   try   { $self->_check_field( $req ) }
+   catch {
+      my $e = $_; my $args = { params => $e->args, quote_bind_values => TRUE };
 
       $self->debug and $self->log->debug( "${e}" );
       $mesg = $req->loc( $e->error, $args );
       $meta->{class_name} = 'field_error';
-   }
+   };
 
    return { code => HTTP_OK,
             form => [ { fields => [ $mesg ] } ],
@@ -207,6 +207,7 @@ sub _set_column {
    my $method = $prefix ? "${prefix}${col}" : undef;
    my $value  = $method && $self->can( $method )
               ? $self->$method( $args->{param} ) : $args->{param}->{ $col };
+   # TODO: And we left this here because?
    warn "$col $value\n";
    defined $value or return;
 
@@ -253,7 +254,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 23 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 25 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

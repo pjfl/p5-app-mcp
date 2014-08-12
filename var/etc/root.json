@@ -2,7 +2,8 @@
    "_fields": {
       "login.login_button": {
          "name": "Login",
-         "type": "button"
+         "type": "button",
+         "value": "login"
       },
       "login.password": {
          "check_field" : "1",

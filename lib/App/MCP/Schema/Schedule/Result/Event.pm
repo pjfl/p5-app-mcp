@@ -3,8 +3,6 @@ package App::MCP::Schema::Schedule::Result::Event;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Constants;
-
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'event' );

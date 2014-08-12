@@ -3,8 +3,8 @@ package App::MCP::Async::Base;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
-use Class::Usul::Types qw( Bool NonEmptySimpleStr Object NonZeroPositiveInt );
+use App::MCP::Constants qw( TRUE );
+use Class::Usul::Types  qw( Bool NonEmptySimpleStr Object NonZeroPositiveInt );
 
 has 'autostart'   => is => 'ro',   isa => Bool, default => TRUE;
 

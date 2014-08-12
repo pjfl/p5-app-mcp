@@ -4,7 +4,7 @@ use 5.01;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
-use App::MCP::Constants;
+use App::MCP::Constants    qw( FALSE TRUE );
 use Class::Usul::Functions qw( first_char throw );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
 

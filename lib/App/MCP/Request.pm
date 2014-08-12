@@ -1,74 +1,99 @@
 package App::MCP::Request;
 
 use 5.010001;
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( EXCEPTION_CLASS NUL SPC TRUE );
+use App::MCP::Functions    qw( extract_lang );
 use Authen::HTTP::Signature::Parser;
 use CGI::Simple::Cookie;
 use Class::Usul::Functions qw( class2appdir first_char is_arrayref is_hashref
                                is_member throw trim );
-use Class::Usul::Types     qw( ArrayRef HashRef NonEmptySimpleStr
+use Class::Usul::Types     qw( ArrayRef BaseType HashRef NonEmptySimpleStr
                                Object SimpleStr Str );
 use Convert::SSH2;
+use Encode                 qw( decode );
 use HTTP::Body;
-use HTTP::Status           qw( HTTP_EXPECTATION_FAILED HTTP_UNAUTHORIZED );
+use HTTP::Status           qw( HTTP_EXPECTATION_FAILED
+                               HTTP_INTERNAL_SERVER_ERROR
+                               HTTP_REQUEST_ENTITY_TOO_LARGE
+                               HTTP_UNAUTHORIZED );
 use JSON                   qw( );
-use TryCatch;
+use Scalar::Util           qw( blessed );
+use Try::Tiny;
 use Unexpected::Functions  qw( ChecksumFailure MissingHeader MissingKey
                                SigParserFailure SigVerifyFailure Unspecified );
 use URI::http;
 use URI::https;
 
-extends q(App::MCP);
-
 # Public attributes
 has 'args'        => is => 'ro',   isa => ArrayRef, default => sub { [] };
 
-has 'base'        => is => 'ro',   isa => Object, required => TRUE;
+has 'base'        => is => 'lazy',   isa => Object;
 
-has 'body'        => is => 'lazy', isa => Object, init_arg => undef;
+has 'body'        => is => 'lazy', isa => Object;
 
 has 'cookie'      => is => 'lazy', isa => HashRef, builder => sub {
-   { CGI::Simple::Cookie->parse( $_[ 0 ]->_env->{HTTP_COOKIE} ) || {} } };
+   { CGI::Simple::Cookie->parse( $_[ 0 ]->env->{HTTP_COOKIE} ) || {} } };
 
-has 'domain'      => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
+has 'domain'      => is => 'lazy', isa => NonEmptySimpleStr,
+   builder        => sub { (split m{ : }mx, $_[ 0 ]->host)[ 0 ] };
 
-has 'l10n_domain' => is => 'ro',   isa => NonEmptySimpleStr,
+has 'env'         => is => 'ro',   isa => HashRef, default => sub { {} };
+
+has 'host'        => is => 'lazy', isa => NonEmptySimpleStr, builder => sub {
+   my $env        =  $_[ 0 ]->env;
+      $env->{ 'HTTP_HOST' } // $env->{ 'SERVER_NAME' } // 'localhost' };
+
+has 'l10n_domain' => is => 'lazy', isa => NonEmptySimpleStr,
    default        => sub { $_[ 0 ]->config->name };
 
-has 'locale'      => is => 'lazy', isa => NonEmptySimpleStr, init_arg => undef;
+has 'language'    => is => 'lazy', isa => NonEmptySimpleStr,
+   builder        => sub { __extract_lang( $_[ 0 ]->locale ) };
 
-has 'method'      => is => 'lazy', isa => NonEmptySimpleStr,
-   builder        => sub { lc $_[ 0 ]->_env->{ 'REQUEST_METHOD' } };
+has 'locale'      => is => 'lazy', isa => NonEmptySimpleStr;
+
+has 'locales'     => is => 'lazy', isa => ArrayRef;
+
+has 'method'      => is => 'lazy', isa => SimpleStr,
+   builder        => sub { lc( $_[ 0 ]->env->{ 'REQUEST_METHOD' } // NUL ) };
 
 has 'params'      => is => 'ro',   isa => HashRef, default => sub { {} };
 
-has 'path'        => is => 'ro',   isa => SimpleStr, default => NUL;
+has 'path'        => is => 'lazy', isa => SimpleStr, builder => sub {
+   my $v          =  $_[ 0 ]->env->{ 'PATH_INFO' } // '/';
+      $v          =~ s{ \A / }{}mx; $v =~ s{ \? .* \z }{}mx; $v };
 
-has 'protocol'    => is => 'lazy', isa => SimpleStr,
-   builder        => sub { $_[ 0 ]->_env->{ 'SERVER_PROTOCOL' } };
+has 'query'       => is => 'lazy', isa => SimpleStr, builder => sub {
+   my $v          =  $_[ 0 ]->env->{ 'QUERY_STRING' }; $v ? "?${v}" : NUL };
 
-has 'scheme'      => is => 'ro',   isa => NonEmptySimpleStr;
+has 'scheme'      => is => 'lazy', isa => NonEmptySimpleStr,
+   builder        => sub { $_[ 0 ]->env->{ 'psgi.url_scheme' } // 'http' };
+
+has 'script'      => is => 'lazy', isa => SimpleStr, builder => sub {
+   my $v          =  $_[ 0 ]->env->{ 'SCRIPT_NAME' } // '/';
+      $v          =~ s{ / \z }{}gmx; $v };
 
 has 'session'     => is => 'lazy', isa => HashRef,
-   builder        => sub { $_[ 0 ]->_env->{ 'psgix.session' } // {} };
-
-has 'tunnel_method' => is => 'lazy', isa => NonEmptySimpleStr,
-   builder        => sub {
-         delete $_[ 0 ]->body->param->{_method}
-      || delete $_[ 0 ]->params->{_method} || 'not_found' };
+   builder        => sub { $_[ 0 ]->env->{ 'psgix.session' } // {} };
 
 has 'ui_state'    => is => 'lazy', isa => HashRef;
 
-has 'uri'         => is => 'ro',   isa => Object, required => TRUE;
+has 'uri'         => is => 'lazy', isa => Object;
+
+has 'usul'        => is => 'ro', isa => BaseType,
+   handles        => [ qw( config localize log ) ],
+   init_arg       => 'builder', required => TRUE, weak_ref => TRUE;
+
+has 'tunnel_method' => is => 'lazy', isa => NonEmptySimpleStr, builder => sub {
+   my $body_method  = delete $_[ 0 ]->body->param->{_method};
+   my $param_method = delete $_[ 0 ]->params->{_method};
+   my $method       = $body_method || $param_method || 'not_found';
+   return (is_arrayref $method) ? lc $method->[ 0 ] : lc $method };
 
 # Private attributes
 has '_content'    => is => 'lazy', isa => Str, init_arg => undef;
-
-has '_env'        => is => 'ro',   isa => HashRef, default => sub { {} },
-   init_arg       => 'env';
 
 has '_transcoder' => is => 'lazy', isa => Object,
    builder        => sub { JSON->new }, init_arg => undef;
@@ -81,28 +106,30 @@ around 'BUILDARGS' => sub {
 
    $attr->{env    } = ($args[ 0 ] and is_hashref $args[ -1 ]) ? pop @args : {};
    $attr->{params } = ($args[ 0 ] and is_hashref $args[ -1 ]) ? pop @args : {};
-   $attr->{args   } = [ split m{ / }mx, trim $args[ 0 ] // NUL ];
+   $attr->{args   } = (defined $args[ 0 ] && blessed $args[ 0 ])
+                    ? [ $args[ 0 ] ]
+                    : [ split m{ / }mx, trim $args[ 0 ] || NUL ];
 
-   my $env       = $attr->{env};
-   my $scheme    = $attr->{scheme} = $env->{ 'psgi.url_scheme' } || 'http';
-   my $host      = $env->{ 'HTTP_HOST'   } || $env->{ 'SERVER_NAME' };
-   my $script    = $env->{ 'SCRIPT_NAME' } || '/'; $script =~ s{ / \z }{}gmx;
-   my $path_info = $env->{ 'PATH_INFO'   };
-      $path_info =~ s{ \A / }{}mx; $path_info =~ s{ \? .* \z }{}mx;
-   my $query     = $env->{ 'QUERY_STRING' } ? '?'.$env->{ 'QUERY_STRING' } : '';
-   my $base_uri  = "${scheme}://${host}${script}/";
-   my $req_uri   = "${base_uri}${path_info}${query}";
-   my $uri_class = "URI::${scheme}";
-
-   $attr->{path   } = $script;
-   $attr->{uri    } = bless \$req_uri,  $uri_class;
-   $attr->{base   } = bless \$base_uri, $uri_class;
-   $attr->{domain } = (split m{ : }mx, $host)[ 0 ];
    return $attr;
 };
 
+sub BUILD {
+   my $self = shift; $self->tunnel_method; # Coz it's destructive
+
+   $self->log->debug( join SPC, (uc $self->method), $self->uri );
+
+   return;
+}
+
+sub _build_base {
+   my $self = shift;
+   my $uri  = $self->scheme.'://'.$self->host.$self->script.'/';
+
+   return bless \$uri, 'URI::'.$self->scheme;
+}
+
 sub _build_body {
-   my $self = shift; my $env = $self->_env; my $in = $self->_content;
+   my $self = shift; my $env = $self->env; my $in = $self->_content;
 
    my $body = HTTP::Body->new( $env->{CONTENT_TYPE}, length $in );
 
@@ -114,31 +141,46 @@ sub _build_body {
       }
       else { $body->add( $in ) }
    }
-   catch ($e) { $self->log->error( $e ) }
+   catch { $self->log->error( $_ ) };
 
-   return $body;
+   return __decode_params( $body );
 }
 
 sub _build__content {
-   my $self = shift; my $env = $self->_env; my $content;
+   my $self = shift; my $env = $self->env; my $content;
 
    try {
       $env->{CONTENT_LENGTH}
          and $env->{ 'psgi.input' }->read( $content, $env->{CONTENT_LENGTH} );
    }
-   catch ($e) { $self->log->error( $e ); $content = undef }
+   catch { $self->log->error( $_ ); $content = undef };
 
    return $content ? $content : NUL;
 }
 
 sub _build_locale {
-   my $self = shift;
+   my $self = shift; my $locale;
 
-   for my $locale (@{ $self->_acceptable_locales }) {
+   exists $self->params->{locale}
+      and defined  ($locale = $self->params->{locale})
+      and is_member $locale,  $self->config->locales
+      and return $locale;
+
+   for my $locale (@{ $self->locales }) {
       is_member $locale, $self->config->locales and return $locale;
    }
 
    return $self->config->locale;
+}
+
+sub _build_locales {
+   my $self = shift; my $lang = $self->env->{ 'HTTP_ACCEPT_LANGUAGE' } || NUL;
+
+   return [ map    { s{ _ \z }{}mx; $_ }
+            map    { join '_', $_->[ 0 ], uc $_->[ 1 ] }
+            map    { [ split m{ - }mx, $_ ] }
+            map    { ( split m{ ; }mx, $_ )[ 0 ] }
+            split m{ , }mx, lc $lang ];
 }
 
 sub _build_ui_state {
@@ -153,13 +195,19 @@ sub _build_ui_state {
    return $attr;
 }
 
+sub _build_uri {
+   my $self = shift; my $uri = $self->base.$self->path.$self->query;
+
+   return bless \$uri, 'URI::'.$self->scheme;
+}
+
 # Public methods
 sub authenticate {
    my $self = shift; my $sig;
 
-   try        { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
-   catch ($e) { throw class => SigParserFailure,
-                      error => $e, rv => HTTP_EXPECTATION_FAILED }
+   try   { $sig = Authen::HTTP::Signature::Parser->new( $self )->parse() }
+   catch { throw class => SigParserFailure,
+                 error => $_, rv => HTTP_EXPECTATION_FAILED };
 
    $sig->key_id or throw class => Unspecified,
                          args  => [ 'key id' ], rv => HTTP_EXPECTATION_FAILED;
@@ -184,25 +232,45 @@ sub authenticate {
    return; # Authentication was successful
 }
 
+sub body_params {
+   my $self = shift; weaken( $self );
+
+   my $params = $self->body->param; weaken( $params );
+
+   return sub { $self->_get_scrubbed_param( $params, @_ ) };
+}
+
 sub header {
    my ($self, $name) = @_; $name =~ s{ [\-] }{_}gmx; $name = uc $name;
 
-   exists $self->_env->{ "HTTP_${name}" }
-      and return $self->_env->{ "HTTP_${name}" };
+   exists $self->env->{ "HTTP_${name}" }
+      and return $self->env->{ "HTTP_${name}" };
 
-   return $self->_env->{ $name };
+   return $self->env->{ $name };
 }
 
 sub loc {
-   my ($self, $key, @args) = @_; my $car = $args[ 0 ];
+   my ($self, $key, @args) = @_; my $args = $self->_localize_args( @args );
 
-   my $args = (is_hashref $car) ? { %{ $car } }
-            : { params => (is_arrayref $car) ? $car : [ @args ] };
-
-   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->l10n_domain ];
-   $args->{locale      } ||= $self->locale;
+   $args->{locale} ||= $self->locale;
 
    return $self->localize( $key, $args );
+}
+
+sub loc_default {
+   my ($self, $key, @args) = @_; my $args = $self->_localize_args( @args );
+
+   $args->{locale} ||= $self->config->locale;
+
+   return $self->localize( $key, $args );
+}
+
+sub query_params {
+   my $self = shift; weaken( $self );
+
+   my $params = $self->params; weaken( $params );
+
+   return sub { $self->_get_scrubbed_param( $params, @_ ) };
 }
 
 sub uri_for {
@@ -219,14 +287,29 @@ sub uri_for {
 }
 
 # Private methods
-sub _acceptable_locales {
-   my $self = shift; my $lang = $self->_env->{ 'HTTP_ACCEPT_LANGUAGE' } || NUL;
+sub _get_scrubbed_param {
+   my ($self, $params, $name, $opts) = @_; $opts = { %{ $opts // {} } };
 
-   return [ map    { s{ _ \z }{}mx; $_ }
-            map    { join '_', $_->[ 0 ], uc $_->[ 1 ] }
-            map    { [ split m{ - }mx, $_ ] }
-            map    { ( split m{ ; }mx, $_ )[ 0 ] }
-            split m{ , }mx, lc $lang ];
+   $opts->{max_length} //= $self->config->max_asset_size;
+   $opts->{scrubber  } //= $self->config->scrubber;
+
+   $opts->{multiple} and return
+      [ map { $opts->{raw} ? $_ : __scrub_value( $name, $_, $opts ) }
+           @{ __get_defined_values( $params, $name, $opts ) } ];
+
+   my $v = __get_defined_value( $params, $name, $opts );
+
+   return $opts->{raw} ? $v : __scrub_value( $name, $v, $opts );
+}
+
+sub _localize_args {
+   my ($self, @args) = @_; my $car = $args[ 0 ];
+
+   my $args = (is_hashref $car) ? { %{ $car } }
+            : { params => (is_arrayref $car) ? $car : [ @args ] };
+
+   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $self->l10n_domain ];
+   return $args;
 }
 
 sub _read_public_key {
@@ -237,11 +320,73 @@ sub _read_public_key {
    my $prefix   = class2appdir $self->config->appclass;
    my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
 
-   try        { $key = Convert::SSH2->new( $key_file->all )->format_output }
-   catch ($e) { throw class => MissingKey, error => $e,
-                      rv    => HTTP_UNAUTHORIZED }
+   try   { $key = Convert::SSH2->new( $key_file->all )->format_output }
+   catch { throw class => MissingKey, error => $_, rv => HTTP_UNAUTHORIZED };
 
    return $cache->{ $key_id } = $key;
+}
+
+# Private functions
+sub __decode_params {
+   my $body = shift;
+
+   for my $k (keys %{ $body->param }) {
+      if (is_arrayref $body->param->{ $k }) {
+         $body->param->{ $k } = [ map { decode( 'UTF-8', $_  ) }
+                                     @{ $body->param->{ $k } } ];
+      }
+      else { $body->param->{ $k } = decode( 'UTF-8', $body->param->{ $k } ) }
+   }
+
+   return $body;
+}
+
+sub __defined_or_throw {
+   my ($k, $v, $opts) = @_;
+
+   defined $k or throw class => Unspecified, args => [ 'parameter name' ],
+                          rv => HTTP_INTERNAL_SERVER_ERROR, level => 5;
+
+   $opts->{optional} or defined $v
+      or throw class => Unspecified, args => [ $k ],
+                  rv => HTTP_EXPECTATION_FAILED, level => 5;
+   return $v;
+}
+
+sub __get_defined_value {
+   my ($params, $name, $opts) = @_;
+
+   my $v = __defined_or_throw( $name, $params->{ $name }, $opts );
+
+   is_arrayref $v and $v = $v->[ 0 ];
+
+   return __defined_or_throw( $name, $v, $opts );
+}
+
+sub __get_defined_values {
+   my ($params, $name, $opts) = @_;
+
+   my $v = __defined_or_throw( $name, $params->{ $name }, $opts );
+
+   is_arrayref $v or $v = [ $v ];
+
+   return $v;
+}
+
+sub __scrub_value {
+   my ($name, $v, $opts) = @_; my $pattern = $opts->{scrubber}; my $len;
+
+   $pattern and defined $v and $v =~ s{ $pattern }{}gmx;
+
+   $opts->{optional} or $opts->{allow_null} or $len = length $v
+      or  throw class => Unspecified, args => [ $name ], level => 4,
+                   rv => HTTP_EXPECTATION_FAILED;
+
+   $len and $len > $opts->{max_length}
+      and throw error => 'Parameter [_1] size [_2] too big',
+                 args => [ $name, $len ], level => 4,
+                   rv => HTTP_REQUEST_ENTITY_TOO_LARGE;
+   return $v;
 }
 
 1;

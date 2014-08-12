@@ -10,11 +10,11 @@ use Class::Usul::Functions qw( exception throw );
 use DateTime;
 use HTTP::Status           qw( HTTP_NOT_FOUND );
 use Scalar::Util           qw( blessed );
-use TryCatch;
+use Try::Tiny;
 use Unexpected::Functions  qw( Unknown );
 
 sub create_and_or_update {
-   my ($self, $event) = @_;
+   my ($self, $event) = @_; my $res;
 
    my $job        = $event->job_rel;
    my $job_state  = $self->find_or_create( $job );
@@ -23,13 +23,14 @@ sub create_and_or_update {
    try {
       $state_name = $self->_workflow->process_event( $state_name, $event );
    }
-   catch ($e) {
-      (blessed $e and $e->can( 'class' ))
+   catch {
+      my $e = $_; (blessed $e and $e->can( 'class' ))
          or $e = exception class => Unknown, error => $e;
 
-      return [ $event->transition->value, $job->fqjn, $e ];
-   }
+      $res = [ $event->transition->value, $job->fqjn, $e ];
+   };
 
+   $res and return $res;
    $job_state->name( $state_name );
    $job_state->updated( DateTime->now );
    $job_state->update;

@@ -2,14 +2,17 @@ package strictures::defanged;
 
 use strict;
 use warnings;
-use version; our $VERSION = qv( sprintf '0.1.%d', q$Rev: 24 $ =~ /\d+/gmx );
+
+our $VERSION = '0.2';
 
 sub import {
    require strictures; no warnings 'redefine';
 
    $ENV{PERL_STRICTURES_ENABLED}
-      or *strictures::import = sub { strict->import; warnings->import };
+      or *strictures::import = sub {
+         strict->import; warnings->import( NONFATAL => 'all' ) };
 
+   strictures->import;
    return;
 }
 
@@ -28,21 +31,16 @@ strictures::defanged - Make strictures the same as just use strict warnings
 =head1 Synopsis
 
    use strictures::defanged;
-   use strictures;
-
-=head1 Version
-
-This documents version v0.1.$Rev: 24 $ of L<strictures::defanged>
 
 =head1 Description
 
 Monkey patch the L<strictures> import method. Make it the same as just
 
    use strict;
-   use warnings;
+   use warnings NONFATAL => 'all';
 
 This stops new warnings that appear in new versions of Perl5 from breaking
-working programs, which is what happens when warnings are made fatal
+working programs, which is what can happen when warnings are made fatal
 
 L<Strictures|strictures> also has some heuristic involving version control
 directories that I don't care for so that gets patched out also

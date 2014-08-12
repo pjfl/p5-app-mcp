@@ -2,11 +2,11 @@ package App::MCP;
 
 use 5.010001;
 use namespace::sweep;
-use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 24 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.4.%d', q$Rev: 25 $ =~ /\d+/gmx );
 
 use Moo;
-use App::MCP::Constants;
-use Class::Usul::Types qw( BaseType );
+use App::MCP::Constants qw( TRUE );
+use Class::Usul::Types  qw( BaseType );
 
 has 'usul'  => is => 'ro', isa => BaseType,
    handles  => [ qw( config debug localize lock log ) ],
@@ -24,7 +24,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.4.$Rev: 24 $ of L<App::MCP>
+Describes version v0.4.$Rev: 25 $ of L<App::MCP>
 
 =head1 Synopsis
 

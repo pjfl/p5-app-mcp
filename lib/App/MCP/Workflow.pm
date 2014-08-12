@@ -7,7 +7,7 @@ use App::MCP::Workflow::Transition;
 use Class::Usul::Functions qw( throw );
 use Moo;
 use Scalar::Util           qw( blessed );
-use TryCatch;
+use Try::Tiny;
 use Unexpected::Functions  qw( Condition Crontab Illegal Retry );
 
 extends q(Class::Workflow);
@@ -90,11 +90,11 @@ sub process_event {
       $instance   = $transition->apply( $instance, $event );
       $state_name = $instance->state->name;
    }
-   catch ($e) {
-      my $class = blessed $e && $e->can( 'class' ) ? $e->class : undef;
+   catch {
+      my $class = blessed $_ && $_->can( 'class' ) ? $_->class : undef;
 
-      $class and $class eq Retry and goto RETRY; throw $e;
-   }
+      $class and $class eq Retry and goto RETRY; throw $_;
+   };
 
    return $state_name;
 }

@@ -2,7 +2,7 @@ package App::MCP::Listener;
 
 use namespace::sweep;
 
-use App::MCP::Constants;
+use App::MCP::Constants    qw( FALSE );
 use App::MCP::Controller::API;
 use App::MCP::Controller::Forms;
 use App::MCP::Controller::Root;
@@ -21,7 +21,7 @@ use Class::Usul::Types     qw( ArrayRef BaseType HashRef
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_FOUND
                                HTTP_INTERNAL_SERVER_ERROR );
 use Plack::Builder;
-use TryCatch;
+use Try::Tiny;
 use Web::Simple;
 
 # Public attributes
@@ -107,8 +107,10 @@ sub dispatch_request {
 sub execute {
    my ($self, $view, $model, $method, @args) = @_; my ($req, $res);
 
-   try        { $req = App::MCP::Request->new( $self->usul, $model, @args ) }
-   catch ($e) { return __internal_server_error( $e ) }
+   try   { $req = App::MCP::Request->new( $self->usul, $model, @args ) }
+   catch { $res = __internal_server_error( $_ ) };
+
+   $res and return $res;
 
    try {
       $method eq 'from_request' and $method = $req->tunnel_method.'_action';
@@ -120,7 +122,7 @@ sub execute {
       $res or $res = $self->views->{ $view }->serialize( $req, $stash )
            or throw error => 'View [_1] returned false', args => [ $view ];
    }
-   catch ($e) { return $self->_render_exception( $view, $model, $req, $e ) }
+   catch { $res = $self->_render_exception( $view, $model, $req, $_ ) };
 
    return $res;
 }
@@ -149,7 +151,7 @@ sub _render_exception {
       $res = $self->views->{ $view }->serialize( $req, $stash )
           or throw error => 'View [_1] returned false', args => [ $view ];
    }
-   catch ($render_error) { return __internal_server_error( $e, $render_error ) }
+   catch { $res = __internal_server_error( $e, $_ ) };
 
    return $res;
 }

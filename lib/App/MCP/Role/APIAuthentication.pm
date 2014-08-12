@@ -3,16 +3,16 @@ package App::MCP::Role::APIAuthentication;
 use 5.010001;
 use namespace::sweep;
 
-use App::MCP::Functions        qw( get_hashed_pw get_salt );
+use App::MCP::Functions    qw( get_hashed_pw get_salt );
 use Class::Usul::Constants;
-use Class::Usul::Crypt         qw( decrypt );
-use Class::Usul::Functions     qw( base64_decode_ns base64_encode_ns
-                                   bson64id bson64id_time throw );
+use Class::Usul::Crypt     qw( decrypt );
+use Class::Usul::Functions qw( base64_decode_ns base64_encode_ns
+                               bson64id bson64id_time throw );
 use Crypt::SRP;
-use HTTP::Status               qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
-                                   HTTP_OK HTTP_UNAUTHORIZED );
-use TryCatch;
-use Unexpected::Functions      qw( Unspecified );
+use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
+                               HTTP_OK HTTP_UNAUTHORIZED );
+use Try::Tiny;
+use Unexpected::Functions  qw( Unspecified );
 use Moo::Role;
 
 requires qw( config log schema transcoder );
@@ -52,12 +52,12 @@ sub authenticate_params {
    $params or throw error => 'Request [_1] has no content',
                     args  => [ $id ], rv => HTTP_UNAUTHORIZED;
 
-   try { $params = $self->transcoder->decode( decrypt $key, $params ) }
-   catch ($e) {
-      $self->log->error( $e );
+   try   { $params = $self->transcoder->decode( decrypt $key, $params ) }
+   catch {
+      $self->log->error( $_ );
       throw error => 'Request [_1] authentication failed with key [_2]',
             args  => [ $id, $key ], rv => HTTP_UNAUTHORIZED;
-   }
+   };
 
    return $params;
 }
@@ -114,9 +114,9 @@ sub get_session {
 sub _find_or_create_session {
    my ($self, $user) = @_; my $sess;
 
-   try        { $sess = $self->get_session( $Users->[ $user->id ] ) }
-   catch ($e) { # Create a new session
-      $self->log->debug( $e );
+   try   { $sess = $self->get_session( $Users->[ $user->id ] ) }
+   catch { # Create a new session
+      $self->log->debug( $_ );
 
       my $id = $Users->[ $user->id ] = bson64id;
 
@@ -127,7 +127,7 @@ sub _find_or_create_session {
          max_age   => $self->config->max_session_age,
          role_id   => $user->role_id,
          user_id   => $user->id, };
-   }
+   };
 
    return $sess;
 }

@@ -4,7 +4,7 @@ use namespace::sweep;
 
 use Moo;
 use App::MCP::Async::Loop;
-use App::MCP::Constants;
+use App::MCP::Constants    qw( TRUE );
 use App::MCP::Functions    qw( log_leader );
 use Class::Usul::Functions qw( ensure_class_loaded first_char );
 use Class::Usul::Types     qw( BaseType Object );

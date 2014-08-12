@@ -3,11 +3,10 @@ package App::MCP::Async::Periodical;
 use namespace::sweep;
 
 use Moo;
-use App::MCP::Constants;
-use App::MCP::Functions    qw( log_leader );
-use Class::Usul::Functions qw( throw );
-use Class::Usul::Types     qw( CodeRef NonZeroPositiveInt SimpleStr Undef );
-use Scalar::Util           qw( weaken );
+use App::MCP::Constants qw( TRUE );
+use App::MCP::Functions qw( log_leader );
+use Class::Usul::Types  qw( CodeRef NonZeroPositiveInt SimpleStr Undef );
+use Scalar::Util        qw( weaken );
 
 extends q(App::MCP::Async::Base);
 

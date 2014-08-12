@@ -4,13 +4,13 @@ use strictures;
 use overload '""' => 'as_string', fallback => 1;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Constants;
+use App::MCP::Constants        qw( TRUE FALSE NUL );
 use App::MCP::Functions        qw( get_salt );
 use Class::Usul::Functions     qw( base64_encode_ns create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
 use Crypt::SRP;
 use HTTP::Status               qw( HTTP_UNAUTHORIZED );
-use TryCatch;
+use Try::Tiny;
 use Unexpected::Functions      qw( AccountInactive IncorrectPassword );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
@@ -66,16 +66,15 @@ sub activate {
 }
 
 sub add_member_to {
-   my ($self, $role) = @_;
+   my ($self, $role) = @_; my $failed = FALSE;
 
-   try        { $self->assert_member_of( $role ) }
-   catch ($e) {
-      return $self->user_role->create( { user_id => $self->id,
-                                         role_id => $role->id } );
-   }
+   try { $self->assert_member_of( $role ) } catch { $failed = TRUE };
 
-   throw error => 'User [_1] already a member of role [_2]',
-         args  => [ $self->username, $role->rolename ];
+   $failed or throw error => 'User [_1] already a member of role [_2]',
+                    args  => [ $self->username, $role->rolename ];
+
+   return $self->user_role->create( { user_id => $self->id,
+                                      role_id => $role->id } );
 }
 
 sub as_string {

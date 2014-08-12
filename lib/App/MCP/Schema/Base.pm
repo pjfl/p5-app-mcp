@@ -3,7 +3,7 @@ package App::MCP::Schema::Base;
 use strictures;
 use parent 'DBIx::Class::Core';
 
-use App::MCP::Constants;
+use App::MCP::Constants qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Data::Validation;
 
 __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );

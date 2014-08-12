@@ -3,17 +3,21 @@ package App::MCP::Functions;
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP::Constants;
-use Class::Usul::Functions qw( pad throw );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE LANG NUL );
+use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
 use Unexpected::Functions  qw( Unspecified );
 
-our @EXPORT_OK = ( qw( get_hashed_pw get_or_throw get_salt log_leader
-                       qualify_job_name read_exactly recv_arg_error
+our @EXPORT_OK = ( qw( extract_lang get_hashed_pw get_or_throw get_salt
+                       log_leader qualify_job_name read_exactly recv_arg_error
                        recv_rv_error trigger_input_handler
                        trigger_output_handler ) );
 
 # Public functions
+sub extract_lang ($) {
+   my $v = shift; return $v ? (split_on__ $v)[ 0 ] : LANG;
+}
+
 sub get_hashed_pw ($) {
    my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
 

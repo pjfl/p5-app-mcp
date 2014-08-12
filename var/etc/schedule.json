@@ -3,7 +3,8 @@
       "schedule" : {
          "driver" : "mysql",
          "host" : "localhost",
-         "password" : "{Twofish}U2FsdGVkX1/xcBKZB1giOdQkIt8EFgfNDFGm/C+fZTs=",
+         "name" : "schedule",
+         "password" : "{Twofish2}U2FsdGVkX1/srxkZZ/zKLSfvS1lHYyNi2o923j1U4Sk=",
          "port" : "3306",
          "user" : "mcp"
       }
