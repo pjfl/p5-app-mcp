@@ -1,6 +1,6 @@
 package App::MCP::View::XML;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Class::Usul::Types qw( Object );

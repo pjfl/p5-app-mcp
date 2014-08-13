@@ -1,9 +1,9 @@
 package App::MCP::Workflow::Transition;
 
-use namespace::sweep;
+use namespace::autoclean;
 
-use App::MCP::Constants;
 use Moo;
+use App::MCP::Constants qw( TRUE );
 
 extends q(Class::Workflow::Transition::Simple);
 

@@ -1,8 +1,7 @@
 package App::MCP::Role::Preferences;
 
-use namespace::sweep;
+use namespace::autoclean;
 
-use Class::Usul::Constants;
 use Moo::Role;
 
 requires qw( config get_stash );

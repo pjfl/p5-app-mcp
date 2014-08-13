@@ -1,6 +1,6 @@
 package App::MCP::Role::PageConfiguration;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo::Role;
 

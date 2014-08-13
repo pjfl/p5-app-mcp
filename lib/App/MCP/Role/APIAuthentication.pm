@@ -1,10 +1,9 @@
 package App::MCP::Role::APIAuthentication;
 
-use 5.010001;
-use namespace::sweep;
+use namespace::autoclean;
 
+use App::MCP::Constants    qw( EXCEPTION_CLASS );
 use App::MCP::Functions    qw( get_hashed_pw get_salt );
-use Class::Usul::Constants;
 use Class::Usul::Crypt     qw( decrypt );
 use Class::Usul::Functions qw( base64_decode_ns base64_encode_ns
                                bson64id bson64id_time throw );
@@ -26,7 +25,7 @@ sub authenticate {
    my $user     = $self->_find_user_from( $req );
    my $sess     = $self->_find_or_create_session( $user );
    my $username = $user->username;
-   my $token    = $req->body->param->{M1_token}
+   my $token    = $req->body_params->( 'M1_token' )
       or throw error => 'User [_1] no M1 token',
                args  => [ $username ], rv => HTTP_EXPECTATION_FAILED;
    my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
@@ -47,12 +46,9 @@ sub authenticate {
 }
 
 sub authenticate_params {
-   my ($self, $id, $key, $params) = @_;
+   my ($self, $id, $key, $encrypted) = @_; my $params;
 
-   $params or throw error => 'Request [_1] has no content',
-                    args  => [ $id ], rv => HTTP_UNAUTHORIZED;
-
-   try   { $params = $self->transcoder->decode( decrypt $key, $params ) }
+   try   { $params = $self->transcoder->decode( decrypt $key, $encrypted ) }
    catch {
       $self->log->error( $_ );
       throw error => 'Request [_1] authentication failed with key [_2]',
@@ -68,14 +64,14 @@ sub exchange_pub_keys {
    my $user           = $self->_find_user_from( $req );
    my $sess           = $self->_find_or_create_session( $user );
    my $srp            = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
-   my $client_pub_key = base64_decode_ns( $req->params->{public_key} );
+   my $client_pub_key = base64_decode_ns $req->query_params->( 'public_key' );
    my $username       = $user->username;
 
    $srp->server_verify_A( $client_pub_key )
       or throw error => 'User [_1] client public key verification failed',
                args  => [ $username ], rv => HTTP_UNAUTHORIZED;
 
-   my $verifier = base64_decode_ns( get_hashed_pw $user->password );
+   my $verifier = base64_decode_ns get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
 
    $srp->server_init( $username, $verifier, $salt );

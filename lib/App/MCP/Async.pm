@@ -1,6 +1,6 @@
 package App::MCP::Async;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Async::Loop;
@@ -44,7 +44,7 @@ sub new_notifier {
    my $class = first_char $type eq '+'
              ? (substr $type, 1) : __PACKAGE__.'::'.(ucfirst $type);
 
-   ensure_class_loaded( $class );
+   ensure_class_loaded $class;
 
    my $notifier = $class->new( builder     => $self->builder,
                                description => $desc,

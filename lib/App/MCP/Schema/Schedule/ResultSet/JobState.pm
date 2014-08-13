@@ -1,8 +1,8 @@
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
-use 5.01;
 use strictures;
-use parent 'DBIx::Class::ResultSet';
+use feature 'state';
+use parent  'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
 use App::MCP::Workflow;

@@ -1,6 +1,6 @@
 package App::MCP::Form::Field;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use Class::Usul::Constants;

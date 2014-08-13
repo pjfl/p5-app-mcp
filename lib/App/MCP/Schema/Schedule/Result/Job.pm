@@ -1,8 +1,8 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
-use 5.01;
 use strictures;
-use parent 'App::MCP::Schema::Base';
+use feature 'state';
+use parent  'App::MCP::Schema::Base';
 
 use Algorithm::Cron;
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE NUL SEPARATOR TRUE );

@@ -5,7 +5,6 @@ use 5.010001;
 use App::MCP::Attributes;
 use App::MCP::Constants    qw( DOTS FALSE HASH_CHAR NUL TRUE );
 use App::MCP::Form;
-use App::MCP::Functions    qw( get_or_throw );
 use Class::Usul::Functions qw( ensure_class_loaded first_char pad throw );
 use Class::Usul::Response::Table;
 use Data::Validation;
@@ -36,40 +35,46 @@ around 'get_stash' => sub {
 
 # Public methods
 sub build_chooser {
-   my ($self, $req) = @_; my $params = $req->params;
+   my ($self, $req) = @_; my $params = $req->query_params;
 
-   my $form  = get_or_throw( $params, 'form'  );
-   my $field = get_or_throw( $params, 'field' );
-   my $show  = "function() { this.window.dialogs[ '${field}' ].show() }";
-   my $val   = $params->{val} // NUL; $val =~ s{ [\*] }{%}gmx;
-   my $id    = "${form}_${field}";
+   my $form   = $params->( 'form'  );
+   my $field  = $params->( 'field' );
+   my $button = $params->( 'button', { optional => TRUE } ) // NUL;
+   my $event  = $params->( 'event',  { optional => TRUE } ) // 'load';
+   my $show   = "function() { this.window.dialogs[ '${field}' ].show() }";
+   my $val    = $params->( 'val',    { optional => TRUE } ) // NUL;
+   my $toggle = $params->( 'toggle', { optional => TRUE } ) ? 'true' : 'false';
+   my $id     = "${form}_${field}";
+
+   $val =~ s{ [\*] }{%}gmx;
 
    return {
-      'meta'    => { id => get_or_throw( $params, 'id' ) },
+      'meta'    => { id => $params->( 'id' ) },
       $id       => {
          id     => $id,
-         config => { button     => "'".($params->{button} // NUL)."'",
-                     event      => $params->{event} || "'load'",
+         config => { button     => "'${button}'",
+                     event      => "'${event}'",
                      fieldValue => "'${val}'",
-                     gridToggle => $params->{toggle} ? 'true' : 'false',
+                     gridToggle => $toggle,
                      onComplete => $show }, } };
 }
 
 sub build_grid_rows {
-   my ($self, $req) = @_; my $params = $req->params;
+   my ($self, $req, $args) = @_; my $params = $req->query_params;
 
-   my $id        = get_or_throw( $params, 'id'        );
-   my $page      = get_or_throw( $params, 'page'      ) || 0;
-   my $page_size = get_or_throw( $params, 'page_size' ) || 10;
+   my $id        = $params->( 'id'        );
+   my $page      = $params->( 'page'      ) || 0;
+   my $page_size = $params->( 'page_size' ) || 10;
    my $start     = $page * $page_size;
    my $rows      = {};
    my $count     = 0;
 
-   for my $row (@{ $params->{values} // [] }) {
-      my $link_num = $start + $count;
-      my $rowid    = 'row_'.(pad $link_num, 5, 0, 'left');
+   for my $row (@{ $args->{values} }) {
+      $args->{link_num} = $start + $count;
 
-      $rows->{ $rowid } = $self->_new_grid_row( $req, $link_num, $rowid, $row );
+      my $rowid  = 'row_'.(pad $args->{link_num}, 5, 0, 'left');
+
+      $rows->{ $rowid } = $self->_new_grid_row( $req, $args, $rowid, $row );
       $count++;
    }
 
@@ -79,41 +84,38 @@ sub build_grid_rows {
 }
 
 sub build_grid_table {
-   my ($self, $req) = @_; my $params = $req->params;
+   my ($self, $req, $args) = @_; my $params = $req->query_params;
 
-   my $field  = get_or_throw( $params, 'id' );
-   my $form   = get_or_throw( $params, 'form' );
-   my $label  = get_or_throw( $params, 'label' );
-   my $total  = get_or_throw( $params, 'total' );
-   my $psize  = get_or_throw( $params, 'page_size'   ) || 10;
-   my $value  = get_or_throw( $params, 'field_value' ) || NUL;
+   my $form   = $args->{form};
+   my $field  = $params->( 'id' );
+   my $psize  = $params->( 'page_size' ) || 10;
+   my $label  = $req->loc( $args->{label} );
    my $id     = "${form}_${field}";
    my $count  = 0;
    my @values = ();
 
-   while ($count < $total && $count < $psize) {
+   while ($count < $args->{total} && $count < $psize) {
       push @values, { item => DOTS, item_num => ++$count, };
    }
 
    return {
       'meta'         => {
          id          => $id,
-         field_value => $value,
-         totalcount  => $total, },
+         field_value => $params->( 'field_value', { optional => TRUE } ) // NUL,
+         totalcount  => $args->{total}, },
       "${id}_header" => {
          id          => "${id}_header",
          text        => $req->loc( 'Loading' ).DOTS, },
       "${id}_grid"   => {
          id          => "${id}_grid",
-         data        => __new_grid_table( $req->loc( $label ), \@values ), },
+         data        => __new_grid_table( $label, \@values ), },
    };
 }
 
 sub check_field : Role(anon) {
    my ($self, $req) = @_; my $mesg;
 
-   my $id   = get_or_throw( $req->params, 'id' );
-   my $meta = { id => "${id}_ajax" };
+   my $id = $req->query_params->( 'id' ); my $meta = { id => "${id}_ajax" };
 
    try   { $self->_check_field( $req ) }
    catch {
@@ -141,9 +143,9 @@ sub create_record {
 }
 
 sub find_and_update_record {
-   my ($self, $args, $id) = @_; my $rs = $args->{rs};
+   my ($self, $args) = @_; my $rs = $args->{rs};
 
-   my $rec = $rs->find( $id ) or return;
+   my $rec = $rs->find( $args->{id} ) or return;
 
    for my $col ($rs->result_source->columns) {
       $self->_set_column( $args, $rec, $col );
@@ -155,12 +157,12 @@ sub find_and_update_record {
 
 # Private methods
 sub _check_field {
-   my ($self, $req) = @_; my $params = $req->params;
+   my ($self, $req) = @_; my $params = $req->query_params;
 
-   my $domain = get_or_throw( $params, 'domain' );
-   my $form   = get_or_throw( $params, 'form'   );
-   my $id     = get_or_throw( $params, 'id'     );
-   my $val    = get_or_throw( $params, 'val'    );
+   my $domain = $params->( 'domain' );
+   my $form   = $params->( 'form'   );
+   my $id     = $params->( 'id'     );
+   my $val    = $params->( 'val', { raw => TRUE } );
    my $config = App::MCP::Form->load_config
       ( $self->usul, $domain, $req->locale );
    my $class  = $self->schema_class.'::Result::'
@@ -172,20 +174,22 @@ sub _check_field {
 }
 
 sub _new_grid_row {
-   my ($self, $req, $link_num, $rowid, $row) = @_; my $params = $req->params;
+   my ($self, $req, $args, $rowid, $row) = @_;
 
-   my $id     = get_or_throw( $params, 'id'     );
-   my $form   = get_or_throw( $params, 'form'   );
-   my $method = get_or_throw( $params, 'method' );
-   my $button = $params->{button} // NUL;
-  (my $field  = $id) =~ s{ _grid \z }{}msx;
-      $field  = (split m{ _ }mx, $field)[ 1 ];
-   my $item   = $self->$method( $req, $link_num, $row );
-   my $rv     = (delete $item->{value}) || $item->{text};
-   my $args   = "[ '${form}', '${field}', '${rv}', '${button}' ]";
+   my $form     = $args->{form};
+   my $method   = $args->{method};
+   my $link_num = $args->{link_num};
+   my $params   = $req->query_params;
+   my $id       = $params->( 'id' );
+   my $button   = $params->( 'button', { optional => TRUE } ) // NUL;
+  (my $field    = $id) =~ s{ _grid \z }{}msx;
+      $field    = (split m{ _ }mx, $field)[ 1 ];
+   my $item     = $self->$method( $req, $args->{link_num}, $row );
+   my $rv       = (delete $item->{value}) || $item->{text};
+   my $iargs    = "[ '${form}', '${field}', '${rv}', '${button}' ]";
 
    $item->{class    } //= 'chooser_grid fade submit';
-   $item->{config   }   = { args => $args, method => "'returnValue'", };
+   $item->{config   }   = { args => $iargs, method => "'returnValue'", };
    $item->{container}   = FALSE;
    $item->{id       }   = "${id}_link${link_num}";
    $item->{type     }   = 'anchor';
@@ -207,7 +211,8 @@ sub _set_column {
    my $prefix = $args->{method};
    my $method = $prefix ? "${prefix}${col}" : undef;
    my $value  = $method && $self->can( $method )
-              ? $self->$method( $args->{param} ) : $args->{param}->{ $col };
+              ? $self->$method( $args->{params} )
+              : $args->{params}->( $col, { optional => TRUE, raw => TRUE } );
 
    defined $value or return;
 
@@ -254,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 26 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 27 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

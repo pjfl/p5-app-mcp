@@ -1,6 +1,6 @@
 package App::MCP::Async::Process;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( TRUE );

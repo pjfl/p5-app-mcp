@@ -1,10 +1,11 @@
 package App::MCP::ExpressionParser;
 
-use 5.010001;
 use strictures;
+use feature 'state';
 
-use Class::Usul::Functions  qw( arg_list throw );
+use Class::Usul::Functions qw( arg_list throw );
 use Marpa::R2;
+use Scalar::Util           qw( blessed );
 
 sub new {
    my ($self, @args) = @_; my $attr = arg_list @args;
@@ -12,7 +13,7 @@ sub new {
    return bless {
       debug    => $attr->{debug},
       external => $attr->{external},
-      tokens   => __tokens( $attr->{predicates} ), }, ref $self || $self;
+      tokens   => __tokens( $attr->{predicates} ), }, blessed $self || $self;
 }
 
 sub parse {

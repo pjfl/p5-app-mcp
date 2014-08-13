@@ -1,6 +1,6 @@
 package App::MCP::Role::JavaScript;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Class::Usul::Types qw( ArrayRef );
 use File::DataClass::IO;

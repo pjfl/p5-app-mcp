@@ -4,7 +4,7 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( NUL );
-use App::MCP::Functions    qw( trigger_input_handler );
+use App::MCP::Functions    qw( env_var trigger_input_handler );
 use Class::Usul::Functions qw( bson64id bson64id_time throw );
 use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Object );
@@ -27,21 +27,21 @@ with q(App::MCP::Role::APIAuthentication);
 sub create_event {
    my ($self, $req) = @_; my $event; $req->authenticate;
 
-   my $schema = $self->schema;
-   my $run_id = $req->params->{runid} // 'undef';
-   my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
-                       ->search( { runid   => $run_id },
-                                 { columns => [ 'token' ] } );
-   my $pevent = $pe_rs->first
+   my $schema    = $self->schema;
+   my $run_id    = $req->params->{runid} // 'undef';
+   my $pe_rs     = $schema->resultset( 'ProcessedEvent' )
+                          ->search( { runid   => $run_id },
+                                    { columns => [ 'token' ] } );
+   my $pevent    = $pe_rs->first
       or throw error => 'Runid [_1] not found',
                args  => [ $run_id ], rv => HTTP_NOT_FOUND;
-   my $params = $self->authenticate_params
-      ( $run_id, $pevent->token, $req->body->param->{event} );
+   my $params    = $self->authenticate_params
+      ( $run_id, $pevent->token, $req->body_params->( 'event' ) );
 
    try   { $event = $schema->resultset( 'Event' )->create( $params ) }
    catch { throw error => $_, rv => HTTP_BAD_REQUEST };
 
-   trigger_input_handler $ENV{MCP_DAEMON_PID};
+   trigger_input_handler env_var( 'DAEMON_PID' );
 
    return { code    => HTTP_CREATED,
             content => { message => 'Event '.$event->id.' created' } };
@@ -52,7 +52,7 @@ sub create_job {
 
    my $sess   = $self->get_session( $req->params->{sessionid} // 'undef' );
    my $params = $self->authenticate_params
-      ( $sess->{key}, $sess->{shared_secret}, $req->body->param->{job} );
+      ( $sess->{key}, $sess->{shared_secret}, $req->body_params->( 'job' ) );
 
    $params->{owner_id} = $sess->{user_id};
    $params->{group_id} = $sess->{role_id};

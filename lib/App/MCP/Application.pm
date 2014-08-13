@@ -1,11 +1,11 @@
 package App::MCP::Application;
 
-use 5.010001;
-use namespace::sweep;
+use feature 'state';
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( FALSE NUL TRUE );
-use App::MCP::Functions    qw( log_leader trigger_output_handler );
+use App::MCP::Functions    qw( env_var log_leader trigger_output_handler );
 use Class::Usul::Functions qw( bson64id create_token elapsed );
 use Class::Usul::Types     qw( LoadableClass NonZeroPositiveInt Object );
 use IPC::PerlSSH;
@@ -15,7 +15,7 @@ with q(App::MCP::Role::Component);
 
 # Public attributes
 has 'port' => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
-   $ENV{MCP_LISTENER_PORT} || $_[ 0 ]->usul->config->port };
+   env_var( 'LISTENER_PORT' ) || $_[ 0 ]->usul->config->port };
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, builder => sub {

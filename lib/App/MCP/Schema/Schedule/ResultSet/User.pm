@@ -1,6 +1,5 @@
 package App::MCP::Schema::Schedule::ResultSet::User;
 
-use 5.01;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 

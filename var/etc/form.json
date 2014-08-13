@@ -11,7 +11,7 @@
          "config": [
             {
                "nav_panel": {
-                  "args": "[ '[% links.base_uri %]nav_list', 'list', '', function() { behaviour.rebuild() } ]",
+                  "args": "[ '[% links.base_uri %]navigator', 'list', '', function() { behaviour.rebuild() } ]",
                   "event": "'load'",
                   "method": "'request'"
                }

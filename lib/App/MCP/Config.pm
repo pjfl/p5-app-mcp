@@ -1,6 +1,6 @@
 package App::MCP::Config;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( NUL TRUE );
@@ -107,7 +107,7 @@ has 'schema_classes'       => is => 'ro',   isa => HashRef,
       'mcp-model'          => 'App::MCP::Schema::Schedule', } };
 
 has 'scrubber'             => is => 'ro',   isa => Str,
-   default                 => '[^ +\-\./0-9@A-Z\\_a-z~]';
+   default                 => '[^ +\,\-\./0-9@A-Z\\_a-z~]';
 
 has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
    documentation           => 'Plack server class used for the event listener',

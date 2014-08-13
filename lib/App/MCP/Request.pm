@@ -1,6 +1,6 @@
 package App::MCP::Request;
 
-use 5.010001;
+use feature 'state';
 use namespace::autoclean;
 
 use Moo;
@@ -31,7 +31,7 @@ use URI::https;
 # Public attributes
 has 'args'        => is => 'ro',   isa => ArrayRef, default => sub { [] };
 
-has 'base'        => is => 'lazy',   isa => Object;
+has 'base'        => is => 'lazy', isa => Object;
 
 has 'body'        => is => 'lazy', isa => Object;
 
@@ -90,8 +90,8 @@ has 'usul'        => is => 'ro', isa => BaseType,
 
 has 'tunnel_method' => is => 'lazy', isa => NonEmptySimpleStr, builder => sub {
    my $body_method  = delete $_[ 0 ]->body->param->{_method};
-   my $param_method = delete $_[ 0 ]->params->{_method};
-   my $method       = $body_method || $param_method || 'not_found';
+   my $query_method = delete $_[ 0 ]->params->{_method};
+   my $method       = $body_method || $query_method || 'not_found';
    return (is_arrayref $method) ? lc $method->[ 0 ] : lc $method };
 
 # Private attributes
@@ -116,13 +116,7 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift; $self->tunnel_method; # Coz it's destructive
-
-   my $username      = $self->session->username // 'unknown';
-   my $authenticated = $username ne 'unknown' ? TRUE : FALSE;
-
-   $self->log->debug( join SPC, (uc $self->method), $self->uri,
-                      ($authenticated ? "(${username})" : NUL) );
+   my $self = shift; $self->tunnel_method; # Coz it's lazy and destructive
 
    return;
 }

@@ -1,7 +1,7 @@
 package App::MCP::Async::Loop;
 
-use 5.01;
 use strictures;
+use feature 'state';
 
 use AnyEvent;
 use Async::Interrupt;

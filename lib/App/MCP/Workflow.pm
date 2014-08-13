@@ -1,8 +1,8 @@
 package App::MCP::Workflow;
 
-use namespace::sweep;
+use namespace::autoclean;
 
-use App::MCP::Constants;
+use App::MCP::Constants    qw( EXCEPTION_CLASS );
 use App::MCP::Workflow::Transition;
 use Class::Usul::Functions qw( throw );
 use Moo;

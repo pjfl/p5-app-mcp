@@ -3,16 +3,15 @@ package App::MCP::Functions;
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE LANG NUL OK SPC );
+use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC );
 use Class::Usul::Functions qw( my_prefix pad split_on__ split_on_dash throw );
 use English                qw( -no_match_vars );
 use Module::Pluggable::Object;
-use Unexpected::Functions  qw( Unspecified );
 
-our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_or_throw get_salt
-                       load_components log_leader qualify_job_name read_exactly
-                       recv_arg_error recv_rv_error trigger_input_handler
-                       trigger_output_handler ) );
+our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
+                       load_components log_leader qualify_job_name
+                       read_exactly recv_arg_error recv_rv_error
+                       trigger_input_handler trigger_output_handler ) );
 
 # Public functions
 sub env_var ($;$) {
@@ -29,15 +28,6 @@ sub get_hashed_pw ($) {
    my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
 
    return substr $parts[ -1 ], 22;
-}
-
-sub get_or_throw ($$) {
-   my ($params, $name) = @_;
-
-   defined (my $param = $params->{ $name })
-      or throw class => Unspecified, args => [ $name ];
-
-   return $param;
 }
 
 sub get_salt ($) {

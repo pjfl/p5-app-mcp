@@ -1,8 +1,7 @@
 package App::MCP::Role::FormHandler;
 
-use namespace::sweep;
+use namespace::autoclean;
 
-use Class::Usul::Constants;
 use HTML::FormWidgets;
 use Scalar::Util qw( blessed );
 use Moo::Role;

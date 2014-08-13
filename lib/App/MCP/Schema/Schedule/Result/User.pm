@@ -1,8 +1,8 @@
 package App::MCP::Schema::Schedule::Result::User;
 
 use strictures;
-use overload '""' => 'as_string', fallback => 1;
-use parent 'App::MCP::Schema::Base';
+use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
+use parent   'App::MCP::Schema::Base';
 
 use App::MCP::Constants        qw( TRUE FALSE NUL );
 use App::MCP::Functions        qw( get_salt );

@@ -1,6 +1,6 @@
 package App::MCP::Model;
 
-use namespace::sweep;
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants   qw( EXCEPTION_CLASS NUL );

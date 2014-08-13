@@ -1,7 +1,7 @@
 package App::MCP::Async::Function;
 
-use 5.01;
-use namespace::sweep;
+use feature 'state';
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( FALSE OK TRUE );

@@ -1,10 +1,11 @@
 package App::MCP::Form;
 
-use namespace::sweep;
+use feature 'state';
+use namespace::autoclean;
 
 use Moo;
 use App::MCP::Form::Field;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( DEFAULT_L10N_DOMAIN TRUE );
 use Class::Usul::Functions qw( first_char is_arrayref is_hashref throw );
 use Class::Usul::Types     qw( ArrayRef CodeRef HashRef Int
                                NonEmptySimpleStr SimpleStr Object );
@@ -21,7 +22,7 @@ has 'js_object'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'behaviour';
 
 has 'l10n'         => is => 'lazy', isa => CodeRef, builder => sub {
-   my $req = $_[ 0 ]->req; weaken( $req ); sub { __loc( $req, @_ ) }
+   my $req = $_[ 0 ]->req; weaken( $req ); sub { $req->localize( __loc( @_ ) ) }
 };
 
 has 'list_key'     => is => 'ro',   isa => NonEmptySimpleStr,
@@ -175,7 +176,7 @@ sub __field_list {
 }
 
 sub __loc { # Localize the key and substitute the placeholder args
-   my ($req, $opts, $key, @args) = @_; my $car = $args[ 0 ];
+   my ($opts, $key, @args) = @_; my $car = $args[ 0 ];
 
    my $args = (is_hashref $car) ? { %{ $car } }
             : { params => (is_arrayref $car) ? $car : [ @args ] };
@@ -183,7 +184,7 @@ sub __loc { # Localize the key and substitute the placeholder args
    $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
    $args->{locale      } ||= $opts->{language};
 
-   return $req->localize( $key, $args );
+   return ( $key, $args );
 }
 
 1;

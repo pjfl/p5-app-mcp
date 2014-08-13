@@ -1,5 +1,7 @@
 package App::MCP::Model::Root;
 
+use feature 'state';
+
 use Moo;
 use App::MCP::Attributes;
 use App::MCP::Constants qw( FALSE NUL TRUE );
@@ -19,45 +21,23 @@ has '+moniker' => default => 'root';
 sub login_action : Role(anon) {
    my ($self, $req) = @_;
 
-   my $username     = $req->body->param->{username};
-   my $user_rs      = $self->schema->resultset( 'User' );
-   my $user         = $user_rs->find_by_name( $username );
+   my $params   = $req->body_params;
+   my $username = $params->( 'username' );
+   my $user     = $self->schema->resultset( 'User' )->find_by_name( $username );
 
-   $user->authenticate( $req->body->param->{password} );
+   $user->authenticate( $params->( 'password' ) );
 
-   my $session      = $req->session;
-   my $location     = $req->uri_for( 'job' );
-   my $primary_role = NUL.$user->primary_role;
-   my $message      = [ 'User [_1] logged in', $username ];
+   my $session  = $req->session;
+   my $primary  = NUL.$user->primary_role;
 
    $session->authenticated( TRUE );
-   $session->username( $username );
-   $session->user_roles( [ $primary_role, @{ $user->list_other_roles } ] );
+   $session->username     ( $username );
+   $session->user_roles   ( [ $primary, @{ $user->list_other_roles } ] );
+
+   my $location = $req->uri_for( 'job' );
+   my $message  = [ 'User [_1] logged in', $username ];
 
    return { redirect => { location => $location, message => $message } };
-}
-
-sub nav_list : Role(anon) {
-   my ($self, $req) = @_; my $data = [];
-
-   for my $action (@{ $self->config->nav_list }) {
-      my $text = $req->loc( "${action}_nav_link_text", { no_default => TRUE } )
-              || ucfirst $action;
-      my $tip  = $req->loc( "${action}_nav_link_tip",  { no_default => TRUE } )
-              || $req->loc( 'Goto this page in the application' );
-      my $href = $req->uri_for( $action );
-
-      push @{ $data }, { content => {
-         container => FALSE, href => $href,    text   => $text,
-         tip       => $tip,  type => 'anchor', widget => TRUE } };
-   }
-
-   my $list  = { list => { class => 'nav_list', data => $data } };
-   my $page  = { meta => { id    => 'nav_panel' } };
-   my $stash = $self->get_stash( $req, $page, 'nav' => $list );
-
-   $stash->{view} = 'xml';
-   return $stash;
 }
 
 sub login_form : Role(anon) {
@@ -71,17 +51,42 @@ sub login_form : Role(anon) {
    return $self->get_stash( $req, $page, login => $user );
 }
 
-sub logout : Role(anon) {
-   my ($self, $req) = @_;
+sub logout_action : Role(any) {
+   my ($self, $req) = @_; $req->session->authenticated( FALSE );
 
-   my $session  = $req->session;
-   my $username = $session->username;
    my $location = $req->uri_for( 'login' );
-   my $message  = [ 'User [_1] logged out', $username ];
-
-   $session->authenticated( FALSE );
+   my $message  = [ 'User [_1] logged out', $req->username ];
 
    return { redirect => { location => $location, message => $message } };
+}
+
+sub navigator : Role(anon) {
+   my ($self, $req) = @_; state $cache = {}; my $data;
+
+   unless ($data = $cache->{ $req->locale }) {
+      my $opts = { no_default => TRUE }; $data = [];
+
+      for my $action (@{ $self->config->nav_list }) {
+         my $text = $req->loc( "${action}_nav_link_text", $opts )
+                 || ucfirst $action;
+         my $tip  = $req->loc( "${action}_nav_link_tip",  $opts )
+                 || $req->loc( 'Goto this page in the application' );
+         my $href = $req->uri_for( $action );
+
+         push @{ $data }, { content => {
+            container => FALSE, href => $href,    text   => $text,
+            tip       => $tip,  type => 'anchor', widget => TRUE } };
+      }
+
+      $cache->{ $req->locale } = $data;
+   }
+
+   my $list  = { list => { class => 'nav_list', data => $data } };
+   my $page  = { meta => { id    => 'nav_panel' } };
+   my $stash = $self->get_stash( $req, $page, 'nav' => $list );
+
+   $stash->{view} = 'xml';
+   return $stash;
 }
 
 sub not_found : Role(anon) {
