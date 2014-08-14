@@ -23,7 +23,8 @@
       "logout_button": {
          "class": "submit_button submit fade",
          "name": "Logout",
-         "type": "button"
+         "type": "button",
+         "value": "logout"
       },
       "logout_form": {
          "config": {

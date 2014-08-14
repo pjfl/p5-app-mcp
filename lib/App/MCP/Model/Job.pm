@@ -132,9 +132,8 @@ sub save_action : Role(any) {
                 rs     => $self->schema->resultset( 'Job' ) };
 
    if ($args->{id}) {
-      $job = $self->find_and_update_record( $args ) or return {
-         redirect => { location => $req->uri_for( 'job' ),
-                       message  => [ 'Job id [_1] not found', $args->{id} ] } };
+      $job = $self->find_and_update_record( $args )
+          or return __job_not_found( $req, $args->{id} );
       $message = [ 'Job name [_1] updated', $job->fqjn ];
    }
    else {
@@ -149,14 +148,12 @@ sub save_action : Role(any) {
 
 # Private methods
 sub _job_chooser_assign_hook {
-   my ($self, $req) = @_; return $req->uri_for( 'job_chooser' );
+   return $_[ 1 ]->uri_for( 'job_chooser' );
 }
 
 sub _job_chooser_link_hash {
-   my ($self, $req, $link_num, $job) = @_;
-
-   return { href => '#top',        text  => $job->name,
-            tip  => $job->summary, value => $job->fqjn, };
+   return { href => '#top',           text  => $_[ 3 ]->name,
+            tip  => $_[ 3 ]->summary, value => $_[ 3 ]->fqjn, };
 }
 
 sub _job_chooser_search {
@@ -208,15 +205,18 @@ sub _job_deflate_permissions {
 }
 
 sub _job_state_job_fqjn_assign_hook {
-   my ($self, $req, $field, $row, $value) = @_;
-
-   return defined $row ? $row->job->fqjn : undef;
+   return defined $_[ 3 ] ? $_[ 3 ]->job->fqjn : undef;
 }
 
 sub _job_state_job_name_assign_hook {
-   my ($self, $req, $field, $row, $value) = @_;
+   return defined $_[ 3 ] ? $_[ 3 ]->job->name : undef;
+}
 
-   return defined $row ? $row->job->name : undef;
+# Private functions
+sub __job_not_found {
+   return { redirect    => {
+               location => $_[ 0 ]->uri_for( 'job' ),
+               message  => [ 'Job id [_1] not found', $_[ 1 ] ] } };
 }
 
 1;

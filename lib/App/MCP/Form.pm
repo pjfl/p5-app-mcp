@@ -21,9 +21,7 @@ has 'first_field'  => is => 'ro',   isa => SimpleStr;
 has 'js_object'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'behaviour';
 
-has 'l10n'         => is => 'lazy', isa => CodeRef, builder => sub {
-   my $req = $_[ 0 ]->req; weaken( $req ); sub { $req->localize( __loc( @_ ) ) }
-};
+has 'l10n'         => is => 'lazy', isa => CodeRef;
 
 has 'list_key'     => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'fields';
@@ -84,7 +82,7 @@ sub BUILD {
 
    $self->l10n; $self->ns; $self->template_dir; $self->width; # Visit the lazy
 
-   for my $fields (@{ $config->{ $form_name }->{regions}}) {
+   for my $fields (@{ $config->{ $form_name }->{regions} }) {
       my $region = $self->data->[ $count++ ] = { fields => [] };
 
       for my $name (__field_list( $config->{_fields}, $fields, $attr->{row} )) {
@@ -106,6 +104,21 @@ sub BUILD {
    return;
 }
 
+sub _build_l10n {
+   my $self = shift; my $req = $self->req; weaken( $req ); state $cache //= {};
+
+   return sub {
+      my ($opts, $text, @args) = @_;
+
+      my $key = $req->l10n_domain.'.'.$req->locale.'.'.$text;
+
+      (exists $cache->{ $key } and defined $cache->{ $key })
+         or $cache->{ $key } = $req->loc( $text, @args );
+
+      return $cache->{ $key };
+   };
+}
+
 # Public methods
 sub load_config {
    my ($self, $builder, $domain, $locale) = @_;
@@ -116,7 +129,7 @@ sub load_config {
 
    my $config   = $builder->config;
    my $def_path = $config->ctrldir->catfile( 'form.json' );
-   my $ns_path  = $config->ctrldir->catfile( $domain.'.json' );
+   my $ns_path  = $config->ctrldir->catfile( "${domain}.json" );
 
    $ns_path->exists
       or ($builder->log->warn( "File ${ns_path} not found" ) and return {});
@@ -173,18 +186,6 @@ sub __field_list {
    else { $names = $conf->{ $fields } };
 
    return grep { not m{ \A (?: _ | related_resultsets ) }mx } @{ $names };
-}
-
-sub __loc { # Localize the key and substitute the placeholder args
-   my ($opts, $key, @args) = @_; my $car = $args[ 0 ];
-
-   my $args = (is_hashref $car) ? { %{ $car } }
-            : { params => (is_arrayref $car) ? $car : [ @args ] };
-
-   $args->{domain_names} ||= [ DEFAULT_L10N_DOMAIN, $opts->{ns} ];
-   $args->{locale      } ||= $opts->{language};
-
-   return ( $key, $args );
 }
 
 1;

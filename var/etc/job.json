@@ -11,7 +11,8 @@
       "job.clear_button": {
          "class": "submit_button submit fade",
          "name": "Clear",
-         "type": "button"
+         "type": "button",
+         "value": "clear"
       },
       "job.command": {
          "clear": "left"
@@ -47,7 +48,8 @@
             "args": "[ 'delete', 'Are you sure you want to delete this job?' ]",
             "method": "'confirmSubmit'" },
          "name": "Delete",
-         "type": "button"
+         "type": "button",
+         "value": "delete"
       },
       "job.directory": {
          "clear": "left"
@@ -96,7 +98,8 @@
          "class": "submit_button submit fade",
          "clear": "left",
          "name": "Save",
-         "type": "button"
+         "type": "button",
+         "value": "save"
       },
       "job.state_button": {
          "class": "submit_button windows fade",
@@ -106,7 +109,8 @@
             "method": "'modalDialog'"
          },
          "name": "State",
-         "type": "button"
+         "type": "button",
+         "value": "state"
       },
       "job.type": {
          "clear": "left",

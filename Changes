@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Refacted l10n subroutine in Forms
           - Added ComponentLoading role
           - Added Session class
           - Added Attributes class

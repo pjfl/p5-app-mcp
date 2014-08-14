@@ -3,6 +3,7 @@ package App::MCP::Daemon;
 use namespace::autoclean;
 
 use Moo;
+use App::MCP;
 use App::MCP::Application;
 use App::MCP::Async;
 use App::MCP::Constants    qw( OK TRUE );

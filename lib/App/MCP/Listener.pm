@@ -2,11 +2,11 @@ package App::MCP::Listener;
 
 use namespace::autoclean;
 
+use App::MCP;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
 use App::MCP::Functions    qw( env_var );
 use Class::Usul;
-use Class::Usul::Functions qw( ensure_class_loaded find_apphome
-                               get_cfgfiles throw );
+use Class::Usul::Functions qw( find_apphome get_cfgfiles throw );
 use Class::Usul::Types     qw( BaseType );
 use Plack::Builder;
 use Unexpected::Functions  qw( Unspecified );
@@ -48,8 +48,7 @@ sub BUILD {
    my $self   = shift;
    my $server = ucfirst( $ENV{PLACK_ENV} // NUL );
    my $port   = env_var( 'PORT' ) ? ' on port '.env_var( 'PORT' ) : NUL;
-   my $class  = $self->usul->config->appclass; ensure_class_loaded $class;
-   my $ver    = $class->VERSION;
+   my $ver    = App::MCP->VERSION;
 
    $self->log->info( "${server} Server started v${ver}${port}" );
    return;

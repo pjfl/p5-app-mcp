@@ -1,7 +1,5 @@
 package App::MCP::Role::FormBuilder;
 
-use 5.010001;
-
 use App::MCP::Attributes;
 use App::MCP::Constants    qw( DOTS FALSE HASH_CHAR NUL TRUE );
 use App::MCP::Form;
@@ -41,9 +39,9 @@ sub build_chooser {
    my $field  = $params->( 'field' );
    my $button = $params->( 'button', { optional => TRUE } ) // NUL;
    my $event  = $params->( 'event',  { optional => TRUE } ) // 'load';
-   my $show   = "function() { this.window.dialogs[ '${field}' ].show() }";
    my $val    = $params->( 'val',    { optional => TRUE } ) // NUL;
    my $toggle = $params->( 'toggle', { optional => TRUE } ) ? 'true' : 'false';
+   my $show   = "function() { this.window.dialogs[ '${field}' ].show() }";
    my $id     = "${form}_${field}";
 
    $val =~ s{ [\*] }{%}gmx;
@@ -259,7 +257,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 27 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 28 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 
