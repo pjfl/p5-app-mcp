@@ -49,13 +49,12 @@ sub create_event {
 }
 
 sub create_job {
-   my ($self, $req) = @_; $req->authenticate;
+   my ($self, $req) = @_; my $job; $req->authenticate;
 
-   my $sess_id = $req->query_params->( 'sessionid', { raw => TRUE } );
-   my $job     = $req->body_params->( 'job', { raw => TRUE } );
+   my $sess_id = $req->query_params->( 'sessionid' );
    my $sess    = $self->get_session( $sess_id );
    my $params  = $self->authenticate_params
-      ( $sess->{key}, $sess->{shared_secret}, $job );
+      ( $sess->{key}, $sess->{shared_secret}, $req->body_params->( 'job' ) );
 
    $params->{owner_id} = $sess->{user_id};
    $params->{group_id} = $sess->{role_id};
