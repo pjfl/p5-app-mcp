@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Job creation API works with new Request object
           - Refacted l10n subroutine in Forms
           - Added ComponentLoading role
           - Added Session class

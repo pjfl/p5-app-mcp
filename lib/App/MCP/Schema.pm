@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Moo;
 use App::MCP;
 use App::MCP::Constants    qw( EXCEPTION_CLASS OK );
-use App::MCP::Functions    qw( qualify_job_name trigger_output_handler );
+use App::MCP::Functions    qw( qualify_job_name trigger_input_handler );
 use Class::Usul::Functions qw( throw );
 use Class::Usul::Options;
 use Class::Usul::Types     qw( LoadableClass NonEmptySimpleStr Object );
@@ -14,7 +14,8 @@ use Unexpected::Functions  qw( Unspecified );
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::Role::UserPassword);
 
-my ($schema_version)  = App::MCP->VERSION =~ m{ (\d+\.\d+) }mx;
+our $VERSION          = App::MCP->VERSION;
+my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)
 option 'role_name'    => is => 'ro',   isa => NonEmptySimpleStr,
@@ -85,7 +86,7 @@ sub send_event : method {
 
    my $pid_file = $self->config->rundir->catfile( 'daemon.pid' );
 
-   $pid_file->exists and trigger_output_handler $pid_file->chomp->getline;
+   $pid_file->exists and trigger_input_handler $pid_file->chomp->getline;
    $self->info( "Job '[_1]' was sent a [_2] event",
                 { args => [ $fqjn, $trans ] } );
    return OK;
@@ -104,6 +105,7 @@ sub _authenticated_user_info {
    my $user    = $info->{user} = $user_rs->find_by_name( $self->user_name );
 
    $user->authenticate( $self->get_user_password( $user->username ) );
+   $self->log->debug( 'User '.$user->username.' authenticated' );
 
    my $role_rs = $schema->resultset( 'Role' );
    my $role    = $info->{role} = $role_rs->find_by_name( $self->role_name );

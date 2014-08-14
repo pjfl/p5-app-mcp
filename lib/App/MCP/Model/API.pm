@@ -44,15 +44,18 @@ sub create_event {
    trigger_input_handler $ENV{ 'MCP_DAEMON_PID' };
 
    return { code    => HTTP_CREATED,
-            content => { message => 'Event '.$event->id.' created' } };
+            content => { message => 'Event '.$event->id.' created' },
+            view    => 'json', };
 }
 
 sub create_job {
-   my ($self, $req) = @_; my $job; $req->authenticate;
+   my ($self, $req) = @_; $req->authenticate;
 
-   my $sess   = $self->get_session( $req->params->{sessionid} // 'undef' );
-   my $params = $self->authenticate_params
-      ( $sess->{key}, $sess->{shared_secret}, $req->body_params->( 'job' ) );
+   my $sess_id = $req->query_params->( 'sessionid', { raw => TRUE } );
+   my $job     = $req->body_params->( 'job', { raw => TRUE } );
+   my $sess    = $self->get_session( $sess_id );
+   my $params  = $self->authenticate_params
+      ( $sess->{key}, $sess->{shared_secret}, $job );
 
    $params->{owner_id} = $sess->{user_id};
    $params->{group_id} = $sess->{role_id};
@@ -61,13 +64,14 @@ sub create_job {
    catch { throw error => $_, rv => HTTP_BAD_REQUEST };
 
    return { code    => HTTP_CREATED,
-            content => { message => 'Job '.$job->id.' created' } };
+            content => { message => 'Job '.$job->id.' created' },
+            view    => 'json', };
 }
 
 sub exception_handler {
    my ($self, $req, $e) = @_; my $msg = "${e}"; chomp $msg;
 
-   return { code => $e->rv, content => { message => $msg } };
+   return { code => $e->rv, content => { message => $msg }, view => 'json', };
 }
 
 sub snapshot_state {
@@ -97,7 +101,7 @@ sub snapshot_state {
    my $minted  = time2str undef, bson64id_time( $id );
    my $content = { id => $id, jobs => $frames, minted => $minted };
 
-   return { code => HTTP_OK, content => $content, view => 'json' };
+   return { code => HTTP_OK, content => $content, view => 'json', };
 }
 
 1;

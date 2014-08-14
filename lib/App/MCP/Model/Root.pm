@@ -26,8 +26,7 @@ sub login_action : Role(anon) {
 
    $user->authenticate( $params->( 'password' ) );
 
-   my $session  = $req->session;
-   my $primary  = NUL.$user->primary_role;
+   my $session  = $req->session; my $primary = NUL.$user->primary_role;
 
    $session->authenticated( TRUE );
    $session->username     ( $username );

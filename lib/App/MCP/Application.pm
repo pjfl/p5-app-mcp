@@ -36,7 +36,8 @@ with q(Class::Usul::TraitFor::ConnectInfo);
 sub clock_tick_handler {
    my ($self, $key, $cron) = @_; my $lead = log_leader 'debug', $key, elapsed;
 
-   $self->log->debug( $lead.'Tick' ); $cron->trigger;
+   elapsed % 60 == 0 and $self->log->debug( $lead.'Tick' );
+   $cron->trigger;
    return;
 }
 
@@ -77,7 +78,7 @@ sub input_handler {
       my $js_rs  = $schema->resultset( 'JobState' );
       my $pev_rs = $schema->resultset( 'ProcessedEvent' );
       my $events = $ev_rs->search
-         ( { transition => [ qw( finish started terminate ) ] },
+         ( { transition => [ qw( activate finish started terminate ) ] },
            { order_by   => { -asc => 'me.id' },
              prefetch   => 'job_rel' } );
 
@@ -198,7 +199,7 @@ sub _start_job {
    my $lead  = log_leader 'debug', 'START', $runid;
    my $key   = "${user}\@${host}";
 
-   $self->log->debug( "${lead}${key} ${cmd}" );
+   $self->log->debug( $lead.$job->fqjn." ${key} ${cmd}" );
    $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
 
    $ipc_ssh->call( $runid, $user, $host, $calls ); # Calls ipc_ssh_handler

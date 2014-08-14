@@ -6,7 +6,7 @@ use Moo;
 use App::MCP;
 use App::MCP::Application;
 use App::MCP::Async;
-use App::MCP::Constants    qw( FAILED OK TRUE );
+use App::MCP::Constants    qw( OK TRUE );
 use App::MCP::DaemonControl;
 use App::MCP::Functions    qw( log_leader );
 use Class::Usul::Options;

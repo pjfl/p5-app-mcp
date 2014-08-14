@@ -27,7 +27,7 @@ around 'execute' => sub {
 
    unless ($sess->authenticated) {
       my $location = $req->uri_for( 'login' );
-      my $message  = [ 'Authentication required' ];
+      my $message  = [ 'Authentication required to [_1]', $req->path ];
 
       return { redirect => { location => $location, message => $message } };
    }

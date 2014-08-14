@@ -66,7 +66,10 @@ has 'path'        => is => 'lazy', isa => SimpleStr, builder => sub {
    my $v          =  $_[ 0 ]->env->{ 'PATH_INFO' } // '/';
       $v          =~ s{ \A / }{}mx; $v =~ s{ \? .* \z }{}mx; $v };
 
-has 'query'       => is => 'lazy', isa => SimpleStr, builder => sub {
+has 'protocol'    => is => 'lazy', isa => NonEmptySimpleStr,
+   builder        => sub { $_[ 0 ]->env->{ 'SERVER_PROTOCOL' } };
+
+has 'query'       => is => 'lazy', isa => Str, builder => sub {
    my $v          =  $_[ 0 ]->env->{ 'QUERY_STRING' }; $v ? "?${v}" : NUL };
 
 has 'scheme'      => is => 'lazy', isa => NonEmptySimpleStr,

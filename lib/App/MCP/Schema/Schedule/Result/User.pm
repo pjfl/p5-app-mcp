@@ -166,26 +166,29 @@ sub _default_role_id {
 sub _encrypt_password {
    my ($self, $username, $password, $stored) = @_;
 
-   my $salt     = defined $stored ? get_salt( $stored )
-                : __new_salt( $self->result_source->resultset->load_factor );
-   my $crypted  = __get_hashed_pw( bcrypt( $password, $salt ) );
-   my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
-   my $verifier = $srp->compute_verifier( $username, $crypted, $salt );
+   if ($password =~ m{ \A \{ 5054 \} }mx
+       or (defined $stored and $stored =~ m{ \A \$ 5054 \$ }mx)) {
+       $password =~ s{ \A \{ 5054 \} }{}mx;
 
-   return $salt.base64_encode_ns( $verifier );
+      my $salt     = defined $stored ? get_salt( $stored )
+                   : __new_salt( '5054', '00' );
+      my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
+      my $verifier = $srp->compute_verifier( $username, $password, $salt );
+
+      return $salt.base64_encode_ns( $verifier );
+   }
+
+   my $salt = defined $stored ? get_salt( $stored )
+            : __new_salt( '2a', $self->result_source->resultset->load_factor );
+
+   return bcrypt( $password, $salt );
 }
 
 # Private functions
-sub __get_hashed_pw {
-   my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
-
-   return substr $parts[ -1 ], 22;
-}
-
 sub __new_salt {
-   my $lf = shift;
+   my ($type, $lf) = @_;
 
-   return "\$2a\$${lf}\$"
+   return "\$${type}\$${lf}\$"
       .(en_base64( pack( 'H*', substr( create_token, 0, 32 ) ) ) );
 }
 

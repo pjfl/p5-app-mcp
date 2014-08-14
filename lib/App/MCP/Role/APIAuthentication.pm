@@ -25,7 +25,7 @@ sub authenticate {
    my $user     = $self->_find_user_from( $req );
    my $sess     = $self->_find_or_create_session( $user );
    my $username = $user->username;
-   my $token    = $req->body_params->( 'M1_token' )
+   my $token    = $req->body_params->( 'M1_token', { raw => TRUE } )
       or throw error => 'User [_1] no M1 token',
                args  => [ $username ], rv => HTTP_EXPECTATION_FAILED;
    my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
@@ -42,7 +42,7 @@ sub authenticate {
 
    $sess->{shared_secret} = base64_encode_ns $srp->get_secret_K;
 
-   return { code => HTTP_OK, content => $content, };
+   return { code => HTTP_OK, content => $content, view => 'json', };
 }
 
 sub authenticate_params {
@@ -83,7 +83,7 @@ sub exchange_pub_keys {
    my $pub_key = base64_encode_ns( $server_pub_key );
    my $content = { public_key => $pub_key, salt => $salt, };
 
-   return { code => HTTP_OK, content => $content, };
+   return { code => HTTP_OK, content => $content, view => 'json', };
 }
 
 sub get_session {
