@@ -4,7 +4,7 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( NUL );
-use App::MCP::Functions    qw( env_var trigger_input_handler );
+use App::MCP::Functions    qw( trigger_input_handler );
 use Class::Usul::Functions qw( bson64id bson64id_time throw );
 use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Object );
@@ -41,7 +41,7 @@ sub create_event {
    try   { $event = $schema->resultset( 'Event' )->create( $params ) }
    catch { throw error => $_, rv => HTTP_BAD_REQUEST };
 
-   trigger_input_handler env_var( 'DAEMON_PID' );
+   trigger_input_handler $ENV{ 'MCP_DAEMON_PID' };
 
    return { code    => HTTP_CREATED,
             content => { message => 'Event '.$event->id.' created' } };

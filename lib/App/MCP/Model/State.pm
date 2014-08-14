@@ -5,7 +5,6 @@ use App::MCP::Attributes;
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);
-with    q(App::MCP::Role::Component);
 with    q(App::MCP::Role::JavaScript);
 with    q(App::MCP::Role::PageConfiguration);
 with    q(App::MCP::Role::Preferences);

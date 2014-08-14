@@ -4,7 +4,6 @@ use namespace::autoclean;
 
 use App::MCP;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
-use App::MCP::Functions    qw( env_var );
 use Class::Usul;
 use Class::Usul::Functions qw( find_apphome get_cfgfiles throw );
 use Class::Usul::Types     qw( BaseType );
@@ -47,7 +46,8 @@ around 'to_psgi_app' => sub {
 sub BUILD {
    my $self   = shift;
    my $server = ucfirst( $ENV{PLACK_ENV} // NUL );
-   my $port   = env_var( 'PORT' ) ? ' on port '.env_var( 'PORT' ) : NUL;
+   my $port   = $ENV{ 'MCP_LISTENER_PORT' };
+      $port   = $port ? " on port ${port}" : NUL;
    my $ver    = App::MCP->VERSION;
 
    $self->log->info( "${server} Server started v${ver}${port}" );
@@ -56,7 +56,7 @@ sub BUILD {
 
 sub _build_usul {
    my $self = shift;
-   my $attr = { config => $self->config, debug => env_var( 'DEBUG' ) // FALSE };
+   my $attr = { config => $self->config, debug => $ENV{ 'MCP_DEBUG' } // FALSE};
    my $conf = $attr->{config};
 
    $conf->{appclass    }

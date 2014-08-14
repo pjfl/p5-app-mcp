@@ -5,17 +5,20 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants    qw( FALSE NUL TRUE );
-use App::MCP::Functions    qw( env_var log_leader trigger_output_handler );
+use App::MCP::Functions    qw( log_leader trigger_output_handler );
 use Class::Usul::Functions qw( bson64id create_token elapsed );
-use Class::Usul::Types     qw( LoadableClass NonZeroPositiveInt Object );
+use Class::Usul::Types     qw( BaseType LoadableClass
+                               NonZeroPositiveInt Object );
 use IPC::PerlSSH;
 use Try::Tiny;
 
-with q(App::MCP::Role::Component);
-
 # Public attributes
-has 'port' => is => 'lazy', isa => NonZeroPositiveInt, builder => sub {
-   env_var( 'LISTENER_PORT' ) || $_[ 0 ]->usul->config->port };
+has 'port'  => is => 'lazy', isa => NonZeroPositiveInt,
+   builder  => sub { $_[ 0 ]->config->port };
+
+has 'usul'  => is => 'ro', isa => BaseType,
+   handles  => [ qw( config debug log ) ], init_arg => 'builder',
+   required => TRUE;
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, builder => sub {

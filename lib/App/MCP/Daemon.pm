@@ -6,13 +6,14 @@ use Moo;
 use App::MCP;
 use App::MCP::Application;
 use App::MCP::Async;
-use App::MCP::Constants    qw( OK TRUE );
+use App::MCP::Constants    qw( FAILED OK TRUE );
 use App::MCP::DaemonControl;
-use App::MCP::Functions    qw( env_var log_leader );
+use App::MCP::Functions    qw( log_leader );
 use Class::Usul::Options;
 use English                qw( -no_match_vars );
 use File::DataClass::Types qw( NonZeroPositiveInt Object );
 use Plack::Runner;
+use Scalar::Util           qw( blessed );
 
 extends q(Class::Usul::Programs);
 
@@ -56,7 +57,7 @@ around 'run_chain' => sub {
 
    my $conf = $self->config; my $name = $conf->name;
 
-   App::MCP::DaemonControl->new( {
+   my $rv   = App::MCP::DaemonControl->new( {
       name         => blessed $self || $self,
       lsb_start    => '$syslog $remote_fs',
       lsb_stop     => '$syslog',
@@ -76,7 +77,7 @@ around 'run_chain' => sub {
       stop_signals => $conf->stop_signals,
    } )->run;
 
-   return $orig->( $self, @args ); # Never reached
+   exit defined $rv ? $rv : OK;
 };
 
 # Public methods
@@ -189,9 +190,9 @@ sub _get_listener_sub {
    my $daemon_pid = $PID; my $debug = $self->debug; my $port = $self->port;
 
    return sub {
-      env_var( 'DAEMON_PID',    $daemon_pid );
-      env_var( 'DEBUG',         $debug );
-      env_var( 'LISTENER_PORT', $port );
+      $ENV{ 'MCP_DAEMON_PID'    } = $daemon_pid;
+      $ENV{ 'MCP_DEBUG'         } = $debug;
+      $ENV{ 'MCP_LISTENER_PORT' } = $port;
       Plack::Runner->run( %{ $args } );
       return OK;
    };

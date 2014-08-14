@@ -4,22 +4,16 @@ use strictures;
 use parent 'Exporter::Tiny';
 
 use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC );
-use Class::Usul::Functions qw( my_prefix pad split_on__ split_on_dash throw );
+use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
 use Module::Pluggable::Object;
 
-our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
+our @EXPORT_OK = ( qw( extract_lang get_hashed_pw get_salt
                        load_components log_leader qualify_job_name
                        read_exactly recv_arg_error recv_rv_error
                        trigger_input_handler trigger_output_handler ) );
 
 # Public functions
-sub env_var ($;$) {
-   my $k = (uc split_on_dash my_prefix $PROGRAM_NAME).'_'.$_[ 0 ];
-
-   return defined $_[ 1 ] ? $ENV{ $k } = $_[ 1 ] : $ENV{ $k };
-}
-
 sub extract_lang ($) {
    my $v = shift; return $v ? (split_on__ $v)[ 0 ] : LANG;
 }
