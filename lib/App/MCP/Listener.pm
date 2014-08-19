@@ -3,7 +3,7 @@ package App::MCP::Listener;
 use namespace::autoclean;
 
 use App::MCP;
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Class::Usul;
 use Class::Usul::Functions qw( find_apphome get_cfgfiles throw );
 use Class::Usul::Types     qw( BaseType );

@@ -110,7 +110,7 @@ sub _build_l10n {
    return sub {
       my ($opts, $text, @args) = @_;
 
-      my $key = $req->l10n_domain.'.'.$req->locale.'.'.$text;
+      my $key = $req->l10n_domain.'.'.$req->locale.".${text}";
 
       (exists $cache->{ $key } and defined $cache->{ $key })
          or $cache->{ $key } = $req->loc( $text, @args );
@@ -149,7 +149,7 @@ sub _assign_value {
 
    my $value = __extract_value( $field, $row );
    my $name  = $field->name; $name =~ s{ \. }{_}gmx;
-   my $hook  = '_'.$self->name.'_'.$name.'_assign_hook';
+   my $hook  = '_'.$self->name."_${name}_assign_hook";
    my $code; $code = $self->model->can( $hook )
       and $value = $code->( $self->model, $self->req, $field, $row, $value );
 

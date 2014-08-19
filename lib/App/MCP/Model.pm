@@ -5,11 +5,8 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Constants   qw( EXCEPTION_CLASS NUL );
 use Class::Usul::Types    qw( LoadableClass Object );
-use Data::Validation;
 use HTTP::Status          qw( HTTP_OK );
 use Unexpected::Functions qw( ValidationErrors );
-
-Data::Validation::Constants->Exception_Class( EXCEPTION_CLASS );
 
 with q(App::MCP::Role::Component);
 

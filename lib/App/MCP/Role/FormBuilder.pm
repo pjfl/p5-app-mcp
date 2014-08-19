@@ -166,7 +166,9 @@ sub _check_field {
    my $class  = $self->schema_class.'::Result::'
                .$config->{ $form }->{meta}->{result_class};
 
-   ensure_class_loaded( $class ); my $attr = $class->validation_attributes;
+   ensure_class_loaded( $class );
+
+   my $attr   = $class->validation_attributes; $attr->{level} = 4;
 
    return Data::Validation->new( $attr )->check_field( $id, $val );
 }
@@ -257,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 28 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 33 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

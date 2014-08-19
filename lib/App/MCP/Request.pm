@@ -4,7 +4,8 @@ use feature 'state';
 use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants    qw( EXCEPTION_CLASS NUL SPC TRUE );
+use App::MCP::Constants    qw( DEFAULT_L10N_DOMAIN EXCEPTION_CLASS
+                               NUL SPC TRUE );
 use App::MCP::Functions    qw( extract_lang );
 use App::MCP::Session;
 use Authen::HTTP::Signature::Parser;

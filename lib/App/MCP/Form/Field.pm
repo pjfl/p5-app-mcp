@@ -3,7 +3,7 @@ package App::MCP::Form::Field;
 use namespace::autoclean;
 
 use Moo;
-use Class::Usul::Constants;
+use Class::Usul::Constants qw( NUL TRUE );
 use Class::Usul::Functions qw( first_char throw );
 use Class::Usul::Types     qw( HashRef );
 

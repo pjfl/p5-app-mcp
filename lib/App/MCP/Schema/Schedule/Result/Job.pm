@@ -5,7 +5,8 @@ use feature 'state';
 use parent  'App::MCP::Schema::Base';
 
 use Algorithm::Cron;
-use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE NUL SEPARATOR TRUE );
+use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE
+                               NUL SEPARATOR SPC TRUE );
 use App::MCP::ExpressionParser;
 use App::MCP::Functions    qw( qualify_job_name );
 use Class::Usul::Functions qw( is_arrayref is_hashref is_member throw );
@@ -256,17 +257,20 @@ sub update {
 
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
-      constraints    => {
-         name        => { max_length => 126, min_length => 1, } },
-      fields         => {
-         host        => { validate => 'isValidHostname' },
-         name        => {
-            filters  => 'filterReplaceRegex',
-            validate => 'isMandatory isValidIdentifier isValidLength' },
-         permissions => { validate => 'isValidInteger' },
-         user        => { validate => 'isValidIdentifier' }, },
-      filters        => {
-         name        => { pattern => '[\%\*]', replace => NUL }, },
+      constraints      => {
+         name          => {
+            max_length => 126,
+            min_length => 1,
+            pattern    => '\A [a-zA-Z_][a-zA-Z0-9_\:]+ \z', } },
+      fields           => {
+         host          => { validate => 'isValidHostname' },
+         name          => {
+            filters    => 'filterReplaceRegex',
+            validate   => 'isMandatory isMatchingRegex isValidLength' },
+         permissions   => { validate => 'isValidInteger' },
+         user          => { validate => 'isValidIdentifier' }, },
+      filters          => {
+         name          => { pattern => '[\%\*]', replace => NUL }, },
    };
 }
 

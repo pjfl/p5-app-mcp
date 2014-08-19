@@ -2,35 +2,58 @@ package App::MCP::Role::ComponentLoading;
 
 use namespace::autoclean;
 
-use App::MCP::Functions    qw( load_components );
+use Class::Usul::Constants qw( TRUE );
 use Class::Usul::Functions qw( exception is_arrayref throw );
 use Class::Usul::Types     qw( ArrayRef Bool HashRef LoadableClass
                                NonEmptySimpleStr Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_FOUND
                                HTTP_INTERNAL_SERVER_ERROR );
+use Module::Pluggable::Object;
 use Try::Tiny;
 use Moo::Role;
 
 requires qw( usul );
 
 has 'controllers'   => is => 'lazy', isa => ArrayRef[Object], builder => sub {
-   my $controllers  =
-      load_components  $_[ 0 ]->usul->config->appclass.'::Controller',
-         { builder  => $_[ 0 ]->usul, models => $_[ 0 ]->models, };
+   my $controllers  =  $_[ 0 ]->load_components
+      ( [ $_[ 0 ]->usul->config->appclass.'::Controller' ],
+        { builder   => $_[ 0 ]->usul, models => $_[ 0 ]->models, } );
    return [ map { $controllers->{ $_ } } sort keys %{ $controllers } ] };
 
 has 'models'        => is => 'lazy', isa => HashRef[Object], builder => sub {
-   load_components     $_[ 0 ]->usul->config->appclass.'::Model',
-      { builder     => $_[ 0 ]->usul, views => $_[ 0 ]->views, } };
+   $_[ 0 ]->load_components
+      ( [ $_[ 0 ]->usul->config->appclass.'::Model' ],
+        { builder   => $_[ 0 ]->usul, views => $_[ 0 ]->views, } ) };
 
 has 'request_class' => is => 'lazy', isa => LoadableClass,
    builder          => sub { $_[ 0 ]->usul->config->request_class };
 
 has 'views'         => is => 'lazy', isa => HashRef[Object], builder => sub {
-   load_components     $_[ 0 ]->usul->config->appclass.'::View',
-      { builder     => $_[ 0 ]->usul, } };
+   $_[ 0 ]->load_components
+      ( [ $_[ 0 ]->usul->config->appclass.'::View' ],
+        { builder   => $_[ 0 ]->usul, } ) };
 
 # Public methods
+sub load_components {
+   my ($self, $search_path, $args) = @_;
+
+   my $plugins   = {};
+   my $min_depth = delete $args->{min_depth};
+   my @depth     = $min_depth ? (min_depth => $min_depth) : (max_depth => 4);
+   my $monikers  = $args->{builder}->config->monikers;
+   my $finder    = Module::Pluggable::Object->new
+      ( @depth, search_path => $search_path, require => TRUE, );
+
+   for my $plugin ($finder->plugins) {
+      exists $monikers->{ $plugin } and defined $monikers->{ $plugin }
+         and $args->{moniker} = $monikers->{ $plugin };
+
+      my $comp = $plugin->new( $args ); $plugins->{ $comp->moniker } = $comp;
+   }
+
+   return $plugins;
+}
+
 sub render {
    my ($self, $args) = @_; my $models = $self->models;
 

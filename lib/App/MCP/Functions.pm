@@ -6,12 +6,11 @@ use parent 'Exporter::Tiny';
 use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC );
 use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
-use Module::Pluggable::Object;
 
-our @EXPORT_OK = ( qw( extract_lang get_hashed_pw get_salt
-                       load_components log_leader qualify_job_name
-                       read_exactly recv_arg_error recv_rv_error
-                       trigger_input_handler trigger_output_handler ) );
+our @EXPORT_OK = ( qw( extract_lang get_hashed_pw get_salt log_leader
+                       qualify_job_name read_exactly recv_arg_error
+                       recv_rv_error trigger_input_handler
+                       trigger_output_handler ) );
 
 # Public functions
 sub extract_lang ($) {
@@ -30,26 +29,6 @@ sub get_salt ($) {
    $parts[ -1 ] = substr $parts[ -1 ], 0, 22;
 
    return join '$', @parts;
-}
-
-sub load_components ($$) {
-   my ($ns, $args) = @_;
-
-   my $plugins   = {};
-   my $min_depth = delete $args->{min_depth};
-   my @depth     = $min_depth ? (min_depth => $min_depth) : (max_depth => 4);
-   my $monikers  = $args->{builder}->config->monikers;
-   my $finder    = Module::Pluggable::Object->new
-      ( @depth, search_path => [ $ns ], require => TRUE, );
-
-   for my $plugin ($finder->plugins) {
-      exists $monikers->{ $plugin } and defined $monikers->{ $plugin }
-         and $args->{moniker} = $monikers->{ $plugin };
-
-      my $comp = $plugin->new( $args ); $plugins->{ $comp->moniker } = $comp;
-   }
-
-   return $plugins;
 }
 
 sub log_leader ($$;$) {

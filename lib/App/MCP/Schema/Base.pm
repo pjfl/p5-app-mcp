@@ -8,8 +8,6 @@ use Data::Validation;
 
 __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 
-Data::Validation::Constants->Exception_Class( EXCEPTION_CLASS );
-
 sub varchar_max_size {
    return 255;
 }
