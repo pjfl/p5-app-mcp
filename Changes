@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Readded env_var function. Switch to JSON::MaybeXS
           - Job creation API works with new Request object
           - Refacted l10n subroutine in Forms
           - Added ComponentLoading role

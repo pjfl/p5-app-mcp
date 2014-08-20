@@ -21,7 +21,7 @@ use HTTP::Status           qw( HTTP_EXPECTATION_FAILED
                                HTTP_INTERNAL_SERVER_ERROR
                                HTTP_REQUEST_ENTITY_TOO_LARGE
                                HTTP_UNAUTHORIZED );
-use JSON                   qw( );
+use JSON::MaybeXS          qw( );
 use Scalar::Util           qw( blessed weaken );
 use Try::Tiny;
 use Unexpected::Functions  qw( ChecksumFailure MissingHeader MissingKey
@@ -102,7 +102,7 @@ has 'tunnel_method' => is => 'lazy', isa => NonEmptySimpleStr, builder => sub {
 has '_content'    => is => 'lazy', isa => Str, init_arg => undef;
 
 has '_transcoder' => is => 'lazy', isa => Object,
-   builder        => sub { JSON->new }, init_arg => undef;
+   builder        => sub { JSON::MaybeXS->new }, init_arg => undef;
 
 # Construction
 around 'BUILDARGS' => sub {

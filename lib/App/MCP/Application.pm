@@ -106,7 +106,7 @@ sub ipc_ssh_handler {
    my $logger = sub {
       my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
 
-      $log->$level( $lead.$msg ); return;
+      return $log->$level( $lead.$msg );
    };
 
    my $ips    = IPC::PerlSSH->new

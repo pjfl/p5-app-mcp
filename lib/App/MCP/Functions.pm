@@ -7,12 +7,16 @@ use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC );
 use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
 
-our @EXPORT_OK = ( qw( extract_lang get_hashed_pw get_salt log_leader
-                       qualify_job_name read_exactly recv_arg_error
-                       recv_rv_error trigger_input_handler
-                       trigger_output_handler ) );
+our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
+                       log_leader qualify_job_name read_exactly
+                       recv_arg_error recv_rv_error
+                       trigger_input_handler trigger_output_handler ) );
 
 # Public functions
+sub env_var ($;$) {
+   my ($k, $v) = @_; return $v ? $ENV{ "MCP_${k}" } = $v : $ENV{ "MCP_${k}" };
+}
+
 sub extract_lang ($) {
    my $v = shift; return $v ? (split_on__ $v)[ 0 ] : LANG;
 }

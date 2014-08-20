@@ -8,7 +8,7 @@ use App::MCP::Application;
 use App::MCP::Async;
 use App::MCP::Constants    qw( OK TRUE );
 use App::MCP::DaemonControl;
-use App::MCP::Functions    qw( log_leader );
+use App::MCP::Functions    qw( env_var log_leader );
 use Class::Usul::Options;
 use English                qw( -no_match_vars );
 use File::DataClass::Types qw( NonZeroPositiveInt Object );
@@ -190,9 +190,9 @@ sub _get_listener_sub {
    my $daemon_pid = $PID; my $debug = $self->debug; my $port = $self->port;
 
    return sub {
-      $ENV{ 'MCP_DAEMON_PID'    } = $daemon_pid;
-      $ENV{ 'MCP_DEBUG'         } = $debug;
-      $ENV{ 'MCP_LISTENER_PORT' } = $port;
+      env_var 'DAEMON_PID',    $daemon_pid;
+      env_var 'DEBUG',         $debug;
+      env_var 'LISTENER_PORT', $port;
       Plack::Runner->run( %{ $args } );
       return OK;
    };
