@@ -106,7 +106,7 @@ sub ipc_ssh_handler {
    my $logger = sub {
       my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
 
-      return $log->$level( $lead.$msg );
+      return $log->$level( $lead.($msg // 'undef'));
    };
 
    my $ips    = IPC::PerlSSH->new
@@ -119,13 +119,14 @@ sub ipc_ssh_handler {
 
    $failed and return FALSE;
 
-   for my $call (@{ $calls }) {
+   while (defined (my $call = shift @{ $calls })) {
       my $result;
 
       try   { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
       catch { $logger->( 'error', 'CALL', $_ ); $failed = TRUE };
 
       $failed and return FALSE; $logger->( 'debug', 'CALL', $result );
+      defined $call->[ 2 ] and $call->[ 2 ]->( $calls, $result );
    }
 
    return TRUE;
@@ -165,6 +166,43 @@ sub output_handler {
 }
 
 # Private methods
+sub _add_provisioning {
+   my ($self, $appclass, $calls, $key) = @_; my $worker = 'App-MCP-Worker';
+
+   state $provisioned //= {}; $provisioned->{ $key } and return;
+
+   my $installer = sub {
+      my ($calls, $result) = @_;
+
+      $result eq 'Provisioned' and $provisioned->{ $key } = TRUE and return;
+
+      $self->_install_distribution( $appclass, $calls, "${worker}.tar.gz"     );
+      $self->_install_distribution( $appclass, $calls, 'local-lib.tar.gz'     );
+      $self->_install_cpan_minus  ( $appclass, $calls, 'App-cpanminus.tar.gz' );
+   };
+
+   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
+   return;
+}
+
+sub _install_cpan_minus {
+   return shift->_install_remote( 'install_cpan_minus', @_ );
+}
+
+sub _install_distribution {
+   return shift->_install_remote( 'install_distribution', @_ );
+}
+
+sub _install_remote {
+   my ($self, $method, $appclass, $calls, $file) = @_;
+
+   my $path = $self->config->sharedir->catfile( $file );
+
+   unshift @{ $calls }, [ $method,     [ $appclass, $file             ] ];
+   unshift @{ $calls }, [ 'writefile', [ $appclass, $file, $path->all ] ];
+   return;
+}
+
 sub _process_event {
    my ($self, $js_rs, $event) = @_;
 
@@ -178,7 +216,7 @@ sub _process_event {
 }
 
 sub _start_job {
-   my ($self, $ipc_ssh, $job) = @_; state $provisioned //= {};
+   my ($self, $ipc_ssh, $job) = @_;
 
    my $runid = bson64id;
    my $host  = $job->host;
@@ -195,16 +233,13 @@ sub _start_job {
                  runid     => $runid,
                  servers   => (join COMMA, @{ $self->config->servers }),
                  token     => $token };
-   my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
+   my $calls = [ [ 'dispatch', [ $class, "${class}::Worker", %{ $args } ] ], ];
    my $lead  = log_leader 'debug', 'START', $runid;
    my $key   = "${user}\@${host}";
 
    $self->log->debug( $lead.$job->fqjn." ${key} ${cmd}" );
-   $provisioned->{ $key } or unshift @{ $calls }, [ 'provision', [ $class ] ];
-
+   $self->_add_provisioning( $class, $calls, $key );
    $ipc_ssh->call( $runid, $user, $host, $calls ); # Calls ipc_ssh_handler
-
-   $provisioned->{ $key } = TRUE;
    return ($runid, $token);
 }
 

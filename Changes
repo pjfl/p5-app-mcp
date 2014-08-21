@@ -1,5 +1,7 @@
 Revision history for App::MCP
 
+0.5.1     2014-08-21 21:58:59
+          - Added provisioning for App::MCP::Worker
           - Readded env_var function. Switch to JSON::MaybeXS
           - Job creation API works with new Request object
           - Refacted l10n subroutine in Forms

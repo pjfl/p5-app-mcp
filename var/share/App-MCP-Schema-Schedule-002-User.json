@@ -1,0 +1,7 @@
+{
+   "fields": "active password role_id username",
+   "rows": [
+      "1, {5054}none, 1, unknown",
+      "1, test, 2, test"
+   ]
+}

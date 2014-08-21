@@ -21,11 +21,11 @@ README
 README.pod
 jobs.json
 t/ipc_srlock*
-var/db
 var/logs
-var/run
-var/tmp
 var/root/js
 var/root/img
+var/run
+var/share
+var/tmp
 *.tar.gz
 App-MCP-*
