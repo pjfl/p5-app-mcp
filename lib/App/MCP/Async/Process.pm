@@ -5,8 +5,9 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Constants    qw( TRUE );
 use App::MCP::Functions    qw( log_leader read_exactly recv_rv_error );
-use Class::Usul::Functions qw( throw );
-use Class::Usul::Types     qw( CodeRef FileHandle Undef );
+use Class::Usul::Functions qw( is_coderef throw );
+use Class::Usul::Types     qw( ArrayRef CodeRef FileHandle
+                               NonEmptySimpleStr Undef );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( weaken );
 use Storable               qw( nfreeze thaw );
@@ -15,7 +16,8 @@ use Try::Tiny;
 extends q(App::MCP::Async::Base);
 
 # Public attributes
-has 'code'      => is => 'ro', isa => CodeRef, required => TRUE;
+has 'code'      => is => 'ro', isa => CodeRef | ArrayRef | NonEmptySimpleStr,
+   required     => TRUE;
 
 has 'on_exit'   => is => 'ro', isa => CodeRef | Undef;
 
@@ -29,11 +31,11 @@ has 'writer'    => is => 'ro', isa => FileHandle | Undef;
 around 'BUILDARGS' => sub {
    my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
 
-   my $args_pipe = delete $attr->{args_pipe};
-   my $ret_pipe  = delete $attr->{ret_pipe };
+   my $call_pipe = delete $attr->{call_pipe};
+   my $retn_pipe = delete $attr->{retn_pipe};
 
-   $args_pipe and $attr->{writer} = $args_pipe->[ 1 ];
-   $ret_pipe  and $attr->{reader} =  $ret_pipe->[ 0 ];
+   $call_pipe and $attr->{writer} = $call_pipe->[ 1 ];
+   $retn_pipe and $attr->{reader} = $retn_pipe->[ 0 ];
    return $attr;
 };
 
@@ -41,7 +43,7 @@ sub BUILD {
    my $self = shift;
 
    $self->on_exit   and $self->loop->watch_child( $self->pid, $self->on_exit );
-   $self->on_return and $self->reader and $self->_watch_read_handle;
+   $self->on_return and $self->set_return_callback( $self->on_return );
    return;
 }
 
@@ -65,35 +67,12 @@ sub send {
    return TRUE;
 }
 
-sub stop {
-   my $self = shift; $self->is_running or return;
+sub set_return_callback {
+   my ($self, $code) = @_; my $reader = $self->reader or return;
 
-   my $lead = log_leader 'debug', $self->log_key, $self->pid;
+   my $log  = $self->log; my $loop = $self->loop; my $pid = $self->pid;
 
-   $self->log->debug( $lead.'Stopping '.$self->description );
-   CORE::kill 'TERM', $self->pid;
-   return;
-}
-
-# Private methods
-sub _build_pid {
-   my $self = shift; weaken( $self );
-   my $name = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
-   my $code = sub { $PROGRAM_NAME = $name; $self->code->( $self ) };
-   my $temp = $self->file->tempdir;
-   my $args = { async => TRUE, debug => $self->debug };
-
-   $self->debug and $args->{err} = $temp->catfile( (lc $self->log_key).'.err' );
-
-   return $self->run_cmd( [ $code ], $args )->pid;
-}
-
-sub _watch_read_handle {
-   my $self   = shift; my $code = $self->on_return; my $pid = $self->pid;
-
-   my $lead   = log_leader 'error', 'EXECRV', $pid; my $log = $self->log;
-
-   my $loop   = $self->loop; my $reader = $self->reader;
+   my $lead = log_leader 'error', 'EXECRV', $pid;
 
    $loop->watch_read_handle( $reader, sub {
       my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
@@ -115,6 +94,31 @@ sub _watch_read_handle {
    } );
 
    return;
+}
+
+sub stop {
+   my $self = shift; $self->is_running or return;
+
+   my $lead = log_leader 'debug', $self->log_key, $self->pid;
+
+   $self->log->debug( $lead.'Stopping '.$self->description );
+   CORE::kill 'TERM', $self->pid;
+   return;
+}
+
+# Private methods
+sub _build_pid {
+   my $self = shift; weaken( $self );
+   my $temp = $self->file->tempdir;
+   my $args = { async => TRUE, debug => $self->debug };
+   my $name = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
+   my $cmd  = (is_coderef $self->code)
+            ? [ sub { $PROGRAM_NAME = $name; $self->code->( $self ) } ]
+            : $self->code;
+
+   $self->debug and $args->{err} = $temp->catfile( (lc $self->log_key).'.err' );
+
+   return $self->run_cmd( $cmd, $args )->pid;
 }
 
 1;

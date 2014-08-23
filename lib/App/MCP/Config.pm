@@ -22,7 +22,10 @@ has 'common_links'         => is => 'ro',   isa => ArrayRef,
    builder                 => sub { [ qw( css images js less ) ] };
 
 has 'connect_params'       => is => 'ro',   isa => HashRef,
-   default                 => sub { { quote_names => TRUE } };
+   builder                 => sub { { quote_names => TRUE } };
+
+has 'cron_log_interval'    => is => 'ro',   isa => PositiveInt,
+   default                 => 0;
 
 has 'css'                  => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'css/';
@@ -68,7 +71,8 @@ has 'max_asset_size'       => is => 'ro',   isa => PositiveInt,
 has 'max_messages'         => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
 
-has 'max_web_session_time' => is => 'ro',  isa => PositiveInt, default => 3_600;
+has 'max_web_session_time' => is => 'ro',   isa => PositiveInt,
+   default                 => 3_600;
 
 has 'max_api_session_time' => is => 'ro',   isa => PositiveInt,
    default                 => 300;
@@ -87,8 +91,7 @@ has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => '/';
 
 has 'nav_list'             => is => 'ro',   isa => ArrayRef,
-   builder                 => sub {
-      [ qw( job state_diagram help ) ] };
+   builder                 => sub { [ qw( job state_diagram help ) ] };
 
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;

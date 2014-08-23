@@ -16,9 +16,9 @@ has '_semaphore' => is => 'lazy', isa => Object, reader => 'semaphore';
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   $attr->{code} = __loop_while_running( $attr->{code}, delete $attr->{after} );
+   $attr->{code} = __loop_while_running( $attr );
 
    return $attr;
 };
@@ -76,16 +76,18 @@ sub _build__semaphore {
 
 # Private functions
 sub __loop_while_running {
-   my ($code, $after) = @_;
+   my $attr  = shift; my $code = $attr->{code};
+
+   my $after = delete $attr->{after}; my $before = delete $attr->{before};
 
    return sub {
-      my $self = shift; my $rv;
+      my $self = shift; my $rv; $before and $before->( $self );
 
       while (TRUE) {
          $self->_await_trigger; $self->is_running or last; $rv = $code->();
       }
 
-      $after and $after->();
+      $after and $after->( $self );
       return $rv;
    };
 }

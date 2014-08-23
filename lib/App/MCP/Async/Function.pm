@@ -62,6 +62,14 @@ sub call {
    return $self->is_running ? $self->_next_worker->send( @_ ) : FALSE;
 }
 
+sub set_return_callback {
+   my ($self, $code) = @_; my $workers = $self->worker_objects;
+
+   $workers->{ $_ }->set_return_callback( $code ) for (keys %{ $workers });
+
+   return;
+}
+
 sub stop {
    my $self = shift; $self->_set_is_running( FALSE );
 
@@ -87,8 +95,8 @@ sub _call_handler {
 
    my $log       = $self->log;
    my $max_calls = $self->max_calls;
-   my $reader    = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : FALSE;
-   my $writer    = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : FALSE;
+   my $reader    = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
+   my $writer    = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
    my $code      = $args->{code};
 
    return sub {
@@ -123,9 +131,9 @@ sub _new_worker {
    my $on_exit = delete $args->{on_exit}; my $workers = $self->worker_objects;
 
    $self->channels =~ m{ i }mx
-      and $args->{args_pipe} = __nonblocking_write_pipe_pair();
+      and $args->{call_pipe} = __nonblocking_write_pipe_pair();
   ($self->channels =~ m{ o }mx or exists $args->{on_return})
-      and $args->{ret_pipe } = __nonblocking_write_pipe_pair();
+      and $args->{retn_pipe} = __nonblocking_write_pipe_pair();
    $args->{code       } = $self->_call_handler( $args );
    $args->{description} = (lc $self->log_key)." worker ${index}";
    $args->{log_key    } = 'WORKER';

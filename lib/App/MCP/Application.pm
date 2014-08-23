@@ -37,42 +37,8 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass, builder => sub {
 with q(Class::Usul::TraitFor::ConnectInfo);
 
 # Public methods
-{  my $provisioned = {};
-
-   sub add_provisioning {
-      my ($self, $calls, $key) = @_;
-
-      $self->log->debug( $key.' '.$PID );
-      $provisioned->{ $key } and return;
-
-      my $appclass = $self->config->appclass; my $worker = $self->worker;
-
-      unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], 'installer' ];
-      return;
-   }
-
-   sub ipc_ssh_return {
-      my ($self, $runid, $results) = @_;
-
-      $results or return; my $key;
-      $self->log->debug( $runid.' '.$results->{provisioned}.' '.$PID );
-
-      $key = $results->{provisioned} and $provisioned->{ $key } = TRUE;
-
-      return;
-   }
-}
-
-sub clock_tick_handler {
-   my ($self, $key, $cron) = @_; my $lead = log_leader 'debug', $key, elapsed;
-
-   elapsed % 60 == 0 and $self->log->debug( $lead.'Tick' );
-   $cron->trigger;
-   return;
-}
-
 sub cron_job_handler {
-   my ($self, $sig_hndlr_pid) = @_;
+   my ($self, $key, $sig_hndlr_pid) = @_; $self->_cron_log_interval( $key );
 
    my $trigger = FALSE;
    my $schema  = $self->schema;
@@ -127,22 +93,6 @@ sub input_handler {
    return OK;
 }
 
-sub installer {
-   my ($self, $args, $results, $call, $result) = @_;
-
-   my $user = $args->{user}; my $host = $args->{host};
-
-   $call->[ 0 ] eq 'provision' and lc $result eq 'provisioned'
-      and $results->{provisioned} = "${user}\@${host}" and return;
-
-   my $calls = $args->{calls}; my $tarball = (distname $self->worker).'.tar.gz';
-
-   $self->_install_distribution( $calls, $tarball               );
-   $self->_install_distribution( $calls, 'local-lib.tar.gz'     );
-   $self->_install_cpan_minus  ( $calls, 'App-cpanminus.tar.gz' );
-   return;
-}
-
 sub ipc_ssh_caller {
    my ($self, $args) = @_;
 
@@ -179,6 +129,54 @@ sub ipc_ssh_caller {
    return $results;
 }
 
+sub ipc_ssh_install_worker {
+   my ($self, $args, $results, $call, $result) = @_;
+
+   my $user = $args->{user}; my $host = $args->{host};
+
+   $call->[ 0 ] eq 'provision' and lc $result eq 'provisioned'
+      and $results->{provisioned} = "${user}\@${host}" and return;
+
+   my $calls = $args->{calls}; my $tarball = (distname $self->worker).'.tar.gz';
+
+   $self->_install_distribution( $calls, $tarball               );
+   $self->_install_distribution( $calls, 'local-lib.tar.gz'     );
+   $self->_install_cpan_minus  ( $calls, 'App-cpanminus.tar.gz' );
+   return;
+}
+
+sub ipc_ssh_provisioned {
+   my ($self, $k, $v) = @_; state $provisioned;
+
+   defined $v and $provisioned->{ $k } = $v;
+   return $provisioned->{ $k };
+}
+
+sub ipc_ssh_provisioning {
+   my ($self, $calls, $key) = @_;
+
+   $self->log->debug( $key.' '.$PID );
+   $self->ipc_ssh_provisioned( $key ) and return;
+
+   my $appclass  = $self->config->appclass;
+   my $installer = 'ipc_ssh_install_worker';
+   my $worker    = $self->worker;
+
+   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
+   return;
+}
+
+sub ipc_ssh_return {
+   my ($self, $runid, $results) = @_; $results or return;
+
+   my ($lead, $key); $key = $results->{provisioned}
+      and $self->ipc_ssh_provisioned( $key, TRUE )
+      and $lead = log_leader( 'info', 'IPCSSH', $PID )
+      and $self->log->info( "${lead}Provisioned ${runid} ${key}" );
+
+   return;
+}
+
 sub output_handler {
    my ($self, $ipc_ssh) = @_; my $trigger = TRUE;
 
@@ -213,6 +211,20 @@ sub output_handler {
 }
 
 # Private methods
+sub _cron_log_interval {
+   my ($self, $key) = @_; my $lead;
+
+   my $log_int = $self->config->cron_log_interval or return;
+   my $elapsed = elapsed;
+   my $rem     = $elapsed % $log_int;
+   my $spread  = $self->config->clock_tick_interval / 2;
+
+   ($rem > $log_int - $spread or $rem < $spread)
+      and $lead = log_leader( 'info', $key, $PID )
+      and $self->log->info( "${lead}Elapsed ${elapsed}" );
+   return;
+}
+
 sub _install_cpan_minus {
    return shift->_install_remote( 'install_cpan_minus', @_ );
 }
@@ -268,7 +280,7 @@ sub _start_job {
    my $key   = "${user}\@${host}";
 
    $self->log->debug( $lead.$job->fqjn." ${key} ${cmd}" );
-   $self->add_provisioning( $calls, $key );
+   $self->ipc_ssh_provisioning( $calls, $key );
    $args = { calls => $calls, host => $host, runid => $runid, user => $user, };
    $ipc_ssh->call( $args ); # Calls ipc_ssh_handler
    return ($runid, $token);

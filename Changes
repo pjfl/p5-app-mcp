@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Refactored Async code
           - Rewrote implementation of job crontab attr
           - Added delte_after attr to job class
           - Added is_numeric to the numeric data types in schema base

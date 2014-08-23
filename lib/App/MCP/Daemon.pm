@@ -46,12 +46,6 @@ has 'listener'      => is => 'lazy', isa => Object;
 has 'op_ev_hndlr'   => is => 'lazy', isa => Object;
 
 # Construction
-around 'run' => sub {
-   my ($orig, $self, @args) = @_; $self->quiet( TRUE );
-
-   return $orig->( $self, @args );
-};
-
 around 'run_chain' => sub {
    my ($orig, $self, @args) = @_; @ARGV = @{ $self->extra_argv };
 
@@ -80,13 +74,16 @@ around 'run_chain' => sub {
    exit defined $rv ? $rv : OK;
 };
 
+before 'run' => sub {
+   my $self = shift; $self->quiet( TRUE ); return;
+};
+
 # Public methods
 sub daemon {
-   my $self = shift; my $log = $self->log; my $loop = $self->loop;
-
+   my $self = shift;
+   my $loop = $self->loop; $self->_set_program_name;
    my $lead = log_leader 'info', $self->config->log_key;
-
-   $log->info( $lead.'Starting event loop' ); $self->_set_program_name;
+   my $log  = $self->log; $log->info( "${lead}Starting event loop" );
 
    $self->listener; $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->clock_tick;
 
@@ -113,12 +110,10 @@ sub daemon {
 
 # Private methods
 sub _build_clock_tick {
-   my $self = shift; my $app = $self->app;
-
-   my $cron = $self->cron; my $key = $self->config->log_key;
+   my $self = shift; my $cron = $self->cron;
 
    return $self->async_factory->new_notifier
-      (  code     => sub { $app->clock_tick_handler( $key, $cron ) },
+      (  code     => sub { $cron->trigger },
          interval => $self->config->clock_tick_interval,
          desc     => 'clock tick handler',
          key      => 'CLOCK',
@@ -126,12 +121,14 @@ sub _build_clock_tick {
 }
 
 sub _build_cron {
-   my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
+   my $self = shift; my $app = $self->app;
+
+   my $daemon_pid = $PID; my $key = 'CRON';
 
    return $self->async_factory->new_notifier
-      (  code => sub { $app->cron_job_handler( $daemon_pid ) },
+      (  code => sub { $app->cron_job_handler( $key, $daemon_pid ) },
          desc => 'cron job handler',
-         key  => 'CRON',
+         key  => $key,
          type => 'routine' );
 }
 
@@ -149,7 +146,8 @@ sub _build_ipc_ssh {
    my $self = shift; my $app = $self->app;
 
    return $self->async_factory->new_notifier
-      (  code        => sub { $app->ipc_ssh_caller( @_ ) },
+      (  channels    => 'io',
+         code        => sub { $app->ipc_ssh_caller( @_ ) },
          desc        => 'ipcssh',
          key         => 'IPCSSH',
          max_calls   => $self->config->max_ssh_worker_calls,
@@ -172,11 +170,11 @@ sub _build_op_ev_hndlr {
    my $self = shift; my $app = $self->app; my $ipc_ssh = $self->ipc_ssh;
 
    return $self->async_factory->new_notifier
-      (  after => sub { $ipc_ssh->stop },
-         code  => sub { $app->output_handler( $ipc_ssh ) },
-         desc  => 'output event handler',
-         key   => 'OUTPUT',
-         type  => 'routine' );
+      (  after  => sub { $ipc_ssh->stop },
+         code   => sub { $app->output_handler( $ipc_ssh ) },
+         desc   => 'output event handler',
+         key    => 'OUTPUT',
+         type   => 'routine' );
 }
 
 sub _get_listener_sub {

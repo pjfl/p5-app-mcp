@@ -320,9 +320,8 @@ sub _read_public_key {
    my ($self, $key_id) = @_; state $cache //= {};
 
    my $key      = $cache->{ $key_id }; $key and return $key;
-   my $ssh_dir  = $self->config->my_home->catdir( '.ssh' );
    my $prefix   = class2appdir $self->config->appclass;
-   my $key_file = $ssh_dir->catfile( "${prefix}_${key_id}.pub" );
+   my $key_file = $self->config->ssh_dir->catfile( "${prefix}_${key_id}.pub" );
 
    try   { $key = Convert::SSH2->new( $key_file->all )->format_output }
    catch { throw class => MissingKey, error => $_, rv => HTTP_UNAUTHORIZED };
