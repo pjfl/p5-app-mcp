@@ -27,9 +27,12 @@ my $usul  = Class::Usul->new
      debug        => 1, );
 my $app   = App::MCP::Application->new( builder => $usul );
 my $class = $usul->config->appclass;
-my $args  = { appclass => $class, command => '/bin/ls 1>/tmp/fli 2>&1' };
+my $args  = { appclass => $class,
+              command  => '/bin/ls 1>/tmp/fli 2>&1',
+              servers  => 'road',
+              worker   => "${class}::Worker", };
 my $calls = [ [ 'remote_env', [ $class ] ],
-              [ 'dispatch',   [ $class, "${class}::Worker", %{ $args } ] ], ];
+              [ 'dispatch',   [ %{ $args } ] ], ];
 
 $app->_add_provisioning( $usul->config->appclass, $calls, 'mcp@head' );
 

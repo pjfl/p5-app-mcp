@@ -93,14 +93,20 @@ sub _watch_read_handle {
 
    my $lead   = log_leader 'error', 'EXECRV', $pid; my $log = $self->log;
 
-   my $reader = $self->reader;
+   my $loop   = $self->loop; my $reader = $self->reader;
 
-   $self->loop->watch_read_handle( $reader, sub {
+   $loop->watch_read_handle( $reader, sub {
       my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-      defined ($rv = recv_rv_error( $log, $pid, $red )) and return $rv;
+      if (defined ($rv = recv_rv_error( $log, $pid, $red ))) {
+         $loop->unwatch_read_handle( $reader ); return $rv;
+      }
+
       $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-      defined ($rv = recv_rv_error( $log, $pid, $red )) and return $rv;
+
+      if (defined ($rv = recv_rv_error( $log, $pid, $red ))) {
+         $loop->unwatch_read_handle( $reader ); return $rv;
+      }
 
       try   { $code->( @{ $args ? thaw $args : [] } ) }
       catch { $log->error( $lead.$_ ) };

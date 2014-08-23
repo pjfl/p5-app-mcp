@@ -83,13 +83,13 @@ sub _build_pid {
 }
 
 sub _call_handler {
-   my ($self, $args) = @_; my $code = $args->{code};
+   my ($self, $args) = @_;
 
-   my $log    = $self->log; my $max_calls = $self->max_calls;
-
-   my $reader = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : FALSE;
-
-   my $writer = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : FALSE;
+   my $log       = $self->log;
+   my $max_calls = $self->max_calls;
+   my $reader    = $args->{args_pipe} ? $args->{args_pipe}->[ 0 ] : FALSE;
+   my $writer    = $args->{ret_pipe } ? $args->{ret_pipe }->[ 1 ] : FALSE;
+   my $code      = $args->{code};
 
    return sub {
       my $count = 0; my $lead = log_leader 'error', 'EXCODE', $PID;
@@ -105,12 +105,10 @@ sub _call_handler {
             defined ($rv = recv_arg_error( $log, $PID, $red )) and return $rv;
          }
 
-         try  {
-            $args = $args ? thaw $args : [];
-
-            my $runid = $args->[ 0 ] || $PID; $rv = $code->( @{ $args } );
-
-            $writer and __send_rv( $writer, $log, $runid, $rv );
+         try {
+            $args  = $args ? thaw $args : [ { runid => $PID } ];
+            $rv    = $code->( @{ $args } );
+            $writer and __send_rv( $writer, $log, $args->[ 0 ]->{runid}, $rv );
          }
          catch { $log->error( $lead.$_ ) };
 

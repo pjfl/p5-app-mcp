@@ -1,5 +1,12 @@
 Revision history for App::MCP
 
+          - Rewrote implementation of job crontab attr
+          - Added delte_after attr to job class
+          - Added is_numeric to the numeric data types in schema base
+          - Async process unwatches read file handle on fail or eof
+          - Worker provisioning uses return value from ipc ssh worker
+            Changes the ipc_ssh call signature
+
 0.5.1     2014-08-21 21:58:59
           - Added provisioning for App::MCP::Worker
           - Readded env_var function. Switch to JSON::MaybeXS

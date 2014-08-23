@@ -42,7 +42,8 @@ sub foreign_key_data_type {
    my $type_info = { data_type     => 'integer',
                      default_value => $default,
                      extra         => { unsigned => TRUE },
-                     is_nullable   => FALSE, };
+                     is_nullable   => FALSE,
+                     is_numeric    => TRUE, };
 
    defined $accessor and $type_info->{accessor} = $accessor;
 
@@ -53,7 +54,8 @@ sub nullable_foreign_key_data_type {
    return { data_type         => 'integer',
             default_value     => undef,
             extra             => { unsigned => TRUE },
-            is_nullable       => TRUE, };
+            is_nullable       => TRUE,
+            is_numeric        => TRUE, };
 }
 
 sub nullable_varchar_data_type {
@@ -66,7 +68,8 @@ sub nullable_varchar_data_type {
 sub numerical_id_data_type {
    return { data_type         => 'smallint',
             default_value     => $_[ 1 ],
-            is_nullable       => FALSE, };
+            is_nullable       => FALSE,
+            is_numeric        => TRUE, };
 }
 
 sub serial_data_type {
@@ -74,7 +77,8 @@ sub serial_data_type {
             default_value     => undef,
             extra             => { unsigned => TRUE },
             is_auto_increment => TRUE,
-            is_nullable       => FALSE, };
+            is_nullable       => FALSE,
+            is_numeric        => TRUE, };
 }
 
 sub set_on_create_datetime_data_type {

@@ -6,19 +6,23 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK );
 use App::MCP::Functions    qw( log_leader trigger_output_handler );
-use Class::Usul::Functions qw( bson64id create_token elapsed );
-use Class::Usul::Types     qw( BaseType LoadableClass
+use Class::Usul::Functions qw( bson64id create_token distname elapsed );
+use Class::Usul::Types     qw( BaseType LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object );
+use English                qw( -no_match_vars );
 use IPC::PerlSSH;
 use Try::Tiny;
 
 # Public attributes
-has 'port'  => is => 'lazy', isa => NonZeroPositiveInt,
-   builder  => sub { $_[ 0 ]->config->port };
+has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
+   builder   => sub { $_[ 0 ]->config->port };
 
-has 'usul'  => is => 'ro', isa => BaseType,
-   handles  => [ qw( config debug log ) ], init_arg => 'builder',
-   required => TRUE;
+has 'usul'   => is => 'ro', isa => BaseType,
+   handles   => [ qw( config debug log ) ], init_arg => 'builder',
+   required  => TRUE;
+
+has 'worker' => is => 'lazy', isa => NonEmptySimpleStr,
+   builder   => sub { $_[ 0 ]->config->appclass.'::Worker' };
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, builder => sub {
@@ -33,6 +37,32 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass, builder => sub {
 with q(Class::Usul::TraitFor::ConnectInfo);
 
 # Public methods
+{  my $provisioned = {};
+
+   sub add_provisioning {
+      my ($self, $calls, $key) = @_;
+
+      $self->log->debug( $key.' '.$PID );
+      $provisioned->{ $key } and return;
+
+      my $appclass = $self->config->appclass; my $worker = $self->worker;
+
+      unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], 'installer' ];
+      return;
+   }
+
+   sub ipc_ssh_return {
+      my ($self, $runid, $results) = @_;
+
+      $results or return; my $key;
+      $self->log->debug( $runid.' '.$results->{provisioned}.' '.$PID );
+
+      $key = $results->{provisioned} and $provisioned->{ $key } = TRUE;
+
+      return;
+   }
+}
+
 sub clock_tick_handler {
    my ($self, $key, $cron) = @_; my $lead = log_leader 'debug', $key, elapsed;
 
@@ -49,11 +79,10 @@ sub cron_job_handler {
    my $job_rs  = $schema->resultset( 'Job' );
    my $ev_rs   = $schema->resultset( 'Event' );
    my $jobs    = $job_rs->search( {
-      'state.name'       => 'active',
-      'me.crontab'       => { '!=' => NUL }, }, {
-         'columns'       => [ qw( condition crontab id
-                                  state.name state.updated ) ],
-         'join'          => 'state' } );
+      'state.name' => 'active',
+      'me.crontab' => { '!=' => NUL }, }, {
+         'columns' => [ qw( condition crontab id state.name state.updated ) ],
+         'join'    => 'state' } );
 #->search_related( 'events', {
 #            'transition' => [ undef, { '!=' => 'start' } ] } );
 
@@ -98,38 +127,56 @@ sub input_handler {
    return OK;
 }
 
-sub ipc_ssh_handler {
-   my ($self, $runid, $user, $host, $calls) = @_;
+sub installer {
+   my ($self, $args, $results, $call, $result) = @_;
 
-   my $failed = FALSE; my $log = $self->log;
+   my $user = $args->{user}; my $host = $args->{host};
 
+   $call->[ 0 ] eq 'provision' and lc $result eq 'provisioned'
+      and $results->{provisioned} = "${user}\@${host}" and return;
+
+   my $calls = $args->{calls}; my $tarball = (distname $self->worker).'.tar.gz';
+
+   $self->_install_distribution( $calls, $tarball               );
+   $self->_install_distribution( $calls, 'local-lib.tar.gz'     );
+   $self->_install_cpan_minus  ( $calls, 'App-cpanminus.tar.gz' );
+   return;
+}
+
+sub ipc_ssh_caller {
+   my ($self, $args) = @_;
+
+   my $failed = FALSE;
+   my $log    = $self->log;
+   my $runid  = $args->{runid};
    my $logger = sub {
       my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
 
-      return $log->$level( $lead.($msg // 'undef'));
+      return $log->$level( $lead.($msg // 'undef') );
    };
-
    my $ips    = IPC::PerlSSH->new
-      ( Host       => $host,
-        User       => $user,
+      ( Host       => $args->{host},
+        User       => $args->{user},
         SshOptions => [ '-i', $self->config->identity_file ], );
 
    try   { $ips->use_library( $self->config->library_class ) }
    catch { $logger->( 'error', 'STORE', $_ ); $failed = TRUE };
 
-   $failed and return FALSE;
+   $failed and return FALSE; my $results = {};
 
-   while (defined (my $call = shift @{ $calls })) {
+   while (defined (my $call = shift @{ $args->{calls} })) {
       my $result;
 
       try   { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
       catch { $logger->( 'error', 'CALL', $_ ); $failed = TRUE };
 
       $failed and return FALSE; $logger->( 'debug', 'CALL', $result );
-      defined $call->[ 2 ] and $call->[ 2 ]->( $calls, $result );
+
+      my $method = $call->[ 2 ]; defined $method
+         and $self->$method( $args, $results, $call, $result );
    }
 
-   return TRUE;
+   return $results;
 }
 
 sub output_handler {
@@ -166,25 +213,6 @@ sub output_handler {
 }
 
 # Private methods
-sub _add_provisioning {
-   my ($self, $appclass, $calls, $key) = @_; my $worker = 'App-MCP-Worker';
-
-   state $provisioned //= {}; $provisioned->{ $key } and return;
-
-   my $installer = sub {
-      my ($calls, $result) = @_;
-
-      $result eq 'Provisioned' and $provisioned->{ $key } = TRUE and return;
-
-      $self->_install_distribution( $appclass, $calls, "${worker}.tar.gz"     );
-      $self->_install_distribution( $appclass, $calls, 'local-lib.tar.gz'     );
-      $self->_install_cpan_minus  ( $appclass, $calls, 'App-cpanminus.tar.gz' );
-   };
-
-   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
-   return;
-}
-
 sub _install_cpan_minus {
    return shift->_install_remote( 'install_cpan_minus', @_ );
 }
@@ -194,9 +222,10 @@ sub _install_distribution {
 }
 
 sub _install_remote {
-   my ($self, $method, $appclass, $calls, $file) = @_;
+   my ($self, $method, $calls, $file) = @_;
 
-   my $path = $self->config->sharedir->catfile( $file );
+   my $appclass = $self->config->appclass;
+   my $path     = $self->config->sharedir->catfile( $file );
 
    unshift @{ $calls }, [ $method,     [ $appclass, $file             ] ];
    unshift @{ $calls }, [ 'writefile', [ $appclass, $file, $path->all ] ];
@@ -232,14 +261,16 @@ sub _start_job {
                  port      => $self->port,
                  runid     => $runid,
                  servers   => (join COMMA, @{ $self->config->servers }),
-                 token     => $token };
-   my $calls = [ [ 'dispatch', [ $class, "${class}::Worker", %{ $args } ] ], ];
+                 token     => $token,
+                 worker    => $self->worker, };
+   my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $lead  = log_leader 'debug', 'START', $runid;
    my $key   = "${user}\@${host}";
 
    $self->log->debug( $lead.$job->fqjn." ${key} ${cmd}" );
-   $self->_add_provisioning( $class, $calls, $key );
-   $ipc_ssh->call( $runid, $user, $host, $calls ); # Calls ipc_ssh_handler
+   $self->add_provisioning( $calls, $key );
+   $args = { calls => $calls, host => $host, runid => $runid, user => $user, };
+   $ipc_ssh->call( $args ); # Calls ipc_ssh_handler
    return ($runid, $token);
 }
 

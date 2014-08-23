@@ -39,7 +39,7 @@ $job and $job->in_storage and $job->delete; $job = undef;
 
 eval { $job = $rs->create( { name => '~' } ) }; $e = $@; $@ = undef;
 
-like $e && $e->args->[ 0 ], qr{ \Qnot a valid identifier\E }msx,
+like $e && $e->args->[ 0 ], qr{ \Qdoes not match\E }msx,
    'Job name must be simple text';
 
 $job and $job->delete; $job = undef;

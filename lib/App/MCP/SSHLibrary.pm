@@ -6,6 +6,7 @@ use IPC::PerlSSH::Library;
 
 init q{
    use lib;
+   use English               qw( -no_match_vars );
    use File::Path            qw( mkpath );
    use File::Spec::Functions qw( catdir catfile );
 
@@ -29,18 +30,20 @@ init q{
       my $config    = config( $appclass );
       my $local_lib = catdir( $config->{home}, 'perl5' );
       my $perl_lib  = catdir( $local_lib, 'lib', 'perl5' );
-      -d $perl_lib and lib->import( $perl_lib );
+      -d $perl_lib or return; lib->import( $perl_lib );
       eval { require local::lib };
-      $@ or local::lib->setup_local_lib_for( $local_lib );
+      $EVAL_ERROR or local::lib->setup_local_lib_for( $local_lib );
       return;
    }
 };
 
 func 'dispatch' => q{
-   my $appclass = shift; $appclass or die 'No appclass'; local_lib( $appclass );
-   my $worker   = shift; $worker   or die 'No worker class';
-   eval "require ${worker}";   $@ and die $@;
-   return $worker->new( @_ )->dispatch;
+   my $args     = { @_ };
+   my $appclass = $args->{appclass} or die 'No appclass';
+   my $worker   = $args->{worker  } or die 'No worker class';
+   local_lib( $appclass );
+   eval "require ${worker}"; $EVAL_ERROR and die $EVAL_ERROR;
+   return $worker->new( $args )->dispatch;
 };
 
 func 'install_cpan_minus' => q{
@@ -54,7 +57,8 @@ func 'install_cpan_minus' => q{
       $path     =~ s{ \.tar\.gz \z }{}mx;
    -e $path    or die "Path ${path} not found";
    my $cmd      = "$^X ${path} App::cpanminus";
-   chdir $config->{home}; qx( $cmd );
+   my $cpanm    = catfile( $config->{home}, 'perl5', 'bin', 'cpanm' );
+   chdir $config->{home}; qx( $cmd ); -x $cpanm or die 'No cpanm';
    return 'Installed cpanm';
 };
 
@@ -72,7 +76,7 @@ func 'install_distribution' => q{
 
 func 'provision' => q{
    my $appclass = shift;  $appclass or die 'No appclass';
-   my $wanted   = shift;  $wanted =~ s{ - }{::}gmx;
+   my $wanted   = shift;
    my $config   = config( $appclass );
      ($config->{home   } and -d $config->{home}) or die 'No home';
    -d $config->{appldir} or  mkpath( $config->{appldir}, { mode => 0750 } );
@@ -88,7 +92,8 @@ func 'provision' => q{
    }
 
    if ($wanted) {
-      local_lib( $appclass ); eval "require ${wanted}"; $@ and return "${@}";
+      local_lib( $appclass );
+      eval "require ${wanted}"; $EVAL_ERROR and return "${EVAL_ERROR}";
    }
 
    return 'Provisioned';

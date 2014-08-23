@@ -18,32 +18,32 @@ $class->table( 'job' );
 $class->load_components( '+App::MCP::MaterialisedPath' );
 
 $class->add_columns
-   ( id          => $class->serial_data_type,
-     created     => $class->set_on_create_datetime_data_type,
-     fqjn        => { accessor      => '_fqjn',
-                      data_type     => 'varchar',
-                      is_nullable   => FALSE,
-                      size          => $class->varchar_max_size, },
-     type        => $class->enumerated_data_type( 'job_type_enum', 'box' ),
-     owner_id    => $class->foreign_key_data_type( 1, 'owner' ),
-     group_id    => $class->foreign_key_data_type( 1, 'group' ),
-     permissions => { accessor      => '_permissions',
-                      data_type     => 'smallint',
-                      default_value => 488,
-                      is_nullable   => FALSE, },
-     expected_rv => $class->numerical_id_data_type( 0 ),
-     parent_id   => $class->nullable_foreign_key_data_type,
-     parent_path => $class->nullable_varchar_data_type,
-     host        => $class->varchar_data_type( 64, 'localhost' ),
-     user        => $class->varchar_data_type( 32, 'mcp' ),
-     name        => $class->varchar_data_type( 126 ),
-     command     => $class->varchar_data_type,
-     directory   => $class->varchar_data_type,
-     condition   => $class->varchar_data_type,
-     crontab     => { accessor      => '_crontab',
-                      data_type     => 'varchar',
-                      is_nullable   => FALSE,
-                      size          => 127, }, );
+   ( id           => $class->serial_data_type,
+     created      => $class->set_on_create_datetime_data_type,
+     fqjn         => { accessor      => '_fqjn',
+                       data_type     => 'varchar',
+                       is_nullable   => FALSE,
+                       size          => $class->varchar_max_size, },
+     type         => $class->enumerated_data_type( 'job_type_enum', 'box' ),
+     owner_id     => $class->foreign_key_data_type( 1, 'owner' ),
+     group_id     => $class->foreign_key_data_type( 1, 'group' ),
+     permissions  => { accessor      => '_permissions',
+                       data_type     => 'smallint',
+                       default_value => 488,
+                       is_nullable   => FALSE, },
+     expected_rv  => $class->numerical_id_data_type( 0 ),
+     delete_after => { data_type     => 'boolean',
+                       default_value => FALSE,
+                       is_nullable   => FALSE, },
+     parent_id    => $class->nullable_foreign_key_data_type,
+     parent_path  => $class->nullable_varchar_data_type,
+     host         => $class->varchar_data_type( 64, 'localhost' ),
+     user         => $class->varchar_data_type( 32, 'mcp' ),
+     name         => $class->varchar_data_type( 126 ),
+     command      => $class->varchar_data_type,
+     crontab      => $class->varchar_data_type( 127 ),
+     condition    => $class->varchar_data_type,
+     directory    => $class->varchar_data_type, );
 
 $class->set_primary_key( 'id' );
 
@@ -77,7 +77,7 @@ sub new {
    $parent_name
       and $new->_set_parent_id( $parent_name, { $new->get_inflated_columns } );
 
-   $new->crontab; $new->fqjn; # Force the attributes to take on values
+   $new->fqjn; # Force the attribute to take on a value
 
    return $new;
 }
@@ -86,49 +86,42 @@ sub condition_dependencies {
    return $_[ 0 ]->_eval_condition->[ 1 ];
 }
 
-sub crontab {
-   my ($self, $crontab) = @_; my @names = CRONTAB_FIELD_NAMES; my $tmp;
+sub _crontab {
+   my ($self, $k, $v) = @_; my @names = CRONTAB_FIELD_NAMES;
 
-   is_hashref  $crontab and $tmp = $crontab
-           and $crontab = join SPC, map { $tmp->{ $_ } } @names;
-   is_arrayref $crontab and $crontab = join SPC, @{ $crontab };
+   unless (defined $self->{_crontab}) {
+      my @fields = split m{ \s+ }mx, $self->crontab;
 
-   my @fields = split m{ \s+ }msx, ($crontab ? $self->_crontab( $crontab )
-                                             : $self->_crontab // NUL);
+      $self->{_crontab}->{ $names[ $_ ] } = ($fields[ $_ ] // NUL) for (0 .. 4);
+   }
 
-   $self->{ 'crontab_'.$names[ $_ ] } = ($fields[ $_ ] // NUL) for (0 .. 4);
+   if (defined $v) {
+      $self->{_crontab}->{ $k } = $v;
+      $self->crontab( join SPC,
+                      map  { $self->{_crontab}->{ $names[ $_ ] } } 0 .. 4);
+   }
 
-   return $self->_crontab;
+   return $self->{_crontab}->{ $k };
 }
 
 sub crontab_hour {
-   my $self = shift; defined $self->{crontab_hour} or $self->crontab;
-
-   return $self->{crontab_hour};
+   return shift->_crontab( 'hour', $_[ 0 ] );
 }
 
 sub crontab_mday {
-   my $self = shift; defined $self->{crontab_mday} or $self->crontab;
-
-   return $self->{crontab_mday};
+   return shift->_crontab( 'mday', $_[ 0 ] );
 }
 
 sub crontab_min {
-   my $self = shift; defined $self->{crontab_min} or $self->crontab;
-
-   return $self->{crontab_min};
+   return shift->_crontab( 'min', $_[ 0 ] );
 }
 
 sub crontab_mon {
-   my $self = shift; defined $self->{crontab_mon} or $self->crontab;
-
-   return $self->{crontab_mon};
+   return shift->_crontab( 'mon', $_[ 0 ] );
 }
 
 sub crontab_wday {
-   my $self = shift; defined $self->{crontab_wday} or $self->crontab;
-
-   return $self->{crontab_wday};
+   return shift->_crontab( 'wday', $_[ 0 ] );
 }
 
 sub delete {

@@ -149,11 +149,12 @@ sub _build_ipc_ssh {
    my $self = shift; my $app = $self->app;
 
    return $self->async_factory->new_notifier
-      (  code        => sub { $app->ipc_ssh_handler( @_ ) },
+      (  code        => sub { $app->ipc_ssh_caller( @_ ) },
          desc        => 'ipcssh',
          key         => 'IPCSSH',
          max_calls   => $self->config->max_ssh_worker_calls,
          max_workers => $self->config->max_ssh_workers,
+         on_return   => sub { $app->ipc_ssh_return( @_ ) },
          type        => 'function' );
 }
 

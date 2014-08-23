@@ -170,8 +170,10 @@ sub _job_chooser_search {
 }
 
 sub _job_deflate_crontab {
-   return join SPC, map { $_[ 1 ]->( "crontab_${_}", {
+   my $v = join SPC, map { $_[ 1 ]->( "crontab_${_}", {
       optional => TRUE } ) || NUL } CRONTAB_FIELD_NAMES;
+
+   $v =~ s{ \A \s+ \z }{}mx; return $v;
 }
 
 sub _job_deflate_group {
