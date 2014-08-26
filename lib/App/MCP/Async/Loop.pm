@@ -21,6 +21,15 @@ sub start {
    my $self = shift; (local $self->{cv} = AnyEvent->condvar)->recv; return;
 }
 
+sub start_nb {
+   my ($self, $cb) = @_;
+
+   (local $self->{cv} = AnyEvent->condvar)->cb( sub {
+      $_[ 0 ]->recv; defined $cb and $cb->() } );
+
+   return;
+}
+
 sub stop {
    $_[ 0 ]->{cv}->send; return;
 }

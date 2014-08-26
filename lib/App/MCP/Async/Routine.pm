@@ -4,22 +4,43 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Constants qw( FALSE TRUE );
-use App::MCP::Functions qw( log_leader );
-use Class::Usul::Types  qw( Object );
+use App::MCP::Functions qw( log_leader gen_semaphore_key );
+use Class::Usul::Types  qw( Bool NonZeroPositiveInt Object );
 use IPC::SysV           qw( IPC_CREAT S_IRUSR S_IWUSR );
 use IPC::Semaphore;
 
 extends q(App::MCP::Async::Process);
 
+has 'execute'       => is => 'ro',   isa => Bool, default => FALSE;
+
+has 'is_parent'     => is => 'ro',   isa => Bool, default => TRUE;
+
+has 'semaphore_key' => is => 'lazy', isa => NonZeroPositiveInt,
+   init_arg         => 'semkey', required => TRUE;
+
 # Private attributes
-has '_semaphore' => is => 'lazy', isa => Object, reader => 'semaphore';
+has '_semaphore'    => is => 'lazy', isa => Object, reader => 'semaphore',
+   builder          => sub {
+      my $self = shift;
+      my $key  = $self->semaphore_key;
+      my @args = $self->is_parent ? (2, S_IRUSR | S_IWUSR | IPC_CREAT) : (0, 0);
+      my $s    = IPC::Semaphore->new( $key, @args );
+
+      if ($self->is_parent) {
+         $s->setval( 0, TRUE ); $s->setval( 1, $self->autostart );
+      }
+
+      return $s;
+   };
 
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   $attr->{code} = __loop_while_running( $attr );
-
+   $attr->{semkey} and $attr->{is_parent} = FALSE;
+   $attr->{semkey} or  $attr->{semkey   } = gen_semaphore_key $attr->{log_key};
+   $attr->{code  } =   $attr->{execute  } ? $attr->{code}->( $attr->{semkey} )
+                                          : __loop_while_waiting( $attr );
    return $attr;
 };
 
@@ -27,21 +48,27 @@ before 'BUILD' => sub {
    $_[ 0 ]->semaphore; # Trigger lazy build before process fork
 };
 
-sub DEMOLISH {
-   defined $_[ 0 ]->semaphore and $_[ 0 ]->semaphore->remove; return;
-}
+after 'BUILD' => sub {
+   my $self      = shift;
+   my $sem_key   = sprintf '%x', $self->semaphore_key;
+   my $lead      = log_leader 'debug', $self->log_key, $self->pid;
+   my $id        = $self->semaphore->id;
+   my $is_parent = $self->is_parent;
 
-# Public methods
-sub is_running {
-   return $_[ 0 ]->semaphore->getval( 0 );
-}
+   $self->log->debug( "${lead}Semaphore key ${sem_key} ${id} ${is_parent}" );
+   return;
+};
 
-sub start {
-   $_[ 0 ]->semaphore->setval( 0, TRUE ); return;
-}
+around 'is_running' => sub {
+   my ($orig, $self) = @_;
 
-sub stop {
-   my $self = shift; $self->is_running or return;
+   return $self->execute ? $orig->( $self ) : $self->semaphore->getval( 0 );
+};
+
+around 'stop' => sub {
+   my ($orig, $self) = @_;
+
+   $self->execute and return $orig->( $self ); $self->is_running or return;
 
    my $lead = log_leader 'debug', $self->log_key, $self->pid;
 
@@ -49,6 +76,21 @@ sub stop {
    $self->semaphore->setval( 0, FALSE );
    $self->trigger;
    return;
+};
+
+sub DEMOLISH {
+   $_[ 0 ]->is_parent and defined $_[ 0 ]->semaphore
+                      and $_[ 0 ]->semaphore->remove;
+   return;
+}
+
+# Public methods
+sub await_trigger {
+   $_[ 0 ]->semaphore->op( 1, -1, 0 ); return;
+}
+
+sub start {
+   $_[ 0 ]->semaphore->setval( 0, TRUE ); return;
 }
 
 sub trigger {
@@ -60,35 +102,21 @@ sub trigger {
    return;
 }
 
-# Private methods
-sub _await_trigger {
-   $_[ 0 ]->semaphore->op( 1, -1, 0 ); return;
-}
-
-sub _build__semaphore {
-   my $self = shift;
-   my $id   = 1234 + $self->loop->uuid;
-   my $s    = IPC::Semaphore->new( $id, 2, S_IRUSR | S_IWUSR | IPC_CREAT );
-
-   $s->setval( 0, TRUE ); $s->setval( 1, $self->autostart );
-   return $s;
-}
-
 # Private functions
-sub __loop_while_running {
-   my $attr  = shift; my $code = $attr->{code};
+sub __loop_while_waiting {
+   my $attr = shift; my $code = delete $attr->{code};
 
-   my $after = delete $attr->{after}; my $before = delete $attr->{before};
+   my $before = delete $attr->{before}; my $after = delete $attr->{after};
 
    return sub {
-      my $self = shift; my $rv; $before and $before->( $self );
+      my $self = shift; $before and $before->( $self );
 
       while (TRUE) {
-         $self->_await_trigger; $self->is_running or last; $rv = $code->();
+         $self->await_trigger; $self->is_running or last; $code->( $self );
       }
 
       $after and $after->( $self );
-      return $rv;
+      return;
    };
 }
 

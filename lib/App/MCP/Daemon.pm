@@ -6,7 +6,7 @@ use Moo;
 use App::MCP;
 use App::MCP::Application;
 use App::MCP::Async;
-use App::MCP::Constants    qw( OK TRUE );
+use App::MCP::Constants    qw( NUL OK TRUE );
 use App::MCP::DaemonControl;
 use App::MCP::Functions    qw( env_var log_leader );
 use Class::Usul::Options;
@@ -60,7 +60,7 @@ around 'run_chain' => sub {
       path         => $conf->pathname,
 
       directory    => $conf->appldir,
-      program      => sub { shift; $self->daemon( @_ ) },
+      program      => sub { shift; $self->master_daemon( @_ ) },
       program_args => [],
 
       pid_file     => $conf->rundir->catfile( "${name}.pid" ),
@@ -79,7 +79,7 @@ before 'run' => sub {
 };
 
 # Public methods
-sub daemon {
+sub master_daemon {
    my $self = shift;
    my $loop = $self->loop; $self->_set_program_name;
    my $lead = log_leader 'info', $self->config->log_key;
@@ -94,7 +94,7 @@ sub daemon {
    $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
 
    $log->info( $lead.'Event loop started' );
-   $loop->start; # Blocks here until __terminate is called
+   $loop->start; # Loops here until __terminate is called
    $log->info( $lead.'Stopping event loop' );
 
    $self->clock_tick->stop;
@@ -106,6 +106,34 @@ sub daemon {
 
    $log->info( $lead.'Event loop stopped' );
    exit OK;
+}
+
+sub op_ev_daemon : method {
+   my $self    =  shift;
+   my $log_key =  'OUTPUT';
+   my $sem_key =  $self->next_argv;
+   my $desc    =  'output event daemon';
+   my $lead    =  log_leader 'debug', 'DAEMON';
+   my $log     =  $self->log; $log->debug( "${lead}Starting ${desc}" );
+   my $loop    =  $self->loop; $self->_set_program_name( 'Op_Ev_Daemon' );
+
+   my $app; my $ipc_ssh; my $handler = $self->async_factory->new_notifier
+      ( before => sub { $app = $self->app; $ipc_ssh = $self->ipc_ssh },
+        code   => sub { $app->output_handler( $log_key, $ipc_ssh ) },
+        after  => sub { $ipc_ssh->stop },
+        desc   => 'output event handler',
+        key    => $log_key,
+        semkey => $sem_key,
+        type   => 'routine', );
+
+   $loop->watch_signal( QUIT => sub { __terminate( $loop ) } );
+   $loop->watch_signal( TERM => sub { __terminate( $loop ) } );
+
+   $loop->start; # Loops here until __terminate is called
+   $handler->stop;
+   $loop->watch_child( 0 );
+   $log->debug( $lead.(ucfirst $desc).' stopped' );
+   return OK;
 }
 
 # Private methods
@@ -133,17 +161,19 @@ sub _build_cron {
 }
 
 sub _build_ip_ev_hndlr {
-   my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
+   my $self = shift; my $app = $self->app;
+
+   my $daemon_pid = $PID; my $key = 'INPUT';
 
    return $self->async_factory->new_notifier
-      (  code => sub { $app->input_handler( $daemon_pid ) },
+      (  code => sub { $app->input_handler( $key, $daemon_pid ) },
          desc => 'input event handler',
-         key  => 'INPUT',
+         key  => $key,
          type => 'routine' );
 }
 
 sub _build_ipc_ssh {
-   my $self = shift; my $app = $self->app;
+   my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
 
    return $self->async_factory->new_notifier
       (  channels    => 'io',
@@ -167,14 +197,16 @@ sub _build_listener {
 }
 
 sub _build_op_ev_hndlr {
-   my $self = shift; my $app = $self->app; my $ipc_ssh = $self->ipc_ssh;
+   my $self = shift; my $app = $self->app; my $conf = $self->config;
+
+   my $flag = $self->debug ? '-D' : NUL; my $prog = $conf->pathname;
 
    return $self->async_factory->new_notifier
-      (  after  => sub { $ipc_ssh->stop },
-         code   => sub { $app->output_handler( $ipc_ssh ) },
-         desc   => 'output event handler',
-         key    => 'OUTPUT',
-         type   => 'routine' );
+      (  code    => sub { __exec( $prog, $flag, 'op_ev_daemon', (shift) ) },
+         desc    => 'output event daemon',
+         execute => TRUE,
+         key     => $conf->log_key,
+         type    => 'routine' );
 }
 
 sub _get_listener_sub {
@@ -203,7 +235,7 @@ sub _hangup_handler { # TODO: On reload - stop, Class::Unload; require; start
 sub _set_program_name {
    my $self = shift;
    my $conf = $self->config;
-   my $key  = ucfirst lc $conf->log_key;
+   my $key  = shift || ucfirst lc $conf->log_key;
 
    $PROGRAM_NAME = $conf->appclass."::${key} ".$conf->pathname;
    return;
@@ -216,6 +248,10 @@ sub _stdio_file {
 }
 
 # Private functions
+sub __exec {
+   my @args = @_; return sub { exec $^X, @args };
+}
+
 sub __terminate {
    my $loop = shift;
 

@@ -4,13 +4,15 @@ use strictures;
 use parent 'Exporter::Tiny';
 
 use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC );
-use Class::Usul::Functions qw( pad split_on__ throw );
+use Class::Usul::Functions qw( create_token pad split_on__ throw );
+use Digest::MD5            qw( md5 );
 use English                qw( -no_match_vars );
 
-our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
-                       log_leader qualify_job_name read_exactly
-                       recv_arg_error recv_rv_error
-                       trigger_input_handler trigger_output_handler ) );
+our @EXPORT_OK = ( qw( env_var extract_lang gen_semaphore_key
+                       get_hashed_pw get_salt log_leader
+                       qualify_job_name read_exactly recv_arg_error
+                       recv_rv_error trigger_input_handler
+                       trigger_output_handler ) );
 
 # Public functions
 sub env_var ($;$) {
@@ -19,6 +21,10 @@ sub env_var ($;$) {
 
 sub extract_lang ($) {
    my $v = shift; return $v ? (split_on__ $v)[ 0 ] : LANG;
+}
+
+sub gen_semaphore_key ($) {
+   return hex( substr create_token( md5( $_[ 0 ] ) ), 0, 7 );
 }
 
 sub get_hashed_pw ($) {

@@ -25,13 +25,13 @@ has 'worker' => is => 'lazy', isa => NonEmptySimpleStr,
    builder   => sub { $_[ 0 ]->config->appclass.'::Worker' };
 
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object, builder => sub {
-   my $self = shift; my $extra = $self->config->connect_params;
-   $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) },
-   reader           => 'schema';
+has '_schema'       => is => 'lazy', isa => Object, reader => 'schema',
+   builder          => sub {
+      my $self = shift; my $extra = $self->config->connect_params;
+      $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) };
 
-has '_schema_class' => is => 'lazy', isa => LoadableClass, builder => sub {
-   $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },
+has '_schema_class' => is => 'lazy', isa => LoadableClass,
+   builder          => sub { $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },
    reader           => 'schema_class';
 
 with q(Class::Usul::TraitFor::ConnectInfo);
@@ -63,7 +63,7 @@ sub cron_job_handler {
 }
 
 sub input_handler {
-   my ($self, $sig_hndlr_pid) = @_; my $trigger = TRUE;
+   my ($self, $key, $sig_hndlr_pid) = @_; my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
@@ -93,12 +93,22 @@ sub input_handler {
    return OK;
 }
 
-sub ipc_ssh_caller {
-   my ($self, $args) = @_;
+sub ipc_ssh_add_provisioning {
+   my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
 
-   my $failed = FALSE;
-   my $log    = $self->log;
-   my $runid  = $args->{runid};
+   $self->ipc_ssh_provisioned( "${user}\@${host}" ) and return;
+   $self->log->debug( "Add provisioning ${user}\@${host} ${PID}" );
+
+   my $appclass  = $self->config->appclass;  my $calls  = $args->{calls};
+   my $installer = 'ipc_ssh_install_worker'; my $worker = $self->worker;
+
+   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
+   return;
+}
+
+sub ipc_ssh_caller {
+   my ($self, $runid, $args) = @_; my $failed = FALSE; my $log = $self->log;
+
    my $logger = sub {
       my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
 
@@ -152,20 +162,6 @@ sub ipc_ssh_provisioned {
    return $provisioned->{ $k };
 }
 
-sub ipc_ssh_provisioning {
-   my ($self, $calls, $key) = @_;
-
-   $self->log->debug( $key.' '.$PID );
-   $self->ipc_ssh_provisioned( $key ) and return;
-
-   my $appclass  = $self->config->appclass;
-   my $installer = 'ipc_ssh_install_worker';
-   my $worker    = $self->worker;
-
-   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
-   return;
-}
-
 sub ipc_ssh_return {
    my ($self, $runid, $results) = @_; $results or return;
 
@@ -178,7 +174,7 @@ sub ipc_ssh_return {
 }
 
 sub output_handler {
-   my ($self, $ipc_ssh) = @_; my $trigger = TRUE;
+   my ($self, $key, $ipc_ssh) = @_; my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
@@ -277,12 +273,11 @@ sub _start_job {
                  worker    => $self->worker, };
    my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
    my $lead  = log_leader 'debug', 'START', $runid;
-   my $key   = "${user}\@${host}";
 
-   $self->log->debug( $lead.$job->fqjn." ${key} ${cmd}" );
-   $self->ipc_ssh_provisioning( $calls, $key );
-   $args = { calls => $calls, host => $host, runid => $runid, user => $user, };
-   $ipc_ssh->call( $args ); # Calls ipc_ssh_handler
+   $self->log->debug( $lead.$job->fqjn." ${user}\@${host} ${cmd}" );
+   $args = { calls => $calls, host => $host, user => $user, };
+   $self->ipc_ssh_add_provisioning( $args );
+   $ipc_ssh->call( $runid, $args ); # Calls ipc_ssh_caller
    return ($runid, $token);
 }
 

@@ -11,7 +11,6 @@ BEGIN {
 }
 
 use strictures::defanged; # Make strictures the same as use strict warnings
-use strictures;
 
 use App::MCP::Daemon;
 

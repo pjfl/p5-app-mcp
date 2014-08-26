@@ -114,9 +114,9 @@ sub _call_handler {
          }
 
          try {
-            $args  = $args ? thaw $args : [ { runid => $PID } ];
+            $args  = $args ? thaw $args : [ $PID, {} ];
             $rv    = $code->( @{ $args } );
-            $writer and __send_rv( $writer, $log, $args->[ 0 ]->{runid}, $rv );
+            $writer and __send_rv( $writer, $log, $args->[ 0 ], $rv );
          }
          catch { $log->error( $lead.$_ ) };
 
@@ -176,12 +176,12 @@ sub __nonblocking_write_pipe_pair {
 sub __send_rv {
    my ($writer, $log, @args) = @_;
 
-   my $rec  = nfreeze [ @args ];
-   my $buf  = pack( 'I', length $rec ).$rec;
-   my $len  = $writer->syswrite( $buf, length $buf );
-   my $lead = log_leader 'error', 'SENDRV', $args[ 0 ];
+   my $rec = nfreeze [ @args ];
+   my $buf = pack( 'I', length $rec ).$rec;
+   my $len = $writer->syswrite( $buf, length $buf );
 
-   defined $len or $log->error( $lead.$OS_ERROR );
+   defined $len or $log->error
+      ( (log_leader 'error', 'SENDRV', $args[ 0 ]).$OS_ERROR );
 
    return TRUE;
 }

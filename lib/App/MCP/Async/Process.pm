@@ -40,9 +40,9 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my $self = shift;
+   my $self = shift; my $pid = $self->pid; # Start child process
 
-   $self->on_exit   and $self->loop->watch_child( $self->pid, $self->on_exit );
+   $self->on_exit   and $self->loop->watch_child( $pid, $self->on_exit );
    $self->on_return and $self->set_return_callback( $self->on_return );
    return;
 }
@@ -61,9 +61,9 @@ sub send {
    my $rec  = nfreeze [ @args ];
    my $buf  = pack( 'I', length $rec ).$rec;
    my $len  = $self->writer->syswrite( $buf, length $buf );
-   my $lead = log_leader 'error', 'SNDARG', $args[ 0 ];
 
-   defined $len or $self->log->error( $lead.$OS_ERROR );
+   defined $len or $self->log->error
+      ( (log_leader 'error', 'SNDARG', $args[ 0 ]).$OS_ERROR );
    return TRUE;
 }
 
