@@ -78,13 +78,13 @@ sub set_return_callback {
       my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
       if (defined ($rv = recv_rv_error( $log, $pid, $red ))) {
-         $loop->unwatch_read_handle( $reader ); return $rv;
+         $loop->unwatch_read_handle( $reader ); return;
       }
 
       $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
 
       if (defined ($rv = recv_rv_error( $log, $pid, $red ))) {
-         $loop->unwatch_read_handle( $reader ); return $rv;
+         $loop->unwatch_read_handle( $reader ); return;
       }
 
       try   { $code->( @{ $args ? thaw $args : [] } ) }

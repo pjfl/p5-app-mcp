@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Async::Process;
 use App::MCP::Functions    qw( nonblocking_write_pipe_pair
-                               read_exactly recv_arg_error );
+                               read_exactly recv_arg_error send_rv );
 use App::MCP::Constants    qw( FALSE TRUE );
 use App::MCP::Functions    qw( log_leader );
 use Class::Usul::Functions qw( bson64id );
@@ -21,7 +21,7 @@ has 'child'      => is => 'lazy', isa => Object,  builder => sub {
 
 has 'child_args' => is => 'lazy', isa => HashRef, default => sub { {} };
 
-has 'is_running' => is => 'rwp',  isa => Bool, default => TRUE;
+has 'is_running' => is => 'rwp',  isa => Bool,    default => TRUE;
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -35,8 +35,9 @@ around 'BUILDARGS' => sub {
       my $v = delete $args->{ $k }; defined $v and $attr->{ $k } = $v;
    }
 
+   $args->{retn_pipe } = nonblocking_write_pipe_pair if ($args->{on_return});
    $args->{call_pipe } = nonblocking_write_pipe_pair;
-   $args->{code      } = __call_handler( $args );
+   $args->{code      } = __set_call_handler( $args );
    $attr->{child_args} = $args;
    return $attr;
 };
@@ -62,37 +63,40 @@ sub _build_pid {
 }
 
 # Private functions
-sub __call_handler {
+sub __set_call_handler {
    my $args   = shift;
    my $code   = $args->{code};
    my $before = delete $args->{before};
-   my $reader = $args->{call_pipe}->[ 0 ];
+   my $after  = delete $args->{after };
+   my $reader = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
+   my $writer = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
 
    return sub {
-      my $self = shift; my $lead = log_leader 'error', 'EXCODE', $PID;
+      my $self = shift; $before and $before->( $self );
 
-      my $log  = $self->log; $before and $before->( $self );
+      my $log  = $self->log; my $lead = log_leader 'error', 'EXCODE', $PID;
 
-      while (TRUE) {
-         my $args = undef; my $rv = undef;
+      $reader and $self->loop->watch_read_handle( $reader, sub {
+         my $red = read_exactly( $reader, my $lenbuffer, 4 ); my $rv;
 
-         if ($reader) {
-            my $red = read_exactly( $reader, my $lenbuffer, 4 );
-
-            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
-            $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
-         }
+         defined ($rv = recv_arg_error( $log, $PID, $red )) and return;
+         $red = read_exactly( $reader, my $param, unpack( 'I', $lenbuffer ) );
+         defined ($rv = recv_arg_error( $log, $PID, $red )) and return;
 
          try {
-            $args = $args ? thaw $args : [ $PID, {} ];
-            $rv   = $code->( @{ $args } );
+            $param = $param ? thaw $param : [ $PID, {} ];
+            $rv    = $code->( @{ $param } );
+            $writer and send_rv( $writer, $log, $param->[ 0 ], $rv );
          }
          catch { $log->error( $lead.$_ ) };
-      }
 
+         return;
+      } );
+
+      $self->loop->start;
+      $after and $after->( $self );
       return;
-   }
+   };
 }
 
 1;

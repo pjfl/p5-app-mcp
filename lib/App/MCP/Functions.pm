@@ -7,11 +7,12 @@ use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC TRUE );
 use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
 use Fcntl                  qw( F_SETFL O_NONBLOCK );
+use Storable               qw( nfreeze );
 
 our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
                        log_leader nonblocking_write_pipe_pair
                        qualify_job_name read_exactly recv_arg_error
-                       recv_rv_error trigger_input_handler
+                       recv_rv_error send_rv trigger_input_handler
                        trigger_output_handler ) );
 
 # Public functions
@@ -79,6 +80,19 @@ sub recv_arg_error ($$$) {
 
 sub recv_rv_error ($$$) {
    my ($log, $id, $red) = @_; return __recv_error( $log, 'RECVRV', $id, $red );
+}
+
+sub send_rv ($$;@) {
+   my ($writer, $log, @args) = @_;
+
+   my $rec = nfreeze [ @args ];
+   my $buf = pack( 'I', length $rec ).$rec;
+   my $len = $writer->syswrite( $buf, length $buf );
+
+   defined $len or $log->error
+      ( (log_leader 'error', 'SENDRV', $args[ 0 ]).$OS_ERROR );
+
+   return TRUE;
 }
 
 sub trigger_input_handler ($) {

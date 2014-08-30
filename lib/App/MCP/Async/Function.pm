@@ -7,12 +7,12 @@ use Moo;
 use App::MCP::Async::Process;
 use App::MCP::Constants    qw( FALSE OK TRUE );
 use App::MCP::Functions    qw( log_leader nonblocking_write_pipe_pair
-                               read_exactly recv_arg_error );
+                               read_exactly recv_arg_error send_rv );
 use Class::Usul::Functions qw( bson64id throw );
 use Class::Usul::Types     qw( ArrayRef Bool HashRef
                                NonZeroPositiveInt PositiveInt SimpleStr );
 use English                qw( -no_match_vars );
-use Storable               qw( nfreeze thaw );
+use Storable               qw( thaw );
 use Try::Tiny;
 
 extends q(App::MCP::Async::Base);
@@ -26,11 +26,11 @@ has 'max_calls'      => is => 'ro',  isa => PositiveInt, default => 0;
 
 has 'max_workers'    => is => 'ro',  isa => NonZeroPositiveInt, default => 1;
 
-has 'worker_args'    => is => 'ro',  isa => HashRef, default => sub { {} };
+has 'worker_args'    => is => 'ro',  isa => HashRef,  default => sub { {} };
 
 has 'worker_index'   => is => 'ro',  isa => ArrayRef, default => sub { [] };
 
-has 'worker_objects' => is => 'ro',  isa => HashRef, default => sub { {} };
+has 'worker_objects' => is => 'ro',  isa => HashRef,  default => sub { {} };
 
 # Construction
 around 'BUILDARGS' => sub {
@@ -118,7 +118,7 @@ sub _call_handler {
          try {
             $args  = $args ? thaw $args : [ $PID, {} ];
             $rv    = $code->( @{ $args } );
-            $writer and __send_rv( $writer, $log, $args->[ 0 ], $rv );
+            $writer and send_rv( $writer, $log, $args->[ 0 ], $rv );
          }
          catch { $log->error( $lead.$_ ) };
       }
@@ -162,20 +162,6 @@ sub _next_worker_index {
    $worker++; $worker >= $self->max_workers and $worker = 0;
 
    return $worker;
-}
-
-# Private functions
-sub __send_rv {
-   my ($writer, $log, @args) = @_;
-
-   my $rec = nfreeze [ @args ];
-   my $buf = pack( 'I', length $rec ).$rec;
-   my $len = $writer->syswrite( $buf, length $buf );
-
-   defined $len or $log->error
-      ( (log_leader 'error', 'SENDRV', $args[ 0 ]).$OS_ERROR );
-
-   return TRUE;
 }
 
 1;
