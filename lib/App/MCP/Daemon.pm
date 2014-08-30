@@ -8,7 +8,7 @@ use App::MCP::Application;
 use App::MCP::Async;
 use App::MCP::Constants    qw( NUL OK TRUE );
 use App::MCP::DaemonControl;
-use App::MCP::Functions    qw( env_var log_leader );
+use App::MCP::Functions    qw( env_var log_leader terminate );
 use Class::Usul::Options;
 use English                qw( -no_match_vars );
 use File::DataClass::Types qw( NonZeroPositiveInt Object );
@@ -88,13 +88,13 @@ sub master_daemon {
    $self->listener; $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->clock_tick;
 
    $loop->watch_signal( HUP  => sub { $self->_hangup_handler   } );
-   $loop->watch_signal( QUIT => sub { __terminate( $loop )     } );
-   $loop->watch_signal( TERM => sub { __terminate( $loop )     } );
+   $loop->watch_signal( QUIT => sub { terminate $loop          } );
+   $loop->watch_signal( TERM => sub { terminate $loop          } );
    $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->call } );
    $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->call } );
 
    $log->info( $lead.'Event loop started' );
-   $loop->start; # Loops here until __terminate is called
+   $loop->start; # Loops here until terminate is called
    $log->info( $lead.'Stopping event loop' );
 
    $self->cron->stop;
@@ -146,13 +146,15 @@ sub _build_ip_ev_hndlr {
 }
 
 sub _build_ipc_ssh {
-   my $self = shift; my $app = $self->app; my $conf = $self->config;
+   my $self = shift; my $app = $self->app;
+
+   my $conf = $self->config; my $log_key = 'IPCSSH';
 
    return $self->async_factory->new_notifier
       (  channels    => 'io',
-         code        => sub { $app->ipc_ssh_caller( @_ ) },
+         code        => sub { $app->ipc_ssh_caller( $log_key, @_ ) },
          desc        => 'ipcssh',
-         key         => 'IPCSSH',
+         key         => $log_key,
          max_calls   => $conf->max_ssh_worker_calls,
          max_workers => $conf->max_ssh_workers,
          type        => 'function' );
@@ -205,27 +207,13 @@ sub _hangup_handler { # TODO: On reload - stop, Class::Unload; require; start
 }
 
 sub _set_program_name {
-   my $self = shift;
-   my $conf = $self->config;
-   my $key  = shift || ucfirst lc $conf->log_key;
-
-   $PROGRAM_NAME = $conf->appclass."::${key} ".$conf->pathname;
-   return;
+   $PROGRAM_NAME = $_[ 0 ]->config->pathname->basename.' master'; return;
 }
 
 sub _stdio_file {
    my ($self, $extn, $name) = @_; $name ||= $self->config->name;
 
    return $self->file->tempdir->catfile( "${name}.${extn}" );
-}
-
-# Private functions
-sub __terminate {
-   my $loop = shift;
-
-   $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
-   $loop->stop;
-   return;
 }
 
 1;

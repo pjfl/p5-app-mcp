@@ -11,6 +11,7 @@ use Class::Usul::Types     qw( BaseType LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object );
 use English                qw( -no_match_vars );
 use IPC::PerlSSH;
+use Scalar::Util           qw( weaken );
 use Try::Tiny;
 
 # Public attributes
@@ -107,42 +108,52 @@ sub ipc_ssh_add_provisioning {
 }
 
 sub ipc_ssh_caller {
-   my ($self, $runid, $args) = @_; my $failed = FALSE; my $log = $self->log;
+   my ($self, $log_key, $runid, $args) = @_; my $log = $self->log;
 
-   my $logger = sub {
-      my ($level, $key, $msg) = @_; my $lead = log_leader $level, $key, $runid;
-
-      return $log->$level( $lead.($msg // 'undef') );
-   };
    my $ips    = IPC::PerlSSH->new
       ( Host       => $args->{host},
         User       => $args->{user},
         SshOptions => [ '-i', $self->config->identity_file ], );
+   my $logger = sub {
+      my ($level, $msg) = @_; my $lead = log_leader $level, $log_key, $runid;
+
+      return $log->$level( $lead.($msg // 'Undefined message') );
+   };
+   my $failed = FALSE;
 
    try   { $ips->use_library( $self->config->library_class ) }
-   catch { $logger->( 'error', 'STORE', $_ ); $failed = TRUE };
+   catch { $logger->( 'error', "Store failed: ${_}" ); $failed = TRUE };
 
    $failed and return FALSE; my $results = {};
 
    while (defined (my $call = shift @{ $args->{calls} })) {
-      my $result;
+      my $res;
 
-      try   { $result = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
-      catch { $logger->( 'error', 'CALL', $_ ); $failed = TRUE };
+      try   { $res = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
+      catch { $logger->( 'error', "Call failed: ${_}" ); $failed = TRUE };
 
-      $failed and return FALSE; $logger->( 'debug', 'CALL', $result );
+      $failed and return FALSE; $logger->( 'debug', "Call succeeded: ${res}" );
 
       my $method = $call->[ 2 ]; defined $method
-         and $self->$method( $args, $results, $call, $result );
+         and $self->$method( $args, $results, $call, $res );
    }
 
    return $results;
 }
 
 sub ipc_ssh_install_callback {
-   my ($self, $ipc_ssh) = @_;
+   my ($self, $ipc_ssh) = @_; weaken( $self );
 
-   $ipc_ssh->set_return_callback( sub { $self->ipc_ssh_return( @_ ) } );
+   $ipc_ssh->set_return_callback( sub {
+      my ($runid, $results) = @_; $results or return;
+
+      my ($lead, $key); $key = $results->{provisioned}
+         and $self->ipc_ssh_provisioned( $key, TRUE )
+         and $lead = log_leader( 'info', 'IPCSSH', $PID )
+         and $self->log->info( "${lead}Provisioned ${runid} ${key}" );
+
+      return;
+   } );
 
    return;
 }
@@ -168,17 +179,6 @@ sub ipc_ssh_provisioned {
 
    defined $v and $provisioned->{ $k } = $v;
    return $provisioned->{ $k };
-}
-
-sub ipc_ssh_return {
-   my ($self, $runid, $results) = @_; $results or return;
-
-   my ($lead, $key); $key = $results->{provisioned}
-      and $self->ipc_ssh_provisioned( $key, TRUE )
-      and $lead = log_leader( 'info', 'IPCSSH', $PID )
-      and $self->log->info( "${lead}Provisioned ${runid} ${key}" );
-
-   return;
 }
 
 sub output_handler {

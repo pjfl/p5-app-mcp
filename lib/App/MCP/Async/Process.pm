@@ -3,14 +3,14 @@ package App::MCP::Async::Process;
 use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants    qw( TRUE );
-use App::MCP::Functions    qw( log_leader read_exactly recv_rv_error );
+use App::MCP::Constants    qw( SPC TRUE );
+use App::MCP::Functions    qw( log_leader read_exactly recv_rv_error send_msg );
 use Class::Usul::Functions qw( is_coderef throw );
 use Class::Usul::Types     qw( ArrayRef CodeRef FileHandle
                                NonEmptySimpleStr Undef );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( weaken );
-use Storable               qw( nfreeze thaw );
+use Storable               qw( thaw );
 use Try::Tiny;
 
 extends q(App::MCP::Async::Base);
@@ -53,18 +53,7 @@ sub is_running {
 }
 
 sub send {
-   my ($self, @args) = @_;
-
-   $self->writer or throw error => 'Process [_1] no writer',
-                          args  => [ $args[ 0 ] ];
-
-   my $rec  = nfreeze [ @args ];
-   my $buf  = pack( 'I', length $rec ).$rec;
-   my $len  = $self->writer->syswrite( $buf, length $buf );
-
-   defined $len or $self->log->error
-      ( (log_leader 'error', 'SNDARG', $args[ 0 ]).$OS_ERROR );
-   return TRUE;
+   my $self = shift; return send_msg( $self->writer, $self->log, 'SNDARG', @_ );
 }
 
 sub set_return_callback {
@@ -111,7 +100,7 @@ sub _build_pid {
    my $self = shift; weaken( $self );
    my $temp = $self->file->tempdir;
    my $args = { async => TRUE, debug => $self->debug };
-   my $name = $self->config->appclass.'::'.(ucfirst lc $self->log_key);
+   my $name = $self->config->pathname->basename.SPC.(lc $self->log_key);
    my $cmd  = (is_coderef $self->code)
             ? [ sub { $PROGRAM_NAME = $name; $self->code->( $self ) } ]
             : $self->code;

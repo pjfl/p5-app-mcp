@@ -4,8 +4,8 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Async::Process;
-use App::MCP::Functions    qw( nonblocking_write_pipe_pair
-                               read_exactly recv_arg_error send_rv );
+use App::MCP::Functions    qw( nonblocking_write_pipe_pair read_exactly
+                               recv_arg_error send_msg terminate );
 use App::MCP::Constants    qw( FALSE TRUE );
 use App::MCP::Functions    qw( log_leader );
 use Class::Usul::Functions qw( bson64id );
@@ -37,7 +37,7 @@ around 'BUILDARGS' => sub {
 
    $args->{retn_pipe } = nonblocking_write_pipe_pair if ($args->{on_return});
    $args->{call_pipe } = nonblocking_write_pipe_pair;
-   $args->{code      } = __set_call_handler( $args );
+   $args->{code      } = __call_handler( $args );
    $attr->{child_args} = $args;
    return $attr;
 };
@@ -63,7 +63,7 @@ sub _build_pid {
 }
 
 # Private functions
-sub __set_call_handler {
+sub __call_handler {
    my $args   = shift;
    my $code   = $args->{code};
    my $before = delete $args->{before};
@@ -74,9 +74,11 @@ sub __set_call_handler {
    return sub {
       my $self = shift; $before and $before->( $self );
 
-      my $log  = $self->log; my $lead = log_leader 'error', 'EXCODE', $PID;
+      my $log  = $self->log; my $loop = $self->loop;
 
-      $reader and $self->loop->watch_read_handle( $reader, sub {
+      my $lead = log_leader 'error', 'EXCODE', $PID;
+
+      $reader and $loop->watch_read_handle( $reader, sub {
          my $red = read_exactly( $reader, my $lenbuffer, 4 ); my $rv;
 
          defined ($rv = recv_arg_error( $log, $PID, $red )) and return;
@@ -86,15 +88,15 @@ sub __set_call_handler {
          try {
             $param = $param ? thaw $param : [ $PID, {} ];
             $rv    = $code->( @{ $param } );
-            $writer and send_rv( $writer, $log, $param->[ 0 ], $rv );
+            $writer and send_msg( $writer, $log, 'SENDRV', $param->[ 0 ], $rv );
          }
          catch { $log->error( $lead.$_ ) };
 
          return;
       } );
 
-      $self->loop->start;
-      $after and $after->( $self );
+      $loop->watch_signal( TERM => sub { terminate $loop } );
+      $loop->start; $after and $after->( $self );
       return;
    };
 }

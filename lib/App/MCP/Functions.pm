@@ -12,8 +12,8 @@ use Storable               qw( nfreeze );
 our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
                        log_leader nonblocking_write_pipe_pair
                        qualify_job_name read_exactly recv_arg_error
-                       recv_rv_error send_rv trigger_input_handler
-                       trigger_output_handler ) );
+                       recv_rv_error send_msg terminate
+                       trigger_input_handler trigger_output_handler ) );
 
 # Public functions
 sub env_var ($;$) {
@@ -82,17 +82,27 @@ sub recv_rv_error ($$$) {
    my ($log, $id, $red) = @_; return __recv_error( $log, 'RECVRV', $id, $red );
 }
 
-sub send_rv ($$;@) {
-   my ($writer, $log, @args) = @_;
+sub send_msg ($$$;@) {
+   my ($writer, $log, $key, @args) = @_; $args[ 0 ] ||= $PID;
+
+   $writer or throw error => 'Process [_1] no writer', args  => [ $args[ 0 ] ];
 
    my $rec = nfreeze [ @args ];
    my $buf = pack( 'I', length $rec ).$rec;
    my $len = $writer->syswrite( $buf, length $buf );
 
    defined $len or $log->error
-      ( (log_leader 'error', 'SENDRV', $args[ 0 ]).$OS_ERROR );
+      ( (log_leader 'error', $key, $args[ 0 ]).$OS_ERROR );
 
    return TRUE;
+}
+
+sub terminate ($) {
+   my $loop = shift;
+
+   $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
+   $loop->stop;
+   return;
 }
 
 sub trigger_input_handler ($) {

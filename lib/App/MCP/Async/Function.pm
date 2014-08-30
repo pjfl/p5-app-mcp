@@ -7,7 +7,7 @@ use Moo;
 use App::MCP::Async::Process;
 use App::MCP::Constants    qw( FALSE OK TRUE );
 use App::MCP::Functions    qw( log_leader nonblocking_write_pipe_pair
-                               read_exactly recv_arg_error send_rv );
+                               read_exactly recv_arg_error send_msg );
 use Class::Usul::Functions qw( bson64id throw );
 use Class::Usul::Types     qw( ArrayRef Bool HashRef
                                NonZeroPositiveInt PositiveInt SimpleStr );
@@ -90,43 +90,6 @@ sub _build_pid {
    return $_[ 0 ]->loop->uuid;
 }
 
-sub _call_handler {
-   my ($self, $args) = @_;
-
-   my $log       = $self->log;
-   my $max_calls = $self->max_calls;
-   my $reader    = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
-   my $writer    = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
-   my $code      = $args->{code};
-
-   return sub {
-      my $count = 0; my $lead = log_leader 'error', 'EXCODE', $PID;
-
-      while (TRUE) {
-         my $args = undef; my $rv = undef;
-
-         $max_calls and ++$count > $max_calls and last;
-
-         if ($reader) {
-            my $red = read_exactly( $reader, my $lenbuffer, 4 );
-
-            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
-            $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
-         }
-
-         try {
-            $args  = $args ? thaw $args : [ $PID, {} ];
-            $rv    = $code->( @{ $args } );
-            $writer and send_rv( $writer, $log, $args->[ 0 ], $rv );
-         }
-         catch { $log->error( $lead.$_ ) };
-      }
-
-      return;
-   }
-}
-
 sub _new_worker {
    my ($self, $index) = @_; my $args = { %{ $self->worker_args } };
 
@@ -136,7 +99,8 @@ sub _new_worker {
       and $args->{call_pipe} = nonblocking_write_pipe_pair;
   ($self->channels =~ m{ o }mx or exists $args->{on_return})
       and $args->{retn_pipe} = nonblocking_write_pipe_pair;
-   $args->{code       } = $self->_call_handler( $args );
+   $args->{max_calls  } = $self->max_calls;
+   $args->{code       } = __call_handler( $args );
    $args->{description} = (lc $self->log_key)." worker ${index}";
    $args->{log_key    } = 'WORKER';
    $args->{on_exit    } = sub { delete $workers->{ $_[ 0 ] }; $on_exit->( @_ )};
@@ -162,6 +126,40 @@ sub _next_worker_index {
    $worker++; $worker >= $self->max_workers and $worker = 0;
 
    return $worker;
+}
+
+# Private functions
+sub __call_handler {
+   my $args      = shift;
+   my $code      = $args->{code};
+   my $reader    = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
+   my $writer    = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
+   my $max_calls = $args->{max_calls};
+
+   return sub {
+      my $self = shift; my $count = 0;
+
+      my $lead = log_leader 'error', 'EXCODE', $PID; my $log = $self->log;
+
+      while (TRUE) {
+         $max_calls and ++$count > $max_calls and last;
+
+         my $red = read_exactly( $reader, my $lenbuffer, 4 ); my $rv;
+
+         defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
+         $red = read_exactly( $reader, my $param, unpack( 'I', $lenbuffer ) );
+         defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
+
+         try {
+            $param = $param ? thaw $param : [ $PID, {} ];
+            $rv    = $code->( @{ $param } );
+            $writer and send_msg( $writer, $log, 'SENDRV', $param->[ 0 ], $rv );
+         }
+         catch { $log->error( $lead.$_ ) };
+      }
+
+      return;
+   }
 }
 
 1;
