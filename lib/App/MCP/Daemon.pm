@@ -87,53 +87,26 @@ sub master_daemon {
 
    $self->listener; $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->clock_tick;
 
-   $loop->watch_signal( HUP  => sub { $self->_hangup_handler      } );
-   $loop->watch_signal( QUIT => sub { __terminate( $loop )        } );
-   $loop->watch_signal( TERM => sub { __terminate( $loop )        } );
-   $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->trigger } );
-   $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->trigger } );
+   $loop->watch_signal( HUP  => sub { $self->_hangup_handler   } );
+   $loop->watch_signal( QUIT => sub { __terminate( $loop )     } );
+   $loop->watch_signal( TERM => sub { __terminate( $loop )     } );
+   $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->call } );
+   $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->call } );
 
    $log->info( $lead.'Event loop started' );
    $loop->start; # Loops here until __terminate is called
    $log->info( $lead.'Stopping event loop' );
 
-   $self->clock_tick->stop;
    $self->cron->stop;
+   $self->ipc_ssh->stop;
+   $self->listener->stop;
+   $self->clock_tick->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;
-   $self->listener->stop;
    $loop->watch_child( 0 );
 
    $log->info( $lead.'Event loop stopped' );
    exit OK;
-}
-
-sub op_ev_daemon : method {
-   my $self    =  shift;
-   my $log_key =  'OUTPUT';
-   my $sem_key =  $self->next_argv;
-   my $desc    =  'output event daemon';
-   my $lead    =  log_leader 'debug', 'DAEMON';
-   my $log     =  $self->log; $log->debug( "${lead}Starting ${desc}" );
-   my $loop    =  $self->loop; $self->_set_program_name( 'Op_Ev_Daemon' );
-
-   my $app; my $ipc_ssh; my $handler = $self->async_factory->new_notifier
-      ( before => sub { $app = $self->app; $ipc_ssh = $self->ipc_ssh },
-        code   => sub { $app->output_handler( $log_key, $ipc_ssh ) },
-        after  => sub { $ipc_ssh->stop },
-        desc   => 'output event handler',
-        key    => $log_key,
-        semkey => $sem_key,
-        type   => 'routine', );
-
-   $loop->watch_signal( QUIT => sub { __terminate( $loop ) } );
-   $loop->watch_signal( TERM => sub { __terminate( $loop ) } );
-
-   $loop->start; # Loops here until __terminate is called
-   $handler->stop;
-   $loop->watch_child( 0 );
-   $log->debug( $lead.(ucfirst $desc).' stopped' );
-   return OK;
 }
 
 # Private methods
@@ -141,7 +114,7 @@ sub _build_clock_tick {
    my $self = shift; my $cron = $self->cron;
 
    return $self->async_factory->new_notifier
-      (  code     => sub { $cron->trigger },
+      (  code     => sub { $cron->call },
          interval => $self->config->clock_tick_interval,
          desc     => 'clock tick handler',
          key      => 'CLOCK',
@@ -151,38 +124,37 @@ sub _build_clock_tick {
 sub _build_cron {
    my $self = shift; my $app = $self->app;
 
-   my $daemon_pid = $PID; my $key = 'CRON';
+   my $daemon_pid = $PID; my $log_key = 'CRON';
 
    return $self->async_factory->new_notifier
-      (  code => sub { $app->cron_job_handler( $key, $daemon_pid ) },
+      (  code => sub { $app->cron_job_handler( $log_key, $daemon_pid ) },
          desc => 'cron job handler',
-         key  => $key,
+         key  => $log_key,
          type => 'routine' );
 }
 
 sub _build_ip_ev_hndlr {
    my $self = shift; my $app = $self->app;
 
-   my $daemon_pid = $PID; my $key = 'INPUT';
+   my $daemon_pid = $PID; my $log_key = 'INPUT';
 
    return $self->async_factory->new_notifier
-      (  code => sub { $app->input_handler( $key, $daemon_pid ) },
+      (  code => sub { $app->input_handler( $log_key, $daemon_pid ) },
          desc => 'input event handler',
-         key  => $key,
+         key  => $log_key,
          type => 'routine' );
 }
 
 sub _build_ipc_ssh {
-   my $self = shift; my $app = $self->app; my $daemon_pid = $PID;
+   my $self = shift; my $app = $self->app; my $conf = $self->config;
 
    return $self->async_factory->new_notifier
       (  channels    => 'io',
          code        => sub { $app->ipc_ssh_caller( @_ ) },
          desc        => 'ipcssh',
          key         => 'IPCSSH',
-         max_calls   => $self->config->max_ssh_worker_calls,
-         max_workers => $self->config->max_ssh_workers,
-         on_return   => sub { $app->ipc_ssh_return( @_ ) },
+         max_calls   => $conf->max_ssh_worker_calls,
+         max_workers => $conf->max_ssh_workers,
          type        => 'function' );
 }
 
@@ -197,16 +169,16 @@ sub _build_listener {
 }
 
 sub _build_op_ev_hndlr {
-   my $self = shift; my $app = $self->app; my $conf = $self->config;
+   my $self = shift; my $app = $self->app;
 
-   my $flag = $self->debug ? '-D' : NUL; my $prog = $conf->pathname;
+   my $ipc_ssh = $self->ipc_ssh; my $log_key = 'OUTPUT';
 
    return $self->async_factory->new_notifier
-      (  code    => sub { __exec( $prog, $flag, 'op_ev_daemon', (shift) ) },
-         desc    => 'output event daemon',
-         execute => TRUE,
-         key     => $conf->log_key,
-         type    => 'routine' );
+      (  before => sub { $app->ipc_ssh_install_callback( $ipc_ssh ) },
+         code   => sub { $app->output_handler( $log_key, $ipc_ssh ) },
+         desc   => 'output event handler',
+         key    => $log_key,
+         type   => 'routine' );
 }
 
 sub _get_listener_sub {
@@ -248,10 +220,6 @@ sub _stdio_file {
 }
 
 # Private functions
-sub __exec {
-   my @args = @_; return sub { exec $^X, @args };
-}
-
 sub __terminate {
    my $loop = shift;
 

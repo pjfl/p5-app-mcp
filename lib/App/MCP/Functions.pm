@@ -3,13 +3,13 @@ package App::MCP::Functions;
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC );
-use Class::Usul::Functions qw( create_token pad split_on__ throw );
-use Digest::MD5            qw( md5 );
+use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC TRUE );
+use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
+use Fcntl                  qw( F_SETFL O_NONBLOCK );
 
-our @EXPORT_OK = ( qw( env_var extract_lang gen_semaphore_key
-                       get_hashed_pw get_salt log_leader
+our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
+                       log_leader nonblocking_write_pipe_pair
                        qualify_job_name read_exactly recv_arg_error
                        recv_rv_error trigger_input_handler
                        trigger_output_handler ) );
@@ -21,10 +21,6 @@ sub env_var ($;$) {
 
 sub extract_lang ($) {
    my $v = shift; return $v ? (split_on__ $v)[ 0 ] : LANG;
-}
-
-sub gen_semaphore_key ($) {
-   return hex( substr create_token( md5( $_[ 0 ] ) ), 0, 7 );
 }
 
 sub get_hashed_pw ($) {
@@ -47,6 +43,16 @@ sub log_leader ($$;$) {
    my $dkey = __padkey( $level, $key ); my $did = __padid( $id );
 
    return "${dkey}[${did}]: ";
+}
+
+sub nonblocking_write_pipe_pair () {
+   my ($r, $w); pipe $r, $w or throw 'No pipe';
+
+   fcntl $w, F_SETFL, O_NONBLOCK; $w->autoflush( TRUE );
+
+   binmode $r; binmode $w;
+
+   return [ $r, $w ];
 }
 
 sub qualify_job_name (;$$) {

@@ -139,6 +139,14 @@ sub ipc_ssh_caller {
    return $results;
 }
 
+sub ipc_ssh_install_callback {
+   my ($self, $ipc_ssh) = @_;
+
+   $ipc_ssh->set_return_callback( sub { $self->ipc_ssh_return( @_ ) } );
+
+   return;
+}
+
 sub ipc_ssh_install_worker {
    my ($self, $args, $results, $call, $result) = @_;
 
@@ -163,7 +171,10 @@ sub ipc_ssh_provisioned {
 }
 
 sub ipc_ssh_return {
-   my ($self, $runid, $results) = @_; $results or return;
+   my ($self, $runid, $results) = @_;
+
+   $self->log->warn( "$runid $$" );
+   $results or return;
 
    my ($lead, $key); $key = $results->{provisioned}
       and $self->ipc_ssh_provisioned( $key, TRUE )

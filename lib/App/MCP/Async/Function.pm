@@ -4,14 +4,14 @@ use feature 'state';
 use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants    qw( FALSE OK TRUE );
-use App::MCP::Functions    qw( log_leader read_exactly recv_arg_error );
 use App::MCP::Async::Process;
-use Class::Usul::Functions qw( throw );
+use App::MCP::Constants    qw( FALSE OK TRUE );
+use App::MCP::Functions    qw( log_leader nonblocking_write_pipe_pair
+                               read_exactly recv_arg_error );
+use Class::Usul::Functions qw( bson64id throw );
 use Class::Usul::Types     qw( ArrayRef Bool HashRef
                                NonZeroPositiveInt PositiveInt SimpleStr );
 use English                qw( -no_match_vars );
-use Fcntl                  qw( F_SETFL O_NONBLOCK );
 use Storable               qw( nfreeze thaw );
 use Try::Tiny;
 
@@ -34,7 +34,7 @@ has 'worker_objects' => is => 'ro',  isa => HashRef, default => sub { {} };
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $args = $self->$next( @args );
+   my ($orig, $self, @args) = @_; my $args = $orig->( $self, @args );
 
    my $attr = { builder     => $args->{builder},
                 description => $args->{description}, };
@@ -57,9 +57,9 @@ sub BUILD {
 
 # Public methods
 sub call {
-   my $self = shift;
+   my ($self, @args) = @_; $self->is_running or return FALSE;
 
-   return $self->is_running ? $self->_next_worker->send( @_ ) : FALSE;
+   $args[ 0 ] ||= bson64id; return $self->_next_worker->send( @args );
 }
 
 sub set_return_callback {
@@ -105,12 +105,14 @@ sub _call_handler {
       while (TRUE) {
          my $args = undef; my $rv = undef;
 
+         $max_calls and ++$count > $max_calls and last;
+
          if ($reader) {
             my $red = read_exactly( $reader, my $lenbuffer, 4 );
 
-            defined ($rv = recv_arg_error( $log, $PID, $red )) and return $rv;
+            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
             $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-            defined ($rv = recv_arg_error( $log, $PID, $red )) and return $rv;
+            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
          }
 
          try {
@@ -119,9 +121,9 @@ sub _call_handler {
             $writer and __send_rv( $writer, $log, $args->[ 0 ], $rv );
          }
          catch { $log->error( $lead.$_ ) };
-
-         $max_calls and ++$count >= $max_calls and return OK;
       }
+
+      return;
    }
 }
 
@@ -131,9 +133,9 @@ sub _new_worker {
    my $on_exit = delete $args->{on_exit}; my $workers = $self->worker_objects;
 
    $self->channels =~ m{ i }mx
-      and $args->{call_pipe} = __nonblocking_write_pipe_pair();
+      and $args->{call_pipe} = nonblocking_write_pipe_pair;
   ($self->channels =~ m{ o }mx or exists $args->{on_return})
-      and $args->{retn_pipe} = __nonblocking_write_pipe_pair();
+      and $args->{retn_pipe} = nonblocking_write_pipe_pair;
    $args->{code       } = $self->_call_handler( $args );
    $args->{description} = (lc $self->log_key)." worker ${index}";
    $args->{log_key    } = 'WORKER';
@@ -163,16 +165,6 @@ sub _next_worker_index {
 }
 
 # Private functions
-sub __nonblocking_write_pipe_pair {
-   my ($r, $w); pipe $r, $w or throw 'No pipe';
-
-   fcntl $w, F_SETFL, O_NONBLOCK; $w->autoflush( TRUE );
-
-   binmode $r; binmode $w;
-
-   return [ $r, $w ];
-}
-
 sub __send_rv {
    my ($writer, $log, @args) = @_;
 

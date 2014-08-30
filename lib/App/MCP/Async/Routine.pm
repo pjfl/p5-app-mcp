@@ -3,121 +3,96 @@ package App::MCP::Async::Routine;
 use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants qw( FALSE TRUE );
-use App::MCP::Functions qw( log_leader gen_semaphore_key );
-use Class::Usul::Types  qw( Bool NonZeroPositiveInt Object );
-use IPC::SysV           qw( IPC_CREAT S_IRUSR S_IWUSR );
-use IPC::Semaphore;
+use App::MCP::Async::Process;
+use App::MCP::Functions    qw( nonblocking_write_pipe_pair
+                               read_exactly recv_arg_error );
+use App::MCP::Constants    qw( FALSE TRUE );
+use App::MCP::Functions    qw( log_leader );
+use Class::Usul::Functions qw( bson64id );
+use Class::Usul::Types     qw( Bool HashRef Object );
+use English                qw( -no_match_vars );
+use Storable               qw( thaw );
+use Try::Tiny;
 
-extends q(App::MCP::Async::Process);
+extends q(App::MCP::Async::Base);
 
-has 'execute'       => is => 'ro',   isa => Bool, default => FALSE;
+has 'child'      => is => 'lazy', isa => Object,  builder => sub {
+   App::MCP::Async::Process->new( $_[ 0 ]->child_args ) };
 
-has 'is_parent'     => is => 'ro',   isa => Bool, default => TRUE;
+has 'child_args' => is => 'lazy', isa => HashRef, default => sub { {} };
 
-has 'semaphore_key' => is => 'lazy', isa => NonZeroPositiveInt,
-   init_arg         => 'semkey', required => TRUE;
-
-# Private attributes
-has '_semaphore'    => is => 'lazy', isa => Object, reader => 'semaphore',
-   builder          => sub {
-      my $self = shift;
-      my $key  = $self->semaphore_key;
-      my @args = $self->is_parent ? (2, S_IRUSR | S_IWUSR | IPC_CREAT) : (0, 0);
-      my $s    = IPC::Semaphore->new( $key, @args );
-
-      if ($self->is_parent) {
-         $s->setval( 0, TRUE ); $s->setval( 1, $self->autostart );
-      }
-
-      return $s;
-   };
+has 'is_running' => is => 'rwp',  isa => Bool, default => TRUE;
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
+   my ($orig, $self, @args) = @_; my $args = $orig->( $self, @args ); my $attr;
 
-   $attr->{semkey} and $attr->{is_parent} = FALSE;
-   $attr->{semkey} or  $attr->{semkey   } = gen_semaphore_key $attr->{log_key};
-   $attr->{code  } =   $attr->{execute  } ? $attr->{code}->( $attr->{semkey} )
-                                          : __loop_while_waiting( $attr );
+   for my $k ( qw( builder description log_key ) ) {
+      $attr->{ $k } = $args->{ $k };
+   }
+
+   for my $k ( qw( autostart ) ) {
+      my $v = delete $args->{ $k }; defined $v and $attr->{ $k } = $v;
+   }
+
+   $args->{call_pipe } = nonblocking_write_pipe_pair;
+   $args->{code      } = __call_handler( $args );
+   $attr->{child_args} = $args;
    return $attr;
 };
 
-before 'BUILD' => sub {
-   $_[ 0 ]->semaphore; # Trigger lazy build before process fork
-};
-
-after 'BUILD' => sub {
-   my $self      = shift;
-   my $sem_key   = sprintf '%x', $self->semaphore_key;
-   my $lead      = log_leader 'debug', $self->log_key, $self->pid;
-   my $id        = $self->semaphore->id;
-   my $is_parent = $self->is_parent;
-
-   $self->log->debug( "${lead}Semaphore key ${sem_key} ${id} ${is_parent}" );
-   return;
-};
-
-around 'is_running' => sub {
-   my ($orig, $self) = @_;
-
-   return $self->execute ? $orig->( $self ) : $self->semaphore->getval( 0 );
-};
-
-around 'stop' => sub {
-   my ($orig, $self) = @_;
-
-   $self->execute and return $orig->( $self ); $self->is_running or return;
-
-   my $lead = log_leader 'debug', $self->log_key, $self->pid;
-
-   $self->log->debug( $lead.'Stopping '.$self->description );
-   $self->semaphore->setval( 0, FALSE );
-   $self->trigger;
-   return;
-};
-
-sub DEMOLISH {
-   $_[ 0 ]->is_parent and defined $_[ 0 ]->semaphore
-                      and $_[ 0 ]->semaphore->remove;
-   return;
-}
-
 # Public methods
-sub await_trigger {
-   $_[ 0 ]->semaphore->op( 1, -1, 0 ); return;
+sub stop {
+   my $self = shift; $self->_set_is_running( FALSE );
+
+   my $pid  = $self->child->pid; $self->child->stop;
+
+   $self->loop->watch_child( 0, sub { $pid } ); return;
 }
 
-sub start {
-   $_[ 0 ]->semaphore->setval( 0, TRUE ); return;
+sub call {
+   my ($self, @args) = @_; $self->is_running or return FALSE;
+
+   $args[ 0 ] ||= bson64id; return $self->child->send( @args );
 }
 
-sub trigger {
-   my $self = shift; my $semaphore = $self->semaphore or return;
-
-   my $val = $semaphore->getval( 1 ) // 0;
-
-   $val < 1 and $semaphore->op( 1, 1, 0 );
-   return;
+# Private methods
+sub _build_pid {
+   return $_[ 0 ]->child->pid;
 }
 
 # Private functions
-sub __loop_while_waiting {
-   my $attr = shift; my $code = delete $attr->{code};
-
-   my $before = delete $attr->{before}; my $after = delete $attr->{after};
+sub __call_handler {
+   my $args   = shift;
+   my $code   = $args->{code};
+   my $before = delete $args->{before};
+   my $reader = $args->{call_pipe}->[ 0 ];
 
    return sub {
-      my $self = shift; $before and $before->( $self );
+      my $self = shift; my $lead = log_leader 'error', 'EXCODE', $PID;
+
+      my $log  = $self->log; $before and $before->( $self );
 
       while (TRUE) {
-         $self->await_trigger; $self->is_running or last; $code->( $self );
+         my $args = undef; my $rv = undef;
+
+         if ($reader) {
+            my $red = read_exactly( $reader, my $lenbuffer, 4 );
+
+            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
+            $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
+            defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
+         }
+
+         try {
+            $args = $args ? thaw $args : [ $PID, {} ];
+            $rv   = $code->( @{ $args } );
+         }
+         catch { $log->error( $lead.$_ ) };
       }
 
-      $after and $after->( $self );
       return;
-   };
+   }
 }
 
 1;

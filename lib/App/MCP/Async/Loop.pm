@@ -25,13 +25,13 @@ sub start_nb {
    my ($self, $cb) = @_;
 
    (local $self->{cv} = AnyEvent->condvar)->cb( sub {
-      $_[ 0 ]->recv; defined $cb and $cb->() } );
+      my @res = $_[ 0 ]->recv; defined $cb and $cb->( @res ) } );
 
    return;
 }
 
 sub stop {
-   $_[ 0 ]->{cv}->send; return;
+   shift->{cv}->send( @_ ); return;
 }
 
 sub watch_child {
