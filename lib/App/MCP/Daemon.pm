@@ -6,14 +6,14 @@ use Moo;
 use App::MCP;
 use App::MCP::Application;
 use App::MCP::Async;
-use App::MCP::Constants    qw( NUL OK TRUE );
+use App::MCP::Constants qw( NUL OK TRUE );
 use App::MCP::DaemonControl;
-use App::MCP::Functions    qw( env_var log_leader terminate );
+use App::MCP::Functions qw( env_var log_leader terminate );
 use Class::Usul::Options;
-use English                qw( -no_match_vars );
-use File::DataClass::Types qw( NonZeroPositiveInt Object );
+use Class::Usul::Types  qw( NonZeroPositiveInt Object );
+use English             qw( -no_match_vars );
 use Plack::Runner;
-use Scalar::Util           qw( blessed );
+use Scalar::Util        qw( blessed );
 
 extends q(Class::Usul::Programs);
 

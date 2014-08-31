@@ -138,22 +138,22 @@ sub __call_handler {
 
    return sub {
       my $self = shift; my $count = 0;
-
       my $lead = log_leader 'error', 'EXCODE', $PID; my $log = $self->log;
 
       while (TRUE) {
          $max_calls and ++$count > $max_calls and last;
 
-         my $red = read_exactly( $reader, my $lenbuffer, 4 ); my $rv;
+         my $red = read_exactly $reader, my $buffer_len, 4; # Block here
 
-         defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
-         $red = read_exactly( $reader, my $param, unpack( 'I', $lenbuffer ) );
-         defined ($rv = recv_arg_error( $log, $PID, $red )) and last;
+         recv_arg_error $log, $PID, $red and last;
+         $red = read_exactly $reader, my $buffer, unpack 'I', $buffer_len;
+         recv_arg_error $log, $PID, $red and last;
 
          try {
-            $param = $param ? thaw $param : [ $PID, {} ];
-            $rv    = $code->( @{ $param } );
-            $writer and send_msg( $writer, $log, 'SENDRV', $param->[ 0 ], $rv );
+            my $param = $buffer ? thaw $buffer : [ $PID, {} ];
+            my $rv    = $code->( @{ $param } );
+
+            $writer and send_msg $writer, $log, 'SENDRV', $param->[ 0 ], $rv;
          }
          catch { $log->error( $lead.$_ ) };
       }

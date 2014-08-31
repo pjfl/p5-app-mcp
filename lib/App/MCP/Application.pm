@@ -39,7 +39,9 @@ with q(Class::Usul::TraitFor::ConnectInfo);
 
 # Public methods
 sub cron_job_handler {
-   my ($self, $key, $sig_hndlr_pid) = @_; $self->_cron_log_interval( $key );
+   my ($self, $log_key, $sig_hndlr_pid) = @_;
+
+   $self->_cron_log_interval( $log_key );
 
    my $trigger = FALSE;
    my $schema  = $self->schema;
@@ -64,7 +66,7 @@ sub cron_job_handler {
 }
 
 sub input_handler {
-   my ($self, $key, $sig_hndlr_pid) = @_; my $trigger = TRUE;
+   my ($self, $log_key, $sig_hndlr_pid) = @_; my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
@@ -98,7 +100,6 @@ sub ipc_ssh_add_provisioning {
    my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
 
    $self->ipc_ssh_provisioned( "${user}\@${host}" ) and return;
-   $self->log->debug( "Add provisioning ${user}\@${host} ${PID}" );
 
    my $appclass  = $self->config->appclass;  my $calls  = $args->{calls};
    my $installer = 'ipc_ssh_install_worker'; my $worker = $self->worker;
@@ -182,7 +183,7 @@ sub ipc_ssh_provisioned {
 }
 
 sub output_handler {
-   my ($self, $key, $ipc_ssh) = @_; my $trigger = TRUE;
+   my ($self, $log_key, $ipc_ssh) = @_; my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
@@ -216,7 +217,7 @@ sub output_handler {
 
 # Private methods
 sub _cron_log_interval {
-   my ($self, $key) = @_; my $lead;
+   my ($self, $log_key) = @_; my $lead;
 
    my $log_int = $self->config->cron_log_interval or return;
    my $elapsed = elapsed;
@@ -224,7 +225,7 @@ sub _cron_log_interval {
    my $spread  = $self->config->clock_tick_interval / 2;
 
    ($rem > $log_int - $spread or $rem < $spread)
-      and $lead = log_leader( 'info', $key, $PID )
+      and $lead = log_leader( 'info', $log_key, $PID )
       and $self->log->info( "${lead}Elapsed ${elapsed}" );
    return;
 }

@@ -4,10 +4,9 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Async::Process;
-use App::MCP::Functions    qw( nonblocking_write_pipe_pair read_exactly
-                               recv_arg_error send_msg terminate );
 use App::MCP::Constants    qw( FALSE TRUE );
-use App::MCP::Functions    qw( log_leader );
+use App::MCP::Functions    qw( log_leader nonblocking_write_pipe_pair
+                               read_exactly recv_arg_error send_msg terminate );
 use Class::Usul::Functions qw( bson64id );
 use Class::Usul::Types     qw( Bool HashRef Object );
 use English                qw( -no_match_vars );
@@ -43,18 +42,18 @@ around 'BUILDARGS' => sub {
 };
 
 # Public methods
+sub call {
+   my ($self, @args) = @_; $self->is_running or return FALSE;
+
+   $args[ 0 ] ||= bson64id; return $self->child->send( @args );
+}
+
 sub stop {
    my $self = shift; $self->_set_is_running( FALSE );
 
    my $pid  = $self->child->pid; $self->child->stop;
 
    $self->loop->watch_child( 0, sub { $pid } ); return;
-}
-
-sub call {
-   my ($self, @args) = @_; $self->is_running or return FALSE;
-
-   $args[ 0 ] ||= bson64id; return $self->child->send( @args );
 }
 
 # Private methods
@@ -73,22 +72,21 @@ sub __call_handler {
 
    return sub {
       my $self = shift; $before and $before->( $self );
-
+      my $lead = log_leader 'error', 'EXCODE', $PID;
       my $log  = $self->log; my $loop = $self->loop;
 
-      my $lead = log_leader 'error', 'EXCODE', $PID;
-
       $reader and $loop->watch_read_handle( $reader, sub {
-         my $red = read_exactly( $reader, my $lenbuffer, 4 ); my $rv;
+         my $red = read_exactly $reader, my $buffer_len, 4;
 
-         defined ($rv = recv_arg_error( $log, $PID, $red )) and return;
-         $red = read_exactly( $reader, my $param, unpack( 'I', $lenbuffer ) );
-         defined ($rv = recv_arg_error( $log, $PID, $red )) and return;
+         recv_arg_error $log, $PID, $red and terminate $loop and return;
+         $red = read_exactly $reader, my $buffer, unpack 'I', $buffer_len;
+         recv_arg_error $log, $PID, $red and terminate $loop and return;
 
          try {
-            $param = $param ? thaw $param : [ $PID, {} ];
-            $rv    = $code->( @{ $param } );
-            $writer and send_msg( $writer, $log, 'SENDRV', $param->[ 0 ], $rv );
+            my $param = $buffer ? thaw $buffer : [ $PID, {} ];
+            my $rv    = $code->( @{ $param } );
+
+            $writer and send_msg $writer, $log, 'SENDRV', $param->[ 0 ], $rv;
          }
          catch { $log->error( $lead.$_ ) };
 

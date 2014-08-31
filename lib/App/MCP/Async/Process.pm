@@ -53,30 +53,26 @@ sub is_running {
 }
 
 sub send {
-   my $self = shift; return send_msg( $self->writer, $self->log, 'SNDARG', @_ );
+   my $self = shift; return send_msg $self->writer, $self->log, 'SNDARG', @_;
 }
 
 sub set_return_callback {
    my ($self, $code) = @_; my $reader = $self->reader or return;
 
-   my $log  = $self->log; my $loop = $self->loop; my $pid = $self->pid;
+   my $lead = log_leader 'error', 'EXECRV', my $pid = $self->pid;
 
-   my $lead = log_leader 'error', 'EXECRV', $pid;
+   my $log  = $self->log; my $loop = $self->loop;
 
    $loop->watch_read_handle( $reader, sub {
-      my ($args, $rv); my $red = read_exactly( $reader, my $lenbuffer, 4 );
+      my $red = read_exactly $reader, my $buffer_len, 4;
 
-      if (defined ($rv = recv_rv_error( $log, $pid, $red ))) {
-         $loop->unwatch_read_handle( $reader ); return;
-      }
+      recv_rv_error $log, $pid, $red
+         and return $loop->unwatch_read_handle( $reader );
+      $red = read_exactly $reader, my $buffer, unpack 'I', $buffer_len;
+      recv_rv_error $log, $pid, $red
+         and return $loop->unwatch_read_handle( $reader );
 
-      $red = read_exactly( $reader, $args, unpack( 'I', $lenbuffer ) );
-
-      if (defined ($rv = recv_rv_error( $log, $pid, $red ))) {
-         $loop->unwatch_read_handle( $reader ); return;
-      }
-
-      try   { $code->( @{ $args ? thaw $args : [] } ) }
+      try   { $code->( @{ $buffer ? thaw $buffer : [] } ) }
       catch { $log->error( $lead.$_ ) };
 
       return;

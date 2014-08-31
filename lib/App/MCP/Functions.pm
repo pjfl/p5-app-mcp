@@ -75,11 +75,11 @@ sub read_exactly ($$$) {
 }
 
 sub recv_arg_error ($$$) {
-   my ($log, $id, $red) = @_; return __recv_error( $log, 'RCVARG', $id, $red );
+   my $log = shift; return __recv_hndlr( $log, 'RCVARG', @_ );
 }
 
 sub recv_rv_error ($$$) {
-   my ($log, $id, $red) = @_; return __recv_error( $log, 'RECVRV', $id, $red );
+   my $log = shift; return __recv_hndlr( $log, 'RECVRV', @_ );
 }
 
 sub send_msg ($$$;@) {
@@ -102,7 +102,7 @@ sub terminate ($) {
 
    $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
    $loop->stop;
-   return;
+   return TRUE;
 }
 
 sub trigger_input_handler ($) {
@@ -124,18 +124,18 @@ sub __padkey {
    return pad $key, $w, SPC, 'left';
 }
 
-sub __recv_error {
+sub __recv_hndlr {
    my ($log, $key, $id, $red) = @_;
 
    unless (defined $red) {
-      $log->error( log_leader( 'error', $key, $id ).$OS_ERROR ); return FAILED;
+      $log->error( log_leader( 'error', $key, $id ).$OS_ERROR ); return TRUE;
    }
 
    unless (length $red) {
-      $log->info( log_leader( 'info', $key, $id ).'EOF' ); return OK;
+      $log->info( log_leader( 'info', $key, $id ).'EOF' ); return TRUE;
    }
 
-   return;
+   return FALSE;
 }
 
 1;

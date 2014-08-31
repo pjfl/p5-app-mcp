@@ -41,8 +41,8 @@ sub new_notifier {
 
    if ($type eq 'function') { $desc .= ' worker'; $ddesc = $desc.' pool' }
 
-   my $class = first_char $type eq '+'
-             ? (substr $type, 1) : __PACKAGE__.'::'.(ucfirst $type);
+   my $class = first_char $type eq '+' ? (substr $type, 1)
+                                       : __PACKAGE__.'::'.(ucfirst $type);
 
    ensure_class_loaded $class;
 
