@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added version upgrades to Worker provisioning
           - Refactored Async code
           - Rewrote implementation of job crontab attr
           - Added delte_after attr to job class

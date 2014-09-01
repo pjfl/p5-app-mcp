@@ -1,13 +1,13 @@
 package App::MCP::Application;
 
-use feature 'state';
 use namespace::autoclean;
+use version;
 
 use Moo;
 use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK );
 use App::MCP::Functions    qw( log_leader trigger_output_handler );
 use Class::Usul::Functions qw( bson64id create_token distname elapsed );
-use Class::Usul::Types     qw( BaseType LoadableClass NonEmptySimpleStr
+use Class::Usul::Types     qw( BaseType HashRef LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object );
 use English                qw( -no_match_vars );
 use IPC::PerlSSH;
@@ -26,7 +26,9 @@ has 'worker' => is => 'lazy', isa => NonEmptySimpleStr,
    builder   => sub { $_[ 0 ]->config->appclass.'::Worker' };
 
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object, reader => 'schema',
+has '_provisioned'  => is => 'ro',   isa => HashRef, default => sub { {} };
+
+has '_schema'       => is => 'lazy', isa => Object,  reader  => 'schema',
    builder          => sub {
       my $self = shift; my $extra = $self->config->connect_params;
       $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) };
@@ -99,7 +101,7 @@ sub input_handler {
 sub ipc_ssh_add_provisioning {
    my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
 
-   $self->ipc_ssh_provisioned( "${user}\@${host}" ) and return;
+   $self->_remote_provisioned( "${user}\@${host}" ) and return;
 
    my $appclass  = $self->config->appclass;  my $calls  = $args->{calls};
    my $installer = 'ipc_ssh_install_worker'; my $worker = $self->worker;
@@ -115,7 +117,7 @@ sub ipc_ssh_caller {
       ( Host       => $args->{host},
         User       => $args->{user},
         SshOptions => [ '-i', $self->config->identity_file ], );
-   my $logger = sub {
+   my $logger = $args->{logger} = sub {
       my ($level, $msg) = @_; my $lead = log_leader $level, $log_key, $runid;
 
       return $log->$level( $lead.($msg // 'Undefined message') );
@@ -123,7 +125,7 @@ sub ipc_ssh_caller {
    my $failed = FALSE;
 
    try   { $ips->use_library( $self->config->library_class ) }
-   catch { $logger->( 'error', "Store failed: ${_}" ); $failed = TRUE };
+   catch { $logger->( 'error', "Store failed - ${_}" ); $failed = TRUE };
 
    $failed and return FALSE; my $results = {};
 
@@ -131,9 +133,9 @@ sub ipc_ssh_caller {
       my $res;
 
       try   { $res = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
-      catch { $logger->( 'error', "Call failed: ${_}" ); $failed = TRUE };
+      catch { $logger->( 'error', "Call failed - ${_}" ); $failed = TRUE };
 
-      $failed and return FALSE; $logger->( 'debug', "Call succeeded: ${res}" );
+      $failed and return FALSE; $logger->( 'debug', "Call succeeded - ${res}" );
 
       my $method = $call->[ 2 ]; defined $method
          and $self->$method( $args, $results, $call, $res );
@@ -143,15 +145,16 @@ sub ipc_ssh_caller {
 }
 
 sub ipc_ssh_install_callback {
-   my ($self, $ipc_ssh) = @_; weaken( $self );
+   my ($self, $log_key, $ipc_ssh) = @_; weaken( $self );
 
    $ipc_ssh->set_return_callback( sub {
       my ($runid, $results) = @_; $results or return;
 
-      my ($lead, $key); $key = $results->{provisioned}
-         and $self->ipc_ssh_provisioned( $key, TRUE )
-         and $lead = log_leader( 'info', 'IPCSSH', $PID )
-         and $self->log->info( "${lead}Provisioned ${runid} ${key}" );
+      my ($lead, $key, $res, $val); $res = $results->{provisioned}
+         and $key  = $res->{key}
+         and $self->_remote_provisioned( $key, $val = $res->{value} )
+         and $lead = log_leader( 'info', $log_key, $PID )
+         and $self->log->info( "${lead}Provisioned ${runid} ${key} ${val}" );
 
       return;
    } );
@@ -162,24 +165,34 @@ sub ipc_ssh_install_callback {
 sub ipc_ssh_install_worker {
    my ($self, $args, $results, $call, $result) = @_;
 
-   my $user = $args->{user}; my $host = $args->{host};
+   my  $logger   =  $args->{logger};
+   my  $dist     =  distname $self->worker;
+   my  $share    =  $self->config->sharedir;
+   my  $filter   =  qr{ \b $dist - ([0-9\.]+) \.tar\.gz \z }mx;
+   my  $our_ver  = (sort map { $_ =~ $filter; qv( $1 ) } map { $_->basename }
+                    $share->filter( sub { $_ =~ $filter } )->all_files)[ -1 ];
+   my ($rem_ver) =  $result =~ m{ \A version= (.+) \z }mx;
+   my  $key      =  $args->{user}.'@'.$args->{host};
 
-   $call->[ 0 ] eq 'provision' and lc $result eq 'provisioned'
-      and $results->{provisioned} = "${user}\@${host}" and return;
+   $our_ver //= qv( '0.0.0' ); $rem_ver = qv( $rem_ver // '0.0.0' );
+   $logger->( 'debug', "Worker current - ${key} ${rem_ver}" );
 
-   my $calls = $args->{calls}; my $tarball = (distname $self->worker).'.tar.gz';
+   $call->[ 0 ] eq 'provision' and $rem_ver >= $our_ver
+      and $results->{provisioned} = { key => $key, value => "${rem_ver}" }
+      and return;
 
-   $self->_install_distribution( $calls, $tarball               );
-   $self->_install_distribution( $calls, 'local-lib.tar.gz'     );
-   $self->_install_cpan_minus  ( $calls, 'App-cpanminus.tar.gz' );
+   my  $tarball  =  $share->catfile( my $file = "${dist}-${our_ver}.tar.gz" );
+
+   not $tarball->exists
+      and $logger->( 'warn', "File ${tarball} not found" )
+      and return;
+
+   $logger->( 'debug', "Worker upgrade - from ${rem_ver} to ${our_ver}" );
+
+   $self->_install_distribution( $args->{calls}, $file );
+   $self->_install_distribution( $args->{calls}, 'local::lib' );
+   $self->_install_cpan_minus  ( $args->{calls}, 'App-cpanminus.tar.gz' );
    return;
-}
-
-sub ipc_ssh_provisioned {
-   my ($self, $k, $v) = @_; state $provisioned;
-
-   defined $v and $provisioned->{ $k } = $v;
-   return $provisioned->{ $k };
 }
 
 sub output_handler {
@@ -241,10 +254,14 @@ sub _install_distribution {
 sub _install_remote {
    my ($self, $method, $calls, $file) = @_;
 
-   my $appclass = $self->config->appclass;
-   my $path     = $self->config->sharedir->catfile( $file );
+   my $conf = $self->config; my $appclass = $conf->appclass;
 
-   unshift @{ $calls }, [ $method,     [ $appclass, $file             ] ];
+   unshift @{ $calls }, [ $method, [ $appclass, $file ] ];
+
+   $file =~ m{ \A [a-zA-Z0-9_]+ : }mx and return;
+
+   my $path = $conf->sharedir->catfile( $file );
+
    unshift @{ $calls }, [ 'writefile', [ $appclass, $file, $path->all ] ];
    return;
 }
@@ -259,6 +276,12 @@ sub _process_event {
    $self->log->debug( $lead.$r->[ 2 ] );
    $cols->{rejected} = $r->[ 2 ]->class;
    return $cols;
+}
+
+sub _remote_provisioned {
+   defined $_[ 2 ] and $_[ 0 ]->_provisioned->{ $_[ 1 ] } = $_[ 2 ];
+
+   return $_[ 0 ]->_provisioned->{ $_[ 1 ] };
 }
 
 sub _start_job {

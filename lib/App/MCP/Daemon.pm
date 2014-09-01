@@ -176,7 +176,7 @@ sub _build_op_ev_hndlr {
    my $ipc_ssh = $self->ipc_ssh; my $log_key = 'OUTPUT';
 
    return $self->async_factory->new_notifier
-      (  before => sub { $app->ipc_ssh_install_callback( $ipc_ssh ) },
+      (  before => sub { $app->ipc_ssh_install_callback( $log_key, $ipc_ssh ) },
          code   => sub { $app->output_handler( $log_key, $ipc_ssh ) },
          desc   => 'output event handler',
          key    => $log_key,
@@ -207,7 +207,7 @@ sub _hangup_handler { # TODO: On reload - stop, Class::Unload; require; start
 }
 
 sub _set_program_name {
-   $PROGRAM_NAME = $_[ 0 ]->config->pathname->basename.' master'; return;
+   $PROGRAM_NAME = $_[ 0 ]->config->pathname.' master'; return;
 }
 
 sub _stdio_file {

@@ -15,9 +15,10 @@ init q{
      (my $prefix   =  lc $appclass) =~ s{ :: }{_}gmsx;
       my $self     =  {
          home      => exists $ENV{HOME} && defined $ENV{HOME} && -d $ENV{HOME}
-                          ?  $ENV{HOME} : (getpwuid $<)[ 7 ],
+                           ? $ENV{HOME} : (getpwuid $<)[ 7 ],
          prefix    => $prefix,
       };
+
       $self->{appldir} = catdir ( $self->{home   }, ".${prefix}" );
       $self->{logsdir} = catdir ( $self->{appldir}, 'logs' );
       $self->{tempdir} = catdir ( $self->{appldir}, 'tmp'  );
@@ -30,6 +31,7 @@ init q{
       my $config    = config( $appclass );
       my $local_lib = catdir( $config->{home}, 'perl5' );
       my $perl_lib  = catdir( $local_lib, 'lib', 'perl5' );
+
       -d $perl_lib or return; lib->import( $perl_lib );
       eval { require local::lib };
       $EVAL_ERROR or local::lib->setup_local_lib_for( $local_lib );
@@ -41,13 +43,14 @@ func 'dispatch' => q{
    my $args     = { @_ };
    my $appclass = $args->{appclass} or die 'No appclass';
    my $worker   = $args->{worker  } or die 'No worker class';
-   local_lib( $appclass );
-   eval "require ${worker}"; $EVAL_ERROR and die $EVAL_ERROR;
-   return $worker->new( $args )->dispatch;
+
+   local_lib( $appclass ); eval "require ${worker}";
+   $EVAL_ERROR and die $EVAL_ERROR; return $worker->new( $args )->dispatch;
 };
 
 func 'install_cpan_minus' => q{
    require Archive::Tar;
+
    my $appclass = shift;   $appclass or die 'No appclass';
    my $file     = shift;   $file     or die 'No filename';
    my $config   = config ( $appclass ); chdir $config->{tempdir};
@@ -58,6 +61,7 @@ func 'install_cpan_minus' => q{
    -e $path    or die "Path ${path} not found";
    my $cmd      = "$^X ${path} App::cpanminus";
    my $cpanm    = catfile( $config->{home}, 'perl5', 'bin', 'cpanm' );
+
    chdir $config->{home}; qx( $cmd ); -x $cpanm or die 'No cpanm';
    return 'Installed cpanm';
 };
@@ -66,11 +70,13 @@ func 'install_distribution' => q{
    my $appclass = shift;   $appclass or die 'No appclass';
    my $file     = shift;   $file     or die 'No filename';
    my $config   = config ( $appclass ); chdir $config->{home};
-   my $path     = catfile( $config->{tempdir}, $file );
+   my $path     = $file !~ m{ \A [a-zA-Z0-9_]+ : }mx
+                ? catfile( $config->{tempdir}, $file ) : $file;
    my $base     = catfile( $config->{home}, 'perl5' );
    my $cpanm    = catfile( $base, 'bin', 'cpanm' );
    my $cmd      = "${cpanm} -l ${base} --notest ${path}"; qx( $cmd );
   (my $dist     = $file) =~ s{ \.tar\.gz \z }{}mx;
+
    return "Installed ${dist}";
 };
 
@@ -91,16 +97,14 @@ func 'provision' => q{
       chmod 0640, $cfgfile or die "Path ${cfgfile} cannot chmod - $!";
    }
 
-   if ($wanted) {
-      local_lib( $appclass );
-      eval "require ${wanted}"; $EVAL_ERROR and return "${EVAL_ERROR}";
-   }
-
-   return 'Provisioned';
+   $wanted or return; local_lib( $appclass ); eval "require ${wanted}";
+   return $EVAL_ERROR ? "${EVAL_ERROR}"
+                      : sprintf 'version=%s', $wanted->VERSION;
 };
 
 func 'remote_env' => q{
    my $appclass = shift; $appclass or die 'No appclass'; local_lib( $appclass );
+
    return join "\n", map { "${_}=".$ENV{ $_ } } keys %ENV;
 };
 
@@ -108,6 +112,7 @@ func 'writefile' => q{
    my $appclass = shift; $appclass or die 'No appclass';
    my $file     = shift; $file     or die 'No filename';
    my $path     = catfile( config( $appclass )->{tempdir}, $file );
+
    open( my $fh, '>', $path ) or die "Path ${path} cannot open - $!";
    print $fh $_[ 0 ] or die "Path ${path} cannot write - $!"; close $fh;
    return "Writfile ${file} length ".(-s $path);

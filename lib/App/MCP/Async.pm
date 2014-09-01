@@ -11,8 +11,8 @@ use Class::Usul::Types     qw( BaseType Object );
 use POSIX                  qw( WEXITSTATUS );
 
 # Public attributes
-has 'builder' => is => 'ro',   isa => BaseType,
-   handles    => [ qw( log ) ], required => TRUE;
+has 'builder' => is => 'ro',   isa => BaseType, handles => [ 'log' ],
+   required   => TRUE;
 
 has 'loop'    => is => 'lazy', isa => Object,
    builder    => sub { App::MCP::Async::Loop->new };

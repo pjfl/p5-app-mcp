@@ -63,7 +63,7 @@ sub qualify_job_name (;$$) {
 }
 
 sub read_exactly ($$$) {
-   $_[ 1 ] = q();
+   $_[ 1 ] = NUL;
 
    while ((my $have = length $_[ 1 ]) < $_[ 2 ]) {
       my $red = read( $_[ 0 ], $_[ 1 ], $_[ 2 ] - $have, $have );
@@ -83,16 +83,17 @@ sub recv_rv_error ($$$) {
 }
 
 sub send_msg ($$$;@) {
-   my ($writer, $log, $key, @args) = @_; $args[ 0 ] ||= $PID;
+   my ($writer, $log, $key, @args) = @_;
 
-   $writer or throw error => 'Process [_1] no writer', args  => [ $args[ 0 ] ];
+   my $lead = log_leader 'error', $key, $args[ 0 ] ||= $PID;
 
-   my $rec = nfreeze [ @args ];
-   my $buf = pack( 'I', length $rec ).$rec;
-   my $len = $writer->syswrite( $buf, length $buf );
+   $writer or ($log->error( $lead.'No writer' ) and return FALSE);
 
-   defined $len or $log->error
-      ( (log_leader 'error', $key, $args[ 0 ]).$OS_ERROR );
+   my $rec  = nfreeze [ @args ];
+   my $buf  = pack( 'I', length $rec ).$rec;
+   my $len  = $writer->syswrite( $buf, length $buf );
+
+   defined $len or ($log->error( $lead.$OS_ERROR ) and return FALSE);
 
    return TRUE;
 }

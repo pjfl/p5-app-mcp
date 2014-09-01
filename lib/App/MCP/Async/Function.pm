@@ -130,30 +130,30 @@ sub _next_worker_index {
 
 # Private functions
 sub __call_handler {
-   my $args      = shift;
-   my $code      = $args->{code};
-   my $reader    = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
-   my $writer    = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
-   my $max_calls = $args->{max_calls};
+   my $args = shift;
+   my $code = $args->{code};
+   my $rdr  = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
+   my $wtr  = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
+   my $max  = $args->{max_calls};
 
    return sub {
       my $self = shift; my $count = 0;
       my $lead = log_leader 'error', 'EXCODE', $PID; my $log = $self->log;
 
       while (TRUE) {
-         $max_calls and ++$count > $max_calls and last;
+         $max and ++$count > $max and last;
 
-         my $red = read_exactly $reader, my $buffer_len, 4; # Block here
+         my $red = read_exactly $rdr, my $buf_len, 4; # Block here
 
          recv_arg_error $log, $PID, $red and last;
-         $red = read_exactly $reader, my $buffer, unpack 'I', $buffer_len;
+         $red = read_exactly $rdr, my $buf, unpack 'I', $buf_len;
          recv_arg_error $log, $PID, $red and last;
 
          try {
-            my $param = $buffer ? thaw $buffer : [ $PID, {} ];
+            my $param = $buf ? thaw $buf : [ $PID, {} ];
             my $rv    = $code->( @{ $param } );
 
-            $writer and send_msg $writer, $log, 'SENDRV', $param->[ 0 ], $rv;
+            $wtr and send_msg $wtr, $log, 'SENDRV', $param->[ 0 ], $rv;
          }
          catch { $log->error( $lead.$_ ) };
       }

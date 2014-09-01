@@ -57,22 +57,22 @@ sub send {
 }
 
 sub set_return_callback {
-   my ($self, $code) = @_; my $reader = $self->reader or return;
+   my ($self, $code) = @_; my $rdr = $self->reader or return;
 
    my $lead = log_leader 'error', 'EXECRV', my $pid = $self->pid;
 
    my $log  = $self->log; my $loop = $self->loop;
 
-   $loop->watch_read_handle( $reader, sub {
-      my $red = read_exactly $reader, my $buffer_len, 4;
+   $loop->watch_read_handle( $rdr, sub {
+      my $red = read_exactly $rdr, my $buf_len, 4;
 
       recv_rv_error $log, $pid, $red
-         and return $loop->unwatch_read_handle( $reader );
-      $red = read_exactly $reader, my $buffer, unpack 'I', $buffer_len;
+         and return $loop->unwatch_read_handle( $rdr );
+      $red = read_exactly $rdr, my $buf, unpack 'I', $buf_len;
       recv_rv_error $log, $pid, $red
-         and return $loop->unwatch_read_handle( $reader );
+         and return $loop->unwatch_read_handle( $rdr );
 
-      try   { $code->( @{ $buffer ? thaw $buffer : [] } ) }
+      try   { $code->( @{ $buf ? thaw $buf : [] } ) }
       catch { $log->error( $lead.$_ ) };
 
       return;

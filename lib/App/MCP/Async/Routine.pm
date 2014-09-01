@@ -67,26 +67,26 @@ sub __call_handler {
    my $code   = $args->{code};
    my $before = delete $args->{before};
    my $after  = delete $args->{after };
-   my $reader = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
-   my $writer = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
+   my $rdr    = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
+   my $wtr    = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
 
    return sub {
       my $self = shift; $before and $before->( $self );
       my $lead = log_leader 'error', 'EXCODE', $PID;
       my $log  = $self->log; my $loop = $self->loop;
 
-      $reader and $loop->watch_read_handle( $reader, sub {
-         my $red = read_exactly $reader, my $buffer_len, 4;
+      $rdr and $loop->watch_read_handle( $rdr, sub {
+         my $red = read_exactly $rdr, my $buf_len, 4;
 
          recv_arg_error $log, $PID, $red and terminate $loop and return;
-         $red = read_exactly $reader, my $buffer, unpack 'I', $buffer_len;
+         $red = read_exactly $rdr, my $buf, unpack 'I', $buf_len;
          recv_arg_error $log, $PID, $red and terminate $loop and return;
 
          try {
-            my $param = $buffer ? thaw $buffer : [ $PID, {} ];
+            my $param = $buf ? thaw $buf : [ $PID, {} ];
             my $rv    = $code->( @{ $param } );
 
-            $writer and send_msg $writer, $log, 'SENDRV', $param->[ 0 ], $rv;
+            $wtr and send_msg $wtr, $log, 'SENDRV', $param->[ 0 ], $rv;
          }
          catch { $log->error( $lead.$_ ) };
 
