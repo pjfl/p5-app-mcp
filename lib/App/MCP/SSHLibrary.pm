@@ -44,8 +44,32 @@ func 'dispatch' => q{
    my $appclass = $args->{appclass} or die 'No appclass';
    my $worker   = $args->{worker  } or die 'No worker class';
 
-   local_lib( $appclass ); eval "require ${worker}";
-   $EVAL_ERROR and die $EVAL_ERROR; return $worker->new( $args )->dispatch;
+   local_lib( $appclass );
+   eval "require ${worker}"; $EVAL_ERROR and die $EVAL_ERROR;
+   return $worker->new( $args )->dispatch;
+};
+
+func 'distclean' => q{
+   require File::Copy; require File::Path;
+
+   my $appclass = shift;  $appclass or die 'No appclass';
+   my $config   = config( $appclass  ); my $tempdir = $config->{tempdir};
+
+   chdir $tempdir or die "Directory ${tempdir} cannot chdir: ${OS_ERROR}";
+
+   my @list     = glob  ( '*.tar.gz' );
+
+   for (@list) { unlink $_; s{ \.tar\.gz \z }{}mx; -e $_ and remove_tree( $_ ) }
+
+   my $build    = catdir( $config->{home}, '.cpanm' );
+
+   chdir $build or die "Directory ${build} cannot chdir: ${OS_ERROR}";
+
+   -e 'build.log'    and File::Copy::copy( 'build.log', 'last-build.log' );
+   -e 'build.log'    and unlink 'build.log';
+   -e 'latest-build' and unlink 'latest-build';
+   -d 'work'         and remove_tree( 'work' );
+   return;
 };
 
 func 'install_cpan_minus' => q{
@@ -59,7 +83,7 @@ func 'install_cpan_minus' => q{
    my $tar      = Archive::Tar->new; $tar->read( $path ); $tar->extract;
       $path     =~ s{ \.tar\.gz \z }{}mx;
    -e $path    or die "Path ${path} not found";
-   my $cmd      = "$^X ${path} App::cpanminus";
+   my $cmd      = "${EXECUTABLE_NAME} ${path} App::cpanminus";
    my $cpanm    = catfile( $config->{home}, 'perl5', 'bin', 'cpanm' );
 
    chdir $config->{home}; qx( $cmd ); -x $cpanm or die 'No cpanm';
@@ -82,7 +106,7 @@ func 'install_distribution' => q{
 
 func 'provision' => q{
    my $appclass = shift;  $appclass or die 'No appclass';
-   my $wanted   = shift;
+   my $worker   = shift;
    my $config   = config( $appclass );
      ($config->{home   } and -d $config->{home}) or die 'No home';
    -d $config->{appldir} or  mkpath( $config->{appldir}, { mode => 0750 } );
@@ -97,9 +121,10 @@ func 'provision' => q{
       chmod 0640, $cfgfile or die "Path ${cfgfile} cannot chmod - $!";
    }
 
-   $wanted or return; local_lib( $appclass ); eval "require ${wanted}";
+   $worker or return; local_lib( $appclass ); eval "require ${worker}";
+
    return $EVAL_ERROR ? "${EVAL_ERROR}"
-                      : sprintf 'version=%s', $wanted->VERSION;
+                      : sprintf 'version=%s', $worker->VERSION;
 };
 
 func 'remote_env' => q{
@@ -113,8 +138,8 @@ func 'writefile' => q{
    my $file     = shift; $file     or die 'No filename';
    my $path     = catfile( config( $appclass )->{tempdir}, $file );
 
-   open( my $fh, '>', $path ) or die "Path ${path} cannot open - $!";
-   print $fh $_[ 0 ] or die "Path ${path} cannot write - $!"; close $fh;
+   open( my $fh, '>', $path ) or die "Path ${path} cannot open - ${OS_ERROR}";
+   print $fh $_[ 0 ] or die "Path ${path} cannot write - $OS_ERROR"; close $fh;
    return "Writfile ${file} length ".(-s $path);
 };
 

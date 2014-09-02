@@ -189,6 +189,8 @@ sub ipc_ssh_install_worker {
 
    $logger->( 'debug', "Worker upgrade - from ${rem_ver} to ${our_ver}" );
 
+   unshift @{ $args->{calls} }, [ 'distclean', [ $self->config->appclass ] ];
+
    $self->_install_distribution( $args->{calls}, $file );
    $self->_install_distribution( $args->{calls}, 'local::lib' );
    $self->_install_cpan_minus  ( $args->{calls}, 'App-cpanminus.tar.gz' );
