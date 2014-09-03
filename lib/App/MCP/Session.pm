@@ -4,11 +4,12 @@ use namespace::autoclean;
 
 use Moo;
 use Class::Usul::Constants qw( FALSE NUL TRUE );
-use Class::Usul::Functions qw( bson64id );
+use Class::Usul::Functions qw( bson64id merge_attributes );
 use Class::Usul::Types     qw( ArrayRef BaseType Bool HashRef NonEmptySimpleStr
                                NonZeroPositiveInt SimpleStr Undef );
 use Type::Utils            qw( enum );
 
+# Public attributes
 has 'authenticated' => is => 'rw',  isa => Bool, default => FALSE;
 
 has 'messages'      => is => 'ro',  isa => HashRef, default => sub { {} };
@@ -22,25 +23,23 @@ has 'user_roles'    => is => 'rw',  isa => ArrayRef, default => sub { [] };
 
 has 'username'      => is => 'rw',  isa => SimpleStr, default => 'unknown';
 
-has 'usul'          => is => 'ro',  isa => BaseType,
-   handles          => [ 'config', 'log' ],
-   init_arg         => 'builder',   required => TRUE;
-
+# Private attributes
 has '_mid'          => is => 'rwp', isa => NonEmptySimpleStr | Undef;
 
 has '_session'      => is => 'ro',  isa => HashRef, required => TRUE;
 
+has '_usul'         => is => 'ro',  isa => BaseType,
+   handles          => [ 'config', 'log' ], init_arg => 'builder',
+   required         => TRUE;
+
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
-   my $env = delete $attr->{env}; $attr->{_session} = $env->{ 'psgix.session' };
+   my $env  = delete $attr->{env};
+   my $sess = $attr->{_session} = $env->{ 'psgix.session' };
 
-   for my $k (keys %{ $attr->{_session} }) {
-      $attr->{ $k } = $attr->{_session}->{ $k };
-   }
-
+   merge_attributes $attr, $sess, {}, [ keys %{ $sess } ];
    $attr->{updated} //= time;
-
    return $attr;
 };
 

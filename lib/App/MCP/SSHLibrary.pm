@@ -7,7 +7,7 @@ use IPC::PerlSSH::Library;
 init q{
    use lib;
    use English               qw( -no_match_vars );
-   use File::Path            qw( mkpath );
+   use File::Path            qw( mkpath remove_tree );
    use File::Spec::Functions qw( catdir catfile );
 
    sub config {
@@ -15,7 +15,7 @@ init q{
      (my $prefix   =  lc $appclass) =~ s{ :: }{_}gmsx;
       my $self     =  {
          home      => exists $ENV{HOME} && defined $ENV{HOME} && -d $ENV{HOME}
-                           ? $ENV{HOME} : (getpwuid $<)[ 7 ],
+                           ? $ENV{HOME} : (getpwuid $UID)[ 7 ],
          prefix    => $prefix,
       };
 
@@ -50,7 +50,7 @@ func 'dispatch' => q{
 };
 
 func 'distclean' => q{
-   require File::Copy; require File::Path;
+   require File::Copy;
 
    my $appclass = shift;  $appclass or die 'No appclass';
    my $config   = config( $appclass  ); my $tempdir = $config->{tempdir};
@@ -69,7 +69,7 @@ func 'distclean' => q{
    -e 'build.log'    and unlink 'build.log';
    -e 'latest-build' and unlink 'latest-build';
    -d 'work'         and remove_tree( 'work' );
-   return;
+   return 'Installation cleaned';
 };
 
 func 'install_cpan_minus' => q{

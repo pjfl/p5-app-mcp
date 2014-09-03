@@ -25,7 +25,7 @@ my $schema  = $factory->schedule;
 # Job
 my $rs = $schema->resultset( 'Job' ); my $job;
 
-$job = $rs->search( { fqjn => 'main::test' } )->first;
+$job = $rs->search( { fqjn => 'Main::test' } )->first;
 
 $job and $job->delete; # Left over job and event from previous run
 
@@ -52,13 +52,13 @@ like $e && $e->args->[ 0 ], qr{ \Qnot a valid length\E }msx,
 $job and $job->delete; $job = undef;
 
 $job = $rs->create( { command => 'sleep 1', name => 'test',
-                            type    => 'job',     user => 'mcp' } );
+                      type    => 'job',     user => 'mcp' } );
 
 ok $job->id > 0, 'Creates a job';
 
 is $job->fqjn, 'Main::test', 'Sets fully qualified job name';
 
-my $job1 = $rs->search( { fqjn => 'main::test1' } )->first;
+my $job1 = $rs->search( { fqjn => 'Main::test1' } )->first;
 
 $job1 and $job1->delete; # Left over job and event from previous run
 
@@ -68,7 +68,7 @@ $job1 = $rs->create( { condition => 'finished( test )',
 
 is $job1->fqjn, 'Main::test1', 'Creates job with condition';
 
-my $job2 = $rs->search( { fqjn => 'main::test2' } )->first;
+my $job2 = $rs->search( { fqjn => 'Main::test2' } )->first;
 
 $job2 and $job2->delete; # Left over job and event from previous run
 
@@ -80,6 +80,14 @@ $job2 = $rs->create( { crontab => ($min + 1).' '.$hour.' * * *',
 
 is $job2->fqjn, 'Main::test2', 'Creates job with crontab';
 
+my $job3 = $rs->search( { fqjn => 'Main::remote1' } )->first;
+
+$job3 and $job3->delete;
+
+$job3 = $rs->create( { condition => 'finished( test1 )',
+                       command   => 'sleep 2', host => 'head',
+                       name      => 'remote1', type => 'job',
+                       user      => 'mcp', } );
 done_testing;
 
 # Local Variables:

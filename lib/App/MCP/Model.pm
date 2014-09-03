@@ -11,10 +11,9 @@ use Unexpected::Functions qw( ValidationErrors );
 with q(App::MCP::Role::Component);
 
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object,
-   builder          => sub {
-      my $self = shift; my $extra = $self->config->connect_params;
-      $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) },
+has '_schema'       => is => 'lazy', isa => Object, builder => sub {
+   my $self = shift; my $extra = $self->config->connect_params;
+   $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) },
    reader           => 'schema';
 
 has '_schema_class' => is => 'lazy', isa => LoadableClass,

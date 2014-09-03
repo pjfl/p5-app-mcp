@@ -81,7 +81,7 @@ sub navigator : Role(anon) {
 
    my $list  = { list => { class => 'nav_list', data => $data } };
    my $page  = { meta => { id    => 'nav_panel' } };
-   my $stash = $self->get_stash( $req, $page, 'nav' => $list );
+   my $stash = $self->get_stash( $req, $page, nav => $list );
 
    $stash->{view} = 'xml';
    return $stash;

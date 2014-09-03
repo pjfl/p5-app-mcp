@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added remote provisioning cleanup of temp files
           - Added version upgrades to Worker provisioning
           - Refactored Async code
           - Rewrote implementation of job crontab attr
