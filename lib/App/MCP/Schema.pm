@@ -72,8 +72,7 @@ sub load_jobs : method {
 
 sub send_event : method {
    my $self     = shift;
-   my $job_name = $self->next_argv
-      or throw class => Unspecified, args => [ 'job name' ];
+   my $job_name = $self->next_argv or throw Unspecified, args => [ 'job name' ];
    my $trans    = $self->next_argv || 'start';
    my $fqjn     = qualify_job_name $job_name;
    my $schema   = $self->schedule;
@@ -103,9 +102,10 @@ sub _authenticated_user_info {
    my $schema  = $self->schedule;
    my $user_rs = $schema->resultset( 'User' );
    my $user    = $info->{user} = $user_rs->find_by_name( $self->user_name );
+   my $log     = $self->log;
 
-   $user->authenticate( $self->get_user_password( $user->username ) );
-   $self->log->debug( 'User '.$user->username.' authenticated' );
+   $user->authenticate( $self->get_user_password( $user->username ), $log );
+   $log->debug( 'User '.$user->username.' authenticated' );
 
    my $role_rs = $schema->resultset( 'Role' );
    my $role    = $info->{role} = $role_rs->find_by_name( $self->role_name );

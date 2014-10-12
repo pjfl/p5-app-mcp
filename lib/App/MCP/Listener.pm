@@ -28,6 +28,7 @@ around 'to_psgi_app' => sub {
 
    builder {
       mount "${point}" => builder {
+         enable "ConditionalGET";
          enable 'Deflater',
             content_type => $conf->deflate_types, vary_user_agent => TRUE;
          enable 'Static',
@@ -60,8 +61,7 @@ sub _build_usul {
    my $attr = { config => $self->config, debug => env_var( 'DEBUG' ) // FALSE };
    my $conf = $attr->{config};
 
-   $conf->{appclass    }
-      or throw class => Unspecified, args => [ 'application class' ];
+   $conf->{appclass    } or  throw Unspecified, args => [ 'application class' ];
    $attr->{config_class} //= $conf->{appclass}.'::Config';
    $conf->{name        } //= 'listener';
    $conf->{home        }   = find_apphome $conf->{appclass};

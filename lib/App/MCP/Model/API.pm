@@ -3,7 +3,7 @@ package App::MCP::Model::API;
 use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants    qw( NUL );
+use App::MCP::Constants    qw( NUL TRUE );
 use App::MCP::Functions    qw( env_var trigger_input_handler );
 use Class::Usul::Functions qw( bson64id bson64id_time throw );
 use Class::Usul::Time      qw( time2str );
@@ -28,18 +28,17 @@ sub create_event {
    my ($self, $req) = @_; my $event; $req->authenticate;
 
    my $schema = $self->schema;
-   my $run_id = $req->params->{runid} // 'undef';
+   my $run_id = $req->query_params->( 'runid' );
    my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
                        ->search( { runid   => $run_id },
                                  { columns => [ 'token' ] } );
    my $pevent = $pe_rs->first
-      or throw error => 'Runid [_1] not found',
-               args  => [ $run_id ], rv => HTTP_NOT_FOUND;
+     or throw 'Runid [_1] not found', args => [ $run_id ], rv => HTTP_NOT_FOUND;
    my $params = $self->authenticate_params
       ( $run_id, $pevent->token, $req->body_params->( 'event' ) );
 
    try   { $event = $schema->resultset( 'Event' )->create( $params ) }
-   catch { throw error => $_, rv => HTTP_BAD_REQUEST };
+   catch { throw $_, rv => HTTP_BAD_REQUEST };
 
    trigger_input_handler env_var 'DAEMON_PID';
 
@@ -60,7 +59,7 @@ sub create_job {
    $params->{group_id} = $sess->{role_id};
 
    try   { $job = $self->schema->resultset( 'Job' )->create( $params ) }
-   catch { throw error => $_, rv => HTTP_BAD_REQUEST };
+   catch { throw $_, rv => HTTP_BAD_REQUEST };
 
    return { code    => HTTP_CREATED,
             content => { message => 'Job '.$job->id.' created' },
@@ -79,7 +78,7 @@ sub snapshot_state {
    my $frames = [];
    my $id     = bson64id;
    my $schema = $self->schema;
-   my $level  = $req->params->{level} // 1;
+   my $level  = $req->query_params->( 'level', { optional => TRUE } ) // 1;
    my $job_rs = $schema->resultset( 'Job' );
    my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
          'columns'  => [ qw( fqjn id parent_id state.name type ) ],
@@ -95,7 +94,7 @@ sub snapshot_state {
                               type      => NUL.$job->type, };
       }
    }
-   catch { throw error => $_, rv => HTTP_BAD_REQUEST };
+   catch { throw $_, rv => HTTP_BAD_REQUEST };
 
    my $minted  = time2str undef, bson64id_time( $id );
    my $content = { id => $id, jobs => $frames, minted => $minted };

@@ -1,30 +1,31 @@
-package App::MCP::Schema::Schedule::ResultSet::User;
+package App::MCP::Async::Semaphore;
 
-use strictures;
-use parent 'DBIx::Class::ResultSet';
+use namespace::autoclean;
 
-use Class::Usul::Functions qw( throw );
-use HTTP::Status           qw( HTTP_NOT_FOUND );
+use Moo;
+use Class::Usul::Constants qw( FALSE TRUE );
+use Class::Usul::Functions qw( arg_list );
+use Scalar::Util           qw( refaddr );
 
-sub find_by_id_or_name {
-   my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $user;
+extends q(App::MCP::Async::Routine);
 
-   $arg =~ m{ \A \d+ \z }mx and $user = $self->find( $arg );
-   $user or $user = $self->find_by_name( $arg );
-   return $user;
-}
+# Construction
+around 'BUILDARGS' => sub {
+   my ($orig, $self, @args) = @_; my $attr = arg_list @args;
 
-sub find_by_name {
-   my ($self, $user_name) = @_;
+   my $code = $attr->{code}; my $lock = $attr->{builder}->lock;
 
-   my $user = $self->search( { username => $user_name } )->single
-     or throw 'User [_1] unknown', args => [ $user_name ], rv => HTTP_NOT_FOUND;
+   $attr->{code} = sub { $lock->reset( k => $_[ 0 ] ); $code->( @_ ) };
 
-   return $user;
-}
+   return $orig->( $self, $attr );
+};
 
-sub load_factor {
-   return 14;
+sub raise {
+   my $self = shift; $self->is_running or return FALSE; my $key = refaddr $self;
+
+   $self->lock->set( k => $key, async => TRUE ) or return TRUE;
+
+   return $self->call( $key );
 }
 
 1;
@@ -33,15 +34,15 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 
-App::MCP::Schema::Schedule::ResultSet::User - One-line description of the modules purpose
+App::MCP::Async::Semaphore - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Schema::Schedule::ResultSet::User;
+   use App::MCP::Async::Semaphore;
    # Brief but working code examples
 
 =head1 Description
@@ -101,3 +102,4 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 # mode: perl
 # tab-width: 3
 # End:
+# vim: expandtab shiftwidth=3:

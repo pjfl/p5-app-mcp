@@ -5,9 +5,9 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Async::Process;
 use App::MCP::Constants    qw( FALSE TRUE );
-use App::MCP::Functions    qw( log_leader nonblocking_write_pipe_pair
-                               read_exactly recv_arg_error send_msg terminate );
-use Class::Usul::Functions qw( bson64id );
+use App::MCP::Functions    qw( log_leader read_exactly recv_arg_error
+                               send_msg terminate );
+use Class::Usul::Functions qw( bson64id nonblocking_write_pipe_pair );
 use Class::Usul::Types     qw( Bool HashRef Object );
 use English                qw( -no_match_vars );
 use Storable               qw( thaw );
@@ -64,16 +64,16 @@ sub _build_pid {
 # Private functions
 sub __call_handler {
    my $args   = shift;
-   my $code   = $args->{code};
    my $before = delete $args->{before};
+   my $code   = delete $args->{code  };
    my $after  = delete $args->{after };
    my $rdr    = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
    my $wtr    = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
 
    return sub {
       my $self = shift; $before and $before->( $self );
-      my $lead = log_leader 'error', 'EXCODE', $PID;
-      my $log  = $self->log; my $loop = $self->loop;
+      my $lead = log_leader 'error', 'EXCODE', $PID; my $log = $self->log;
+      my $loop = $self->loop; my $max_calls = $self->max_calls; my $count = 0;
 
       $rdr and $loop->watch_read_handle( $rdr, sub {
          my $red = read_exactly $rdr, my $buf_len, 4;
@@ -90,6 +90,7 @@ sub __call_handler {
          }
          catch { $log->error( $lead.$_ ) };
 
+         $max_calls and ++$count > $max_calls and terminate $loop;
          return;
       } );
 

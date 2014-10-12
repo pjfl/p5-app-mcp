@@ -53,11 +53,11 @@ func 'distclean' => q{
    require File::Copy;
 
    my $appclass = shift;  $appclass or die 'No appclass';
-   my $config   = config( $appclass  ); my $tempdir = $config->{tempdir};
+   my $config   = config( $appclass ); my $tempdir = $config->{tempdir};
 
    chdir $tempdir or die "Directory ${tempdir} cannot chdir: ${OS_ERROR}";
 
-   my @list     = glob  ( '*.tar.gz' );
+   my @list     = glob( '*.tar.gz' );
 
    for (@list) { unlink $_; s{ \.tar\.gz \z }{}mx; -e $_ and remove_tree( $_ ) }
 

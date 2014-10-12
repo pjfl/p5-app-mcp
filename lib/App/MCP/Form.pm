@@ -66,7 +66,7 @@ around 'BUILDARGS' => sub {
       ( $model->usul, $req->l10n_domain, $req->locale );
 
    exists $attr->{config}->{ $form_name }
-      or throw error => 'Form name [_1] unknown', args => [ $form_name ];
+      or throw 'Form name [_1] unknown', args => [ $form_name ];
 
    my $meta = $attr->{config}->{ $form_name }->{meta} // {};
 
@@ -123,7 +123,7 @@ sub _build_l10n {
 sub load_config {
    my ($self, $builder, $domain, $locale) = @_;
 
-   state $cache //= {}; my $key = $domain.$locale;
+   state $cache //= {}; my $key = "${domain}.${locale}";
 
    exists $cache->{ $key } and return $cache->{ $key };
 

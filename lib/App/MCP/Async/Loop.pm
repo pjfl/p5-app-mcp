@@ -176,6 +176,8 @@ App::MCP::Async::Loop - One-line description of the modules purpose
 
 =head1 Description
 
+Only works with EV installed, otherwise fails to shutdown processes
+
 =head1 Configuration and Environment
 
 Defines the following attributes;

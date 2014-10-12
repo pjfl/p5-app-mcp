@@ -3,7 +3,7 @@ package App::MCP::Role::FormBuilder;
 use App::MCP::Attributes;
 use App::MCP::Constants    qw( DOTS FALSE HASH_CHAR NUL TRUE );
 use App::MCP::Form;
-use Class::Usul::Functions qw( ensure_class_loaded first_char pad throw );
+use Class::Usul::Functions qw( ensure_class_loaded first_char pad );
 use Class::Usul::Response::Table;
 use Data::Validation;
 use File::Gettext::Schema;
@@ -259,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 1 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 12 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

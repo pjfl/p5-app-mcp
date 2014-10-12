@@ -3,11 +3,11 @@ package App::MCP::Async::Process;
 use namespace::autoclean;
 
 use Moo;
-use App::MCP::Constants    qw( SPC TRUE );
+use App::MCP::Constants    qw( FALSE SPC TRUE );
 use App::MCP::Functions    qw( log_leader read_exactly recv_rv_error send_msg );
 use Class::Usul::Functions qw( is_coderef throw );
 use Class::Usul::Types     qw( ArrayRef CodeRef FileHandle
-                               NonEmptySimpleStr Undef );
+                               NonEmptySimpleStr PositiveInt Undef );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( weaken );
 use Storable               qw( thaw );
@@ -19,6 +19,8 @@ extends q(App::MCP::Async::Base);
 has 'code'      => is => 'ro', isa => CodeRef | ArrayRef | NonEmptySimpleStr,
    required     => TRUE;
 
+has 'max_calls' => is => 'ro', isa => PositiveInt, default => 0;
+
 has 'on_exit'   => is => 'ro', isa => CodeRef | Undef;
 
 has 'on_return' => is => 'ro', isa => CodeRef | Undef;
@@ -29,7 +31,7 @@ has 'writer'    => is => 'ro', isa => FileHandle | Undef;
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
 
    my $call_pipe = delete $attr->{call_pipe};
    my $retn_pipe = delete $attr->{retn_pipe};
@@ -95,7 +97,7 @@ sub stop {
 sub _build_pid {
    my $self = shift; weaken( $self );
    my $temp = $self->file->tempdir;
-   my $args = { async => TRUE, debug => $self->debug };
+   my $args = { async => TRUE, ignore_zombies => FALSE };
    my $name = $self->config->pathname->basename.SPC.(lc $self->log_key);
    my $cmd  = (is_coderef $self->code)
             ? [ sub { $PROGRAM_NAME = $name; $self->code->( $self ) } ]
@@ -124,6 +126,8 @@ App::MCP::Async::Process - One-line description of the modules purpose
    # Brief but working code examples
 
 =head1 Description
+
+Only works with EV installed, otherwise fails to shutdown processes
 
 =head1 Configuration and Environment
 

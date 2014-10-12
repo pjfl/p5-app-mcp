@@ -2,6 +2,7 @@ package App::MCP::Role::Preferences;
 
 use namespace::autoclean;
 
+use Try::Tiny;
 use Moo::Role;
 
 requires qw( config get_stash );
@@ -10,12 +11,15 @@ around 'get_stash' => sub {
    my ($orig, $self, $req, @args) = @_;
 
    my $stash  = $orig->( $self, $req, @args );
-   my $params = $req->params;
+   my $params = $req->query_params;
    my $sess   = $req->session;
    my $conf   = $self->config;
 
    for my $k (@{ $conf->preferences }) {
-      $stash->{prefs}->{ $k } = $params->{ $k } // $sess->$k() // $conf->$k();
+      my $v = $params->( $k, { optional => 1 }) // $sess->{ $k } // $conf->$k();
+
+      try   { $stash->{prefs}->{ $k } = $sess->$k( $v ) }
+      catch { $self->log->warn( $_ ) };
    }
 
    return $stash;

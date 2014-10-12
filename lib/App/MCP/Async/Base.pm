@@ -9,7 +9,7 @@ use Class::Usul::Types  qw( Bool NonEmptySimpleStr Object NonZeroPositiveInt );
 has 'autostart'   => is => 'ro',   isa => Bool, default => TRUE;
 
 has 'builder'     => is => 'ro',   isa => Object,
-   handles        => [ qw( config debug file log loop run_cmd ) ],
+   handles        => [ qw( config debug file lock log loop run_cmd ) ],
    required       => TRUE;
 
 has 'description' => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;

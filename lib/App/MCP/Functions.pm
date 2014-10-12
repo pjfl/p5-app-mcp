@@ -6,32 +6,30 @@ use parent 'Exporter::Tiny';
 use App::MCP::Constants    qw( FAILED FALSE LANG NUL OK SPC TRUE );
 use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
-use Fcntl                  qw( F_SETFL O_NONBLOCK );
 use Storable               qw( nfreeze );
 
-our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
-                       log_leader nonblocking_write_pipe_pair
+our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt log_leader
                        qualify_job_name read_exactly recv_arg_error
                        recv_rv_error send_msg terminate
                        trigger_input_handler trigger_output_handler ) );
 
 # Public functions
 sub env_var ($;$) {
-   my ($k, $v) = @_; return $v ? $ENV{ "MCP_${k}" } = $v : $ENV{ "MCP_${k}" };
+   defined $_[ 1 ] and $ENV{ 'MCP_'.$_[ 0 ] } = $_[ 1 ];
+
+   return $ENV{ 'MCP_'.$_[ 0 ] };
 }
 
 sub extract_lang ($) {
-   my $v = shift; return $v ? (split_on__ $v)[ 0 ] : LANG;
+   return $_[ 0 ] ? (split_on__ $_[ 0 ])[ 0 ] : LANG;
 }
 
 sub get_hashed_pw ($) {
-   my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
-
-   return substr $parts[ -1 ], 22;
+   my @parts = split m{ [\$] }mx, $_[ 0 ]; return substr $parts[ -1 ], 22;
 }
 
 sub get_salt ($) {
-   my $crypted = shift; my @parts = split m{ [\$] }mx, $crypted;
+   my @parts = split m{ [\$] }mx, $_[ 0 ];
 
    $parts[ -1 ] = substr $parts[ -1 ], 0, 22;
 
@@ -39,25 +37,13 @@ sub get_salt ($) {
 }
 
 sub log_leader ($$;$) {
-   my ($level, $key, $id) = @_;
-
-   my $dkey = __padkey( $level, $key ); my $did = __padid( $id );
+   my $dkey = __padkey( $_[ 0 ], $_[ 1 ] ); my $did = __padid( $_[ 2 ] );
 
    return "${dkey}[${did}]: ";
 }
 
-sub nonblocking_write_pipe_pair () {
-   my ($r, $w); pipe $r, $w or throw 'No pipe';
-
-   fcntl $w, F_SETFL, O_NONBLOCK; $w->autoflush( TRUE );
-
-   binmode $r; binmode $w;
-
-   return [ $r, $w ];
-}
-
 sub qualify_job_name (;$$) {
-   my ($name, $ns) = @_; my $sep = '::'; $name //= 'void'; $ns //= 'Main';
+   my ($name, $ns) = @_; $ns //= 'Main'; my $sep = '::'; $name //= 'void';
 
    return $name =~ m{ $sep }mx ? $name : "${ns}${sep}${name}";
 }
@@ -75,11 +61,11 @@ sub read_exactly ($$$) {
 }
 
 sub recv_arg_error ($$$) {
-   my $log = shift; return __recv_hndlr( $log, 'RCVARG', @_ );
+   return __recv_hndlr( 'RCVARG', @_ );
 }
 
 sub recv_rv_error ($$$) {
-   my $log = shift; return __recv_hndlr( $log, 'RECVRV', @_ );
+   return __recv_hndlr( 'RECVRV', @_ );
 }
 
 sub send_msg ($$$;@) {
@@ -87,7 +73,7 @@ sub send_msg ($$$;@) {
 
    my $lead = log_leader 'error', $key, $args[ 0 ] ||= $PID;
 
-   $writer or ($log->error( $lead.'No writer' ) and return FALSE);
+   $writer or ($log->error( "${lead}No writer" ) and return FALSE);
 
    my $rec  = nfreeze [ @args ];
    my $buf  = pack( 'I', length $rec ).$rec;
@@ -99,19 +85,17 @@ sub send_msg ($$$;@) {
 }
 
 sub terminate ($) {
-   my $loop = shift;
-
-   $loop->unwatch_signal( 'QUIT' ); $loop->unwatch_signal( 'TERM' );
-   $loop->stop;
+   $_[ 0 ]->unwatch_signal( 'QUIT' ); $_[ 0 ]->unwatch_signal( 'TERM' );
+   $_[ 0 ]->stop;
    return TRUE;
 }
 
 sub trigger_input_handler ($) {
-   my $pid = shift; return $pid ? CORE::kill 'USR1', $pid : FALSE;
+   return $_[ 0 ] ? CORE::kill 'USR1', $_[ 0 ] : FALSE;
 }
 
 sub trigger_output_handler ($) {
-   my $pid = shift; return $pid ? CORE::kill 'USR2', $pid : FALSE;
+   return $_[ 0 ] ? CORE::kill 'USR2', $_[ 0 ] : FALSE;
 }
 
 # Private functions
@@ -126,7 +110,7 @@ sub __padkey {
 }
 
 sub __recv_hndlr {
-   my ($log, $key, $id, $red) = @_;
+   my ($key, $log, $id, $red) = @_;
 
    unless (defined $red) {
       $log->error( log_leader( 'error', $key, $id ).$OS_ERROR ); return TRUE;

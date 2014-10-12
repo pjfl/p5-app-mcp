@@ -50,8 +50,7 @@ sub delete_action : Role(any) {
    my ($self, $req) = @_;
 
    my $id       = $req->args->[ 0 ]
-      or throw class => Unspecified,
-               args  => [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
+      or throw Unspecified, args  => [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
    my $location = $req->uri_for( 'job' );
    my $message  = [ 'Job id [_1] not found', $id ];
    my $job      = $self->schema->resultset( 'Job' )->find( $id )

@@ -1,13 +1,14 @@
 var StateDiagram = new Class( {
+// TODO: Its a tree display it like tree does
    Implements: [ Events, Options ],
 
    Binds: [ '_updater' ],
 
    options            : {
-      colour_map      : { active:   '#fff', hold:       '#00f',
-                          failed:   '',     finished:   '#99f',
-                          inactive: '',     running:    '#0f0',
-                          starting: '',     terminated: '#f00' },
+      colour_map      : { active:   '#fff',    hold:       '#00f',
+                          failed:   '#b21818', finished:   '#99f',
+                          inactive: '#cc9',    running:    '#0f0',
+                          starting: '#fbd12a', terminated: '#f00' },
       height          : 600,
       selector        : '.state-diagram',
       style           : {

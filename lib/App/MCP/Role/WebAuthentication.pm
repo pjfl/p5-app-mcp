@@ -14,12 +14,12 @@ around 'execute' => sub {
    my ($orig, $self, $method, $req) = @_; my $class = blessed $self || $self;
 
    my $code_ref = $self->can( $method )
-      or throw error => 'Class [_1] has no method [_2]',
-               args  => [ $class, $method ], rv => HTTP_NOT_FOUND;
+      or throw 'Class [_1] has no method [_2]',
+               args => [ $class, $method ], rv => HTTP_NOT_FOUND;
 
    my $method_roles = __list_roles_of( $code_ref ); $method_roles->[ 0 ]
-      or throw error => 'Class [_1] method [_2] is private',
-               args  => [ $class, $method ], rv => HTTP_FORBIDDEN;
+      or throw 'Class [_1] method [_2] is private',
+               args => [ $class, $method ], rv => HTTP_FORBIDDEN;
 
    is_member 'anon', $method_roles and return $orig->( $self, $method, $req );
 
@@ -39,8 +39,8 @@ around 'execute' => sub {
             and return $orig->( $self, $method, $req );
    }
 
-   throw error => 'User [_1] permission denied',
-         args  => [ $sess->username ], rv => HTTP_FORBIDDEN;
+   throw 'User [_1] permission denied', args => [ $sess->username ],
+                                        rv   => HTTP_FORBIDDEN;
    return; # Never reached
 };
 

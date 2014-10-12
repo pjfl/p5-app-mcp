@@ -105,23 +105,23 @@ sub _crontab {
 }
 
 sub crontab_hour {
-   return shift->_crontab( 'hour', $_[ 0 ] );
+   return $_[ 0 ]->_crontab( 'hour', $_[ 1 ] );
 }
 
 sub crontab_mday {
-   return shift->_crontab( 'mday', $_[ 0 ] );
+   return $_[ 0 ]->_crontab( 'mday', $_[ 1 ] );
 }
 
 sub crontab_min {
-   return shift->_crontab( 'min', $_[ 0 ] );
+   return $_[ 0 ]->_crontab( 'min',  $_[ 1 ] );
 }
 
 sub crontab_mon {
-   return shift->_crontab( 'mon', $_[ 0 ] );
+   return $_[ 0 ]->_crontab( 'mon',  $_[ 1 ] );
 }
 
 sub crontab_wday {
-   return shift->_crontab( 'wday', $_[ 0 ] );
+   return $_[ 0 ]->_crontab( 'wday', $_[ 1 ] );
 }
 
 sub delete {

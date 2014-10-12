@@ -9,6 +9,7 @@ use App::MCP::Functions        qw( get_salt );
 use Class::Usul::Functions     qw( base64_encode_ns create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
 use Crypt::SRP;
+use Digest::MD5                qw( md5_hex );
 use HTTP::Status               qw( HTTP_UNAUTHORIZED );
 use Try::Tiny;
 use Unexpected::Functions      qw( AccountInactive IncorrectPassword );
@@ -70,8 +71,8 @@ sub add_member_to {
 
    try { $self->assert_member_of( $role ) } catch { $failed = TRUE };
 
-   $failed or throw error => 'User [_1] already a member of role [_2]',
-                    args  => [ $self->username, $role->rolename ];
+   $failed or throw 'User [_1] already a member of role [_2]',
+                    args => [ $self->username, $role->rolename ];
 
    return $self->user_role->create( { user_id => $self->id,
                                       role_id => $role->id } );
@@ -87,26 +88,24 @@ sub assert_member_of {
    $self->role_id == $role->id and return TRUE;
 
    my $user_role = $self->user_role->find( $self->id, $role->id )
-      or throw error => 'User [_1] not member of role [_2]',
-               args  => [ $self->username, $role->rolename ];
+      or throw 'User [_1] not member of role [_2]',
+               args => [ $self->username, $role->rolename ];
 
    return TRUE;
 }
 
 sub authenticate {
-   my ($self, $password) = @_;
+   my ($self, $passwd, $log) = @_;
 
-   $self->active or throw class => AccountInactive,
-                          args  => [ $self->username ], rv => HTTP_UNAUTHORIZED;
+   $self->active or throw AccountInactive, args => [ $self->username ],
+                                           rv   => HTTP_UNAUTHORIZED;
 
    my $username = $self->username;
    my $stored   = $self->password || NUL;
-   my $supplied = $self->_encrypt_password( $username, $password, $stored );
+   my $supplied = $self->_encrypt_password( $username, $passwd, $stored );
 
-   $supplied eq $stored
-      or throw class => IncorrectPassword,
-               args  => [ $self->username ], rv => HTTP_UNAUTHORIZED;
-
+   $supplied eq $stored or throw IncorrectPassword, args => [ $self->username ],
+                                                    rv   => HTTP_UNAUTHORIZED;
    return;
 }
 
@@ -120,7 +119,7 @@ sub delete_member_from {
    $self->role_id == $role->id and throw 'Cannot delete from primary role';
 
    my $user_role = $self->user_role->find( $self->id, $role->id )
-      or throw error => 'User [_1] not member of role [_2]',
+      or throw 'User [_1] not member of role [_2]',
                args  => [ $self->username, $role->rolename ];
 
    return $user_role->delete;
@@ -171,7 +170,7 @@ sub _encrypt_password {
        $password =~ s{ \A \{ 5054 \} }{}mx;
 
       my $salt     = defined $stored ? get_salt( $stored )
-                   : __new_salt( '5054', '00' );
+                                     : __new_salt( '5054', '00' );
       my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
       my $verifier = $srp->compute_verifier( $username, $password, $salt );
 

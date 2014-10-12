@@ -28,7 +28,7 @@ sub exception_handler {
    my $title = $req->loc( 'Exception Handler' );
    my $page  = { code => $e->rv, error => "${e}", title => $title };
 
-   $e->class eq ValidationErrors and $page->{validation_error} = $e->args;
+   $e->class eq ValidationErrors->() and $page->{validation_error} = $e->args;
 
    return $self->get_stash( $req, $page, exception => {} );
 }

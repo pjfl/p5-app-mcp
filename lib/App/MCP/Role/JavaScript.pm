@@ -3,7 +3,6 @@ package App::MCP::Role::JavaScript;
 use namespace::autoclean;
 
 use Class::Usul::Types qw( ArrayRef );
-use File::DataClass::IO;
 use Moo::Role;
 
 requires qw( config get_stash );
@@ -13,7 +12,7 @@ has '_javascripts' => is => 'lazy', isa => ArrayRef, builder => sub {
    my $match = sub { m{ \b \d+ [_] .+? \.js \z }mx };
    my $dir   = $self->config->root->catdir( $self->config->js );
 
-   return [ map { $_->filename } io( $dir )->filter( $match )->all ];
+   return [ map { $_->filename } $dir->filter( $match )->all ];
 };
 
 around 'get_stash' => sub {

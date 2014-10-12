@@ -6,9 +6,9 @@ use namespace::autoclean;
 use Moo;
 use App::MCP::Async::Process;
 use App::MCP::Constants    qw( FALSE OK TRUE );
-use App::MCP::Functions    qw( log_leader nonblocking_write_pipe_pair
-                               read_exactly recv_arg_error send_msg );
-use Class::Usul::Functions qw( bson64id throw );
+use App::MCP::Functions    qw( log_leader read_exactly
+                               recv_arg_error send_msg );
+use Class::Usul::Functions qw( bson64id nonblocking_write_pipe_pair throw );
 use Class::Usul::Types     qw( ArrayRef Bool HashRef
                                NonZeroPositiveInt PositiveInt SimpleStr );
 use English                qw( -no_match_vars );
@@ -99,7 +99,6 @@ sub _new_worker {
       and $args->{call_pipe} = nonblocking_write_pipe_pair;
   ($self->channels =~ m{ o }mx or exists $args->{on_return})
       and $args->{retn_pipe} = nonblocking_write_pipe_pair;
-   $args->{max_calls  } = $self->max_calls;
    $args->{code       } = __call_handler( $args );
    $args->{description} = (lc $self->log_key)." worker ${index}";
    $args->{log_key    } = 'WORKER';
@@ -131,14 +130,14 @@ sub _next_worker_index {
 # Private functions
 sub __call_handler {
    my $args = shift;
-   my $code = $args->{code};
+   my $code = delete $args->{code};
    my $rdr  = $args->{call_pipe} ? $args->{call_pipe}->[ 0 ] : FALSE;
    my $wtr  = $args->{retn_pipe} ? $args->{retn_pipe}->[ 1 ] : FALSE;
-   my $max  = $args->{max_calls};
 
    return sub {
-      my $self = shift; my $count = 0;
-      my $lead = log_leader 'error', 'EXCODE', $PID; my $log = $self->log;
+      my $self = shift;
+      my $lead = log_leader 'error', 'EXCODE', $PID;
+      my $log  = $self->log; my $max = $self->max_calls; my $count = 0;
 
       while (TRUE) {
          $max and ++$count > $max and last;

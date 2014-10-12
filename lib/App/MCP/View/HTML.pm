@@ -28,7 +28,7 @@ has '_template' => is => 'lazy', isa => Object, builder => sub {
                      INCLUDE_PATH => [ $self->template_dir->pathname ],
                      WRAPPER      => 'wrapper.tt', };
    my $template =  Template->new( $args )
-      or throw error => $Template::ERROR, rv => HTTP_INTERNAL_SERVER_ERROR;
+      or throw $Template::ERROR, rv => HTTP_INTERNAL_SERVER_ERROR;
 
    return $template;
 };
@@ -45,7 +45,7 @@ sub serialize {
    my $template = ($stash->{template} //= $self->config->template).'.tt';
 
    $self->_template->process( $template, $stash, \$html ) or
-      throw error => $self->_template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
+      throw $self->_template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
 
    my $content  = encode( 'UTF-8', $html );
 

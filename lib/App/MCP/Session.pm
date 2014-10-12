@@ -7,7 +7,6 @@ use Class::Usul::Constants qw( FALSE NUL TRUE );
 use Class::Usul::Functions qw( bson64id merge_attributes );
 use Class::Usul::Types     qw( ArrayRef BaseType Bool HashRef NonEmptySimpleStr
                                NonZeroPositiveInt SimpleStr Undef );
-use Type::Utils            qw( enum );
 
 # Public attributes
 has 'authenticated' => is => 'rw',  isa => Bool, default => FALSE;

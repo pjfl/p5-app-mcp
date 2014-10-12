@@ -2,12 +2,13 @@ package App::MCP::Role::APIAuthentication;
 
 use namespace::autoclean;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS );
+use App::MCP::Constants    qw( EXCEPTION_CLASS TRUE );
 use App::MCP::Functions    qw( get_hashed_pw get_salt );
 use Class::Usul::Crypt     qw( decrypt );
 use Class::Usul::Functions qw( base64_decode_ns base64_encode_ns
                                bson64id bson64id_time throw );
 use Crypt::SRP;
+use Digest::MD5 qw( md5_hex );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
                                HTTP_OK HTTP_UNAUTHORIZED );
 use Try::Tiny;
@@ -32,8 +33,12 @@ sub authenticate {
    my $verifier = base64_decode_ns get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
 
+   $token       = base64_decode_ns $token;
+   $self->log->debug( 'Auth M1 token '.(md5_hex $token) );
+   $self->log->debug( 'Auth verifier '
+                      .(md5_hex "${username}${salt}${verifier}") );
    $srp->server_init( $username, $verifier, $salt, @{ $sess->{auth_keys} } );
-   $srp->server_verify_M1( base64_decode_ns $token )
+   $srp->server_verify_M1( $token )
       or throw error => 'User [_1] M1 token verification failed',
                args  => [ $username ], rv => HTTP_UNAUTHORIZED;
    $token       = base64_encode_ns $srp->server_compute_M2;
@@ -67,6 +72,7 @@ sub exchange_pub_keys {
    my $client_pub_key = base64_decode_ns $req->query_params->( 'public_key' );
    my $username       = $user->username;
 
+   $self->log->debug( 'Auth client pub key '.(md5_hex $client_pub_key ) );
    $srp->server_verify_A( $client_pub_key )
       or throw error => 'User [_1] client public key verification failed',
                args  => [ $username ], rv => HTTP_UNAUTHORIZED;
@@ -79,6 +85,7 @@ sub exchange_pub_keys {
    my ($server_pub_key, $server_priv_key) = $srp->server_compute_B;
 
    $sess->{auth_keys} = [ $client_pub_key, $server_pub_key, $server_priv_key ];
+   $self->log->debug( 'Auth server pub key '.(md5_hex $server_pub_key ) );
 
    my $pub_key = base64_encode_ns $server_pub_key;
    my $content = { public_key => $pub_key, salt => $salt, };
