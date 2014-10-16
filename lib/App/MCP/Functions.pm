@@ -8,9 +8,8 @@ use Class::Usul::Functions qw( pad split_on__ throw );
 use English                qw( -no_match_vars );
 use Storable               qw( nfreeze );
 
-our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt log_leader
-                       qualify_job_name read_exactly recv_arg_error
-                       recv_rv_error send_msg terminate
+our @EXPORT_OK = ( qw( env_var extract_lang get_hashed_pw get_salt
+                       log_leader qualify_job_name terminate
                        trigger_input_handler trigger_output_handler ) );
 
 # Public functions
@@ -48,42 +47,6 @@ sub qualify_job_name (;$$) {
    return $name =~ m{ $sep }mx ? $name : "${ns}${sep}${name}";
 }
 
-sub read_exactly ($$$) {
-   $_[ 1 ] = NUL;
-
-   while ((my $have = length $_[ 1 ]) < $_[ 2 ]) {
-      my $red = read( $_[ 0 ], $_[ 1 ], $_[ 2 ] - $have, $have );
-
-      defined $red or return; $red or return NUL;
-   }
-
-   return $_[ 2 ];
-}
-
-sub recv_arg_error ($$$) {
-   return __recv_hndlr( 'RCVARG', @_ );
-}
-
-sub recv_rv_error ($$$) {
-   return __recv_hndlr( 'RECVRV', @_ );
-}
-
-sub send_msg ($$$;@) {
-   my ($writer, $log, $key, @args) = @_;
-
-   my $lead = log_leader 'error', $key, $args[ 0 ] ||= $PID;
-
-   $writer or ($log->error( "${lead}No writer" ) and return FALSE);
-
-   my $rec  = nfreeze [ @args ];
-   my $buf  = pack( 'I', length $rec ).$rec;
-   my $len  = $writer->syswrite( $buf, length $buf );
-
-   defined $len or ($log->error( $lead.$OS_ERROR ) and return FALSE);
-
-   return TRUE;
-}
-
 sub terminate ($) {
    $_[ 0 ]->unwatch_signal( 'QUIT' ); $_[ 0 ]->unwatch_signal( 'TERM' );
    $_[ 0 ]->stop;
@@ -107,20 +70,6 @@ sub __padkey {
    my ($level, $key) = @_; my $w = 11 - length $level; $w < 1 and $w = 1;
 
    return pad $key, $w, SPC, 'left';
-}
-
-sub __recv_hndlr {
-   my ($key, $log, $id, $red) = @_;
-
-   unless (defined $red) {
-      $log->error( log_leader( 'error', $key, $id ).$OS_ERROR ); return TRUE;
-   }
-
-   unless (length $red) {
-      $log->info( log_leader( 'info', $key, $id ).'EOF' ); return TRUE;
-   }
-
-   return FALSE;
 }
 
 1;

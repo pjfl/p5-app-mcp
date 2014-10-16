@@ -5,10 +5,10 @@ use namespace::autoclean;
 use Moo;
 use App::MCP;
 use App::MCP::Application;
-use App::MCP::Async;
 use App::MCP::Constants qw( NUL OK TRUE );
 use App::MCP::DaemonControl;
 use App::MCP::Functions qw( env_var log_leader terminate );
+use Async::IPC;
 use Class::Usul::Options;
 use Class::Usul::Types  qw( NonZeroPositiveInt Object );
 use English             qw( -no_match_vars );
@@ -31,7 +31,7 @@ has 'app'           => is => 'lazy', isa => Object, builder => sub {
    App::MCP::Application->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
 
 has 'async_factory' => is => 'lazy', isa => Object, builder => sub {
-   App::MCP::Async->new( builder => $_[ 0 ] ) }, handles => [ qw( loop ) ];
+   Async::IPC->new( builder => $_[ 0 ] ) }, handles => [ qw( loop ) ];
 
 has 'clock_tick'    => is => 'lazy', isa => Object;
 

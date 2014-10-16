@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Split Async module out to Async::IPC
           - Switched to no-ipc-run branch of Class::Usul
           - Added remote provisioning cleanup of temp files
           - Added version upgrades to Worker provisioning
