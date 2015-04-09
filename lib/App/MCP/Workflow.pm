@@ -2,13 +2,13 @@ package App::MCP::Workflow;
 
 use namespace::autoclean;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
 use App::MCP::Workflow::Transition;
 use Class::Usul::Functions qw( throw );
 use Moo;
 use Scalar::Util           qw( blessed );
 use Try::Tiny;
-use Unexpected::Functions  qw( Condition Crontab Illegal Retry );
+use Unexpected::Functions  qw( catch_class Condition Crontab Illegal Retry );
 
 extends q(Class::Workflow);
 
@@ -52,7 +52,7 @@ sub BUILD {
 
          $event->rv <= $job->expected_rv and return;
          $event->transition->set_fail;
-         throw class => Retry, args => [ $event->rv, $job->expected_rv ];
+         throw Retry, [ $event->rv, $job->expected_rv ];
       }, ] );
 
    $self->transition( 'off_hold',  to_state => 'active' );
@@ -63,9 +63,9 @@ sub BUILD {
       sub {
          my ($self, $instance, $event) = @_; my $job = $event->job_rel;
 
-         $job->should_start_now or throw class => Crontab;
+         $job->should_start_now or throw Crontab;
 
-         $job->eval_condition or throw class => Condition;
+         $job->eval_condition or throw Condition;
 
          return;
       }, ] );
@@ -77,24 +77,23 @@ sub BUILD {
 }
 
 sub process_event {
-   my ($self, $state_name, $event) = @_;
+   my ($self, $state_name, $event) = @_; my $trigger = TRUE;
 
- RETRY:
-   try {
-      my $ev_t       = $event->transition;
-      my $state      = $self->state( $state_name );
-      my $instance   = $self->new_instance( state => $state );
-      my $transition = $instance->state->get_transition( $ev_t->value )
-         or throw class => Illegal, args => [ $ev_t->value, $state_name ];
+   while ($trigger) {
+      $trigger = FALSE;
 
-      $instance   = $transition->apply( $instance, $event );
-      $state_name = $instance->state->name;
+      try {
+         my $ev_t       = $event->transition;
+         my $state      = $self->state( $state_name );
+         my $instance   = $self->new_instance( state => $state );
+         my $transition = $instance->state->get_transition( $ev_t->value )
+            or throw Illegal, [ $ev_t->value, $state_name ];
+
+         $instance   = $transition->apply( $instance, $event );
+         $state_name = $instance->state->name;
+      }
+      catch_class [ Retry => sub { $trigger = TRUE } ];
    }
-   catch {
-      my $class = blessed $_ && $_->can( 'class' ) ? $_->class : undef;
-
-      $class and $class eq Retry and goto RETRY; throw $_;
-   };
 
    return $state_name;
 }

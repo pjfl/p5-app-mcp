@@ -4,21 +4,25 @@ use namespace::autoclean;
 use version;
 
 use Moo;
-use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK );
-use App::MCP::Functions    qw( log_leader trigger_output_handler );
+use App::MCP::Constants    qw( COMMA FALSE LOG_KEY_WIDTH NUL TRUE OK SPC );
+use App::MCP::Functions    qw( trigger_output_handler );
+use Async::IPC::Functions  qw( log_debug log_error log_info log_warn );
 use Class::Usul::Functions qw( bson64id create_token distname elapsed );
 use Class::Usul::Types     qw( BaseType HashRef LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object );
 use English                qw( -no_match_vars );
 use IPC::PerlSSH;
+use List::Util             qw( first );
 use Scalar::Util           qw( weaken );
 use Try::Tiny;
+
+Async::IPC::Functions->log_key_width( LOG_KEY_WIDTH );
 
 # Public attributes
 has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
    builder   => sub { $_[ 0 ]->config->port };
 
-has 'usul'   => is => 'ro', isa => BaseType,
+has 'usul'   => is => 'ro',   isa => BaseType,
    handles   => [ qw( config debug log ) ], init_arg => 'builder',
    required  => TRUE;
 
@@ -39,200 +43,9 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass,
 
 with q(Class::Usul::TraitFor::ConnectInfo);
 
-# Public methods
-sub cron_job_handler {
-   my ($self, $log_key, $sig_hndlr_pid) = @_;
-
-   $self->_cron_log_interval( $log_key );
-
-   my $trigger = FALSE;
-   my $schema  = $self->schema;
-   my $job_rs  = $schema->resultset( 'Job' );
-   my $ev_rs   = $schema->resultset( 'Event' );
-   my $jobs    = $job_rs->search( {
-      'state.name' => 'active',
-      'me.crontab' => { '!=' => NUL }, }, {
-         'columns' => [ qw( condition crontab id state.name state.updated ) ],
-         'join'    => 'state' } );
-#->search_related( 'events', {
-#            'transition' => [ undef, { '!=' => 'start' } ] } );
-
-
-   for my $job (grep { $_->should_start_now } $jobs->all) {
-      (not $job->condition or $job->eval_condition) and $trigger = TRUE
-       and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
-   }
-
-   $trigger and trigger_output_handler $sig_hndlr_pid;
-   return OK;
-}
-
-sub input_handler {
-   my ($self, $log_key, $sig_hndlr_pid) = @_; my $trigger = TRUE;
-
-   while ($trigger) {
-      $trigger = FALSE;
-
-      my $schema = $self->schema;
-      my $ev_rs  = $schema->resultset( 'Event' );
-      my $js_rs  = $schema->resultset( 'JobState' );
-      my $pev_rs = $schema->resultset( 'ProcessedEvent' );
-      my $events = $ev_rs->search
-         ( { transition => [ qw( activate finish started terminate ) ] },
-           { order_by   => { -asc => 'me.id' },
-             prefetch   => 'job_rel' } );
-
-      for my $event ($events->all) {
-         $schema->txn_do( sub {
-            my $p_ev = $self->_process_event( $js_rs, $event );
-
-            $p_ev->{rejected} or $trigger = TRUE;
-            $pev_rs->create( $p_ev ); $event->delete;
-         } );
-      }
-
-      $trigger and trigger_output_handler $sig_hndlr_pid;
-   }
-
-   trigger_output_handler $sig_hndlr_pid;
-   return OK;
-}
-
-sub ipc_ssh_add_provisioning {
-   my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
-
-   $self->_remote_provisioned( "${user}\@${host}" ) and return;
-
-   my $appclass  = $self->config->appclass;  my $calls  = $args->{calls};
-   my $installer = 'ipc_ssh_install_worker'; my $worker = $self->worker;
-
-   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
-   return;
-}
-
-sub ipc_ssh_caller {
-   my ($self, $log_key, $runid, $args) = @_; my $log = $self->log;
-
-   my $ips    = IPC::PerlSSH->new
-      ( Host       => $args->{host},
-        User       => $args->{user},
-        SshOptions => [ '-i', $self->config->identity_file ], );
-   my $logger = $args->{logger} = sub {
-      my ($level, $msg) = @_; my $lead = log_leader $level, $log_key, $runid;
-
-      return $log->$level( $lead.($msg // 'Undefined message') );
-   };
-   my $failed = FALSE;
-
-   try   { $ips->use_library( $self->config->library_class ) }
-   catch { $logger->( 'error', "Store failed - ${_}" ); $failed = TRUE };
-
-   $failed and return FALSE; my $results = {};
-
-   while (defined (my $call = shift @{ $args->{calls} })) {
-      my $res;
-
-      try   { $res = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
-      catch { $logger->( 'error', "Call failed - ${_}" ); $failed = TRUE };
-
-      $failed and return FALSE; $logger->( 'debug', "Call succeeded - ${res}" );
-
-      my $method = $call->[ 2 ]; defined $method
-         and $self->$method( $args, $results, $call, $res );
-   }
-
-   return $results;
-}
-
-sub ipc_ssh_install_callback {
-   my ($self, $log_key, $ipc_ssh) = @_; weaken( $self );
-
-   $ipc_ssh->set_return_callback( sub {
-      my ($runid, $results) = @_; $results or return;
-
-      my ($lead, $key, $res, $val); $res = $results->{provisioned}
-         and $key  = $res->{key}
-         and $self->_remote_provisioned( $key, $val = $res->{value} )
-         and $lead = log_leader( 'info', $log_key, $PID )
-         and $self->log->info( "${lead}Provisioned ${runid} ${key} ${val}" );
-
-      return;
-   } );
-
-   return;
-}
-
-sub ipc_ssh_install_worker {
-   my ($self, $args, $results, $call, $result) = @_;
-
-   my  $logger   =  $args->{logger};
-   my  $dist     =  distname $self->worker;
-   my  $share    =  $self->config->sharedir;
-   my  $filter   =  qr{ \b $dist - ([0-9\.]+) \.tar\.gz \z }mx;
-   my  $our_ver  = (sort map { $_ =~ $filter; qv( $1 ) } map { $_->basename }
-                    $share->filter( sub { $_ =~ $filter } )->all_files)[ -1 ];
-   my ($rem_ver) =  $result =~ m{ \A version= (.+) \z }mx;
-   my  $key      =  $args->{user}.'@'.$args->{host};
-
-   $our_ver //= qv( '0.0.0' ); $rem_ver = qv( $rem_ver // '0.0.0' );
-   $logger->( 'debug', "Worker current - ${key} ${rem_ver}" );
-
-   $call->[ 0 ] eq 'provision' and $rem_ver >= $our_ver
-      and $results->{provisioned} = { key => $key, value => "${rem_ver}" }
-      and return;
-
-   my  $tarball  =  $share->catfile( my $file = "${dist}-${our_ver}.tar.gz" );
-
-   not $tarball->exists
-      and $logger->( 'warn', "File ${tarball} not found" )
-      and return;
-
-   $logger->( 'debug', "Worker upgrade - from ${rem_ver} to ${our_ver}" );
-
-   unshift @{ $args->{calls} }, [ 'distclean', [ $self->config->appclass ] ];
-
-   $self->_install_distribution( $args->{calls}, $file );
-   $self->_install_distribution( $args->{calls}, 'local::lib' );
-   $self->_install_cpan_minus  ( $args->{calls}, 'App-cpanminus.tar.gz' );
-   return;
-}
-
-sub output_handler {
-   my ($self, $log_key, $ipc_ssh) = @_; my $trigger = TRUE;
-
-   while ($trigger) {
-      $trigger = FALSE;
-
-      my $schema = $self->schema;
-      my $ev_rs  = $schema->resultset( 'Event' );
-      my $js_rs  = $schema->resultset( 'JobState' );
-      my $pev_rs = $schema->resultset( 'ProcessedEvent' );
-      my $events = $ev_rs->search( { transition => 'start' },
-                                   { prefetch   => 'job_rel' } );
-
-      for my $event ($events->all) {
-         $schema->txn_do( sub {
-            my $p_ev = $self->_process_event( $js_rs, $event );
-
-            unless ($p_ev->{rejected}) {
-               my ($runid, $token)
-                  = $self->_start_job( $ipc_ssh, $event->job_rel );
-
-               $p_ev->{runid} = $runid; $p_ev->{token} = $token;
-               $trigger = TRUE;
-            }
-
-            $pev_rs->create( $p_ev ); $event->delete;
-         } );
-      }
-   }
-
-   return OK;
-}
-
 # Private methods
-sub _cron_log_interval {
-   my ($self, $log_key) = @_; my $lead;
+my $_cron_log_interval = sub {
+   my ($self, $name) = @_;
 
    my $log_int = $self->config->cron_log_interval or return;
    my $elapsed = elapsed;
@@ -240,20 +53,11 @@ sub _cron_log_interval {
    my $spread  = $self->config->clock_tick_interval / 2;
 
    ($rem > $log_int - $spread or $rem < $spread)
-      and $lead = log_leader( 'info', $log_key, $PID )
-      and $self->log->info( "${lead}Elapsed ${elapsed}" );
+      and log_info $self->log, $name, $PID, "Elapsed ${elapsed}";
    return;
-}
+};
 
-sub _install_cpan_minus {
-   return shift->_install_remote( 'install_cpan_minus', @_ );
-}
-
-sub _install_distribution {
-   return shift->_install_remote( 'install_distribution', @_ );
-}
-
-sub _install_remote {
+my $_install_remote = sub {
    my ($self, $method, $calls, $file) = @_;
 
    my $conf = $self->config; my $appclass = $conf->appclass;
@@ -266,27 +70,26 @@ sub _install_remote {
 
    unshift @{ $calls }, [ 'writefile', [ $appclass, $file, $path->all ] ];
    return;
-}
+};
 
-sub _process_event {
-   my ($self, $js_rs, $event) = @_;
+my $_process_event = sub {
+   my ($self, $name, $js_rs, $event) = @_;
 
    my $cols = { $event->get_inflated_columns };
    my $r    = $js_rs->create_and_or_update( $event ) or return $cols;
-   my $lead = log_leader 'debug', uc $r->[ 0 ], $r->[ 1 ];
 
-   $self->log->debug( $lead.$r->[ 2 ] );
+   log_debug $self->log, $name, $PID, (join SPC, @{ $r });
    $cols->{rejected} = $r->[ 2 ]->class;
    return $cols;
-}
+};
 
-sub _remote_provisioned {
+my $_remote_provisioned = sub {
    defined $_[ 2 ] and $_[ 0 ]->_provisioned->{ $_[ 1 ] } = $_[ 2 ];
 
    return $_[ 0 ]->_provisioned->{ $_[ 1 ] };
-}
+};
 
-sub _start_job {
+my $_start_job = sub {
    my ($self, $ipc_ssh, $job) = @_;
 
    my $runid = bson64id;
@@ -306,13 +109,211 @@ sub _start_job {
                  token     => $token,
                  worker    => $self->worker, };
    my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
-   my $lead  = log_leader 'debug', 'START', $runid;
 
-   $self->log->debug( $lead.$job->fqjn." ${user}\@${host} ${cmd}" );
+   log_debug $self->log, 'start', $runid, $job->fqjn." ${user}\@${host} ${cmd}";
    $args = { calls => $calls, host => $host, user => $user, };
    $self->ipc_ssh_add_provisioning( $args );
    $ipc_ssh->call( $runid, $args ); # Calls ipc_ssh_caller
    return ($runid, $token);
+};
+
+my $_install_cpan_minus = sub {
+   return shift->$_install_remote( 'install_cpan_minus', @_ );
+};
+
+my $_install_distribution = sub {
+   return shift->$_install_remote( 'install_distribution', @_ );
+};
+
+# Public methods
+sub cron_job_handler {
+   my ($self, $name, $sig_hndlr_pid) = @_;
+
+   $self->$_cron_log_interval( $name );
+
+   my $trigger = FALSE;
+   my $schema  = $self->schema;
+   my $job_rs  = $schema->resultset( 'Job' );
+   my $ev_rs   = $schema->resultset( 'Event' );
+   my $jobs    = $job_rs->search
+      ( { 'me.crontab'        => { '!=' => NUL },
+          'state.name'        => 'active',
+          'events.transition' => [ undef, { '!=' => 'start' } ], },
+        { 'columns'           => [ qw( condition crontab events.transition
+                                       id state.name state.updated ) ],
+          'join'              => [ 'state', 'events' ], } );
+
+   for my $job (grep { $_->should_start_now } $jobs->all) {
+      (not $job->condition or $job->eval_condition) and $trigger = TRUE
+       and $ev_rs->create( { job_id => $job->id, transition => 'start' } );
+   }
+
+   $trigger and trigger_output_handler $sig_hndlr_pid;
+   return OK;
+}
+
+sub input_handler {
+   my ($self, $name, $sig_hndlr_pid) = @_; my $trigger = TRUE;
+
+   while ($trigger) {
+      $trigger = FALSE;
+
+      my $schema = $self->schema;
+      my $ev_rs  = $schema->resultset( 'Event' );
+      my $js_rs  = $schema->resultset( 'JobState' );
+      my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+      my $events = $ev_rs->search
+         ( { transition => [ qw( activate finish started terminate ) ] },
+           { order_by   => { -asc => 'me.id' },
+             prefetch   => 'job_rel' } );
+
+      for my $event ($events->all) {
+         $schema->txn_do( sub {
+            my $p_ev = $self->$_process_event( $name, $js_rs, $event );
+
+            $p_ev->{rejected} or $trigger = TRUE;
+            $pev_rs->create( $p_ev ); $event->delete;
+         } );
+      }
+
+      $trigger and trigger_output_handler $sig_hndlr_pid;
+   }
+
+   trigger_output_handler $sig_hndlr_pid;
+   return OK;
+}
+
+sub ipc_ssh_add_provisioning {
+   my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
+
+   $self->$_remote_provisioned( "${user}\@${host}" ) and return;
+
+   my $appclass  = $self->config->appclass;  my $calls  = $args->{calls};
+   my $installer = 'ipc_ssh_install_worker'; my $worker = $self->worker;
+
+   unshift @{ $calls }, [ 'provision', [ $appclass, $worker ], $installer ];
+   return;
+}
+
+sub ipc_ssh_caller {
+   my ($self, $name, $notifier, $runid, $args) = @_;
+
+   my $failed = FALSE;
+   my $log    = $self->log;
+   my $ips    = IPC::PerlSSH->new
+      ( Host       => $args->{host},
+        User       => $args->{user},
+        SshOptions => [ '-i', $self->config->identity_file ], );
+
+   try   { $ips->use_library( $self->config->library_class ) }
+   catch {
+      log_error $log, $name, $runid, "Store failed - ${_}"; $failed = TRUE;
+   };
+
+   $failed and return FALSE; my $results = {};
+
+   while (defined (my $call = shift @{ $args->{calls} })) {
+      my $res;
+
+      try   { $res = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
+      catch {
+         log_error $log, $name, $runid, "Call failed - ${_}"; $failed = TRUE;
+      };
+
+      $failed and return FALSE;
+
+      log_debug $log, $name, $runid, "Call succeeded - ${res}";
+
+      my $method = $call->[ 2 ]; defined $method
+         and $self->$method( $results, $name, $runid, $call, $res, $args );
+   }
+
+   return $results;
+}
+
+sub ipc_ssh_callback {
+   my ($self, $name, $notifier, $args) = @_;
+
+   my ($runid, $results) = @{ $args // [] }; $results or return;
+
+   my ($mesg, $key, $res, $val);
+
+   $res = $results->{provisioned}
+      and $key  = $res->{key}
+      and $self->$_remote_provisioned( $key, $val = $res->{value} )
+      and $mesg = "Provisioned ${runid} ${key} ${val}"
+      and log_info $self->log, $name, $PID, $mesg;
+
+   return;
+}
+
+sub ipc_ssh_install_worker {
+   my ($self, $results, $name, $runid, $call, $result, $args) = @_;
+
+   my  $dist     =  distname $self->worker;
+   my  $share    =  $self->config->sharedir;
+   my  $filter   =  qr{ \b $dist - ([0-9\.]+) \.tar\.gz \z }mx;
+   my  $our_ver  = (sort map { $_ =~ $filter; qv( $1 ) } map { $_->basename }
+                    $share->filter( sub { $_ =~ $filter } )->all_files)[ -1 ];
+   my ($rem_ver) =  $result =~ m{ \A version= (.+) \z }mx;
+   my  $key      =  $args->{user}.'@'.$args->{host};
+
+   $our_ver //= qv( '0.0.0' ); $rem_ver = qv( $rem_ver // '0.0.0' );
+   log_debug $self->log, $name, $runid, "Worker current - ${key} ${rem_ver}";
+
+   $call->[ 0 ] eq 'provision' and $rem_ver >= $our_ver
+      and $results->{provisioned} = { key => $key, value => "${rem_ver}" }
+      and return;
+
+   my  $tarball  =  $share->catfile( my $file = "${dist}-${our_ver}.tar.gz" );
+
+   not $tarball->exists
+      and log_warn( $self->log, $name, $runid, "File ${tarball} not found" )
+      and return;
+
+   log_debug $self->log, $name, $runid,
+      "Worker upgrade - from ${rem_ver} to ${our_ver}";
+
+   unshift @{ $args->{calls} }, [ 'distclean', [ $self->config->appclass ] ];
+
+   # TODO: Need to force reload of worker after upgrade
+   $self->$_install_distribution( $args->{calls}, $file );
+   $self->$_install_distribution( $args->{calls}, 'local::lib' );
+   $self->$_install_cpan_minus  ( $args->{calls}, 'App-cpanminus.tar.gz' );
+   return;
+}
+
+sub output_handler {
+   my ($self, $name, $ipc_ssh) = @_; my $trigger = TRUE;
+
+   while ($trigger) {
+      $trigger = FALSE;
+
+      my $schema = $self->schema;
+      my $ev_rs  = $schema->resultset( 'Event' );
+      my $js_rs  = $schema->resultset( 'JobState' );
+      my $pev_rs = $schema->resultset( 'ProcessedEvent' );
+      my $events = $ev_rs->search( { transition => 'start' },
+                                   { prefetch   => 'job_rel' } );
+
+      for my $event ($events->all) {
+         $schema->txn_do( sub {
+            my $p_ev = $self->$_process_event( $name, $js_rs, $event );
+
+            unless ($p_ev->{rejected}) {
+               my ($runid, $token)
+                  = $self->$_start_job( $ipc_ssh, $event->job_rel );
+
+               $p_ev->{runid} = $runid; $p_ev->{token} = $token;
+               $trigger = TRUE;
+            }
+
+            $pev_rs->create( $p_ev ); $event->delete;
+         } );
+      }
+   }
+
+   return OK;
 }
 
 1;

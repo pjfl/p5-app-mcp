@@ -14,6 +14,93 @@ use Moo::Role;
 
 requires qw( config debug get_stash log schema_class usul );
 
+# Private functions
+my $_new_grid_table = sub {
+   my ($label, $values) = @_;
+
+   return Class::Usul::Response::Table->new( {
+      class    => { item     => 'grid_cell',
+                    item_num => 'grid_cell lineNumber first', },
+      count    => scalar @{ $values },
+      fields   => [ qw( item_num item ) ],
+      hclass   => { item     => 'grid_header most',
+                    item_num => 'grid_header minimal first', },
+      labels   => { item     => $label || 'Select Item',
+                    item_num => HASH_CHAR, },
+      typelist => { item_num => 'numeric', },
+      values   => $values,
+   } );
+};
+
+# Private methods
+my $_check_field = sub {
+   my ($self, $req) = @_; my $params = $req->query_params;
+
+   my $domain = $params->( 'domain' );
+   my $form   = $params->( 'form'   );
+   my $id     = $params->( 'id'     );
+   my $val    = $params->( 'val', { raw => TRUE } );
+   my $config = App::MCP::Form->load_config
+      ( $self->usul, $domain, $req->locale );
+   my $class  = $self->schema_class.'::Result::'
+               .$config->{ $form }->{meta}->{result_class};
+
+   ensure_class_loaded( $class );
+
+   my $attr   = $class->validation_attributes; $attr->{level} = 4;
+
+   return Data::Validation->new( $attr )->check_field( $id, $val );
+};
+
+my $_new_grid_row = sub {
+   my ($self, $req, $args, $rowid, $row) = @_;
+
+   my $form     = $args->{form};
+   my $method   = $args->{method};
+   my $link_num = $args->{link_num};
+   my $params   = $req->query_params;
+   my $id       = $params->( 'id' );
+   my $button   = $params->( 'button', { optional => TRUE } ) // NUL;
+  (my $field    = $id) =~ s{ _grid \z }{}msx;
+      $field    = (split m{ _ }mx, $field)[ 1 ];
+   my $item     = $self->$method( $req, $args->{link_num}, $row );
+   my $rv       = (delete $item->{value}) || $item->{text};
+   my $iargs    = "[ '${form}', '${field}', '${rv}', '${button}' ]";
+
+   $item->{class    } //= 'chooser_grid fade submit';
+   $item->{config   }   = { args => $iargs, method => "'returnValue'", };
+   $item->{container}   = FALSE;
+   $item->{id       }   = "${id}_link${link_num}";
+   $item->{type     }   = 'anchor';
+   $item->{widget   }   = TRUE;
+
+   return {
+      class   => 'grid',
+      classes => { item     => 'grid_cell',
+                   item_num => 'grid_cell lineNumber first' },
+      fields  => [ qw( item_num item ) ],
+      id      => $rowid,
+      type    => 'tableRow',
+      values  => { item => $item, item_num => $link_num + 1, }, };
+};
+
+my $_set_column = sub {
+   my ($self, $args, $rec, $col) = @_;
+
+   my $prefix = $args->{method};
+   my $method = $prefix ? "${prefix}${col}" : undef;
+   my $value  = $method && $self->can( $method )
+              ? $self->$method( $args->{params} )
+              : $args->{params}->( $col, { optional => TRUE, raw => TRUE } );
+
+   defined $value or return;
+
+   if (blessed $rec) { $rec->$col( "${value}" ) }
+   else { $rec->{ $col } = "${value}" }
+
+   return;
+};
+
 # Construction
 around 'get_stash' => sub {
    my ($orig, $self, $req, $page, $form_name, $row) = @_;
@@ -72,7 +159,7 @@ sub build_grid_rows {
 
       my $rowid  = 'row_'.(pad $args->{link_num}, 5, 0, 'left');
 
-      $rows->{ $rowid } = $self->_new_grid_row( $req, $args, $rowid, $row );
+      $rows->{ $rowid } = $self->$_new_grid_row( $req, $args, $rowid, $row );
       $count++;
    }
 
@@ -106,7 +193,7 @@ sub build_grid_table {
          text        => $req->loc( 'Loading' ).DOTS, },
       "${id}_grid"   => {
          id          => "${id}_grid",
-         data        => __new_grid_table( $label, \@values ), },
+         data        => $_new_grid_table->( $label, \@values ), },
    };
 }
 
@@ -115,7 +202,7 @@ sub check_field : Role(anon) {
 
    my $id = $req->query_params->( 'id' ); my $meta = { id => "${id}_ajax" };
 
-   try   { $self->_check_field( $req ) }
+   try   { $self->$_check_field( $req ) }
    catch {
       my $e = $_; my $args = { params => $e->args, quote_bind_values => TRUE };
 
@@ -127,14 +214,14 @@ sub check_field : Role(anon) {
    return { code => HTTP_OK,
             form => [ { fields => [ $mesg ] } ],
             page => { meta => $meta },
-            view => 'xml' };
+            view => 'json' };
 }
 
 sub create_record {
    my ($self, $args) = @_; my $rs = $args->{rs}; my $rec = {};
 
    for my $col ($rs->result_source->columns) {
-      $self->_set_column( $args, $rec, $col );
+      $self->$_set_column( $args, $rec, $col );
    }
 
    return $rs->create( $rec );
@@ -146,98 +233,11 @@ sub find_and_update_record {
    my $rec = $rs->find( $args->{id} ) or return;
 
    for my $col ($rs->result_source->columns) {
-      $self->_set_column( $args, $rec, $col );
+      $self->$_set_column( $args, $rec, $col );
    }
 
    $rec->update;
    return $rec;
-}
-
-# Private methods
-sub _check_field {
-   my ($self, $req) = @_; my $params = $req->query_params;
-
-   my $domain = $params->( 'domain' );
-   my $form   = $params->( 'form'   );
-   my $id     = $params->( 'id'     );
-   my $val    = $params->( 'val', { raw => TRUE } );
-   my $config = App::MCP::Form->load_config
-      ( $self->usul, $domain, $req->locale );
-   my $class  = $self->schema_class.'::Result::'
-               .$config->{ $form }->{meta}->{result_class};
-
-   ensure_class_loaded( $class );
-
-   my $attr   = $class->validation_attributes; $attr->{level} = 4;
-
-   return Data::Validation->new( $attr )->check_field( $id, $val );
-}
-
-sub _new_grid_row {
-   my ($self, $req, $args, $rowid, $row) = @_;
-
-   my $form     = $args->{form};
-   my $method   = $args->{method};
-   my $link_num = $args->{link_num};
-   my $params   = $req->query_params;
-   my $id       = $params->( 'id' );
-   my $button   = $params->( 'button', { optional => TRUE } ) // NUL;
-  (my $field    = $id) =~ s{ _grid \z }{}msx;
-      $field    = (split m{ _ }mx, $field)[ 1 ];
-   my $item     = $self->$method( $req, $args->{link_num}, $row );
-   my $rv       = (delete $item->{value}) || $item->{text};
-   my $iargs    = "[ '${form}', '${field}', '${rv}', '${button}' ]";
-
-   $item->{class    } //= 'chooser_grid fade submit';
-   $item->{config   }   = { args => $iargs, method => "'returnValue'", };
-   $item->{container}   = FALSE;
-   $item->{id       }   = "${id}_link${link_num}";
-   $item->{type     }   = 'anchor';
-   $item->{widget   }   = TRUE;
-
-   return {
-      class   => 'grid',
-      classes => { item     => 'grid_cell',
-                   item_num => 'grid_cell lineNumber first' },
-      fields  => [ qw( item_num item ) ],
-      id      => $rowid,
-      type    => 'tableRow',
-      values  => { item => $item, item_num => $link_num + 1, }, };
-}
-
-sub _set_column {
-   my ($self, $args, $rec, $col) = @_;
-
-   my $prefix = $args->{method};
-   my $method = $prefix ? "${prefix}${col}" : undef;
-   my $value  = $method && $self->can( $method )
-              ? $self->$method( $args->{params} )
-              : $args->{params}->( $col, { optional => TRUE, raw => TRUE } );
-
-   defined $value or return;
-
-   if (blessed $rec) { $rec->$col( "${value}" ) }
-   else { $rec->{ $col } = "${value}" }
-
-   return;
-}
-
-# Private functions
-sub __new_grid_table {
-   my ($label, $values) = @_;
-
-   return Class::Usul::Response::Table->new( {
-      class    => { item     => 'grid_cell',
-                    item_num => 'grid_cell lineNumber first', },
-      count    => scalar @{ $values },
-      fields   => [ qw( item_num item ) ],
-      hclass   => { item     => 'grid_header most',
-                    item_num => 'grid_header minimal first', },
-      labels   => { item     => $label || 'Select Item',
-                    item_num => HASH_CHAR, },
-      typelist => { item_num => 'numeric', },
-      values   => $values,
-   } );
 }
 
 1;
@@ -259,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 12 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 14 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

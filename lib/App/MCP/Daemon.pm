@@ -5,47 +5,210 @@ use namespace::autoclean;
 use Moo;
 use App::MCP;
 use App::MCP::Application;
-use App::MCP::Constants qw( NUL OK TRUE );
+use App::MCP::Constants   qw( NUL OK TRUE );
 use App::MCP::DaemonControl;
-use App::MCP::Functions qw( env_var log_leader terminate );
+use App::MCP::Functions   qw( env_var terminate );
 use Async::IPC;
+use Async::IPC::Functions qw( log_info );
 use Class::Usul::Options;
-use Class::Usul::Types  qw( NonZeroPositiveInt Object );
-use English             qw( -no_match_vars );
+use Class::Usul::Types    qw( NonEmptySimpleStr NonZeroPositiveInt Object );
+use English               qw( -no_match_vars );
 use Plack::Runner;
-use Scalar::Util        qw( blessed );
+use Scalar::Util          qw( blessed );
 
 extends q(Class::Usul::Programs);
+
+# Private methods
+my $_build_clock_tick = sub {
+   my $self = shift; my $cron = $self->cron;
+
+   return $self->async_factory->new_notifier
+      (  type     => 'periodical',
+         code     => sub { $cron->raise },
+         desc     => 'clock tick handler',
+         interval => $self->config->clock_tick_interval,
+         name     => 'clock', );
+};
+
+my $_build_cron = sub {
+   my $self = shift; my $app = $self->app;
+
+   my $daemon_pid = $self->pid; my $name = 'cron';
+
+   return $self->async_factory->new_notifier
+      (  type    => 'semaphore',
+         desc    => 'cron job handler',
+         name    => $name,
+         on_recv => sub { $app->cron_job_handler( $name, $daemon_pid ) }, );
+};
+
+my $_build_ip_ev_hndlr = sub {
+   my $self = shift; my $app = $self->app;
+
+   my $daemon_pid = $self->pid; my $name = 'input';
+
+   return $self->async_factory->new_notifier
+      (  type    => 'semaphore',
+         desc    => 'input event handler',
+         name    => $name,
+         on_recv => sub { $app->input_handler( $name, $daemon_pid ) }, );
+};
+
+my $_build_ipc_ssh = sub {
+   my $self = shift; my $app = $self->app; my $name = 'ssh';
+
+   return $self->async_factory->new_notifier
+      (  type        => 'function',
+         desc        => 'SSH remote',
+         name        => $name,
+         max_calls   => $self->config->max_ssh_worker_calls,
+         max_workers => $self->config->max_ssh_workers,
+         on_recv     => sub { $app->ipc_ssh_caller( $name, @_ ) },
+         on_return   => sub { $app->ipc_ssh_callback( $name, @_ ) }, );
+};
+
+my $_build_op_ev_hndlr = sub {
+   my $self = shift; my $app = $self->app; my $name = 'output'; my $ipc_ssh;
+
+   return $self->async_factory->new_notifier
+      (  type         => 'semaphore',
+         after        => sub { $ipc_ssh->close; },
+         before       => sub { $ipc_ssh = $self->ipc_ssh },
+         call_ch_mode => 'async',
+         desc         => 'output event handler',
+         name         => $name,
+         on_recv      => [ sub { $app->output_handler( $name, $ipc_ssh ) }, ] );
+};
+
+my $_get_listener_sub = sub {
+   my $self = shift; my $conf = $self->config; my $port = $self->port;
+
+   my $args = {
+      '--port'       => $port,
+      '--server'     => $conf->server,
+      '--access-log' => $conf->logsdir->catfile( 'listener-access.log' ),
+      '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
+
+   my $daemon_pid = $self->pid; my $debug = $self->debug;
+
+   return sub {
+      env_var 'DAEMON_PID',    $daemon_pid;
+      env_var 'DEBUG',         $debug;
+      env_var 'LISTENER_PORT', $port;
+      Plack::Runner->run( %{ $args } );
+      return OK;
+   };
+};
+
+my $_reload = sub {
+   my $self = shift; my $path = $self->config->pathname;
+
+   $self->run_cmd( [ "${path}", 'stop' ] );
+   sleep 5;
+   $self->run_cmd( [ "${path}", '-D', 'start' ] );
+   return OK;
+};
+
+my $_set_program_name = sub {
+   $PROGRAM_NAME = $_[ 0 ]->config->pathname.' - master'; return;
+};
+
+my $_stdio_file = sub {
+   my ($self, $extn, $name) = @_; $name ||= $self->config->name;
+
+   return $self->file->tempdir->catfile( "${name}.${extn}" );
+};
+
+my $_build_listener = sub {
+   my $self = shift;
+
+   return $self->async_factory->new_notifier
+      (  type => 'process',
+         code => $self->$_get_listener_sub,
+         desc => 'listener',
+         name => 'listen', );
+};
+
+my $_hangup_handler = sub { # TODO: Fix this
+   my $self = shift;
+
+   $self->run_cmd( [ sub { $self->$_reload } ], { detach => TRUE } );
+
+   return;
+};
+
+my $_daemon = sub {
+   my $self = shift; my $loop = $self->loop; $self->$_set_program_name;
+
+   log_info $self, 'Starting event loop';
+
+   # Must fork before watching signals
+   $self->listener; $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->clock_tick;
+
+   $loop->watch_signal( HUP  => sub { $self->$_hangup_handler   } );
+   $loop->watch_signal( QUIT => sub { terminate $loop           } );
+   $loop->watch_signal( TERM => sub { terminate $loop           } );
+   $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->raise } );
+   $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->raise } );
+
+   log_info $self, 'Event loop started';
+   $loop->start; # Loops here until terminate is called
+   log_info $self, 'Stopping event loop';
+
+   $self->clock_tick->stop;
+   $self->listener->stop;
+   $self->cron->stop;
+   $self->ip_ev_hndlr->stop;
+   $self->op_ev_hndlr->stop;
+   $loop->watch_child( 0 );
+
+   log_info $self, 'Event loop stopped';
+   exit OK;
+};
 
 # Override defaults in parent class
 has '+config_class' => default => 'App::MCP::Config';
 
 # Object attributes (public)
 #   Visible to the command line
-option 'port'       => is => 'ro',   isa => NonZeroPositiveInt,
+option 'port'       => is => 'lazy', isa => NonZeroPositiveInt,
    documentation    => 'Port number for the input event listener',
-   default          => sub { $_[ 0 ]->config->port }, format => 'i';
+   builder          => sub { $_[ 0 ]->config->port }, format => 'i',
+   short            => 'p';
 
 #   Ingnored by the command line
 has 'app'           => is => 'lazy', isa => Object, builder => sub {
    App::MCP::Application->new( builder => $_[ 0 ], port => $_[ 0 ]->port ) };
 
 has 'async_factory' => is => 'lazy', isa => Object, builder => sub {
-   Async::IPC->new( builder => $_[ 0 ] ) }, handles => [ qw( loop ) ];
+   Async::IPC->new( builder => $_[ 0 ] ) }, handles => [ 'loop' ];
 
-has 'clock_tick'    => is => 'lazy', isa => Object;
+has 'clock_tick'    => is => 'lazy', isa => Object,
+   builder          => $_build_clock_tick;
 
-has 'cron'          => is => 'lazy', isa => Object;
+has 'cron'          => is => 'lazy', isa => Object,
+   builder          => $_build_cron;
 
-has 'ip_ev_hndlr'   => is => 'lazy', isa => Object;
+has 'ip_ev_hndlr'   => is => 'lazy', isa => Object,
+   builder          => $_build_ip_ev_hndlr;
 
-has 'ipc_ssh'       => is => 'lazy', isa => Object;
+has 'ipc_ssh'       => is => 'lazy', isa => Object,
+   builder          => $_build_ipc_ssh;
 
-has 'listener'      => is => 'lazy', isa => Object;
+has 'listener'      => is => 'lazy', isa => Object,
+   builder          => $_build_listener;
 
-has 'op_ev_hndlr'   => is => 'lazy', isa => Object;
+has 'name'          => is => 'lazy', isa => NonEmptySimpleStr,
+   builder          => sub { $_[ 0 ]->config->log_key };
+
+has 'op_ev_hndlr'   => is => 'lazy', isa => Object,
+   builder          => $_build_op_ev_hndlr;
 
 # Construction
+before 'run' => sub {
+   my $self = shift; $self->quiet( TRUE ); return;
+};
+
 around 'run_chain' => sub {
    my ($orig, $self, @args) = @_; @ARGV = @{ $self->extra_argv };
 
@@ -60,12 +223,12 @@ around 'run_chain' => sub {
       path         => $conf->pathname,
 
       directory    => $conf->appldir,
-      program      => sub { shift; $self->master_daemon( @_ ) },
+      program      => sub { shift; $self->$_daemon( @_ ) },
       program_args => [],
 
       pid_file     => $conf->rundir->catfile( "${name}.pid" ),
-      stderr_file  => $self->_stdio_file( 'err' ),
-      stdout_file  => $self->_stdio_file( 'out' ),
+      stderr_file  => $self->$_stdio_file( 'err' ),
+      stdout_file  => $self->$_stdio_file( 'out' ),
 
       fork         => 2,
       stop_signals => $conf->stop_signals,
@@ -74,146 +237,9 @@ around 'run_chain' => sub {
    exit defined $rv ? $rv : OK;
 };
 
-before 'run' => sub {
-   my $self = shift; $self->quiet( TRUE ); return;
-};
-
 # Public methods
-sub master_daemon {
-   my $self = shift;
-   my $loop = $self->loop; $self->_set_program_name;
-   my $lead = log_leader 'info', $self->config->log_key;
-   my $log  = $self->log; $log->info( "${lead}Starting event loop" );
-
-   $self->listener; $self->op_ev_hndlr; $self->ip_ev_hndlr; $self->clock_tick;
-
-   $loop->watch_signal( HUP  => sub { $self->_hangup_handler   } );
-   $loop->watch_signal( QUIT => sub { terminate $loop          } );
-   $loop->watch_signal( TERM => sub { terminate $loop          } );
-   $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->call } );
-   $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->call } );
-
-   $log->info( $lead.'Event loop started' );
-   $loop->start; # Loops here until terminate is called
-   $log->info( $lead.'Stopping event loop' );
-
-   $self->cron->stop;
-   $self->ipc_ssh->stop;
-   $self->listener->stop;
-   $self->clock_tick->stop;
-   $self->ip_ev_hndlr->stop;
-   $self->op_ev_hndlr->stop;
-   $loop->watch_child( 0 );
-
-   $log->info( $lead.'Event loop stopped' );
-   exit OK;
-}
-
-# Private methods
-sub _build_clock_tick {
-   my $self = shift; my $cron = $self->cron;
-
-   return $self->async_factory->new_notifier
-      (  code     => sub { $cron->call },
-         interval => $self->config->clock_tick_interval,
-         desc     => 'clock tick handler',
-         key      => 'CLOCK',
-         type     => 'periodical' );
-}
-
-sub _build_cron {
-   my $self = shift; my $app = $self->app;
-
-   my $daemon_pid = $PID; my $log_key = 'CRON';
-
-   return $self->async_factory->new_notifier
-      (  code => sub { $app->cron_job_handler( $log_key, $daemon_pid ) },
-         desc => 'cron job handler',
-         key  => $log_key,
-         type => 'routine' );
-}
-
-sub _build_ip_ev_hndlr {
-   my $self = shift; my $app = $self->app;
-
-   my $daemon_pid = $PID; my $log_key = 'INPUT';
-
-   return $self->async_factory->new_notifier
-      (  code => sub { $app->input_handler( $log_key, $daemon_pid ) },
-         desc => 'input event handler',
-         key  => $log_key,
-         type => 'routine' );
-}
-
-sub _build_ipc_ssh {
-   my $self = shift; my $app = $self->app;
-
-   my $conf = $self->config; my $log_key = 'IPCSSH';
-
-   return $self->async_factory->new_notifier
-      (  channels    => 'io',
-         code        => sub { $app->ipc_ssh_caller( $log_key, @_ ) },
-         desc        => 'ipcssh',
-         key         => $log_key,
-         max_calls   => $conf->max_ssh_worker_calls,
-         max_workers => $conf->max_ssh_workers,
-         type        => 'function' );
-}
-
-sub _build_listener {
-   my $self = shift;
-
-   return $self->async_factory->new_notifier
-      (  code => $self->_get_listener_sub,
-         desc => 'listener',
-         key  => 'LISTEN',
-         type => 'process' );
-}
-
-sub _build_op_ev_hndlr {
-   my $self = shift; my $app = $self->app;
-
-   my $ipc_ssh = $self->ipc_ssh; my $log_key = 'OUTPUT';
-
-   return $self->async_factory->new_notifier
-      (  before => sub { $app->ipc_ssh_install_callback( $log_key, $ipc_ssh ) },
-         code   => sub { $app->output_handler( $log_key, $ipc_ssh ) },
-         desc   => 'output event handler',
-         key    => $log_key,
-         type   => 'routine' );
-}
-
-sub _get_listener_sub {
-   my $self = shift; my $conf = $self->config;
-
-   my $args = {
-      '--port'       => $self->port,
-      '--server'     => $conf->server,
-      '--access-log' => $conf->logsdir->catfile( 'listener-access.log' ),
-      '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
-
-   my $daemon_pid = $PID; my $debug = $self->debug; my $port = $self->port;
-
-   return sub {
-      env_var 'DAEMON_PID',    $daemon_pid;
-      env_var 'DEBUG',         $debug;
-      env_var 'LISTENER_PORT', $port;
-      Plack::Runner->run( %{ $args } );
-      return OK;
-   };
-}
-
-sub _hangup_handler { # TODO: On reload - stop, Class::Unload; require; start
-}
-
-sub _set_program_name {
-   $PROGRAM_NAME = $_[ 0 ]->config->pathname.' master'; return;
-}
-
-sub _stdio_file {
-   my ($self, $extn, $name) = @_; $name ||= $self->config->name;
-
-   return $self->file->tempdir->catfile( "${name}.${extn}" );
+sub pid {
+   return $PID;
 }
 
 1;

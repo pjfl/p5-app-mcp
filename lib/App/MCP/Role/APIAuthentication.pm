@@ -27,8 +27,8 @@ sub authenticate {
    my $sess     = $self->_find_or_create_session( $user );
    my $username = $user->username;
    my $token    = $req->body_params->( 'M1_token' )
-      or throw error => 'User [_1] no M1 token',
-               args  => [ $username ], rv => HTTP_EXPECTATION_FAILED;
+      or throw 'User [_1] no M1 token', [ $username ],
+            rv => HTTP_EXPECTATION_FAILED;
    my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
    my $verifier = base64_decode_ns get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
@@ -39,8 +39,8 @@ sub authenticate {
                       .(md5_hex "${username}${salt}${verifier}") );
    $srp->server_init( $username, $verifier, $salt, @{ $sess->{auth_keys} } );
    $srp->server_verify_M1( $token )
-      or throw error => 'User [_1] M1 token verification failed',
-               args  => [ $username ], rv => HTTP_UNAUTHORIZED;
+      or throw 'User [_1] M1 token verification failed', [ $username ],
+            rv => HTTP_UNAUTHORIZED;
    $token       = base64_encode_ns $srp->server_compute_M2;
 
    my $content  = { id => $sess->{id}, M2_token => $token, };
@@ -56,8 +56,8 @@ sub authenticate_params {
    try   { $params = $self->transcoder->decode( decrypt $key, $encrypted ) }
    catch {
       $self->log->error( $_ );
-      throw error => 'Request [_1] authentication failed with key [_2]',
-            args  => [ $id, $key ], rv => HTTP_UNAUTHORIZED;
+      throw 'Request [_1] authentication failed with key [_2]', [ $id, $key ],
+         rv => HTTP_UNAUTHORIZED;
    };
 
    return $params;
@@ -74,8 +74,8 @@ sub exchange_pub_keys {
 
    $self->log->debug( 'Auth client pub key '.(md5_hex $client_pub_key ) );
    $srp->server_verify_A( $client_pub_key )
-      or throw error => 'User [_1] client public key verification failed',
-               args  => [ $username ], rv => HTTP_UNAUTHORIZED;
+      or throw 'User [_1] client public key verification failed', [ $username ],
+            rv => HTTP_UNAUTHORIZED;
 
    my $verifier = base64_decode_ns get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
@@ -96,19 +96,16 @@ sub exchange_pub_keys {
 sub get_session {
    my ($self, $id) = @_;
 
-   $id or throw class => Unspecified, args => [ 'session id' ],
-                rv    => HTTP_BAD_REQUEST;
+   $id or throw Unspecified, [ 'session id' ], rv => HTTP_BAD_REQUEST;
 
    my $sess = $Sessions->{ $id }
-      or throw error => 'Session [_1 ] not found',
-               args  => [ $id ], rv => HTTP_UNAUTHORIZED;
+      or throw 'Session [_1 ] not found', [ $id ], rv => HTTP_UNAUTHORIZED;
 
    my $max_age = $sess->{max_age}; my $now = time;
 
    $max_age and $now - $sess->{last_used} > $max_age
       and delete $Sessions->{ $id }
-      and throw error => 'Session [_1] expired',
-                args  => [ $id ], rv => HTTP_UNAUTHORIZED;
+      and throw 'Session [_1] expired', [ $id ], rv => HTTP_UNAUTHORIZED;
    $sess->{last_used} = $now;
    return $sess;
 }
@@ -142,8 +139,8 @@ sub _find_user_from {
    my $user_rs  = $self->schema->resultset( 'User' );
    my $user     = $user_rs->find_by_name( $username );
 
-   $user->active or throw error => 'User [_1] account inactive',
-                          args  => [ $username ], rv => HTTP_UNAUTHORIZED;
+   $user->active or throw 'User [_1] account inactive', [ $username ],
+                       rv => HTTP_UNAUTHORIZED;
    return $user;
 }
 

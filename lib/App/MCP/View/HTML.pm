@@ -33,6 +33,11 @@ has '_template' => is => 'lazy', isa => Object, builder => sub {
    return $template;
 };
 
+# Private functions
+my $_header = sub {
+   return [ 'Content-Type' => 'text/html', @{ $_[ 0 ] || [] } ];
+};
+
 # Public methods
 sub serialize {
    my ($self, $req, $stash) = @_; my $html = NUL; weaken( $req );
@@ -49,12 +54,7 @@ sub serialize {
 
    my $content  = encode( 'UTF-8', $html );
 
-   return [ $stash->{code}, __header( $stash->{http_headers} ), [ $content ] ];
-}
-
-# Private functions
-sub __header {
-   return [ 'Content-Type' => 'text/html', @{ $_[ 0 ] || [] } ];
+   return [ $stash->{code}, $_header->( $stash->{http_headers} ), [ $content ]];
 }
 
 1;

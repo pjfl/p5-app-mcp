@@ -7,13 +7,23 @@ use App::MCP::Constants    qw( FALSE TRUE );
 use Class::Usul::Functions qw( first_char throw );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
 
+# Private methods
+my $_get_job_state = sub {
+   my ($self, $fqjn) = @_;
+
+   my $job = $self->search( { fqjn => $fqjn }, { prefetch => 'state' } )->single
+      or throw 'Job [_1] unknown', [ $fqjn ];
+
+   return $job->state ? $job->state->name : 'inactive';
+};
+
 # Public methods
 sub assert_executable {
    my ($self, $fqjn, $user) = @_; my $job = $self->find_by_name( $fqjn );
 
    $job->is_executable_by( $user->id )
-        or throw error => 'Job [_1] execute permission denied to [_2]',
-                 args  => [ $fqjn, $user->username ];
+        or throw 'Job [_1] execute permission denied to [_2]',
+                 [ $fqjn, $user->username ];
 
    return $job;
 }
@@ -43,7 +53,7 @@ sub dump {
 sub find_by_id_or_name {
    my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $job;
 
-   (first_char $arg) =~ m{ \d }mx and $job = $self->find( $arg );
+   $arg =~ m{ \A \d+ }mx and $job = $self->find( $arg );
    $job or $job = $self->find_by_name( $arg );
    return $job;
 }
@@ -52,16 +62,13 @@ sub find_by_name {
    my ($self, $fqjn) = @_;
 
    my $job = $self->search( { fqjn => $fqjn } )->single
-      or throw error => 'Job [_1] unknown', args => [ $fqjn ],
-                  rv => HTTP_NOT_FOUND;
+      or throw 'Job [_1] unknown', [ $fqjn ], rv => HTTP_NOT_FOUND;
 
    return $job;
 }
 
 sub finished {
-   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
-
-   return $state eq 'finished' ? TRUE : FALSE ;
+   return $_[ 0 ]->$_get_job_state( $_[ 1 ] ) eq 'finished' ? TRUE : FALSE ;
 }
 
 sub load {
@@ -80,7 +87,7 @@ sub job_id_by_name {
    my ($self, $fqjn) = @_;
 
    my $job = $self->search( { fqjn => $fqjn }, { columns => [ 'id' ] } )->single
-      or throw error => 'Job [_1] unknown', args => [ $fqjn ];
+      or throw 'Job [_1] unknown', [ $fqjn ];
 
    return $job->id;
 }
@@ -90,25 +97,11 @@ sub predicates {
 }
 
 sub running {
-   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
-
-   return $state eq 'running' ? TRUE : FALSE
+   return $_[ 0 ]->$_get_job_state( $_[ 1 ] ) eq 'running' ? TRUE : FALSE
 }
 
 sub terminated {
-   my ($self, $fqjn) = @_; my $state = $self->_get_job_state( $fqjn );
-
-   return $state eq 'terminated' ? TRUE : FALSE;
-}
-
-# Private methods
-sub _get_job_state {
-   my ($self, $fqjn) = @_;
-
-   my $job = $self->search( { fqjn => $fqjn }, { prefetch => 'state' } )->single
-      or throw error => 'Job [_1] unknown', args => [ $fqjn ];
-
-   return $job->state ? $job->state->name : 'inactive';
+   return $_[ 0 ]->$_get_job_state( $_[ 1 ] ) eq 'terminated' ? TRUE : FALSE;
 }
 
 1;

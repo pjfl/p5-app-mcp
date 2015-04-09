@@ -18,7 +18,7 @@ has 'author'               => is => 'ro',   isa => NonEmptySimpleStr,
 has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
 
-has 'common_links'         => is => 'ro',   isa => ArrayRef,
+has 'common_links'         => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
    builder                 => sub { [ qw( css images js less ) ] };
 
 has 'connect_params'       => is => 'ro',   isa => HashRef,
@@ -42,7 +42,7 @@ has 'deflate_types'        => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
 has 'description'          => is => 'ro',   isa => SimpleStr, default => NUL;
 
 has 'identity_file'        => is => 'lazy', isa => File,
-   builder                 => sub { [ $_[ 0 ]->ssh_dir, 'id_rsa' ] },
+   builder                 => sub { $_[ 0 ]->ssh_dir->catfile( 'id_rsa' ) },
    coerce                  => File->coercion;
 
 has 'images'               => is => 'ro',   isa => NonEmptySimpleStr,
@@ -90,13 +90,13 @@ has 'monikers'             => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
 has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => '/';
 
-has 'nav_list'             => is => 'ro',   isa => ArrayRef,
-   builder                 => sub { [ qw( job state_diagram help ) ] };
+has 'nav_list'             => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
+   builder                 => sub { [ qw( config job state_diagram help ) ] };
 
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
 
-has 'preferences'          => is => 'ro',   isa => ArrayRef,
+has 'preferences'          => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
    builder                 => sub { [ qw( theme ) ] };
 
 has 'request_class'        => is => 'ro',   isa => NonEmptySimpleStr,
@@ -105,7 +105,7 @@ has 'request_class'        => is => 'ro',   isa => NonEmptySimpleStr,
 has 'secret'               => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => hostname;
 
-has 'schema_classes'       => is => 'ro',   isa => HashRef,
+has 'schema_classes'       => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
    builder                 => sub { {
       'mcp-model'          => 'App::MCP::Schema::Schedule', } };
 
@@ -119,11 +119,11 @@ has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
 has 'serve_as_static'      => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'css | favicon.ico | img | js | less';
 
-has 'servers'              => is => 'ro',   isa => ArrayRef,
+has 'servers'              => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
    builder                 => sub { [ fqdn ] };
 
 has 'ssh_dir'              => is => 'lazy', isa => Directory,
-   builder                 => sub { [ $_[ 0 ]->my_home, '.ssh' ] },
+   builder                 => sub { $_[ 0 ]->my_home->catdir( '.ssh' ) },
    coerce                  => Directory->coercion;
 
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,

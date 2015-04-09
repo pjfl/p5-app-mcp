@@ -31,15 +31,13 @@ sub parse {
       }
 
       $pos == $last
-         and throw error => 'Expression [_1] parse error - char [_2]',
-                   args  => [ $line, $pos ];
+         and throw 'Expression [_1] parse error - char [_2]', [ $line, $pos ];
       $last = $pos;
    }
 
    $recog->end_input; my $expr_value_ref = $recog->value;
 
-   $expr_value_ref or throw error => 'Expression [_1] has no value',
-                            args  => [ $line ];
+   $expr_value_ref or throw 'Expression [_1] has no value', [ $line ];
 
    my $expr_value = ${ $expr_value_ref };
 
@@ -77,7 +75,7 @@ sub _lex {
 
    for my $token_name ('SP', @{ $expected }) {
       my $token = $self->{tokens}->{ $token_name }
-         or throw error => 'Token [_1] unknown', args => [ $token_name ];
+         or throw 'Token [_1] unknown', [ $token_name ];
       my $rule  = $token->[ 0 ];
 
       pos( ${ $input } ) = $pos; ${ $input } =~ $rule or next;

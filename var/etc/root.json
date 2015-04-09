@@ -1,5 +1,14 @@
 {
    "_fields": {
+      "config.arrayrefs": {
+         "type": "table"
+      },
+      "config.hashrefs": {
+         "type": "table"
+      },
+      "config.scalars": {
+         "type": "table"
+      },
       "login.login_button": {
          "name": "Login",
          "type": "button",
@@ -21,6 +30,13 @@
          "id": "nav_list",
          "type": "list"
       }
+   },
+   "config": {
+      "regions": [
+         "header_fields",
+         [ "+nav_panel" ],
+         [ "scalars", "arrayrefs", "hashrefs" ]
+      ]
    },
    "login": {
       "meta": {

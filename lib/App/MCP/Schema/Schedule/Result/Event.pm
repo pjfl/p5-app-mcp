@@ -3,31 +3,37 @@ package App::MCP::Schema::Schedule::Result::Event;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
+use App::MCP::Constants qw( TRANSITION_ENUM );
+use App::MCP::Functions qw( enumerated_data_type foreign_key_data_type
+                            numerical_id_data_type serial_data_type
+                            set_on_create_datetime_data_type
+                            varchar_data_type );
+
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'event' );
 
 $class->add_columns
-   ( id         => $class->serial_data_type,
-     created    => $class->set_on_create_datetime_data_type,
-     job_id     => $class->foreign_key_data_type,
-     transition => $class->enumerated_data_type( 'transition_enum' ),
-     runid      => $class->varchar_data_type( 20 ),
-     pid        => $class->numerical_id_data_type,
-     rv         => $class->numerical_id_data_type, );
+   ( id         => serial_data_type,
+     created    => set_on_create_datetime_data_type,
+     job_id     => foreign_key_data_type,
+     transition => enumerated_data_type( TRANSITION_ENUM ),
+     runid      => varchar_data_type( 20 ),
+     pid        => numerical_id_data_type,
+     rv         => numerical_id_data_type, );
 
 $class->set_primary_key( 'id' );
 
 $class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 
 sub insert {
-   my $self = shift; $self->_validate; return $self->next::method;
+   my $self = shift; $self->validate; return $self->next::method;
 }
 
 sub update {
    my ($self, $columns) = @_;
 
-   $self->set_inflated_columns( %{ $columns } ); $self->_validate;
+   $self->set_inflated_columns( %{ $columns } ); $self->validate;
 
    return $self->next::method;
 }

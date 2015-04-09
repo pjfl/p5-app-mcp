@@ -41,9 +41,28 @@ has '_schedule'       => is => 'lazy', isa => Object, builder => sub {
    $self->schedule_class->connect( @{ $self->connect_info }, $extra ) },
    reader             => 'schedule';
 
-has '_schedule_class' => is => 'lazy', isa => LoadableClass, default => sub {
-   $_[ 0 ]->schema_classes->{ 'mcp-model' } },
+has '_schedule_class' => is => 'lazy', isa => LoadableClass,
+   builder            => sub { $_[ 0 ]->schema_classes->{ 'mcp-model' } },
    reader             => 'schedule_class';
+
+# Private methods
+my $_authenticated_user_info = sub {
+   my $self    = shift;
+   my $info    = {};
+   my $schema  = $self->schedule;
+   my $user_rs = $schema->resultset( 'User' );
+   my $user    = $info->{user} = $user_rs->find_by_name( $self->user_name );
+   my $log     = $self->log;
+
+   $user->authenticate( $self->get_user_password( $user->username ) );
+   $log->debug( 'User '.$user->username.' authenticated' );
+
+   my $role_rs = $schema->resultset( 'Role' );
+   my $role    = $info->{role} = $role_rs->find_by_name( $self->role_name );
+
+   $user->assert_member_of( $role );
+   return $info;
+};
 
 # Public methods
 sub dump_jobs : method {
@@ -64,7 +83,7 @@ sub load_jobs : method {
    my $path     = $self->next_argv || 'jobs.json';
    my $data     = $self->file->data_load( paths => [ $path ] );
    my $rs       = $self->schedule->resultset( 'Job' );
-   my $count    = $rs->load( $self->_authenticated_user_info, $data->{jobs} );
+   my $count    = $rs->load( $self->$_authenticated_user_info, $data->{jobs} );
 
    $self->info( "Loaded [_1] jobs from '[_2]'", { args => [ $count, $path ] } );
    return OK;
@@ -72,13 +91,13 @@ sub load_jobs : method {
 
 sub send_event : method {
    my $self     = shift;
-   my $job_name = $self->next_argv or throw Unspecified, args => [ 'job name' ];
+   my $job_name = $self->next_argv or throw Unspecified, [ 'job name' ];
    my $trans    = $self->next_argv || 'start';
    my $fqjn     = qualify_job_name $job_name;
    my $schema   = $self->schedule;
    my $job_rs   = $schema->resultset( 'Job' );
    my $event_rs = $schema->resultset( 'Event' );
-   my $user     = $self->_authenticated_user_info->{user};
+   my $user     = $self->$_authenticated_user_info->{user};
    my $job      = $job_rs->assert_executable( $fqjn, $user );
 
    $event_rs->create( { job_id => $job->id, transition => $trans } );
@@ -93,25 +112,6 @@ sub send_event : method {
 
 sub set_client_password : method {
    $_[ 0 ]->set_user_password( @{ $_[ 0 ]->extra_argv } ); return OK;
-}
-
-# Private methods
-sub _authenticated_user_info {
-   my $self    = shift;
-   my $info    = {};
-   my $schema  = $self->schedule;
-   my $user_rs = $schema->resultset( 'User' );
-   my $user    = $info->{user} = $user_rs->find_by_name( $self->user_name );
-   my $log     = $self->log;
-
-   $user->authenticate( $self->get_user_password( $user->username ), $log );
-   $log->debug( 'User '.$user->username.' authenticated' );
-
-   my $role_rs = $schema->resultset( 'Role' );
-   my $role    = $info->{role} = $role_rs->find_by_name( $self->role_name );
-
-   $user->assert_member_of( $role );
-   return $info;
 }
 
 1;

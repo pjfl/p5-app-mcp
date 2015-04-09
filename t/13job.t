@@ -85,7 +85,7 @@ my $job3 = $rs->search( { fqjn => 'Main::remote1' } )->first;
 $job3 and $job3->delete;
 
 $job3 = $rs->create( { condition => 'finished( test1 )',
-                       command   => 'sleep 2', host => 'head',
+                       command   => '/bin/sleep 2', host => 'head',
                        name      => 'remote1', type => 'job',
                        user      => 'mcp', } );
 done_testing;

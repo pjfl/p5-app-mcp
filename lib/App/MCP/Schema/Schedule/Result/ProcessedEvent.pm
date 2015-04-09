@@ -3,23 +3,27 @@ package App::MCP::Schema::Schedule::Result::ProcessedEvent;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Constants;
+use App::MCP::Constants qw( TRANSITION_ENUM );
+use App::MCP::Functions qw( enumerated_data_type foreign_key_data_type
+                            numerical_id_data_type serial_data_type
+                            set_on_create_datetime_data_type
+                            varchar_data_type );
 
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'processed_event' );
 
 $class->add_columns
-   ( id         => $class->serial_data_type,
+   ( id         => serial_data_type,
      created    => { data_type => 'datetime' },
-     processed  => $class->set_on_create_datetime_data_type,
-     job_id     => $class->foreign_key_data_type,
-     transition => $class->enumerated_data_type( 'transition_enum' ),
-     rejected   => $class->varchar_data_type( 16 ),
-     runid      => $class->varchar_data_type( 20 ),
-     token      => $class->varchar_data_type( 32 ),
-     pid        => $class->numerical_id_data_type,
-     rv         => $class->numerical_id_data_type, );
+     processed  => set_on_create_datetime_data_type,
+     job_id     => foreign_key_data_type,
+     transition => enumerated_data_type( TRANSITION_ENUM ),
+     rejected   => varchar_data_type( 16 ),
+     runid      => varchar_data_type( 20 ),
+     token      => varchar_data_type( 32 ),
+     pid        => numerical_id_data_type,
+     rv         => numerical_id_data_type, );
 
 $class->set_primary_key( 'id' );
 

@@ -3,16 +3,17 @@ package App::MCP::Schema::Schedule::Result::JobState;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Constants;
+use App::MCP::Constants qw( STATE_ENUM );
+use App::MCP::Functions qw( enumerated_data_type foreign_key_data_type );
 
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'job_state' );
 
 $class->add_columns
-   ( job_id    => $class->foreign_key_data_type,
+   ( job_id    => foreign_key_data_type,
      updated   => { data_type => 'datetime', },
-     name      => $class->enumerated_data_type( 'state_enum' ), );
+     name      => enumerated_data_type( STATE_ENUM ), );
 
 $class->set_primary_key( 'job_id' );
 

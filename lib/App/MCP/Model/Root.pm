@@ -4,7 +4,9 @@ use feature 'state';
 
 use Moo;
 use App::MCP::Attributes;
+use App::MCP::ConfigEditor;
 use App::MCP::Constants qw( FALSE NUL TRUE );
+use Class::Usul::Types  qw( Object );
 use HTTP::Status        qw( HTTP_NOT_FOUND );
 
 extends q(App::MCP::Model);
@@ -16,6 +18,22 @@ with    q(App::MCP::Role::FormBuilder);
 with    q(App::MCP::Role::WebAuthentication);
 
 has '+moniker' => default => 'root';
+
+has 'config_editor' => is => 'lazy', isa => Object, builder => sub {
+   App::MCP::ConfigEditor->new( builder => $_[ 0 ]->usul ) };
+
+sub config_form : Role(any) {
+   my ($self, $req) = @_;
+
+   my $title = $req->loc( 'Config' );
+   my $page  = { action => $req->uri, form_name => 'config', title => $title, };
+   my $conf  = $self->config_editor->config_data;
+   my $data  = { arrayrefs => { data => $conf->[ 0 ] },
+                 hashrefs  => { data => $conf->[ 1 ] },
+                 scalars   => { data => $conf->[ 2 ] }, };
+
+   return $self->get_stash( $req, $page, config => $data );
+}
 
 sub login_action : Role(anon) {
    my ($self, $req) = @_;
@@ -83,7 +101,7 @@ sub navigator : Role(anon) {
    my $page  = { meta => { id    => 'nav_panel' } };
    my $stash = $self->get_stash( $req, $page, nav => $list );
 
-   $stash->{view} = 'xml';
+   $stash->{view} = 'json';
    return $stash;
 }
 

@@ -4,10 +4,19 @@ use namespace::autoclean;
 
 use Moo;
 use Class::Usul::Constants qw( NUL TRUE );
-use Class::Usul::Functions qw( first_char throw );
+use Class::Usul::Functions qw( first_char );
 use Class::Usul::Types     qw( HashRef );
 
 has 'properties' => is => 'ro', isa => HashRef, required => TRUE;
+
+my $_get_key = sub {
+   my $self = shift; my $type = $self->properties->{type} // NUL;
+
+   return $type eq 'button'  ? 'name'
+        : $type eq 'chooser' ? 'href'
+        : $type eq 'label'   ? 'text'
+                             : 'default';
+};
 
 around 'BUILDARGS' => sub {
    my ($orig, $self, $fields, $form_name, $name) = @_;
@@ -35,22 +44,13 @@ sub add_properties {
 sub key_value {
    my ($self, $v) = @_;
 
-   defined $v and return $self->properties->{ $self->_get_key } = $v;
+   defined $v and return $self->properties->{ $self->$_get_key } = $v;
 
-   return $self->properties->{ $self->_get_key };
+   return $self->properties->{ $self->$_get_key };
 }
 
 sub name {
    return $_[ 0 ]->properties->{name};
-}
-
-sub _get_key {
-   my $self = shift; my $type = $self->properties->{type} // NUL;
-
-   return $type eq 'button'  ? 'name'
-        : $type eq 'chooser' ? 'href'
-        : $type eq 'label'   ? 'text'
-                             : 'default';
 }
 
 1;

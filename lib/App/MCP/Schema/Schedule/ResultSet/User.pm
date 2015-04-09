@@ -18,7 +18,7 @@ sub find_by_name {
    my ($self, $user_name) = @_;
 
    my $user = $self->search( { username => $user_name } )->single
-     or throw 'User [_1] unknown', args => [ $user_name ], rv => HTTP_NOT_FOUND;
+     or throw 'User [_1] unknown', [ $user_name ], rv => HTTP_NOT_FOUND;
 
    return $user;
 }

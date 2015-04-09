@@ -12,8 +12,24 @@ use Plack::Builder;
 use Unexpected::Functions  qw( Unspecified );
 use Web::Simple;
 
+# Attribute construction
+my $_build_usul = sub {
+   my $self = shift;
+   my $attr = { config => $self->config, debug => env_var( 'DEBUG' ) // FALSE };
+   my $conf = $attr->{config};
+
+   $conf->{appclass    } or  throw Unspecified, [ 'application class' ];
+   $attr->{config_class} //= $conf->{appclass}.'::Config';
+   $conf->{name        } //= 'listener';
+   $conf->{home        }   = find_apphome $conf->{appclass};
+   $conf->{cfgfiles    }   = get_cfgfiles $conf->{appclass}, $conf->{home};
+
+   return Class::Usul->new( $attr );
+};
+
 # Public attributes
-has 'usul' => is => 'lazy', isa => BaseType, handles => [ 'log' ];
+has 'usul' => is => 'lazy', isa => BaseType, builder => $_build_usul,
+   handles => [ 'log' ];
 
 with q(App::MCP::Role::ComponentLoading);
 
@@ -50,24 +66,10 @@ sub BUILD {
    my $server = ucfirst( $ENV{ 'PLACK_ENV' } // NUL );
    my $port   = env_var 'LISTENER_PORT';
       $port   = $port ? " on port ${port}" : NUL;
-   my $ver    = App::MCP->VERSION;
+   my $ver    = $App::MCP::VERSION;
 
    $self->log->info( "${server} Server started v${ver}${port}" );
    return;
-}
-
-sub _build_usul {
-   my $self = shift;
-   my $attr = { config => $self->config, debug => env_var( 'DEBUG' ) // FALSE };
-   my $conf = $attr->{config};
-
-   $conf->{appclass    } or  throw Unspecified, args => [ 'application class' ];
-   $attr->{config_class} //= $conf->{appclass}.'::Config';
-   $conf->{name        } //= 'listener';
-   $conf->{home        }   = find_apphome $conf->{appclass};
-   $conf->{cfgfiles    }   = get_cfgfiles $conf->{appclass}, $conf->{home};
-
-   return Class::Usul->new( $attr );
 }
 
 # Public methods

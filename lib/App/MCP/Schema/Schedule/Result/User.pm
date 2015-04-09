@@ -4,8 +4,9 @@ use strictures;
 use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
 use parent   'App::MCP::Schema::Base';
 
-use App::MCP::Constants        qw( TRUE FALSE NUL );
-use App::MCP::Functions        qw( get_salt );
+use App::MCP::Constants        qw( EXCEPTION_CLASS TRUE FALSE NUL );
+use App::MCP::Functions        qw( foreign_key_data_type get_salt
+                                   serial_data_type varchar_data_type );
 use Class::Usul::Functions     qw( base64_encode_ns create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
 use Crypt::SRP;
@@ -19,12 +20,12 @@ my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 $class->table( 'user' );
 
 $class->add_columns
-   ( id            => $class->serial_data_type,
-     username      => $class->varchar_data_type( 64, NUL ),
+   ( id            => serial_data_type,
+     username      => varchar_data_type( 64, NUL ),
      active        => { data_type     => 'boolean',
                         default_value => FALSE,
                         is_nullable   => FALSE, },
-     role_id       => $class->foreign_key_data_type,
+     role_id       => foreign_key_data_type,
      pwlast        => { data_type     => 'mediumint',
                         default_value => 0,
                         is_nullable   => FALSE, },
@@ -43,14 +44,14 @@ $class->add_columns
      pwdisable     => { data_type     => 'mediumint',
                         default_value => undef,
                         is_nullable   => TRUE, },
-     password      => $class->varchar_data_type( 384, NUL ),
-     email_address => $class->varchar_data_type( 64, NUL ),
-     first_name    => $class->varchar_data_type( 64, NUL ),
-     last_name     => $class->varchar_data_type( 64, NUL ),
-     home_phone    => $class->varchar_data_type( 64, NUL ),
-     location      => $class->varchar_data_type( 64, NUL ),
-     project       => $class->varchar_data_type( 64, NUL ),
-     work_phone    => $class->varchar_data_type( 64, NUL ), );
+     password      => varchar_data_type( 384, NUL ),
+     email_address => varchar_data_type(  64, NUL ),
+     first_name    => varchar_data_type(  64, NUL ),
+     last_name     => varchar_data_type(  64, NUL ),
+     home_phone    => varchar_data_type(  64, NUL ),
+     location      => varchar_data_type(  64, NUL ),
+     project       => varchar_data_type(  64, NUL ),
+     work_phone    => varchar_data_type(  64, NUL ), );
 
 $class->set_primary_key( 'id' );
 
@@ -62,6 +63,45 @@ $class->has_many    ( user_role    => "${result}::UserRole", 'user_id' );
 
 $class->many_to_many( roles        => 'user_role',              'role' );
 
+# Private functions
+my $_new_salt = sub {
+   my ($type, $lf) = @_;
+
+   return "\$${type}\$${lf}\$"
+      .(en_base64( pack( 'H*', substr( create_token, 0, 32 ) ) ) );
+};
+
+my $_is_encrypted = sub {
+   return $_[ 0 ] =~ m{ \A \$\d+[a]?\$ }mx ? TRUE : FALSE;
+};
+
+# Private methods
+my $_default_role_id = sub {
+   my $self = shift; return 1; # TODO: Derive default role_id from self
+};
+
+my $_encrypt_password = sub {
+   my ($self, $username, $password, $stored) = @_;
+
+   if ($password =~ m{ \A \{ 5054 \} }mx
+       or (defined $stored and $stored =~ m{ \A \$ 5054 \$ }mx)) {
+       $password =~ s{ \A \{ 5054 \} }{}mx;
+
+      my $salt     = defined $stored ? get_salt $stored
+                                     : $_new_salt->( '5054', '00' );
+      my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
+      my $verifier = $srp->compute_verifier( $username, $password, $salt );
+
+      return $salt.base64_encode_ns( $verifier );
+   }
+
+   my $salt = defined $stored ? get_salt( $stored )
+      : $_new_salt->( '2a', $self->result_source->resultset->load_factor );
+
+   return bcrypt( $password, $salt );
+};
+
+# Public methods
 sub activate {
    my $self = shift; $self->active( TRUE ); return $self->update;
 }
@@ -72,7 +112,7 @@ sub add_member_to {
    try { $self->assert_member_of( $role ) } catch { $failed = TRUE };
 
    $failed or throw 'User [_1] already a member of role [_2]',
-                    args => [ $self->username, $role->rolename ];
+                    [ $self->username, $role->rolename ];
 
    return $self->user_role->create( { user_id => $self->id,
                                       role_id => $role->id } );
@@ -89,23 +129,23 @@ sub assert_member_of {
 
    my $user_role = $self->user_role->find( $self->id, $role->id )
       or throw 'User [_1] not member of role [_2]',
-               args => [ $self->username, $role->rolename ];
+               [ $self->username, $role->rolename ];
 
    return TRUE;
 }
 
 sub authenticate {
-   my ($self, $passwd, $log) = @_;
+   my ($self, $passwd) = @_;
 
-   $self->active or throw AccountInactive, args => [ $self->username ],
-                                           rv   => HTTP_UNAUTHORIZED;
+   $self->active
+      or throw AccountInactive, [ $self->username ], rv => HTTP_UNAUTHORIZED;
 
    my $username = $self->username;
    my $stored   = $self->password || NUL;
-   my $supplied = $self->_encrypt_password( $username, $passwd, $stored );
+   my $supplied = $self->$_encrypt_password( $username, $passwd, $stored );
 
-   $supplied eq $stored or throw IncorrectPassword, args => [ $self->username ],
-                                                    rv   => HTTP_UNAUTHORIZED;
+   $supplied eq $stored
+      or throw IncorrectPassword, [ $self->username ], rv => HTTP_UNAUTHORIZED;
    return;
 }
 
@@ -120,7 +160,7 @@ sub delete_member_from {
 
    my $user_role = $self->user_role->find( $self->id, $role->id )
       or throw 'User [_1] not member of role [_2]',
-               args  => [ $self->username, $role->rolename ];
+               [ $self->username, $role->rolename ];
 
    return $user_role->delete;
 }
@@ -131,9 +171,9 @@ sub insert {
    my $password = $columns->{password};
    my $username = $columns->{username};
 
-   $password and not __is_encrypted( $password ) and $columns->{password}
-      = $self->_encrypt_password( $username, $password );
-   $columns->{role_id} ||= $self->_default_role_id;
+   $password and not $_is_encrypted->( $password ) and $columns->{password}
+      = $self->$_encrypt_password( $username, $password );
+   $columns->{role_id} ||= $self->$_default_role_id;
    $self->set_inflated_columns( $columns );
 
    return $self->next::method;
@@ -155,44 +195,6 @@ sub validation_attributes {
          username    => {
             validate => 'isMandatory isValidIdentifier isValidLength' }, },
    };
-}
-
-# Private methods
-sub _default_role_id {
-   my $self = shift; return 1; # TODO: Derive default role_id from self
-}
-
-sub _encrypt_password {
-   my ($self, $username, $password, $stored) = @_;
-
-   if ($password =~ m{ \A \{ 5054 \} }mx
-       or (defined $stored and $stored =~ m{ \A \$ 5054 \$ }mx)) {
-       $password =~ s{ \A \{ 5054 \} }{}mx;
-
-      my $salt     = defined $stored ? get_salt( $stored )
-                                     : __new_salt( '5054', '00' );
-      my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
-      my $verifier = $srp->compute_verifier( $username, $password, $salt );
-
-      return $salt.base64_encode_ns( $verifier );
-   }
-
-   my $salt = defined $stored ? get_salt( $stored )
-            : __new_salt( '2a', $self->result_source->resultset->load_factor );
-
-   return bcrypt( $password, $salt );
-}
-
-# Private functions
-sub __new_salt {
-   my ($type, $lf) = @_;
-
-   return "\$${type}\$${lf}\$"
-      .(en_base64( pack( 'H*', substr( create_token, 0, 32 ) ) ) );
-}
-
-sub __is_encrypted {
-   return $_[ 0 ] =~ m{ \A \$\d+[a]?\$ }mx ? TRUE : FALSE;
 }
 
 1;

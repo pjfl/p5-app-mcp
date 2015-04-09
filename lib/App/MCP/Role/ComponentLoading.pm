@@ -2,88 +2,34 @@ package App::MCP::Role::ComponentLoading;
 
 use namespace::autoclean;
 
-use Class::Usul::Constants qw( TRUE );
+use App::MCP::Functions    qw( load_components );
 use Class::Usul::Functions qw( exception is_arrayref throw );
-use Class::Usul::Types     qw( ArrayRef HashRef LoadableClass
-                               NonEmptySimpleStr Object );
+use Class::Usul::Types     qw( ArrayRef HashRef LoadableClass Object );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_FOUND
                                HTTP_INTERNAL_SERVER_ERROR );
-use Module::Pluggable::Object;
 use Try::Tiny;
 use Moo::Role;
 
 requires qw( usul );
 
 has 'controllers'   => is => 'lazy', isa => ArrayRef[Object], builder => sub {
-   my $controllers  =  $_[ 0 ]->load_components
-      ( [ $_[ 0 ]->_appclass.'::Controller' ],
-        { builder   => $_[ 0 ]->usul, models => $_[ 0 ]->models, } );
+   my $controllers  =  load_components 'Controller', $_[ 0 ]->usul->config,
+      {  builder    => $_[ 0 ]->usul, models => $_[ 0 ]->models, };
    return [ map { $controllers->{ $_ } } sort keys %{ $controllers } ] };
 
 has 'models'        => is => 'lazy', isa => HashRef[Object], builder => sub {
-   $_[ 0 ]->load_components
-      ( [ $_[ 0 ]->_appclass.'::Model' ],
-        { builder   => $_[ 0 ]->usul, views => $_[ 0 ]->views, } ) };
+   load_components  'Model', $_[ 0 ]->usul->config,
+      {  builder    => $_[ 0 ]->usul, views => $_[ 0 ]->views, } };
 
 has 'request_class' => is => 'lazy', isa => LoadableClass,
    builder          => sub { $_[ 0 ]->usul->config->request_class };
 
 has 'views'         => is => 'lazy', isa => HashRef[Object], builder => sub {
-   $_[ 0 ]->load_components
-      ( [ $_[ 0 ]->_appclass.'::View' ], { builder => $_[ 0 ]->usul, } ) };
-
-has '_appclass'     => is => 'lazy', isa => NonEmptySimpleStr,
-   builder          => sub { $_[ 0 ]->usul->config->appclass };
-
-# Public methods
-sub load_components {
-   my ($self, $search_path, $args) = @_;
-
-   my $plugins   = {};
-   my $min_depth = delete $args->{min_depth};
-   my @depth     = $min_depth ? (min_depth => $min_depth) : (max_depth => 4);
-   my $finder    = Module::Pluggable::Object->new
-      ( @depth, search_path => $search_path, require => TRUE, );
-   my $monikers  = $self->usul->config->monikers;
-
-   for my $plugin ($finder->plugins) {
-      exists $monikers->{ $plugin } and defined $monikers->{ $plugin }
-         and $args->{moniker} = $monikers->{ $plugin };
-
-      my $comp = $plugin->new( $args ); $plugins->{ $comp->moniker } = $comp;
-   }
-
-   return $plugins;
-}
-
-sub render {
-   my ($self, $args) = @_; my $models = $self->models;
-
-   (is_arrayref $args and $args->[ 0 ] and exists $models->{ $args->[ 0 ] })
-      or return $args;
-
-   my ($moniker, $method, undef, @args) = @{ $args }; my ($req, $res);
-
-   try   { $req = $self->request_class->new( $self->usul, $moniker, @args ) }
-   catch { $self->log->error( $_ ); throw $_ };
-
-   try {
-      $method eq 'from_request' and $method = $req->tunnel_method.'_action';
-
-      my $stash = $models->{ $moniker }->execute( $method, $req );
-
-      if (exists $stash->{redirect}) { $res = $self->_redirect( $req, $stash ) }
-      else { $res = $self->_render_view( $moniker, $method, $req, $stash ) }
-   }
-   catch { $res = $self->_render_exception( $moniker, $req, $_ ) };
-
-   $req->session->update;
-
-   return $res;
-}
+   load_components  'View', $_[ 0 ]->usul->config,
+      {  builder    => $_[ 0 ]->usul, } };
 
 # Private methods
-sub _redirect {
+my $_redirect = sub {
    my ($self, $req, $stash) = @_; my $code = $stash->{code} || HTTP_FOUND;
 
    my $redirect = $stash->{redirect}; my $message = $redirect->{message};
@@ -96,24 +42,24 @@ sub _redirect {
    }
 
    return [ $code, [ 'Location', $redirect->{location} ], [] ];
-}
+};
 
-sub _render_view {
+my $_render_view = sub {
    my ($self, $moniker, $method, $req, $stash) = @_;
 
-   $stash->{view} or throw 'Model [_1] method [_2] stashed no view',
-                           args => [ $moniker, $method ];
+   $stash->{view}
+      or throw 'Model [_1] method [_2] stashed no view', [ $moniker, $method ];
 
    my $view = $self->views->{ $stash->{view} }
       or throw 'Model [_1] method [_2] unknown view [_3]',
-               args => [ $moniker, $method, $stash->{view} ];
+               [ $moniker, $method, $stash->{view} ];
    my $res  = $view->serialize( $req, $stash )
-      or throw 'View [_1] returned false', args => [ $stash->{view} ];
+      or throw 'View [_1] returned false', [ $stash->{view} ];
 
    return $res
-}
+};
 
-sub _render_exception {
+my $_render_exception = sub {
    my ($self, $moniker, $req, $e) = @_; my $res; my $username = $req->username;
 
    my $msg = "${e}"; chomp $msg; $self->log->error( "${msg} (${username})" );
@@ -124,9 +70,35 @@ sub _render_exception {
    try {
       my $stash = $self->models->{ $moniker }->exception_handler( $req, $e );
 
-      $res = $self->_render_view( $moniker, 'exception_handler', $req, $stash );
+      $res = $self->$_render_view( $moniker, 'exception_handler', $req, $stash);
    }
    catch { throw $e };
+
+   return $res;
+};
+
+# Public methods
+sub render {
+   my ($self, $args) = @_; my $models = $self->models;
+
+   (is_arrayref $args and $args->[ 0 ] and exists $models->{ $args->[ 0 ] })
+      or return $args;
+
+   my ($moniker, $method, undef, @args) = @{ $args }; my ($req, $res);
+
+   try   { $req = $self->request_class->new( $self->usul, $moniker, @args ) }
+   catch { $self->log->error( $_ ); throw $_ };
+   try   {
+      $method eq 'from_request' and $method = $req->tunnel_method.'_action';
+
+      my $stash = $models->{ $moniker }->execute( $method, $req );
+
+      if (exists $stash->{redirect}) { $res = $self->$_redirect( $req, $stash )}
+      else { $res = $self->$_render_view( $moniker, $method, $req, $stash ) }
+   }
+   catch { $res = $self->$_render_exception( $moniker, $req, $_ ) };
+
+   $req->session->update;
 
    return $res;
 }

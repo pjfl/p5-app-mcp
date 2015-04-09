@@ -54,6 +54,51 @@ has 'template_dir' => is => 'lazy', isa => Directory,
 has 'width'        => is => 'lazy', isa => Int,
    builder         => sub { $_[ 0 ]->req->ui_state->{width} // 1024 };
 
+# Private functions
+my $_extract_value = sub {
+   my ($field, $row) = @_;
+
+   my $value = $field->key_value; my $col = $field->name;
+
+   if ($row and blessed $row and $row->can( $col )) {
+      $value = $row->$col();
+   }
+   elsif (is_hashref $row and exists $row->{ $col }) {
+      $value = $row->{ $col };
+   }
+
+   return $value;
+};
+
+my $_field_list = sub {
+   my ($conf, $fields, $row) = @_; my $names;
+
+   if (is_arrayref $fields) {
+      $names = $fields->[ 0 ] ? $fields : [ sort keys %{ $row } ];
+   }
+   else { $names = $conf->{ $fields } };
+
+   return grep { not m{ \A (?: _ | related_resultsets ) }mx } @{ $names };
+};
+
+# Private methods
+my $_assign_value = sub {
+   my ($self, $field, $row) = @_;
+
+   my $value = $_extract_value->( $field, $row );
+   my $name  = $field->name; $name =~ s{ \. }{_}gmx;
+   my $hook  = '_'.$self->name."_${name}_assign_hook";
+   my $code; $code = $self->model->can( $hook )
+      and $value = $code->( $self->model, $self->req, $field, $row, $value );
+
+   defined $value or return;
+
+   if (is_hashref $value) { $field->add_properties( $value ) }
+   else { $field->key_value( "${value}" ) }
+
+   return;
+};
+
 # Construction
 around 'BUILDARGS' => sub {
    my ($orig, $self, $model, $req, $form_name, $row) = @_; my $attr = {};
@@ -64,9 +109,9 @@ around 'BUILDARGS' => sub {
    $attr->{row   } = $row;
    $attr->{config} = $self->load_config
       ( $model->usul, $req->l10n_domain, $req->locale );
-
+   $model->usul->dumper( $attr->{config} );
    exists $attr->{config}->{ $form_name }
-      or throw 'Form name [_1] unknown', args => [ $form_name ];
+      or throw 'Form name [_1] unknown', [ $form_name ];
 
    my $meta = $attr->{config}->{ $form_name }->{meta} // {};
 
@@ -76,20 +121,20 @@ around 'BUILDARGS' => sub {
 };
 
 sub BUILD {
-   my ($self, $attr) = @_; my $config = $self->config;
+   my ($self, $attr) = @_; my $cache = {}; my $config = $self->config;
 
-   my $cache = {}; my $count = 0; my $form_name = $self->name;
+   my $count = 0; my $form_name = $self->name; my $row = $attr->{row};
 
    $self->l10n; $self->ns; $self->template_dir; $self->width; # Visit the lazy
 
    for my $fields (@{ $config->{ $form_name }->{regions} }) {
       my $region = $self->data->[ $count++ ] = { fields => [] };
 
-      for my $name (__field_list( $config->{_fields}, $fields, $attr->{row} )) {
+      for my $name ($_field_list->( $config->{_fields}, $fields, $row )) {
          my $field = App::MCP::Form::Field->new
             ( $config->{_fields}, $form_name, $name );
 
-         $self->_assign_value( $field, $attr->{row} );
+         $self->$_assign_value( $field, $row );
 
          my $hook  = "_${form_name}_".$field->name.'_field_hook';
          my $code; $code = $self->model->can( $hook )
@@ -141,51 +186,6 @@ sub load_config {
    my $class = File::Gettext::Schema->new( $attr );
 
    return $cache->{ $key } = $class->load( $def_path, $ns_path );
-}
-
-# Private methods
-sub _assign_value {
-   my ($self, $field, $row) = @_;
-
-   my $value = __extract_value( $field, $row );
-   my $name  = $field->name; $name =~ s{ \. }{_}gmx;
-   my $hook  = '_'.$self->name."_${name}_assign_hook";
-   my $code; $code = $self->model->can( $hook )
-      and $value = $code->( $self->model, $self->req, $field, $row, $value );
-
-   defined $value or return;
-
-   if (is_hashref $value) { $field->add_properties( $value ) }
-   else { $field->key_value( "${value}" ) }
-
-   return;
-}
-
-# Private functions
-sub __extract_value {
-   my ($field, $row) = @_;
-
-   my $value = $field->key_value; my $col = $field->name;
-
-   if ($row and blessed $row and $row->can( $col )) {
-      $value = $row->$col();
-   }
-   elsif (is_hashref $row and exists $row->{ $col }) {
-      $value = $row->{ $col };
-   }
-
-   return $value;
-}
-
-sub __field_list {
-   my ($conf, $fields, $row) = @_; my $names;
-
-   if (is_arrayref $fields) {
-      $names = $fields->[ 0 ] ? $fields : [ sort keys %{ $row } ];
-   }
-   else { $names = $conf->{ $fields } };
-
-   return grep { not m{ \A (?: _ | related_resultsets ) }mx } @{ $names };
 }
 
 1;

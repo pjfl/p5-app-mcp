@@ -1,18 +1,19 @@
 package App::MCP::Schema::Schedule::Result::Role;
 
 use strictures;
-use overload '""' => 'as_string', fallback => 1;
-use parent 'App::MCP::Schema::Base';
+use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
+use parent   'App::MCP::Schema::Base';
 
-use App::MCP::Constants;
+use App::MCP::Constants qw( NUL VARCHAR_MAX_SIZE );
+use App::MCP::Functions qw( serial_data_type varchar_data_type );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
 $class->table( 'role' );
 
 $class->add_columns
-   (  id       => $class->serial_data_type,
-      rolename => $class->varchar_data_type( $class->varchar_max_size, NUL ), );
+   (  id       => serial_data_type,
+      rolename => varchar_data_type( VARCHAR_MAX_SIZE, NUL ), );
 
 $class->set_primary_key( 'id' );
 

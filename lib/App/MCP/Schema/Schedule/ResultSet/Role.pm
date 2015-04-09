@@ -10,7 +10,7 @@ sub find_by_name {
    my ($self, $rolename) = @_;
 
    my $role = $self->search( { rolename => $rolename } )->single
-      or throw error => 'Role [_1] unknown', args => [ $rolename ];
+      or throw 'Role [_1] unknown', [ $rolename ];
 
    return $role;
 }

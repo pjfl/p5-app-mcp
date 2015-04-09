@@ -3,16 +3,16 @@ package App::MCP::Schema::Schedule::Result::JobCondition;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Constants;
+use App::MCP::Functions qw( foreign_key_data_type );
 
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 
 $class->table( 'job_condition' );
 
-$class->add_columns( job_id     => $class->foreign_key_data_type,
-                     reverse_id => $class->foreign_key_data_type, );
+$class->add_columns( job_id     => foreign_key_data_type,
+                     reverse_id => foreign_key_data_type, );
 
-$class->set_primary_key( qw(job_id reverse_id) );
+$class->set_primary_key( 'job_id', 'reverse_id' );
 
 $class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
 

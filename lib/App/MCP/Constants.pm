@@ -10,7 +10,9 @@ use Data::Validation::Constants ( );
 Class::Usul::Constants->Exception_Class( 'App::MCP::Exception' );
 Data::Validation::Constants->Exception_Class( 'App::MCP::Exception' );
 
-our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR SEPARATOR );
+our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
+                  JOB_TYPE_ENUM SEPARATOR STATE_ENUM TRANSITION_ENUM
+                  VARCHAR_MAX_SIZE );
 
 my $Code_Attr = {};
 
@@ -34,6 +36,13 @@ sub DOTS      () { "\x{2026}" }
 sub SEPARATOR () { '/'        }
 
 sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
+sub LOG_KEY_WIDTH       () { 13 }
+sub JOB_TYPE_ENUM       () { [ 'box', 'job' ] }
+sub STATE_ENUM          () { [ qw( active hold failed finished
+                                   inactive running starting terminated ) ] }
+sub TRANSITION_ENUM     () { [ qw( activate fail finish off_hold
+                                   on_hold start started terminate ) ] }
+sub VARCHAR_MAX_SIZE    () { 255 }
 
 1;
 

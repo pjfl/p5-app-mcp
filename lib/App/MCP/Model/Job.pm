@@ -18,6 +18,13 @@ with    q(App::MCP::Role::WebAuthentication);
 
 has '+moniker' => default => 'job';
 
+# Private functions
+my $_job_not_found = sub {
+   return { redirect    => {
+               location => $_[ 0 ]->uri_for( 'job' ),
+               message  => [ 'Job id [_1] not found', $_[ 1 ] ] } };
+};
+
 # Public methods
 sub choose_action : Role(any) {
    my ($self, $req) = @_;
@@ -38,7 +45,7 @@ sub chooser : Role(any) {
    my $page    = { meta => delete $chooser->{meta} };
    my $stash   = $self->get_stash( $req, $page, 'job_chooser' => $chooser );
 
-   $stash->{view} = 'xml';
+   $stash->{view} = 'json';
    return $stash;
 }
 
@@ -50,7 +57,7 @@ sub delete_action : Role(any) {
    my ($self, $req) = @_;
 
    my $id       = $req->args->[ 0 ]
-      or throw Unspecified, args  => [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
+      or throw Unspecified, [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
    my $location = $req->uri_for( 'job' );
    my $message  = [ 'Job id [_1] not found', $id ];
    my $job      = $self->schema->resultset( 'Job' )->find( $id )
@@ -85,7 +92,7 @@ sub grid_rows : Role(any) {
    my $page  = { meta => delete $rows->{meta} };
    my $stash = $self->get_stash( $req, $page, 'job_grid_rows' => $rows );
 
-   $stash->{view} = 'xml';
+   $stash->{view} = 'json';
    return $stash;
 }
 
@@ -105,7 +112,7 @@ sub grid_table : Role(any) {
    my $page  = { meta => delete $table->{meta} };
    my $stash = $self->get_stash( $req, $page, 'job_grid_table' => $table );
 
-   $stash->{view} = 'xml';
+   $stash->{view} = 'json';
    return $stash;
 }
 
@@ -118,7 +125,7 @@ sub job_state : Role(any) {
    my $job_state = $rs->find_by_id_or_name( $req->args->[ 0 ] );
    my $stash     = $self->get_stash( $req, $page, $form => $job_state );
 
-   $stash->{view} = 'xml';
+   $stash->{view} = 'json';
    return $stash;
 }
 
@@ -132,7 +139,7 @@ sub save_action : Role(any) {
 
    if ($args->{id}) {
       $job = $self->find_and_update_record( $args )
-          or return __job_not_found( $req, $args->{id} );
+          or return $_job_not_found->( $req, $args->{id} );
       $message = [ 'Job name [_1] updated', $job->fqjn ];
    }
    else {
@@ -146,7 +153,7 @@ sub save_action : Role(any) {
 }
 
 # Private methods
-sub _job_chooser_assign_hook {
+sub  _job_chooser_assign_hook {
    return $_[ 1 ]->uri_for( 'job_chooser' );
 }
 
@@ -211,13 +218,6 @@ sub _job_state_job_fqjn_assign_hook {
 
 sub _job_state_job_name_assign_hook {
    return defined $_[ 3 ] ? $_[ 3 ]->job->name : undef;
-}
-
-# Private functions
-sub __job_not_found {
-   return { redirect    => {
-               location => $_[ 0 ]->uri_for( 'job' ),
-               message  => [ 'Job id [_1] not found', $_[ 1 ] ] } };
 }
 
 1;

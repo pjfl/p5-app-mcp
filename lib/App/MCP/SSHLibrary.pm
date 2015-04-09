@@ -140,7 +140,7 @@ func 'writefile' => q{
 
    open( my $fh, '>', $path ) or die "Path ${path} cannot open - ${OS_ERROR}";
    print $fh $_[ 0 ] or die "Path ${path} cannot write - $OS_ERROR"; close $fh;
-   return "Writfile ${file} length ".(-s $path);
+   return "Wrote ${file} length ".(-s $path);
 };
 
 1;

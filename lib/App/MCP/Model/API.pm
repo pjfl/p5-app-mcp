@@ -33,7 +33,7 @@ sub create_event {
                        ->search( { runid   => $run_id },
                                  { columns => [ 'token' ] } );
    my $pevent = $pe_rs->first
-     or throw 'Runid [_1] not found', args => [ $run_id ], rv => HTTP_NOT_FOUND;
+     or throw 'Runid [_1] not found', [ $run_id ], rv => HTTP_NOT_FOUND;
    my $params = $self->authenticate_params
       ( $run_id, $pevent->token, $req->body_params->( 'event' ) );
 
