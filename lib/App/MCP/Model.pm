@@ -9,6 +9,7 @@ use HTTP::Status          qw( HTTP_OK );
 use Unexpected::Functions qw( ValidationErrors );
 
 with q(App::MCP::Role::Component);
+with q(Class::Usul::TraitFor::ConnectInfo);
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, builder => sub {
@@ -19,8 +20,6 @@ has '_schema'       => is => 'lazy', isa => Object, builder => sub {
 has '_schema_class' => is => 'lazy', isa => LoadableClass,
    builder          => sub { $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },
    reader           => 'schema_class';
-
-with q(Class::Usul::TraitFor::ConnectInfo);
 
 sub exception_handler {
    my ($self, $req, $e) = @_;

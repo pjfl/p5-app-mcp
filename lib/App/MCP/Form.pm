@@ -35,7 +35,7 @@ has 'model'        => is => 'ro',   isa => Object, required => TRUE;
 has 'name'         => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
 has 'ns'           => is => 'lazy', isa => NonEmptySimpleStr,
-   builder         => sub { $_[ 0 ]->req->l10n_domain };
+   builder         => sub { $_[ 0 ]->req->model_name };
 
 has 'pwidth'       => is => 'ro',   isa => Int, default => 40;
 
@@ -108,8 +108,8 @@ around 'BUILDARGS' => sub {
    $attr->{req   } = $req;
    $attr->{row   } = $row;
    $attr->{config} = $self->load_config
-      ( $model->usul, $req->l10n_domain, $req->locale );
-   $model->usul->dumper( $attr->{config} );
+      ( $model->usul, $req->model_name, $req->locale );
+
    exists $attr->{config}->{ $form_name }
       or throw 'Form name [_1] unknown', [ $form_name ];
 
@@ -155,7 +155,7 @@ sub _build_l10n {
    return sub {
       my ($opts, $text, @args) = @_;
 
-      my $key = $req->l10n_domain.'.'.$req->locale.".${text}";
+      my $key = $req->model_name.'.'.$req->locale.".${text}";
 
       (exists $cache->{ $key } and defined $cache->{ $key })
          or $cache->{ $key } = $req->loc( $text, @args );

@@ -26,7 +26,7 @@ my $_header = sub {
 sub serialize {
    my ($self, $req, $stash) = @_;
 
-   my $content = $stash->{form} ? { html => $stash->{form}->[ 0 ]->{fields} }
+   my $content = $stash->{form} ? { html => $stash->{form}->[ 0 ] }
                                 : $stash->{content};
    my $meta    = $stash->{page}->{meta} // {};
    my $js      = join "\n", @{ $stash->{page}->{literal_js} // [] };

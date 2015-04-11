@@ -18,6 +18,8 @@ use Try::Tiny;
 
 Async::IPC::Functions->log_key_width( LOG_KEY_WIDTH );
 
+my $Identitfy_File_Cache = {};
+
 # Public attributes
 has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
    builder   => sub { $_[ 0 ]->config->port };
@@ -57,6 +59,22 @@ my $_cron_log_interval = sub {
    return;
 };
 
+my $_get_identity_file = sub {
+   my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
+
+   my $key    = "${user}\@${host}"; exists $Identitfy_File_Cache->{ $key }
+      and return $Identitfy_File_Cache->{ $key };
+   my $dir    = $self->config->ssh_dir;
+   my $prefix = distname $self->config->appclass;
+   my @files  = ("${host}-${user}", $user, $host);
+
+   for my $path (map { $dir->catfile( "${prefix}_${_}.priv" ) } @files) {
+      $path->exists and return $Identitfy_File_Cache->{ $key } = $path;
+   }
+
+   return $Identitfy_File_Cache->{ $key } = $self->config->identity_file;
+};
+
 my $_install_remote = sub {
    my ($self, $method, $calls, $file) = @_;
 
@@ -77,8 +95,9 @@ my $_process_event = sub {
 
    my $cols = { $event->get_inflated_columns };
    my $r    = $js_rs->create_and_or_update( $event ) or return $cols;
+   my $mesg = 'Job '.$r->[ 1 ].SPC.$r->[ 0 ].' event rejected';
 
-   log_debug $self->log, $name, $PID, (join SPC, @{ $r });
+   log_debug $self->log, $name, $PID, $mesg;
    $cols->{rejected} = $r->[ 2 ]->class;
    return $cols;
 };
@@ -110,7 +129,7 @@ my $_start_job = sub {
                  worker    => $self->worker, };
    my $calls = [ [ 'dispatch', [ %{ $args } ] ], ];
 
-   log_debug $self->log, 'start', $runid, $job->fqjn." ${user}\@${host} ${cmd}";
+   log_info $self->log, $job->name, $runid, "Start ${user}\@${host} ${cmd}";
    $args = { calls => $calls, host => $host, user => $user, };
    $self->ipc_ssh_add_provisioning( $args );
    $ipc_ssh->call( $runid, $args ); # Calls ipc_ssh_caller
@@ -136,8 +155,8 @@ sub cron_job_handler {
    my $job_rs  = $schema->resultset( 'Job' );
    my $ev_rs   = $schema->resultset( 'Event' );
    my $jobs    = $job_rs->search
-      ( { 'me.crontab'        => { '!=' => NUL },
-          'state.name'        => 'active',
+      ( { 'state.name'        => 'active',
+          'me.crontab'        => { '!=' => NUL },
           'events.transition' => [ undef, { '!=' => 'start' } ], },
         { 'columns'           => [ qw( condition crontab events.transition
                                        id state.name state.updated ) ],
@@ -203,12 +222,11 @@ sub ipc_ssh_caller {
    my $ips    = IPC::PerlSSH->new
       ( Host       => $args->{host},
         User       => $args->{user},
-        SshOptions => [ '-i', $self->config->identity_file ], );
+        SshOptions => [ '-i', $self->$_get_identity_file( $args ) ], );
+   my $logger = sub { $log, $name, $runid };
 
    try   { $ips->use_library( $self->config->library_class ) }
-   catch {
-      log_error $log, $name, $runid, "Store failed - ${_}"; $failed = TRUE;
-   };
+   catch { log_error $logger, "Store failed - ${_}"; $failed = TRUE };
 
    $failed and return FALSE; my $results = {};
 
@@ -216,16 +234,12 @@ sub ipc_ssh_caller {
       my $res;
 
       try   { $res = $ips->call( $call->[ 0 ], @{ $call->[ 1 ] } ) }
-      catch {
-         log_error $log, $name, $runid, "Call failed - ${_}"; $failed = TRUE;
-      };
+      catch { log_error $logger, "Call failed - ${_}"; $failed = TRUE };
 
-      $failed and return FALSE;
-
-      log_debug $log, $name, $runid, "Call succeeded - ${res}";
+      $failed and return FALSE; log_debug $logger, "Call succeeded - ${res}";
 
       my $method = $call->[ 2 ]; defined $method
-         and $self->$method( $results, $name, $runid, $call, $res, $args );
+         and $self->$method( $logger, $results, $call, $res, $args );
    }
 
    return $results;
@@ -236,9 +250,7 @@ sub ipc_ssh_callback {
 
    my ($runid, $results) = @{ $args // [] }; $results or return;
 
-   my ($mesg, $key, $res, $val);
-
-   $res = $results->{provisioned}
+   my ($mesg, $key, $res, $val); $res = $results->{provisioned}
       and $key  = $res->{key}
       and $self->$_remote_provisioned( $key, $val = $res->{value} )
       and $mesg = "Provisioned ${runid} ${key} ${val}"
@@ -248,7 +260,7 @@ sub ipc_ssh_callback {
 }
 
 sub ipc_ssh_install_worker {
-   my ($self, $results, $name, $runid, $call, $result, $args) = @_;
+   my ($self, $logger, $results, $call, $result, $args) = @_;
 
    my  $dist     =  distname $self->worker;
    my  $share    =  $self->config->sharedir;
@@ -259,21 +271,17 @@ sub ipc_ssh_install_worker {
    my  $key      =  $args->{user}.'@'.$args->{host};
 
    $our_ver //= qv( '0.0.0' ); $rem_ver = qv( $rem_ver // '0.0.0' );
-   log_debug $self->log, $name, $runid, "Worker current - ${key} ${rem_ver}";
+   log_debug $logger, "Worker current - ${key} ${rem_ver}";
 
-   $call->[ 0 ] eq 'provision' and $rem_ver >= $our_ver
+   $rem_ver >= $our_ver
       and $results->{provisioned} = { key => $key, value => "${rem_ver}" }
       and return;
 
    my  $tarball  =  $share->catfile( my $file = "${dist}-${our_ver}.tar.gz" );
 
-   not $tarball->exists
-      and log_warn( $self->log, $name, $runid, "File ${tarball} not found" )
-      and return;
+   $tarball->exists or return log_warn $logger, "File ${tarball} not found";
 
-   log_debug $self->log, $name, $runid,
-      "Worker upgrade - from ${rem_ver} to ${our_ver}";
-
+   log_debug $logger, "Worker upgrade - from ${rem_ver} to ${our_ver}";
    unshift @{ $args->{calls} }, [ 'distclean', [ $self->config->appclass ] ];
 
    # TODO: Need to force reload of worker after upgrade

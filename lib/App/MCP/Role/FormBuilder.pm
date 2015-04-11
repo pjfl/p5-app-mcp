@@ -212,7 +212,7 @@ sub check_field : Role(anon) {
    };
 
    return { code => HTTP_OK,
-            form => [ { fields => [ $mesg ] } ],
+            form => [ { fields => [ { content => $mesg } ] } ],
             page => { meta => $meta },
             view => 'json' };
 }
@@ -259,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 14 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 15 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

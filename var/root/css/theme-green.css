@@ -156,6 +156,7 @@ ul { list-style-position: outside; list-style-type: disc; }
 }
 .help { display: inline-block; margin: 12px; }
 .help .chooser_button, .help .submit_button { margin: 0; }
+.hidden { display: none; }
 .ifield { margin: 12px 0 11px 0; }
 .lineNumber { padding-right: 6px; text-align: right; }
 .message_text { max-width: 800px; }
