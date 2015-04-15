@@ -1174,12 +1174,9 @@ var LiveGrid = new Class( {
    ajaxUpdate: function( resp) {
       clearTimeout( this.timeoutHandler ); this.timeoutHandler = null;
 
-      try {
-         var totalrows = parseInt( resp.totalcount );
+      var totalrows = parseInt( resp.totalcount );
 
-         if (totalrows) this.setTotalRows( totalrows );
-      }
-      catch (err) {}
+      if (totalrows) this.setTotalRows( totalrows );
 
       this.buffer.update( resp );
 
@@ -1335,10 +1332,8 @@ var LiveGridBuffer = new Class( {
    update: function( resp ) {
       this.start = parseInt( resp.offset ); this.size = parseInt( resp.count );
 
-      for (var i = 0, size = this.size; i < size; i++) {
-         this.rows[ this.start + i ]
-            = resp.html.fields[ i ].content.unescapeHTML();
-
+      for (var i = 0; i < this.size; i++) {
+         this.rows[ this.start + i ] = resp.fields[ i ].content;
       }
 
       if (resp.script) Browser.exec( resp.script );
@@ -1557,11 +1552,10 @@ var LiveGrids = new Class( {
          onFirstContent   : this._updateHeader.bind( this, 0 ),
          requestParameters: { 'field_value': value },
          totalRows        : count };
-      var html   = '';
 
-      for (var i = 0; i < 2; i++) {
-         html += resp.html.fields[ i ].content.unescapeHTML();
-      }
+      var html = ''; resp.fields.each( function( field ) {
+         html += field.content;
+      } );
 
       $( keyid + 'Disp' ).set( 'html', html );
 
@@ -1616,11 +1610,9 @@ var LoadMore = new Class( {
    },
 
    _response: function( resp ) {
-      var field, html = '', i = 0;
-
-      while (field = resp.html.fields[ i++ ]) {
-         html += field.content.unescapeHTML();
-      }
+      var html = ''; resp.fields.each( function( field ) {
+         html += field.content;
+      } );
 
       $( resp.id ).set( 'html', html );
 

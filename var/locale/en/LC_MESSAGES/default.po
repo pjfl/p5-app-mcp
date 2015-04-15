@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: App::MCP 0.1.1\n"
-"PO-Revision-Date: 2014-01-29 23:07+0000\n"
+"PO-Revision-Date: 2015-04-15 01:46+0100\n"
 "Last-Translator: Lazarus Long <Support@RoxSoft.co.uk>\n"
 "Language-Team: English <Support@RoxSoft.co.uk>\n"
 "Language: en\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "form_hint_title"
-msgstr "Hint"
+msgstr "Information"
 
 msgid "help_nav_link_tip"
 msgstr "Application help"
@@ -31,7 +31,7 @@ msgid "job_state_nav_link_text"
 msgstr "Job State"
 
 msgid "job_state_nav_link_tip"
-msgstr "Current state for the select job"
+msgstr "Current state of the selected job"
 
 msgid "state_diagram_nav_link_text"
 msgstr "State Diagram"

@@ -5,7 +5,7 @@ use namespace::autoclean;
 use Moo;
 use App::MCP;
 use App::MCP::Application;
-use App::MCP::Constants   qw( NUL OK TRUE );
+use App::MCP::Constants   qw( LANG NUL OK TRUE );
 use App::MCP::DaemonControl;
 use App::MCP::Functions   qw( env_var terminate );
 use Async::IPC;
@@ -24,10 +24,10 @@ my $_build_clock_tick = sub {
 
    return $self->async_factory->new_notifier
       (  type     => 'periodical',
-         code     => sub { $cron->raise },
          desc     => 'clock tick handler',
-         interval => $self->config->clock_tick_interval,
-         name     => 'clock', );
+         name     => 'clock',
+         code     => sub { $cron->raise },
+         interval => $self->config->clock_tick_interval, );
 };
 
 my $_build_cron = sub {
@@ -72,12 +72,12 @@ my $_build_op_ev_hndlr = sub {
 
    return $self->async_factory->new_notifier
       (  type         => 'semaphore',
-         after        => sub { $ipc_ssh->close; },
-         before       => sub { $ipc_ssh = $self->ipc_ssh },
-         call_ch_mode => 'async',
          desc         => 'output event handler',
          name         => $name,
-         on_recv      => [ sub { $app->output_handler( $name, $ipc_ssh ) }, ] );
+         call_ch_mode => 'async',
+         before       =>   sub { $ipc_ssh = $self->ipc_ssh },
+         on_recv      => [ sub { $app->output_handler( $name, $ipc_ssh ) }, ],
+         after        =>   sub { $ipc_ssh->close }, );
 };
 
 my $_get_listener_sub = sub {
@@ -109,8 +109,10 @@ my $_reload = sub {
    return OK;
 };
 
-my $_set_program_name = sub {
-   $PROGRAM_NAME = $_[ 0 ]->config->pathname.' - master'; return;
+my $_set_program_name = sub { # Localisation triggers cache file creation
+   my $self = shift; my $name = $self->l10n->localizer( LANG, 'master' );
+
+   return $PROGRAM_NAME = $self->config->pathname." - ${name}";
 };
 
 my $_stdio_file = sub {
@@ -124,9 +126,9 @@ my $_build_listener = sub {
 
    return $self->async_factory->new_notifier
       (  type => 'process',
-         code => $self->$_get_listener_sub,
-         desc => 'listener',
-         name => 'listen', );
+         desc => 'web application server',
+         name => 'listen',
+         code => $self->$_get_listener_sub, );
 };
 
 my $_hangup_handler = sub { # TODO: Fix this

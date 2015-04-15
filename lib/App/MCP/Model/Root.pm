@@ -3,7 +3,7 @@ package App::MCP::Model::Root;
 use feature 'state';
 
 use Moo;
-use App::MCP::Attributes;
+use App::MCP::Attributes; # Will do cleaning
 use App::MCP::ConfigEditor;
 use App::MCP::Constants qw( FALSE NUL TRUE );
 use Class::Usul::Types  qw( Object );
@@ -25,12 +25,10 @@ has 'config_editor' => is => 'lazy', isa => Object, builder => sub {
 sub config_form : Role(any) {
    my ($self, $req) = @_;
 
-   my $title = $req->loc( 'Config' );
+   my $title = $req->loc( 'Configuration' );
    my $page  = { action => $req->uri, form_name => 'config', title => $title, };
    my $conf  = $self->config_editor->config_data;
-   my $data  = { arrayrefs => { data => $conf->[ 0 ] },
-                 hashrefs  => { data => $conf->[ 1 ] },
-                 scalars   => { data => $conf->[ 2 ] }, };
+   my $data  = { values => { data => $conf }, };
 
    return $self->get_stash( $req, $page, config => $data );
 }
@@ -42,15 +40,16 @@ sub login_action : Role(anon) {
    my $username = $params->( 'username' );
    my $user     = $self->schema->resultset( 'User' )->find_by_name( $username );
 
-   $user->authenticate( $params->( 'password' ) );
+   $user->authenticate( $params->( 'password' ) ); # Throws on failure
 
-   my $session  = $req->session; my $primary = NUL.$user->primary_role;
+   my $sess     = $req->session; my $primary = NUL.$user->primary_role;
 
-   $session->authenticated( TRUE );
-   $session->username     ( $username );
-   $session->user_roles   ( [ $primary, @{ $user->list_other_roles } ] );
+   $sess->authenticated( TRUE );
+   $sess->username     ( $username );
+   $sess->user_roles   ( [ $primary, @{ $user->list_other_roles } ] );
 
-   my $location = $req->uri_for( 'job' );
+   my $wanted   = $sess->wanted || 'job'; $sess->wanted( NUL );
+   my $location = $req->uri_for( $wanted );
    my $message  = [ 'User [_1] logged in', $username ];
 
    return { redirect => { location => $location, message => $message } };
@@ -97,8 +96,8 @@ sub navigator : Role(anon) {
       $cache->{ $req->locale } = $data;
    }
 
-   my $list  = { list => { class => 'nav_list', data => $data } };
    my $page  = { meta => { id    => 'nav_panel' } };
+   my $list  = { list => { class => 'nav_list', data => $data } };
    my $stash = $self->get_stash( $req, $page, nav => $list );
 
    $stash->{view} = 'json';

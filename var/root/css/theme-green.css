@@ -38,7 +38,7 @@ article, aside, dialog, footer, header, hgroup, menu, nav, section {
    float: left;
 }
 b, caption, dt, legend, strong, th, thead { font-weight: bold; }
-big { font-size: 20px; line-height: 24px; }
+big { font-size: 1.25em; line-height: 1.2em; }
 blockquote { margin: 24px 48px; }
 body {
    font-family: Verdana, "Lucida Sans", tahoma, arial, sans-serif;
@@ -46,7 +46,7 @@ body {
    max-height: 100%; width: 100%;
 }
 br { clear: left; line-height: 0; }
-button, input, select { cursor: pointer; font-size: 16px; }
+button, input, select { cursor: pointer; font-size: 1em; }
 button[disabled], html input[disabled] { cursor: default; }
 canvas { margin: 0; }
 caption { margin: 12px; }
@@ -61,12 +61,12 @@ h1, h2, h3, h4, h5, h6 {
    font-family: "Helvetica Neue", Helvetica, Verdana, tahoma, arial, sans-serif;
    font-weight: normal;
 }
-h1 { font-size: 40px; line-height: 48px; margin: 12px 0; }
-h2 { font-size: 36px; line-height: 48px; margin: 12px 0; }
-h3 { font-size: 32px; line-height: 48px; margin: 12px 0; }
-h4 { font-size: 28px; line-height: 48px; margin: 12px 0; }
-h5 { font-size: 24px; line-height: 24px; margin: 12px 0; }
-h6 { font-size: 20px; line-height: 24px; margin: 12px 0; }
+h1 { font-size: 2.50em; line-height: 1.200em; margin: 12px 0; }
+h2 { font-size: 2.25em; line-height: 1.333em; margin: 12px 0; }
+h3 { font-size: 2.00em; line-height: 1.500em; margin: 12px 0; }
+h4 { font-size: 1.75em; line-height: 1.714em; margin: 12px 0; }
+h5 { font-size: 1.50em; line-height: 1.000em; margin: 12px 0; }
+h6 { font-size: 1.25em; line-height: 1.200em; margin: 12px 0; }
 hr {
    -khtml-box-sizing: content-box; -moz-box-sizing: content-box;
    -webkit-box-sizing: content-box;
@@ -81,12 +81,12 @@ option { margin: 3px 0; padding: 0 3px; }
 p { margin: 12px 0; }
 pre { white-space: pre; word-wrap: break-word; }
 select { margin: 0; padding: 3px; }
-small { font-size: 12px; line-height: 24px; }
-sub, sup { font-size: 10px; line-height: 0; }
+small { font-size: 0.75em; line-height: 2em; }
+sub, sup { font-size: 0.625em; line-height: 0; }
 sub { vertical-align: sub; }
 sup { vertical-align: super; }
 table { height: auto; width: 100%; }
-td { vertical-align: middle; }
+td { vertical-align: top; }
 textarea { overflow: auto; }
 tfoot { font-style: italic; }
 th { padding: 3px 6px; }
@@ -98,31 +98,30 @@ ul { list-style-position: outside; list-style-type: disc; }
    display: inline-block; float: left; position: relative;
 }
 .compact_prompt, .label_text, .prompt, .separator {
-   margin: 9px 0; padding: 3px 0;
+   margin: 3px 0; padding: 3px 0;
 }
 .chooser_button, .dialog, .field_error, .submit_button, .tips-container {
    -khtml-border-radius: 4px; -moz-border-radius: 4px;
    -webkit-border-radius: 4px; border-radius: 4px;
 }
 
-.body { height: 100%; margin: 0 auto; width: 95%; }
+.body { height: 100%; margin: 0 auto; }
 .checkbox {
    background: url(../img/icons.png) -90px -300px no-repeat; cursor: pointer;
    display: inline-block; height: 16px; vertical-align: middle; width: 16px;
 }
 .checkbox_container {
-   display: inline-block; float: right; margin: 11px 0; position: relative;
+   display: inline-block; float: right; margin: 5px 0; position: relative;
 }
 .checked  {
    background: url(../img/icons.png) -120px -300px no-repeat transparent;
 }
 .chooser_button, .submit_button {
-   border: 1px solid; height: 24px;
-   margin: 12px 12px; padding: 1px 5px 4px 5px;
+   border: 1px solid; height: 24px; margin: 6px 12px; padding: 1px 5px 4px 5px;
 }
 .compact_prompt { margin-left: 24px; max-width: 200px; width: auto !important; }
 .compact_prompt, .prompt {
-   cursor: pointer; font-size: 14px; text-align: right; width: auto;
+   cursor: pointer; font-size: 0.875em; text-align: right; width: auto;
 }
 .container.template { padding-left: 24px; }
 .container.last_field { float: right; }
@@ -130,44 +129,46 @@ ul { list-style-position: outside; list-style-type: disc; }
 .dialog-body { position: relative; }
 .dialog-close {
    cursor: pointer; display: inline-block; float: right;
-   font-size: 14px; font-weight: bold; height: 16px; line-height: 12px;
+   font-size: 0.60em; font-weight: bold; height: 16px; line-height: 1em;
    margin: 4px 0 0 12px; text-align: center; vertical-align: middle;
    width: 16px;
 }
 .dialog-title {
-   display: block; font-size: 20px; line-height: 24px;
+   display: block; font-size: 1.25em; line-height: 1.2em;
 }
 .field_error {
-   border: 1px solid; clear: left; display: block; font-size: 14px;
+   border: 1px solid; clear: left; display: block; font-size: 0.875em;
    margin: 5px 0; padding: 6px; white-space: nowrap;
 }
 .grid_cell { height: 24px; white-space: nowrap; }
 .grid_cell .chooser_grid { padding-left: 6px; }
 .grid_cell .help, .nav_list .help { margin: 0; }
-.grid_container {
-   overflow: hidden; padding-right: 19px; position: relative;
-}
+.grid_container { overflow: hidden; padding-right: 19px; position: relative; }
 .grid_header { position: relative; }
 .grid_scrollBar {
    bottom: 0; overflow: auto; position: absolute; right: 0; width: 19px;
 }
 .grid_subheader {
-   display: block; font-size: 14px; padding: 3px; text-decoration: none;
+   display: block; font-size: 0.875em; padding: 3px; text-decoration: none;
 }
-.help { display: inline-block; margin: 12px; }
-.help .chooser_button, .help .submit_button { margin: 0; }
+.help { display: inline-block; }
 .hidden { display: none; }
-.ifield { margin: 12px 0 11px 0; }
+.ifield { margin: 6px 0 5px 0; }
 .lineNumber { padding-right: 6px; text-align: right; }
 .message_text { max-width: 800px; }
-.nav_list { list-style-type: none; margin: 0; }
+.nav_list { list-style-type: none; margin: 6px 0 0 18px; }
 .nav_list li { display: table-row; }
 .nav_list .anchor_button {
-   display: block; font-size: 16px; font-weight: bold; margin: 9px 0;
-   padding: 3px 0; text-decoration: none;
+   display: block; font-size: 1em; font-weight: bold; margin: 6px 0;
+   padding: 0; text-decoration: none;
 }
 .numeric { text-align: right; }
 .opposite-flow { float: right; }
+.page-header { margin-left: 18px; }
+.page-status {
+   color: transparent; bottom: 0; font-weight: bold; font-size: 0.875em;
+   padding: 9px; position: fixed; right: 18px; z-index: 10;
+}
 .radio_group { margin-left: 6px; vertical-align: middle; }
 .region { float: left; }
 .region0 { width: 100%; }
@@ -175,13 +176,16 @@ ul { list-style-position: outside; list-style-type: disc; }
    border-right: 1px solid; height: 100%; position: fixed;
    top: 72px; width: 15%;
 }
-.region2 { margin-left: 16%; }
-.region3 { position: fixed; right: 0; top: 72px; width: 25%; }
+.region2 { margin-left: 16%; margin-top: 6px; }
+.region3 { position: fixed; right: 0; top: 78px; width: 25%; }
 .required { border-right: 3px solid; }
 .state-diagram { padding: 24px; }
-.status_message {
-   display: block; position: relative; text-align: center;
-}
+.status_message { display: block; position: relative; text-align: center; }
+.std_cell, .std_header { padding: 0 5px 0 5px; }
+.std_cell .help, .std_cell .ifield { margin: 0; }
+.std_cell .std_table { margin-top: 0 !important; }
+.std_row { line-height: 36px; }
+.std_table { margin-top: 6px; }
 .tips-container {
    border: 2px solid transparent; text-align: center; z-index: 10000;
 }
@@ -191,20 +195,20 @@ ul { list-style-position: outside; list-style-type: disc; }
 }
 .tips-mark1 {
    border: 7px solid; content: ' '; height: 0; left: 18px;
-   position: absolute; width: 0; top: -14px;
+   position: absolute; top: -14px; width: 0;
 }
 .tips-defn {
    display: block; padding: 3px 12px 9px 12px;
 }
 .tips-term {
-   display: block; font-size: 20px; line-height: 24px;
+   display: block; font-size: 1.25em; line-height: 1.2em;
    padding: 9px 12px 3px 12px;
 }
 
 table.grid { min-width: 200px; width: auto; }
 table.grid td.first { border-right: 1px solid; }
 th.grid_header  {
-   border-bottom: 1px solid; font-size: 14px; line-height: 24px;
+   border-bottom: 1px solid; font-size: 0.875em; line-height: 1.714em;
    text-align: left;
 }
 
@@ -218,7 +222,8 @@ th.grid_header  {
 .dialog-close { background-color: #f00; color: #fff; }
 .dialog-title, .tips-term { color: #336; }
 .field_error { background-color: #fcc; border-color: #336; }
-.grid_subheader { background-color: #9c9; color: #000; }
+.grid_subheader, .page-status:hover { background-color: #9c9; color: #000; }
+.ifield { background-color: #9c9; }
 .nav_list .anchor_button { color: #000; }
 .region1 { border-right-color: #336; }
 .required {    border-right-color: #f00; }

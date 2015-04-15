@@ -26,6 +26,8 @@ around 'execute' => sub {
    my $sess = $req->session;
 
    unless ($sess->authenticated) {
+      $sess->wanted( $req->path );
+
       my $location = $req->uri_for( 'login' );
       my $message  = [ 'Authentication required to [_1]', $req->path ];
 

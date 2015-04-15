@@ -17,9 +17,8 @@ with q(App::MCP::Role::FormHandler);
 has '+moniker' => default => 'html';
 
 # Public attributes
-has 'template_dir' => is => 'lazy', isa => Directory,
-   builder         => sub { $_[ 0 ]->config->root->catdir( 'templates' ) },
-   coerce          => Directory->coercion;
+has 'template_dir' => is => 'lazy', isa => Directory, coerce => TRUE,
+   builder         => sub { $_[ 0 ]->config->root->catdir( 'templates' ) };
 
 # Private attributes
 has '_template' => is => 'lazy', isa => Object, builder => sub {

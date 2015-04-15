@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added web interface to configuration object
           - Made ajax use JSON
           - Async::IPC now a clone of IO::Async
           - Split Async module out to Async::IPC

@@ -1,4 +1,5 @@
 <!-- Footer -->
+<div id="page-status" class="page-status"></div>
 [% IF config.google_analytics -%]
    <script type="text/javascript"><!--//--><![CDATA[//><!--
       ( function( w, d, t, s, f) {

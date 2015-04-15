@@ -3,12 +3,12 @@ package App::MCP::ConfigEditor;
 use namespace::autoclean;
 
 use Moo;
-use Class::Inspector;
-use Class::Usul::Constants  qw( TRUE );
-use Class::Usul::File;
-use Class::Usul::Functions  qw( is_arrayref is_hashref is_member );
+use Class::Usul::Constants qw( FALSE TRUE );
+use Class::Usul::Functions qw( is_arrayref is_coderef is_hashref
+                               list_attr_of throw );
 use Class::Usul::Response::Table;
-use Class::Usul::Types      qw( ArrayRef BaseType NonEmptySimpleStr );
+use Class::Usul::Types     qw( ArrayRef BaseType NonEmptySimpleStr );
+use Pod::Xhtml;
 
 has 'excludes' => is => 'ro', isa => ArrayRef[NonEmptySimpleStr],
    builder     => sub { [ qw( BUILD BUILDALL BUILDARGS DEMOLISHALL
@@ -19,64 +19,92 @@ has 'usul'     => is => 'ro', isa => BaseType, handles => [ 'config', 'log' ],
    init_arg    => 'builder', required => TRUE;
 
 # Private functions
-my $_new_config_table = sub {
-   my $values = shift;
+my $_new_attr_table = sub {
+   my $rows = shift;
 
    return Class::Usul::Response::Table->new( {
-      class    => { default     => 'cell',
-                    loaded      => 'cell', },
-      count    => scalar @{ $values },
-      fields   => [ qw( attr_name default loaded ) ],
-      hclass   => { attr_name   => 'header minimal',
-                    default     => 'header minimal',
-                    loaded      => 'header most', },
-      labels   => { attr_name   => 'Name',
-                    default     => 'Default Value',
-                    loaded      => 'Loaded Value', },
-      values   => $values,
+      count  => scalar @{ $rows },
+      fields => [ qw( attr_name value ) ],
+      hclass => { attr_name => 'minimal',
+                  value     => 'most', },
+      labels => { attr_name => 'Name',
+                  value     => 'Current Value', },
+      values => $rows,
    } );
+};
+
+my $_get_anchor_text = sub {
+   my $v = shift; $v =~ s{ [_] }{ }gmx; return ucfirst $v;
+};
+
+my $_get_value_widget; $_get_value_widget = sub {
+   my $v = shift;
+
+   is_arrayref $v and return {
+      type => 'popupMenu', container => FALSE, values => $v, widget => TRUE, };
+
+   is_coderef  $v and return $v->();
+
+   is_hashref  $v or  return $v; 0 == (() = keys %{ $v }) and return '{}';
+
+   my @rows = map   { { attr_name => $_,
+                        value     => $_get_value_widget->( $v->{ $_ } ) } }
+              keys %{ $v };
+
+   return { type   => 'table',
+            data   => $_new_attr_table->( \@rows ),
+            widget => TRUE, };
+};
+
+my $_new_config_table = sub {
+   my $rows = shift;
+
+   return Class::Usul::Response::Table->new( {
+      count  => scalar @{ $rows },
+      fields => [ qw( attr_name class value ) ],
+      hclass => { attr_name => 'minimal',
+                  class     => 'minimal',
+                  value     => 'most', },
+      labels => { attr_name => 'Name',
+                  class     => 'Defining Class',
+                  value     => 'Current Value', },
+      values => $rows,
+   } );
+};
+
+my $_pod_to_html = sub {
+   my ($parser, $pod) = @_; $pod = "=pod\n\n${pod}";
+
+   open my $fh, '+<', \$pod or throw 'Cannot open from string reference';
+
+   $parser->parse_from_filehandle( $fh ); close $fh;
+
+   my $html = $parser->asString; $html =~ s{ [\n] }{}gmsx;
+
+   return $html;
 };
 
 # Public methods
 sub config_data {
-   my $self = shift; my $loaded = {}; my $paths;
+   my $self = shift; my $rows = [];
 
-   $paths = $self->config->cfgfiles and $paths->[ 0 ]
-      and $loaded = Class::Usul::File->data_load( paths => $paths ) || {};
+   my $parser = Pod::Xhtml->new
+      ( FragmentOnly => TRUE, MakeIndex => FALSE, StringMode => TRUE );
 
-   my $class = $self->usul->config_class;
-
-   my $arrayrefs = []; my $hashrefs = []; my $scalars = [];
-
-   for my $attr_name (grep { not is_member $_, $self->excludes }
-                          @{ Class::Inspector->methods( $class, 'public' ) }) {
-      my $default_value = $self->config->$attr_name;
-      my $loaded_value  = $loaded->{ $attr_name };
-
-      if (is_arrayref $default_value) {
-         push @{ $arrayrefs }, {
-            attr_name => $attr_name,
-            default   => { type   => 'popupMenu',
-                           values => $default_value,
-                           widget => TRUE },
-            loaded    => $loaded_value, };
-      }
-      elsif (is_hashref $default_value) {
-         push @{ $hashrefs }, { attr_name => $attr_name,
-                                default   => $default_value,
-                                loaded    => $loaded_value, };
-      }
-      else {
-         push @{ $scalars }, {
-            attr_name => $attr_name,
-            default   => $default_value,
-            loaded    => { default => $loaded_value, widget => TRUE }, };
-      }
+   for my $tuple (list_attr_of( $self->config, @{ $self->excludes } )) {
+      push @{ $rows }, {
+         attr_name    => {
+            type      => 'anchor',
+            container => FALSE,
+            href      => '#',
+            text      => $_get_anchor_text->( $tuple->[ 0 ] ),
+            tip       => $_pod_to_html->( $parser, $tuple->[ 2 ] ),
+            widget    => TRUE, },
+         class        => $tuple->[ 1 ],
+         value        => $_get_value_widget->( $tuple->[ 3 ] ) };
    }
 
-   return [ $_new_config_table->( $arrayrefs ),
-            $_new_config_table->( $hashrefs ),
-            $_new_config_table->( $scalars ) ];
+   return $_new_config_table->( $rows );
 }
 
 1;

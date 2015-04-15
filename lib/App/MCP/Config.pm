@@ -41,9 +41,8 @@ has 'deflate_types'        => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
 
 has 'description'          => is => 'ro',   isa => SimpleStr, default => NUL;
 
-has 'identity_file'        => is => 'lazy', isa => File,
-   builder                 => sub { $_[ 0 ]->ssh_dir->catfile( 'id_rsa' ) },
-   coerce                  => File->coercion;
+has 'identity_file'        => is => 'lazy', isa => File, coerce => TRUE,
+   builder                 => sub { $_[ 0 ]->ssh_dir->catfile( 'id_rsa' ) };
 
 has 'images'               => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'img/';
@@ -63,7 +62,7 @@ has 'load_factor'          => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 14;
 
 has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'DAEMON';
+   default                 => 'daemon';
 
 has 'max_asset_size'       => is => 'ro',   isa => PositiveInt,
    default                 => 4_194_304;
@@ -122,9 +121,8 @@ has 'serve_as_static'      => is => 'ro',   isa => NonEmptySimpleStr,
 has 'servers'              => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
    builder                 => sub { [ fqdn ] };
 
-has 'ssh_dir'              => is => 'lazy', isa => Directory,
-   builder                 => sub { $_[ 0 ]->my_home->catdir( '.ssh' ) },
-   coerce                  => Directory->coercion;
+has 'ssh_dir'              => is => 'lazy', isa => Directory, coerce => TRUE,
+   builder                 => sub { $_[ 0 ]->my_home->catdir( '.ssh' ) };
 
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
@@ -162,6 +160,182 @@ App::MCP::Config - One-line description of the modules purpose
 Defines the following attributes;
 
 =over 3
+
+=item C<author>
+
+A non empty simple string which defaults to B<Dave>.
+
+=item C<clock_tick_interval>
+
+A non zero positive integer that defaults to B<3>.
+
+=item C<common_links>
+
+An array reference of non empty simple strings that defaults to
+B<[ css images js less ]>
+
+=item C<connect_params>
+
+A hash reference which defaults to B<< { quote_names => TRUE } >>
+
+=item C<cron_log_interval>
+
+A positive integer that defaults to B<0>.
+
+=item C<css>
+
+A non empty simple string which defaults to B<css/>.
+
+=item C<database>
+
+A non empty simple string which defaults to B<schedule>.
+
+=item C<default_view>
+
+A simple string which defaults to B<html>.
+
+=item C<deflate_types>
+
+
+An array reference of non empty simple strings that defaults to
+B<[ text/css text/html text/javascript application/javascript ]>
+
+=item C<description>
+
+A simple string which defaults to B<NUL>.
+
+=item C<identity_file>
+
+A file object reference that defaults to the F<id_rsa> file in the L</ssh_dir>
+directory
+
+=item C<images>
+
+A non empty simple string which defaults to B<img/>.
+
+=item C<js>
+
+A non empty simple string which defaults to B<js/>.
+
+=item C<keywords>
+
+A simple string which defaults to B<NUL>.
+
+=item C<less>
+
+A non empty simple string which defaults to B<less/>.
+
+=item C<library_class>
+
+A non empty simple string which defaults to B<App::MCP::SSHLibrary>.
+
+=item C<load_factor>
+
+A non zero positive integer that defaults to B<14>.
+
+=item C<log_key>
+
+A non empty simple string which defaults to B<DAEMON>.
+
+=item C<max_asset_size>
+
+A positive integer that defaults to B<4_194_304>.
+
+=item C<max_messages>
+
+A non zero positive integer that defaults to B<3>.
+
+=item C<max_web_session_time>
+
+A positive integer that defaults to B<3_600>.
+
+=item C<max_api_session_time>
+
+A positive integer that defaults to B<300>.
+
+=item C<max_ssh_worker_calls>
+
+A positive integer that defaults to B<0>.
+
+=item C<max_ssh_workers>
+
+A non zero positive integer that defaults to B<3>. The maximum number of SSH
+worker processes
+
+=item C<monikers>
+
+A hash reference of non empty simple strings which defaults to B<{}>
+
+=item C<mount_point>
+
+A non empty simple string which defaults to B</>.
+
+=item C<nav_list>
+
+An array reference of non empty simple strings that defaults to
+B<[ config job state_diagram help ]>
+
+=item C<port>
+
+A non zero positive integer that defaults to B<2012>.
+
+=item C<preferences>
+
+An array reference of non empty simple strings that defaults to
+B<[ theme ]>
+
+=item C<request_class>
+
+A non empty simple string which defaults to B<App::MCP::Request>.
+
+=item C<secret>
+
+A non empty simple string which defaults to B<hostname>.
+
+=item C<schema_classes>
+
+A hash reference of non empty simple strings which defaults to
+B<< { 'mcp-model' => 'App::MCP::Schema::Schedule' } >>
+
+=item C<scrubber>
+
+A string which defaults to B<[^ +\,\-\./0-9@A-Z\\_a-z]>.
+
+=item C<server>
+
+A non empty simple string which defaults to B<Twiggy>. The Plack server class
+used for the event listener
+
+=item C<serve_as_static>
+
+A non empty simple string which defaults to
+B<css | favicon.ico | img | js | less>.
+
+=item C<servers>
+
+An array reference of non empty simple strings that defaults to
+B<[ fqdn ]>
+
+=item C<ssh_dir>
+
+A directory object reference that defaults to the F<.ssh> directory in the
+users home
+
+=item C<stop_signals>
+
+A non empty simple string which defaults to B<TERM,10,KILL,1>.
+
+=item C<template>
+
+A non empty simple string which defaults to B<form>.
+
+=item C<title>
+
+A non empty simple string which defaults to B<MCP>.
+
+=item C<theme>
+
+A non empty simple string which defaults to B<green>.
 
 =back
 

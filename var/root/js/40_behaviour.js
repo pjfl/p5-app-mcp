@@ -160,10 +160,14 @@ var Behaviour = new Class( {
    },
 
    initialize: function( options ) {
-      this.setOptions( options ); this.collection = [];
+      this.setOptions( options ); this.collection = []; this.attach();
+   },
+
+   attach: function() {
+      var opt = this.options;
 
       window.addEvent( 'load',   function() {
-         this.load( options.firstField ) }.bind( this ) );
+         this.load( opt.firstField ) }.bind( this ) );
       window.addEvent( 'resize', function() { this.resize() }.bind( this ) );
    },
 
@@ -180,7 +184,7 @@ var Behaviour = new Class( {
          prefix        : opt.cookiePrefix } );
       this.stylesheet  = new PersistantStyleSheet( { cookies: this.cookies } );
 
-      this._restoreStateFromCookie();
+      this.restoreStateFromCookie(); this.resize();
 
       this.window      = new WindowUtils( {
          context       : this,
@@ -209,9 +213,6 @@ var Behaviour = new Class( {
          cookiePath    : opt.cookiePath,
          cookiePrefix  : opt.cookiePrefix } );
       this.linkFade    = new LinkFader( { context: this } );
-
-      this.resize();
-
       this.tips        = new Tips( {
          context       : this,
          onHide        : function() { this.fx.start( 0 ) },
@@ -239,7 +240,7 @@ var Behaviour = new Class( {
       }
    },
 
-   _restoreStateFromCookie: function() {
+   restoreStateFromCookie: function() {
       /* Use state cookie to restore the visual state of the page */
       var cookie_str; if (! (cookie_str = this.cookies.get())) return;
 
@@ -265,7 +266,8 @@ var Behaviour = new Class( {
 
       var swatch_time = Date.swatchTime();
 
-      window.defaultStatus = 'w: ' + w + ' h: ' + h + ' @' + swatch_time;
+      if (el = $( 'page-status' ) )
+         el.set( 'html', 'w: ' + w + ' h: ' + h + ' @' + swatch_time );
    }
 } );
 

@@ -28,6 +28,113 @@ use Try::Tiny;
 use Unexpected::Functions  qw( ChecksumFailure MissingHeader MissingKey
                                SigParserFailure SigVerifyFailure Unspecified );
 
+# Attribute constructors
+my $_decode_array = sub {
+   my ($enc, $param) = @_;
+
+   (not defined $param->[ 0 ] or blessed $param->[ 0 ]) and return;
+
+   for (my $i = 0, my $len = @{ $param }; $i < $len; $i++) {
+      $param->[ $i ] = decode( $enc, $param->[ $i ] );
+   }
+
+   return;
+};
+
+my $_decode_hash = sub {
+   my ($enc, $param) = @_;
+
+   for my $k (keys %{ $param }) {
+      if (is_arrayref $param->{ $k }) {
+         $param->{ decode( $enc, $k ) }
+            = [ map { decode( $enc, $_ ) } @{ $param->{ $k } } ];
+      }
+      else { $param->{ decode( $enc, $k ) } = decode( $enc, $param->{ $k } ) }
+   }
+
+   return;
+};
+
+my $_build_body = sub {
+   my $self = shift; my $env = $self->_env; my $content = $self->_content;
+
+   my $body = HTTP::Body->new( $self->content_type, length $content );
+
+   $body->cleanup( TRUE ); length $content or return $body;
+
+   try {
+      if ($self->content_type eq 'application/json') {
+         $body->{param} = $self->_transcoder->decode( $content );
+      }
+      else {
+         $body->add( $content );
+         $_decode_hash->( $self->encoding, $body->param );
+      }
+   }
+   catch { $self->log->error( $_ ) };
+
+   return $body;
+};
+
+my $_build_content = sub {
+   my $self = shift; my $env = $self->_env; my $content;
+
+   my $cl = $self->content_length  or return NUL;
+   my $fh = $env->{ 'psgi.input' } or return NUL;
+
+   try   { $fh->seek( 0, 0 ); $fh->read( $content, $cl, 0 ); $fh->seek( 0, 0 ) }
+   catch { $self->log->error( $_ ); $content = NUL };
+
+   return $content || NUL;
+};
+
+my $_build_locale = sub {
+   my $self   = shift;
+   my $locale = $self->query_params( 'locale', { optional => TRUE } );
+
+   $locale and is_member $locale, $self->config->locales and return $locale;
+
+   for my $locale (@{ $self->locales }) {
+      is_member $locale, $self->config->locales and return $locale;
+   }
+
+   return $self->config->locale;
+};
+
+my $_build_locales = sub {
+   my $self = shift; my $lang = $self->_env->{ 'HTTP_ACCEPT_LANGUAGE' } || NUL;
+
+   return [ map    { s{ _ \z }{}mx; $_ }
+            map    { join '_', $_->[ 0 ], uc $_->[ 1 ] }
+            map    { [ split m{ - }mx, $_ ] }
+            map    { ( split m{ ; }mx, $_ )[ 0 ] }
+            split m{ , }mx, lc $lang ];
+};
+
+my $_build_tunnel_method = sub {
+   my $method =  $_[ 0 ]->body_params->(  '_method', { optional => TRUE } )
+              || $_[ 0 ]->query_params->( '_method', { optional => TRUE } )
+              || 'not_found';
+
+   return lc $method;
+};
+
+my $_build_ui_state = sub {
+   my $self = shift; my $attr = {}; my $name = $self->config->prefix.'_state';
+
+   my $cookie = $self->cookie->{ $name } or return $attr;
+
+   for (split m{ \+ }mx, $cookie->value) {
+      my ($k, $v) = split m{ ~ }mx, $_; $k and $attr->{ $k } = $v;
+   }
+
+   return $attr;
+};
+
+my $_build_uri = sub {
+   return new_uri $_[ 0 ]->_base.$_[ 0 ]->path.$_[ 0 ]->query, $_[ 0 ]->scheme;
+};
+
 # Public attributes
 has 'address'        => is => 'lazy', isa => SimpleStr,
    builder           => sub { $_[ 0 ]->_env->{ 'REMOTE_ADDR' } // NUL };
@@ -38,7 +145,7 @@ has 'base'           => is => 'lazy', isa => Object,
    builder           => sub { new_uri $_[ 0 ]->_base, $_[ 0 ]->scheme },
    init_arg          => undef;
 
-has 'body'           => is => 'lazy', isa => Object;
+has 'body'           => is => 'lazy', isa => Object, builder => $_build_body;
 
 has 'content_length' => is => 'lazy', isa => PositiveInt,
    builder           => sub { $_[ 0 ]->_env->{CONTENT_LENGTH} // 0 };
@@ -60,11 +167,13 @@ has 'host'           => is => 'lazy', isa => NonEmptySimpleStr, builder => sub {
       $env->{ 'HTTP_HOST' } // $env->{ 'SERVER_NAME' } // 'localhost' };
 
 has 'language'       => is => 'lazy', isa => NonEmptySimpleStr,
-   builder           => sub { __extract_lang( $_[ 0 ]->locale ) };
+   builder           => sub { extract_lang $_[ 0 ]->locale };
 
-has 'locale'         => is => 'lazy', isa => NonEmptySimpleStr;
+has 'locale'         => is => 'lazy', isa => NonEmptySimpleStr,
+   builder           => $_build_locale;
 
-has 'locales'        => is => 'lazy', isa => ArrayRef;
+has 'locales'        => is => 'lazy', isa => ArrayRef,
+   builder           => $_build_locales;
 
 has 'method'         => is => 'lazy', isa => SimpleStr,
    builder           => sub { lc( $_[ 0 ]->_env->{ 'REQUEST_METHOD' } // NUL )};
@@ -99,17 +208,20 @@ has 'session'        => is => 'lazy', isa => Object, builder => sub {
    App::MCP::Session->new( builder => $_[ 0 ]->_usul, env => $_[ 0 ]->_env ) },
    handles           => [ qw( authenticated username ) ];
 
-has 'tunnel_method'  => is => 'lazy', isa => NonEmptySimpleStr;
+has 'tunnel_method'  => is => 'lazy', isa => NonEmptySimpleStr,
+   builder           => $_build_tunnel_method;
 
-has 'ui_state'       => is => 'lazy', isa => HashRef;
+has 'ui_state'       => is => 'lazy', isa => HashRef,
+   builder           => $_build_ui_state;
 
-has 'uri'            => is => 'lazy', isa => Object;
+has 'uri'            => is => 'lazy', isa => Object, builder => $_build_uri;
 
 # Private attributes
 has '_base'          => is => 'lazy', isa => NonEmptySimpleStr, builder => sub {
    $_[ 0 ]->scheme.'://'.$_[ 0 ]->host.$_[ 0 ]->script.'/' }, init_arg => undef;
 
-has '_content'       => is => 'lazy', isa => Str, init_arg => undef;
+has '_content'       => is => 'lazy', isa => Str, init_arg => undef,
+   builder           => $_build_content;
 
 has '_env'           => is => 'ro',   isa => HashRef, default => sub { {} },
    init_arg          => 'env';
@@ -126,32 +238,6 @@ has '_usul'          => is => 'ro', isa => BaseType,
    required          => TRUE, weak_ref => TRUE;
 
 # Private functions
-my $_decode_array = sub {
-   my ($enc, $param) = @_;
-
-   (not defined $param->[ 0 ] or blessed $param->[ 0 ]) and return;
-
-   for (my $i = 0, my $len = @{ $param }; $i < $len; $i++) {
-      $param->[ $i ] = decode( $enc, $param->[ $i ] );
-   }
-
-   return;
-};
-
-my $_decode_hash = sub {
-   my ($enc, $param) = @_;
-
-   for my $k (keys %{ $param }) {
-      if (is_arrayref $param->{ $k }) {
-         $param->{ decode( $enc, $k ) }
-            = [ map { decode( $enc, $_ ) } @{ $param->{ $k } } ];
-      }
-      else { $param->{ decode( $enc, $k ) } = decode( $enc, $param->{ $k } ) }
-   }
-
-   return;
-};
-
 my $_defined_or_throw = sub {
    my ($k, $v, $opts) = @_;
 
@@ -256,86 +342,6 @@ sub BUILD {
    $_decode_hash->( $self->encoding, $self->_params );
 
    return;
-}
-
-sub _build_body {
-   my $self = shift; my $env = $self->_env; my $content = $self->_content;
-
-   my $body = HTTP::Body->new( $self->content_type, length $content );
-
-   $body->cleanup( TRUE ); length $content or return $body;
-
-   try {
-      if ($self->content_type eq 'application/json') {
-         $body->{param} = $self->_transcoder->decode( $content );
-      }
-      else {
-         $body->add( $content );
-         $_decode_hash->( $self->encoding, $body->param );
-      }
-   }
-   catch { $self->log->error( $_ ) };
-
-   return $body;
-}
-
-sub _build__content {
-   my $self = shift; my $env = $self->_env; my $content;
-
-   my $cl = $self->content_length  or return NUL;
-   my $fh = $env->{ 'psgi.input' } or return NUL;
-
-   try   { $fh->seek( 0, 0 ); $fh->read( $content, $cl, 0 ); $fh->seek( 0, 0 ) }
-   catch { $self->log->error( $_ ); $content = NUL };
-
-   return $content || NUL;
-}
-
-sub _build_locale {
-   my $self   = shift;
-   my $locale = $self->query_params( 'locale', { optional => TRUE } );
-
-   $locale and is_member $locale, $self->config->locales and return $locale;
-
-   for my $locale (@{ $self->locales }) {
-      is_member $locale, $self->config->locales and return $locale;
-   }
-
-   return $self->config->locale;
-}
-
-sub _build_locales {
-   my $self = shift; my $lang = $self->_env->{ 'HTTP_ACCEPT_LANGUAGE' } || NUL;
-
-   return [ map    { s{ _ \z }{}mx; $_ }
-            map    { join '_', $_->[ 0 ], uc $_->[ 1 ] }
-            map    { [ split m{ - }mx, $_ ] }
-            map    { ( split m{ ; }mx, $_ )[ 0 ] }
-            split m{ , }mx, lc $lang ];
-}
-
-sub _build_tunnel_method  {
-   my $method =  $_[ 0 ]->body_params->(  '_method', { optional => TRUE } )
-              || $_[ 0 ]->query_params->( '_method', { optional => TRUE } )
-              || 'not_found';
-
-   return lc $method;
-}
-
-sub _build_ui_state {
-   my $self = shift; my $attr = {}; my $name = $self->config->prefix.'_state';
-
-   my $cookie = $self->cookie->{ $name } or return $attr;
-
-   for (split m{ \+ }mx, $cookie->value) {
-      my ($k, $v) = split m{ ~ }mx, $_; $k and $attr->{ $k } = $v;
-   }
-
-   return $attr;
-}
-
-sub _build_uri {
-   return new_uri $_[ 0 ]->_base.$_[ 0 ]->path.$_[ 0 ]->query, $_[ 0 ]->scheme;
 }
 
 # Public methods

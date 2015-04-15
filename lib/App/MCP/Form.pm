@@ -5,13 +5,36 @@ use namespace::autoclean;
 
 use Moo;
 use App::MCP::Form::Field;
-use Class::Usul::Constants qw( DEFAULT_L10N_DOMAIN TRUE );
+use Class::Usul::Constants qw( TRUE );
 use Class::Usul::Functions qw( first_char is_arrayref is_hashref throw );
 use Class::Usul::Types     qw( ArrayRef CodeRef HashRef Int
                                NonEmptySimpleStr SimpleStr Object );
 use File::DataClass::Types qw( Directory );
 use Scalar::Util           qw( blessed weaken );
 
+# Attribute constructors
+my $_build_l10n = sub {
+   my $self = shift; state $cache //= {}; my $req = $self->req; weaken( $req );
+
+   return sub {
+      my ($opts, $text, @args) = @_; # Ignore $opts->{ ns, language }
+
+      my $key = $req->model_name.'.'.$req->locale.".${text}";
+
+      (exists $cache->{ $key } and defined $cache->{ $key })
+         or $cache->{ $key } = $req->loc( $text, @args );
+
+      return $cache->{ $key };
+   };
+};
+
+my $_build_uri_for = sub {
+   my $self = shift; my $req = $self->req; weaken( $req );
+
+   return sub { $req->uri_for( @_ ) };
+};
+
+# Public methods
 has 'config'       => is => 'ro',   isa => HashRef, default => sub { {} };
 
 has 'data'         => is => 'ro',   isa => ArrayRef, default => sub { [] };
@@ -21,7 +44,7 @@ has 'first_field'  => is => 'ro',   isa => SimpleStr;
 has 'js_object'    => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'behaviour';
 
-has 'l10n'         => is => 'lazy', isa => CodeRef;
+has 'l10n'         => is => 'lazy', isa => CodeRef, builder => $_build_l10n;
 
 has 'list_key'     => is => 'ro',   isa => NonEmptySimpleStr,
    default         => 'fields';
@@ -46,10 +69,11 @@ has 'result_class' => is => 'ro',   isa => SimpleStr;
 
 has 'template'     => is => 'ro',   isa => NonEmptySimpleStr, default => 'form';
 
-has 'template_dir' => is => 'lazy', isa => Directory,
+has 'template_dir' => is => 'lazy', isa => Directory, coerce => TRUE,
    builder         => sub {
-      $_[ 0 ]->model->config->root->catdir( 'templates' ) },
-   coerce          => Directory->coercion;
+      $_[ 0 ]->model->config->root->catdir( 'templates' ) };
+
+has 'uri_for'      => is => 'lazy', isa => CodeRef, builder => $_build_uri_for;
 
 has 'width'        => is => 'lazy', isa => Int,
    builder         => sub { $_[ 0 ]->req->ui_state->{width} // 1024 };
@@ -108,7 +132,7 @@ around 'BUILDARGS' => sub {
    $attr->{req   } = $req;
    $attr->{row   } = $row;
    $attr->{config} = $self->load_config
-      ( $model->usul, $req->model_name, $req->locale );
+      ( $model->usul, $req->model_name, $req->language );
 
    exists $attr->{config}->{ $form_name }
       or throw 'Form name [_1] unknown', [ $form_name ];
@@ -125,7 +149,8 @@ sub BUILD {
 
    my $count = 0; my $form_name = $self->name; my $row = $attr->{row};
 
-   $self->l10n; $self->ns; $self->template_dir; $self->width; # Visit the lazy
+   # Visit the lazy so ::FormHandler can pass $self to HTML::FormWidgets->build
+   $self->l10n; $self->ns; $self->template_dir; $self->uri_for; $self->width;
 
    for my $fields (@{ $config->{ $form_name }->{regions} }) {
       my $region = $self->data->[ $count++ ] = { fields => [] };
@@ -139,9 +164,9 @@ sub BUILD {
          my $hook  = "_${form_name}_".$field->name.'_field_hook';
          my $code; $code = $self->model->can( $hook )
             and $field = $code->( $self->model, $cache, $field );
-         my $props = $field->properties;
+         my $props;
 
-         $field and $cache->{ $field->name } = $props
+         $field and $props = $cache->{ $field->name } = $field->properties
                 and push @{ $region->{fields} }, { content => $props };
       }
    }
@@ -149,26 +174,11 @@ sub BUILD {
    return;
 }
 
-sub _build_l10n {
-   my $self = shift; my $req = $self->req; weaken( $req ); state $cache //= {};
-
-   return sub {
-      my ($opts, $text, @args) = @_;
-
-      my $key = $req->model_name.'.'.$req->locale.".${text}";
-
-      (exists $cache->{ $key } and defined $cache->{ $key })
-         or $cache->{ $key } = $req->loc( $text, @args );
-
-      return $cache->{ $key };
-   };
-}
-
 # Public methods
 sub load_config {
-   my ($self, $builder, $domain, $locale) = @_;
+   my ($self, $builder, $domain, $language) = @_;
 
-   state $cache //= {}; my $key = "${domain}.${locale}";
+   state $cache //= {}; my $key = "${domain}.${language}";
 
    exists $cache->{ $key } and return $cache->{ $key };
 
@@ -181,7 +191,7 @@ sub load_config {
 
    my $attr  = { builder     => $builder,
                  cache_class => 'none',
-                 lang        => $locale,
+                 lang        => $language,
                  localedir   => $config->localedir };
    my $class = File::Gettext::Schema->new( $attr );
 

@@ -9,7 +9,7 @@ use Moo::Role;
 has 'moniker' => is => 'ro', isa => SimpleStr, required => TRUE;
 
 has 'usul'    => is => 'ro', isa => BaseType,
-   handles    => [ qw( config debug encoding l10n lock log ) ],
+   handles    => [ qw( config debug encoding lock log ) ],
    init_arg   => 'builder', required => TRUE;
 
 1;

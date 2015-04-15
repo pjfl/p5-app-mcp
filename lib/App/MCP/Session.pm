@@ -22,6 +22,8 @@ has 'user_roles'    => is => 'rw',  isa => ArrayRef, default => sub { [] };
 
 has 'username'      => is => 'rw',  isa => SimpleStr, default => 'unknown';
 
+has 'wanted'        => is => 'rw',  isa => SimpleStr, default => NUL;
+
 # Private attributes
 has '_mid'          => is => 'rwp', isa => NonEmptySimpleStr | Undef;
 
@@ -75,7 +77,7 @@ sub status_message {
 }
 
 sub update {
-   my $self = shift; my @attrs = qw( authenticated messages username );
+   my $self = shift; my @attrs = qw( authenticated messages username wanted );
 
    my @messages = sort keys %{ $self->messages };
 
