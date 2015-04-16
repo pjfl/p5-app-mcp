@@ -3033,15 +3033,14 @@ var TableUtils = new Class( {
       inputCellClass : 'data_field',
 /*    onRowAdded     : function(){}, */
 /*    onRowsRemoved  : function(){}, */
-      selector       : 'table.editable',
+      selector       : '.editable_table',
       sortableOptions: {
          clone       : function( ev, el, list ) {
              return new Element( 'div' ).inject( document.body ); },
          constrain   : true,
          handle      : 'td.row_drag',
          revert      : { duration: 500, transition: 'elastic:out' } },
-      sortRowClass   : 'sortable_row',
-      textCellClass  : 'data_value',
+      sortRowClass   : 'sortable_row'
    },
 
    initialize: function( options ) {
