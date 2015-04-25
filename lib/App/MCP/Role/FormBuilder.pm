@@ -1,6 +1,6 @@
 package App::MCP::Role::FormBuilder;
 
-use App::MCP::Attributes;
+use App::MCP::Attributes;  # Will clean namespace
 use App::MCP::Constants    qw( DOTS FALSE HASH_CHAR NUL TRUE );
 use App::MCP::Form;
 use Class::Usul::Functions qw( ensure_class_loaded first_char pad );
@@ -42,8 +42,8 @@ my $_check_field = sub {
    my $val    = $params->( 'val', { raw => TRUE } );
    my $config = App::MCP::Form->load_config
       ( $self->usul, $domain, $req->locale );
-   my $class  = $self->schema_class.'::Result::'
-               .$config->{ $form }->{meta}->{result_class};
+   my $meta   = $config->{ $form }->{meta};
+   my $class  = $self->schema_class.'::Result::'.$meta->{result_class};
 
    ensure_class_loaded( $class );
 
@@ -259,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 15 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 18 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

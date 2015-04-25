@@ -2,10 +2,10 @@ package App::MCP::Form::Field;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( NUL TRUE );
 use Class::Usul::Functions qw( first_char );
 use Class::Usul::Types     qw( HashRef );
+use Moo;
 
 has 'properties' => is => 'ro', isa => HashRef, required => TRUE;
 

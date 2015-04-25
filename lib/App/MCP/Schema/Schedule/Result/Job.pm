@@ -55,21 +55,14 @@ $class->set_primary_key( 'id' );
 
 $class->add_unique_constraint( [ 'fqjn' ] );
 
-$class->belongs_to( parent_box       => "${result}::Job",         'parent_id',
-                    { join_type      => 'left' } );
-
+$class->belongs_to( parent_box       => "${result}::Job",         'parent_id', {
+                       join_type     => 'left' } );
 $class->has_many  ( child_jobs       => "${result}::Job",         'parent_id' );
-
 $class->has_many  ( dependents       => "${result}::JobCondition",   'job_id' );
-
 $class->has_many  ( events           => "${result}::Event",          'job_id' );
-
 $class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
-
 $class->might_have( state            => "${result}::JobState",       'job_id' );
-
 $class->belongs_to( owner_rel        => "${result}::User",         'owner_id' );
-
 $class->belongs_to( group_rel        => "${result}::Role",         'group_id' );
 
 # Private methods

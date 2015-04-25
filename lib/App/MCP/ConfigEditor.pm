@@ -2,13 +2,13 @@ package App::MCP::ConfigEditor;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( FALSE TRUE );
 use Class::Usul::Functions qw( is_arrayref is_coderef is_hashref
                                list_attr_of throw );
 use Class::Usul::Response::Table;
 use Class::Usul::Types     qw( ArrayRef BaseType NonEmptySimpleStr );
 use Pod::Xhtml;
+use Moo;
 
 has 'excludes' => is => 'ro', isa => ArrayRef[NonEmptySimpleStr],
    builder     => sub { [ qw( BUILD BUILDALL BUILDARGS DEMOLISHALL

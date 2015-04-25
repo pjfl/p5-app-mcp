@@ -3,7 +3,6 @@ package App::MCP::Form;
 use feature 'state';
 use namespace::autoclean;
 
-use Moo;
 use App::MCP::Form::Field;
 use Class::Usul::Constants qw( TRUE );
 use Class::Usul::Functions qw( first_char is_arrayref is_hashref throw );
@@ -11,6 +10,7 @@ use Class::Usul::Types     qw( ArrayRef CodeRef HashRef Int
                                NonEmptySimpleStr SimpleStr Object );
 use File::DataClass::Types qw( Directory );
 use Scalar::Util           qw( blessed weaken );
+use Moo;
 
 # Attribute constructors
 my $_build_l10n = sub {
@@ -105,6 +105,31 @@ my $_field_list = sub {
    return grep { not m{ \A (?: _ | related_resultsets ) }mx } @{ $names };
 };
 
+my $_load_config = sub {
+   my $req      = shift;
+   my $domain   = $req->model_name;
+   my $language = $req->language;
+   my $key      = "${domain}.${language}";
+
+   state $cache //= {}; exists $cache->{ $key } and return $cache->{ $key };
+
+   my $builder  = $req->usul;
+   my $config   = $builder->config;
+   my $def_path = $config->ctrldir->catfile( 'form.json' );
+   my $ns_path  = $config->ctrldir->catfile( "${domain}.json" );
+
+   $ns_path->exists or ($builder->log->warn( "File ${ns_path} not found" )
+      and return {});
+
+   my $class    = File::Gettext::Schema->new( {
+      builder     => $builder,
+      cache_class => 'none',
+      lang        => $language,
+      localedir   => $config->localedir } );
+
+   return $cache->{ $key } = $class->load( $def_path, $ns_path );
+};
+
 # Private methods
 my $_assign_value = sub {
    my ($self, $field, $row) = @_;
@@ -131,8 +156,7 @@ around 'BUILDARGS' => sub {
    $attr->{name  } = $form_name;
    $attr->{req   } = $req;
    $attr->{row   } = $row;
-   $attr->{config} = $self->load_config
-      ( $model->usul, $req->model_name, $req->language );
+   $attr->{config} = $_load_config->( $req );
 
    exists $attr->{config}->{ $form_name }
       or throw 'Form name [_1] unknown', [ $form_name ];
@@ -172,30 +196,6 @@ sub BUILD {
    }
 
    return;
-}
-
-# Public methods
-sub load_config {
-   my ($self, $builder, $domain, $language) = @_;
-
-   state $cache //= {}; my $key = "${domain}.${language}";
-
-   exists $cache->{ $key } and return $cache->{ $key };
-
-   my $config   = $builder->config;
-   my $def_path = $config->ctrldir->catfile( 'form.json' );
-   my $ns_path  = $config->ctrldir->catfile( "${domain}.json" );
-
-   $ns_path->exists
-      or ($builder->log->warn( "File ${ns_path} not found" ) and return {});
-
-   my $attr  = { builder     => $builder,
-                 cache_class => 'none',
-                 lang        => $language,
-                 localedir   => $config->localedir };
-   my $class = File::Gettext::Schema->new( $attr );
-
-   return $cache->{ $key } = $class->load( $def_path, $ns_path );
 }
 
 1;

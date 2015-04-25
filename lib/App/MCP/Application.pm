@@ -3,7 +3,6 @@ package App::MCP::Application;
 use namespace::autoclean;
 use version;
 
-use Moo;
 use App::MCP::Constants    qw( COMMA FALSE LOG_KEY_WIDTH NUL TRUE OK SPC );
 use App::MCP::Functions    qw( trigger_output_handler );
 use Async::IPC::Functions  qw( log_debug log_error log_info log_warn );
@@ -15,6 +14,7 @@ use IPC::PerlSSH;
 use List::Util             qw( first );
 use Scalar::Util           qw( weaken );
 use Try::Tiny;
+use Moo;
 
 Async::IPC::Functions->log_key_width( LOG_KEY_WIDTH );
 

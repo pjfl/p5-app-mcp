@@ -1,12 +1,12 @@
 package App::MCP::Model::Job;
 
-use Moo;
 use App::MCP::Attributes;
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES
                                EXCEPTION_CLASS NUL SPC TRUE );
 use Class::Usul::Functions qw( throw );
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
 use Unexpected::Functions  qw( Unspecified );
+use Moo;
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);

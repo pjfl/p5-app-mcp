@@ -103,8 +103,8 @@ var StateDiagram = new Class( {
       return { i: i, x: x, y: y };
    },
 
-   _response: function( text, xml ) {
-      if (!text) return; Browser.exec( 'var current_frame = ' + text );
+   _response: function( resp ) {
+      if (!resp) return; Browser.exec( 'var current_frame = ' + resp );
 
       if (this.last_frame_id && this.last_frame_id == current_frame.id) return;
 
@@ -193,7 +193,6 @@ var Behaviour = new Class( {
       this.submit      = new SubmitUtils( {
          context       : this,
          formName      : opt.formName } );
-
       this.liveGrids   = new LiveGrids( {
          context       : this,
          iconClasses   : opt.iconClasses,

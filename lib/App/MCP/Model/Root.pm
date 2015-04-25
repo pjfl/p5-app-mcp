@@ -2,12 +2,12 @@ package App::MCP::Model::Root;
 
 use feature 'state';
 
-use Moo;
 use App::MCP::Attributes; # Will do cleaning
 use App::MCP::ConfigEditor;
 use App::MCP::Constants qw( FALSE NUL TRUE );
 use Class::Usul::Types  qw( Object );
 use HTTP::Status        qw( HTTP_NOT_FOUND );
+use Moo;
 
 extends q(App::MCP::Model);
 with    q(App::MCP::Role::CommonLinks);

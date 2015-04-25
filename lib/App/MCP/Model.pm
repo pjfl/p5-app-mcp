@@ -2,11 +2,11 @@ package App::MCP::Model;
 
 use namespace::autoclean;
 
-use Moo;
 use App::MCP::Constants   qw( EXCEPTION_CLASS NUL );
 use Class::Usul::Types    qw( LoadableClass Object );
 use HTTP::Status          qw( HTTP_OK );
 use Unexpected::Functions qw( ValidationErrors );
+use Moo;
 
 with q(App::MCP::Role::Component);
 with q(Class::Usul::TraitFor::ConnectInfo);

@@ -3,7 +3,6 @@ package App::MCP::Request;
 use feature 'state';
 use namespace::autoclean;
 
-use Moo;
 use App::MCP::Constants    qw( DEFAULT_L10N_DOMAIN EXCEPTION_CLASS
                                FALSE NUL SPC TRUE );
 use App::MCP::Functions    qw( extract_lang new_uri );
@@ -27,6 +26,7 @@ use Scalar::Util           qw( blessed weaken );
 use Try::Tiny;
 use Unexpected::Functions  qw( ChecksumFailure MissingHeader MissingKey
                                SigParserFailure SigVerifyFailure Unspecified );
+use Moo;
 
 # Attribute constructors
 my $_decode_array = sub {
@@ -205,7 +205,7 @@ has 'script'         => is => 'lazy', isa => SimpleStr, builder => sub {
       $v             =~ s{ / \z }{}gmx; $v };
 
 has 'session'        => is => 'lazy', isa => Object, builder => sub {
-   App::MCP::Session->new( builder => $_[ 0 ]->_usul, env => $_[ 0 ]->_env ) },
+   App::MCP::Session->new( builder => $_[ 0 ]->usul, env => $_[ 0 ]->_env ) },
    handles           => [ qw( authenticated username ) ];
 
 has 'tunnel_method'  => is => 'lazy', isa => NonEmptySimpleStr,
@@ -235,7 +235,7 @@ has '_transcoder'    => is => 'lazy', isa => Object, builder => sub {
 
 has '_usul'          => is => 'ro', isa => BaseType,
    handles           => [ qw( config localize log ) ], init_arg => 'builder',
-   required          => TRUE, weak_ref => TRUE;
+   reader            => 'usul', required => TRUE, weak_ref => TRUE;
 
 # Private functions
 my $_defined_or_throw = sub {

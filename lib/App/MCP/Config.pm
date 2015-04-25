@@ -2,13 +2,13 @@ package App::MCP::Config;
 
 use namespace::autoclean;
 
-use Moo;
 use App::MCP::Constants    qw( NUL TRUE );
 use Class::Usul::Functions qw( fqdn );
 use File::DataClass::Types qw( ArrayRef Directory File HashRef
                                NonEmptySimpleStr NonZeroPositiveInt
                                PositiveInt SimpleStr Str );
 use Sys::Hostname          qw( hostname );
+use Moo;
 
 extends q(Class::Usul::Config::Programs);
 

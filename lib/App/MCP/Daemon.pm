@@ -2,7 +2,6 @@ package App::MCP::Daemon;
 
 use namespace::autoclean;
 
-use Moo;
 use App::MCP;
 use App::MCP::Application;
 use App::MCP::Constants   qw( LANG NUL OK TRUE );
@@ -10,11 +9,12 @@ use App::MCP::DaemonControl;
 use App::MCP::Functions   qw( env_var terminate );
 use Async::IPC;
 use Async::IPC::Functions qw( log_info );
-use Class::Usul::Options;
 use Class::Usul::Types    qw( NonEmptySimpleStr NonZeroPositiveInt Object );
 use English               qw( -no_match_vars );
 use Plack::Runner;
 use Scalar::Util          qw( blessed );
+use Moo;
+use Class::Usul::Options;
 
 extends q(Class::Usul::Programs);
 

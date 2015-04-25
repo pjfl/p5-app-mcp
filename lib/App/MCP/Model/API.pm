@@ -2,7 +2,6 @@ package App::MCP::Model::API;
 
 use namespace::autoclean;
 
-use Moo;
 use App::MCP::Constants    qw( NUL TRUE );
 use App::MCP::Functions    qw( env_var trigger_input_handler );
 use Class::Usul::Functions qw( bson64id bson64id_time throw );
@@ -12,6 +11,7 @@ use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED
                                HTTP_NOT_FOUND   HTTP_OK );
 use JSON::MaybeXS          qw( );
 use Try::Tiny;
+use Moo;
 
 extends q(App::MCP::Model);
 
@@ -37,8 +37,8 @@ sub create_event {
    my $params = $self->authenticate_params
       ( $run_id, $pevent->token, $req->body_params->( 'event' ) );
 
-   try   { $event = $schema->resultset( 'Event' )->create( $params ) }
-   catch { throw $_, rv => HTTP_BAD_REQUEST };
+   try    { $event = $schema->resultset( 'Event' )->create( $params ) }
+   catch  { throw $_, rv => HTTP_BAD_REQUEST };
 
    trigger_input_handler env_var 'DAEMON_PID';
 
@@ -58,8 +58,8 @@ sub create_job {
    $params->{owner_id} = $sess->{user_id};
    $params->{group_id} = $sess->{role_id};
 
-   try   { $job = $self->schema->resultset( 'Job' )->create( $params ) }
-   catch { throw $_, rv => HTTP_BAD_REQUEST };
+   try    { $job = $self->schema->resultset( 'Job' )->create( $params ) }
+   catch  { throw $_, rv => HTTP_BAD_REQUEST };
 
    return { code    => HTTP_CREATED,
             content => { message => 'Job '.$job->id.' created' },

@@ -2,7 +2,6 @@ package App::MCP::View::HTML;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( NUL TRUE );
 use Class::Usul::Functions qw( throw );
 use Encode;
@@ -10,6 +9,7 @@ use File::DataClass::Types qw( Directory Object );
 use HTTP::Status           qw( HTTP_INTERNAL_SERVER_ERROR );
 use Scalar::Util           qw( weaken );
 use Template;
+use Moo;
 
 with q(App::MCP::Role::Component);
 with q(App::MCP::Role::FormHandler);

@@ -2,19 +2,19 @@ package App::MCP::Schema;
 
 use namespace::autoclean;
 
-use Moo;
 use App::MCP;
 use App::MCP::Constants    qw( EXCEPTION_CLASS OK );
 use App::MCP::Functions    qw( qualify_job_name trigger_input_handler );
 use Class::Usul::Functions qw( throw );
-use Class::Usul::Options;
 use Class::Usul::Types     qw( LoadableClass NonEmptySimpleStr Object );
 use Unexpected::Functions  qw( Unspecified );
+use Moo;
+use Class::Usul::Options;
 
 extends q(Class::Usul::Schema);
 with    q(App::MCP::Worker::Role::UserPassword);
 
-our $VERSION          = App::MCP->VERSION;
+our $VERSION          = $App::MCP::VERSION;
 my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
 
 # Public attributes (visible to the command line)

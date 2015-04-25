@@ -6,7 +6,7 @@ use parent 'App::MCP::Schema::Base';
 use App::MCP::Constants qw( STATE_ENUM );
 use App::MCP::Functions qw( enumerated_data_type foreign_key_data_type );
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
+my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
 $class->table( 'job_state' );
 
@@ -17,12 +17,9 @@ $class->add_columns
 
 $class->set_primary_key( 'job_id' );
 
-$class->belongs_to( job    => "${schema}::Result::Job",     'job_id' );
-
-$class->has_many  ( events => "${schema}::Result::Event",   'job_id' );
-
-$class->has_many  ( processed_events =>
-                       "${schema}::Result::ProcessedEvent", 'job_id' );
+$class->belongs_to( job              => "${result}::Job",            'job_id' );
+$class->has_many  ( events           => "${result}::Event",          'job_id' );
+$class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
 # Public methods
 sub fqjn {
