@@ -4,7 +4,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-Describes version v0.5.$Rev: 18 $ of [App::MCP](https://metacpan.org/pod/App::MCP)
+Describes version v0.5.$Rev: 19 $ of [App::MCP](https://metacpan.org/pod/App::MCP)
 
 # Synopsis
 

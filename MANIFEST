@@ -1,11 +1,6 @@
 Build.PL
 Changes
-LICENSE
 MANIFEST
-META.json
-META.yml
-README
-SIGNATURE
 bin/mcp-daemon
 bin/mcp-listener
 bin/mcp-localenv
@@ -68,7 +63,6 @@ lib/App/MCP/Workflow.pm
 lib/App/MCP/Workflow/Transition.pm
 lib/App/MCP/app_mcp.json
 lib/strictures/defanged.pm
-t/01always_pass.t
 t/02pod.t
 t/03podcoverage.t
 t/05kwalitee.t
@@ -77,6 +71,7 @@ t/07podspelling.t
 t/10compile.t
 t/13job.t
 t/20expression_parser.t
+t/boilerplate.pm
 var/etc/connect-info.json
 var/etc/form.json
 var/etc/job.json
