@@ -3,14 +3,20 @@ package App::MCP::Role::Component;
 use namespace::autoclean;
 
 use Class::Usul::Constants qw( TRUE );
-use Class::Usul::Types     qw( BaseType SimpleStr );
+use Class::Usul::Types     qw( BaseType HashRef NonEmptySimpleStr SimpleStr );
 use Moo::Role;
 
-has 'moniker' => is => 'ro', isa => SimpleStr, required => TRUE;
+has 'components' => is => 'ro',   isa => HashRef, default => sub { {} },
+   weak_ref      => TRUE;
 
-has 'usul'    => is => 'ro', isa => BaseType,
-   handles    => [ qw( config debug encoding lock log ) ],
-   init_arg   => 'builder', required => TRUE;
+has 'encoding'   => is => 'lazy', isa => NonEmptySimpleStr,
+   builder       => sub { $_[ 0 ]->config->encoding };
+
+has 'moniker'    => is => 'ro',   isa => SimpleStr, required => TRUE;
+
+has 'usul'       => is => 'ro',   isa => BaseType,
+   handles       => [ qw( config debug encoding lock log ) ],
+   init_arg      => 'builder', required => TRUE;
 
 1;
 
@@ -71,7 +77,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

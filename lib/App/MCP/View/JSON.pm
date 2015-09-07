@@ -11,6 +11,7 @@ use JSON::MaybeXS          qw( );
 with q(App::MCP::Role::Component);
 with q(App::MCP::Role::FormHandler);
 
+# Public attributes
 has '+moniker' => default => 'json';
 
 # Private attributes
@@ -26,13 +27,14 @@ my $_header = sub {
 sub serialize {
    my ($self, $req, $stash) = @_;
 
-   my $meta    = $stash->{page}->{meta} // {};
-   my $js      = join "\n", @{ $stash->{page}->{literal_js} // [] };
    my $content = $stash->{form} ? $stash->{form}->[ 0 ] : $stash->{content};
+   my $meta    = $stash->{page}->{meta} // {};
 
    $content->{ $_ } = $meta->{ $_ } for (keys %{ $meta });
 
-   $js and $content->{script} = $js;
+   my $js; $js = join "\n", @{ $stash->{page}->{literal_js} // [] }
+      and $content->{script} = $js;
+
    $content = encode( $self->encoding, $self->_transcoder->encode( $content ) );
 
    return [ $stash->{code}, $_header->( $stash->{http_headers} ), [ $content ]];

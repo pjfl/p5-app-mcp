@@ -4,8 +4,8 @@
          "driver" : "mysql",
          "host" : "localhost",
          "name" : "schedule",
-         "password" : "{Twofish2}U2FsdGVkX1+J5Q7CpmBbgPTCfmYdvUKeeCD94C68/1g=",
-         "port" : "3306",
+         "password" : "{Twofish2}U2FsdGVkX19RFNEc+h2Pp2QxCa4NBOA+Z+bI9Z8Q5Jw=",
+         "port" : 3306,
          "user" : "mcp"
       }
    }

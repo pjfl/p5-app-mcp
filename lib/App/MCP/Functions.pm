@@ -83,9 +83,9 @@ sub get_salt ($) {
 sub load_components ($$;$) {
    my ($search_path, $config, $args) = @_; $args //= {};
 
-   $search_path or throw Unspecified, [ 'search path' ];
+   $search_path or throw Unspecified,          [ 'search path' ];
    $config = merge_attributes {}, $config, {}, [ 'appclass', 'monikers' ];
-   $config->{appclass} or throw Unspecified, [ 'application class' ];
+   $config->{appclass} or throw Unspecified,   [ 'application class' ];
 
    if (first_char $search_path eq '+') { $search_path = substr $search_path, 1 }
    else { $search_path = $config->{appclass}."::${search_path}" }
@@ -95,16 +95,16 @@ sub load_components ($$;$) {
       ( max_depth   => $depth,           min_depth => $depth,
         search_path => [ $search_path ], require   => TRUE, );
    my $monikers = $config->{monikers} // {};
-   my $plugins  = {};
+   my $compos   = $args->{components}  = {};
 
-   for my $plugin ($finder->plugins) {
-      exists $monikers->{ $plugin } and defined $monikers->{ $plugin }
-         and $args->{moniker} = $monikers->{ $plugin };
+   for my $class ($finder->plugins) {
+      exists $monikers->{ $class } and defined $monikers->{ $class }
+         and $args->{moniker} = $monikers->{ $class };
 
-      my $comp  = $plugin->new( $args ); $plugins->{ $comp->moniker } = $comp;
+      my $comp  = $class->new( $args ); $compos->{ $comp->moniker } = $comp;
    }
 
-   return $plugins;
+   return $compos;
 }
 
 sub new_uri ($$) {
@@ -169,7 +169,7 @@ sub trigger_output_handler ($) {
 
 sub varchar_data_type (;$$) {
    return { data_type         => 'varchar',
-            default_value     => $_[ 1 ],
+            default_value     => $_[ 1 ] // NUL,
             is_nullable       => FALSE,
             size              => $_[ 0 ] || VARCHAR_MAX_SIZE, };
 }
@@ -243,7 +243,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

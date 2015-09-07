@@ -52,10 +52,9 @@ my $_authenticated_user_info = sub {
    my $schema  = $self->schedule;
    my $user_rs = $schema->resultset( 'User' );
    my $user    = $info->{user} = $user_rs->find_by_name( $self->user_name );
-   my $log     = $self->log;
 
    $user->authenticate( $self->get_user_password( $user->username ) );
-   $log->debug( 'User '.$user->username.' authenticated' );
+   $self->log->debug( 'User '.$user->username.' authenticated' );
 
    my $role_rs = $schema->resultset( 'Role' );
    my $role    = $info->{role} = $role_rs->find_by_name( $self->role_name );
@@ -173,7 +172,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

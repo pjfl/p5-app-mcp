@@ -2,7 +2,7 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 18 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 19 $ =~ /\d+/gmx );
 
 1;
 
@@ -10,13 +10,15 @@ __END__
 
 =pod
 
+=encoding utf-8
+
 =head1 Name
 
 App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.5.$Rev: 18 $ of L<App::MCP>
+Describes version v0.5.$Rev: 19 $ of L<App::MCP>
 
 =head1 Synopsis
 
@@ -58,7 +60,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

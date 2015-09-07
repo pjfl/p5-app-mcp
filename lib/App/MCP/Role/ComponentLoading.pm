@@ -14,7 +14,7 @@ requires qw( usul );
 
 has 'controllers'   => is => 'lazy', isa => ArrayRef[Object], builder => sub {
    my $controllers  =  load_components 'Controller', $_[ 0 ]->usul->config,
-      {  builder    => $_[ 0 ]->usul, models => $_[ 0 ]->models, };
+      {  builder    => $_[ 0 ]->usul, };
    return [ map { $controllers->{ $_ } } sort keys %{ $controllers } ] };
 
 has 'models'        => is => 'lazy', isa => HashRef[Object], builder => sub {
@@ -28,7 +28,18 @@ has 'views'         => is => 'lazy', isa => HashRef[Object], builder => sub {
    load_components  'View', $_[ 0 ]->usul->config,
       {  builder    => $_[ 0 ]->usul, } };
 
+# Private functions
+my $_header = sub {
+   return [ 'Content-Type' => 'text/plain', @{ $_[ 0 ] || [] } ];
+};
+
 # Private methods
+my $_internal_server_error = sub {
+   my ($self, $e) = @_; $self->log->error( $e );
+
+   return [ HTTP_INTERNAL_SERVER_ERROR, $_header->(), [ $e ] ];
+};
+
 my $_redirect = sub {
    my ($self, $req, $stash) = @_; my $code = $stash->{code} || HTTP_FOUND;
 
@@ -60,7 +71,7 @@ my $_render_view = sub {
 };
 
 my $_render_exception = sub {
-   my ($self, $moniker, $req, $e) = @_; my $res; my $username = $req->username;
+   my ($self, $moniker, $req, $e) = @_; my $username = $req->username; my $res;
 
    my $msg = "${e}"; chomp $msg; $self->log->error( "${msg} (${username})" );
 
@@ -72,7 +83,7 @@ my $_render_exception = sub {
 
       $res = $self->$_render_view( $moniker, 'exception_handler', $req, $stash);
    }
-   catch { throw $e };
+   catch { $res = $self->$_internal_server_error( $_ ) };
 
    return $res;
 };
@@ -87,7 +98,10 @@ sub render {
    my ($moniker, $method, undef, @args) = @{ $args }; my ($req, $res);
 
    try   { $req = $self->request_class->new( $self->usul, $moniker, @args ) }
-   catch { $self->log->error( $_ ); throw $_ };
+   catch { $res = $self->$_internal_server_error( $_ ) };
+
+   $res and return $res;
+
    try   {
       $method eq 'from_request' and $method = $req->tunnel_method.'_action';
 
@@ -162,7 +176,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

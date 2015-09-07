@@ -7,15 +7,31 @@ use Class::Usul::Functions qw( arg_list throw );
 use Marpa::R2;
 use Scalar::Util           qw( blessed );
 
+# Private functions
+my $_tokens = sub {
+   my $predicates = shift; $predicates = join '|', @{ $predicates };
+
+   return {
+      'LP'         => [ qr{ \G [\(]                }msx      ],
+      'RP'         => [ qr{ \G [\)]                }msx      ],
+      'SP'         => [ qr{ \G [ ]                 }msx, ' ' ],
+      'NOT'        => [ qr{ \G [\!]                }msx      ],
+      'OPERATOR'   => [ qr{ \G (\&|\|)             }msx      ],
+      'PREDICATE'  => [ qr{ \G ($predicates)       }msx      ],
+      'IDENTIFIER' => [ qr{ \G ([a-zA-Z0-9_\-+:]+) }msx      ],
+   };
+};
+
+# Construction
 sub new {
    my ($self, @args) = @_; my $attr = arg_list @args;
 
-   return bless {
-      debug    => $attr->{debug},
-      external => $attr->{external},
-      tokens   => __tokens( $attr->{predicates} ), }, blessed $self || $self;
+   $attr->{tokens} = $_tokens->( delete $attr->{predicates} );
+
+   return bless $attr, blessed $self || $self;
 }
 
+# Public methods
 sub parse {
    my ($self, $line, $ns) = @_; my $identifiers = {}; my $last = 0;
 
@@ -130,21 +146,6 @@ sub _recogniser {
    return Marpa::R2::Recognizer->new( $attr );
 }
 
-# Private functions
-sub __tokens {
-   my $predicates = shift; $predicates = join '|', @{ $predicates };
-
-   return {
-      'LP'         => [ qr{ \G [\(]                }msx      ],
-      'RP'         => [ qr{ \G [\)]                }msx      ],
-      'SP'         => [ qr{ \G [ ]                 }msx, ' ' ],
-      'NOT'        => [ qr{ \G [\!]                }msx      ],
-      'OPERATOR'   => [ qr{ \G (\&|\|)             }msx      ],
-      'PREDICATE'  => [ qr{ \G ($predicates)       }msx      ],
-      'IDENTIFIER' => [ qr{ \G ([a-zA-Z0-9_\-+:]+) }msx      ],
-   };
-}
-
 package # Hide from indexer
    App::MCP::ExpressionParser::Actions;
 
@@ -229,7 +230,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2014 Peter Flanigan. All rights reserved
+Copyright (c) 2015 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>
