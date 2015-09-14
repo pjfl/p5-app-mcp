@@ -4,11 +4,11 @@ use namespace::autoclean;
 use version;
 
 use App::MCP::Constants    qw( COMMA FALSE LOG_KEY_WIDTH NUL TRUE OK SPC );
-use App::MCP::Functions    qw( trigger_output_handler );
+use App::MCP::Util         qw( trigger_output_handler );
 use Async::IPC::Functions  qw( log_debug log_error log_info log_warn );
 use Class::Usul::Functions qw( bson64id create_token distname elapsed );
-use Class::Usul::Types     qw( BaseType HashRef LoadableClass NonEmptySimpleStr
-                               NonZeroPositiveInt Object );
+use Class::Usul::Types     qw( HashRef LoadableClass NonEmptySimpleStr
+                               NonZeroPositiveInt Object Plinth );
 use English                qw( -no_match_vars );
 use IPC::PerlSSH;
 use List::Util             qw( first );
@@ -21,12 +21,12 @@ Async::IPC::Functions->log_key_width( LOG_KEY_WIDTH );
 my $Identitfy_File_Cache = {};
 
 # Public attributes
+has 'app'    => is => 'ro',   isa => Plinth,
+   handles   => [ 'config', 'debug', 'log' ], init_arg => 'builder',
+   required  => TRUE;
+
 has 'port'   => is => 'lazy', isa => NonZeroPositiveInt,
    builder   => sub { $_[ 0 ]->config->port };
-
-has 'usul'   => is => 'ro',   isa => BaseType,
-   handles   => [ qw( config debug log ) ], init_arg => 'builder',
-   required  => TRUE;
 
 has 'worker' => is => 'lazy', isa => NonEmptySimpleStr,
    builder   => sub { $_[ 0 ]->config->appclass.'::Worker' };
@@ -43,7 +43,7 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass,
    builder          => sub { $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },
    reader           => 'schema_class';
 
-with q(Class::Usul::TraitFor::ConnectInfo);
+with 'Class::Usul::TraitFor::ConnectInfo';
 
 # Private methods
 my $_cron_log_interval = sub {

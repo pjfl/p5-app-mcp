@@ -9,26 +9,22 @@ use Class::Usul::Types  qw( Object );
 use HTTP::Status        qw( HTTP_NOT_FOUND );
 use Moo;
 
-extends q(App::MCP::Model);
-with    q(App::MCP::Role::CommonLinks);
-with    q(App::MCP::Role::JavaScript);
-with    q(App::MCP::Role::PageConfiguration);
-with    q(App::MCP::Role::Preferences);
-with    q(App::MCP::Role::FormBuilder);
-with    q(App::MCP::Role::WebAuthentication);
+extends 'App::MCP::Model';
+with    'App::MCP::Role::PageConfiguration';
+with    'App::MCP::Role::FormBuilder';
+with    'App::MCP::Role::WebAuthentication';
 
 has '+moniker' => default => 'root';
 
 has 'config_editor' => is => 'lazy', isa => Object, builder => sub {
-   App::MCP::ConfigEditor->new( builder => $_[ 0 ]->usul ) };
+   App::MCP::ConfigEditor->new( builder => $_[ 0 ]->application ) };
 
 sub config_form : Role(any) {
    my ($self, $req) = @_;
 
    my $title = $req->loc( 'Configuration' );
    my $page  = { action => $req->uri, form_name => 'config', title => $title, };
-   my $conf  = $self->config_editor->config_data;
-   my $data  = { values => { data => $conf }, };
+   my $data  = { values => { data => $self->config_editor->config_data }, };
 
    return $self->get_stash( $req, $page, config => $data );
 }
@@ -42,7 +38,7 @@ sub login_action : Role(anon) {
 
    $user->authenticate( $params->( 'password' ) ); # Throws on failure
 
-   my $sess     = $req->session; my $primary = NUL.$user->primary_role;
+   my $sess     = $req->session; my $primary = $user->primary_role.NUL;
 
    $sess->authenticated( TRUE );
    $sess->username     ( $username );
@@ -58,10 +54,10 @@ sub login_action : Role(anon) {
 sub login_form : Role(anon) {
    my ($self, $req) = @_;
 
-   my $arg   = $req->args->[ 0 ];
    my $title = $req->loc( 'Login' );
+   my $idorn = $req->uri_params->( 0, { optional => TRUE } );
+   my $user  = $self->schema->resultset( 'User' )->find_by_id_or_name( $idorn );
    my $page  = { action => $req->uri, form_name => 'login', title => $title, };
-   my $user  = $self->schema->resultset( 'User' )->find_by_id_or_name( $arg );
 
    return $self->get_stash( $req, $page, login => $user );
 }

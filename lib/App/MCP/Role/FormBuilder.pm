@@ -12,7 +12,7 @@ use Scalar::Util           qw( blessed );
 use Try::Tiny;
 use Moo::Role;
 
-requires qw( config debug get_stash log schema_class usul );
+requires qw( config debug get_stash log schema_class );
 
 # Private functions
 my $_new_grid_table = sub {
@@ -40,8 +40,7 @@ my $_check_field = sub {
    my $form   = $params->( 'form'   );
    my $id     = $params->( 'id'     );
    my $val    = $params->( 'val', { raw => TRUE } );
-   my $config = App::MCP::Form->load_config
-      ( $self->usul, $domain, $req->locale );
+   my $config = App::MCP::Form->load_config( $self, $req, $domain );
    my $meta   = $config->{ $form }->{meta};
    my $class  = $self->schema_class.'::Result::'.$meta->{result_class};
 
@@ -85,12 +84,12 @@ my $_new_grid_row = sub {
 };
 
 my $_set_column = sub {
-   my ($self, $args, $rec, $col) = @_;
+   my ($obj, $args, $rec, $col) = @_;
 
    my $prefix = $args->{method};
    my $method = $prefix ? "${prefix}${col}" : undef;
-   my $value  = $method && $self->can( $method )
-              ? $self->$method( $args->{params} )
+   my $value  = $method && $obj->can( $method )
+              ? $obj->$method( $args->{params} )
               : $args->{params}->( $col, { optional => TRUE, raw => TRUE } );
 
    defined $value or return;
@@ -105,15 +104,15 @@ my $_set_column = sub {
 around 'get_stash' => sub {
    my ($orig, $self, $req, $page, $form_name, $row) = @_;
 
-   $form_name or return $orig->( $self, $req, $page );
+   my $stash = $orig->( $self, $req, $page ); $form_name or return $stash;
+   my $args  = { model => $self,      req => $req,
+                 name  => $form_name, row => $row,
+                 skin  => $stash->{skin} };
+   my $form  = App::MCP::Form->new( $self, $args );
 
-   my $form = App::MCP::Form->new( $self, $req, $form_name, $row );
-
-   $page->{first_field} = $form->first_field;
-
-   my $stash = $orig->( $self, $req, $page );
-
-   $stash->{form} = $form; $stash->{template} //= $form->template;
+   $stash->{form} = $form;
+   $stash->{page}->{first_field} = $form->first_field;
+   $stash->{page}->{layout     } = $form->template;
 
    return $stash;
 };
@@ -125,8 +124,9 @@ sub build_chooser {
    my $form   = $params->( 'form'  );
    my $field  = $params->( 'field' );
    my $button = $params->( 'button', { optional => TRUE } ) // NUL;
-   my $event  = $params->( 'event',  { optional => TRUE } ) // 'load';
-   my $val    = $params->( 'val',    { optional => TRUE } ) // NUL;
+   my $event  = $params->( 'event',  { optional => TRUE } ) || 'load';
+   my $val    = $params->( 'val',    {
+      optional => TRUE, scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' } ) // NUL;
    my $toggle = $params->( 'toggle', { optional => TRUE } ) ? 'true' : 'false';
    my $show   = "function() { this.window.dialogs[ '${field}' ].show() }";
    my $id     = "${form}_${field}";
@@ -174,6 +174,8 @@ sub build_grid_table {
    my $form   = $args->{form};
    my $field  = $params->( 'id' );
    my $psize  = $params->( 'page_size' ) || 10;
+   my $fval   = $params->( 'field_value', {
+      optional => TRUE, scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' } ) // NUL;
    my $label  = $req->loc( $args->{label} );
    my $id     = "${form}_${field}";
    my $count  = 0;
@@ -186,7 +188,7 @@ sub build_grid_table {
    return {
       'meta'         => {
          id          => $id,
-         field_value => $params->( 'field_value', { optional => TRUE } ) // NUL,
+         field_value => $fval,
          totalcount  => $args->{total}, },
       "${id}_header" => {
          id          => "${id}_header",
@@ -221,7 +223,7 @@ sub create_record {
    my ($self, $args) = @_; my $rs = $args->{rs}; my $rec = {};
 
    for my $col ($rs->result_source->columns) {
-      $self->$_set_column( $args, $rec, $col );
+      $_set_column->( $self, $args, $rec, $col );
    }
 
    return $rs->create( $rec );
@@ -233,7 +235,7 @@ sub find_and_update_record {
    my $rec = $rs->find( $args->{id} ) or return;
 
    for my $col ($rs->result_source->columns) {
-      $self->$_set_column( $args, $rec, $col );
+      $_set_column->( $self, $args, $rec, $col );
    }
 
    $rec->update;
@@ -259,7 +261,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 19 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 21 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

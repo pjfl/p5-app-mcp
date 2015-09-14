@@ -10,6 +10,10 @@ use Moo::Role;
 
 requires qw( execute );
 
+my $_list_roles_of = sub {
+   my $attr = attributes::get( shift ) // {}; return $attr->{Role} // [];
+};
+
 around 'execute' => sub {
    my ($orig, $self, $method, $req) = @_; my $class = blessed $self || $self;
 
@@ -17,7 +21,7 @@ around 'execute' => sub {
       or throw 'Class [_1] has no method [_2]', [ $class, $method ],
             rv => HTTP_NOT_FOUND;
 
-   my $method_roles = __list_roles_of( $code_ref ); $method_roles->[ 0 ]
+   my $method_roles = $_list_roles_of->( $code_ref ); $method_roles->[ 0 ]
       or throw 'Class [_1] method [_2] is private', [ $class, $method ],
             rv => HTTP_FORBIDDEN;
 
@@ -26,10 +30,9 @@ around 'execute' => sub {
    my $sess = $req->session;
 
    unless ($sess->authenticated) {
-      $sess->wanted( $req->path );
-
       my $location = $req->uri_for( 'login' );
-      my $message  = [ 'Authentication required to [_1]', $req->path ];
+      my $wanted   = $sess->wanted( $req->path );
+      my $message  = [ 'Authentication required to [_1]', $wanted ];
 
       return { redirect => { location => $location, message => $message } };
    }
@@ -44,10 +47,6 @@ around 'execute' => sub {
    throw 'User [_1] permission denied', [ $sess->username ],
       rv => HTTP_FORBIDDEN;
 };
-
-sub __list_roles_of {
-   my $attr = attributes::get( shift ) // {}; return $attr->{Role} // [];
-}
 
 1;
 

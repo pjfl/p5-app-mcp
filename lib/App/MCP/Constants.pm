@@ -3,6 +3,7 @@ package App::MCP::Constants;
 use strictures;
 use parent 'Exporter::Tiny';
 
+use App::MCP;
 use App::MCP::Exception;
 use Class::Usul::Constants      ( );
 use Data::Validation::Constants ( );

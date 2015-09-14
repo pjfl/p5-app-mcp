@@ -4,7 +4,7 @@ use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( TRANSITION_ENUM );
-use App::MCP::Functions qw( enumerated_data_type foreign_key_data_type
+use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
                             numerical_id_data_type serial_data_type
                             set_on_create_datetime_data_type
                             varchar_data_type );

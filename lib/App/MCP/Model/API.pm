@@ -3,7 +3,7 @@ package App::MCP::Model::API;
 use namespace::autoclean;
 
 use App::MCP::Constants    qw( NUL TRUE );
-use App::MCP::Functions    qw( env_var trigger_input_handler );
+use App::MCP::Util         qw( trigger_input_handler );
 use Class::Usul::Functions qw( bson64id bson64id_time throw );
 use Class::Usul::Time      qw( time2str );
 use Class::Usul::Types     qw( Object );
@@ -13,7 +13,7 @@ use JSON::MaybeXS          qw( );
 use Try::Tiny;
 use Moo;
 
-extends q(App::MCP::Model);
+extends 'App::MCP::Model';
 
 has '+moniker' => default => 'api';
 
@@ -21,7 +21,7 @@ has '+moniker' => default => 'api';
 has '_transcoder' => is => 'lazy', isa => Object,
    builder        => sub { JSON::MaybeXS->new }, reader => 'transcoder';
 
-with q(App::MCP::Role::APIAuthentication);
+with 'App::MCP::Role::APIAuthentication';
 
 # Public methods
 sub create_event {
@@ -40,7 +40,7 @@ sub create_event {
    try    { $event = $schema->resultset( 'Event' )->create( $params ) }
    catch  { throw $_, rv => HTTP_BAD_REQUEST };
 
-   trigger_input_handler env_var 'DAEMON_PID';
+   trigger_input_handler $self->config->appclass->env_var( 'DAEMON_PID' );
 
    return { code    => HTTP_CREATED,
             content => { message => 'Event '.$event->id.' created' },
@@ -78,7 +78,7 @@ sub snapshot_state {
    my $frames = [];
    my $id     = bson64id;
    my $schema = $self->schema;
-   my $level  = $req->query_params->( 'level', { optional => TRUE } ) // 1;
+   my $level  = $req->query_params->( 'level', { optional => TRUE } ) || 1;
    my $job_rs = $schema->resultset( 'Job' );
    my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
          'columns'  => [ qw( fqjn id parent_id state.name type ) ],

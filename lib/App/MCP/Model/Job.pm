@@ -1,20 +1,16 @@
 package App::MCP::Model::Job;
 
-use App::MCP::Attributes;
-use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES
-                               EXCEPTION_CLASS NUL SPC TRUE );
-use Class::Usul::Functions qw( throw );
+use App::MCP::Attributes;  # Will do cleaning
+use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES EXCEPTION_CLASS
+                               NUL SPC TRUE );
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
-use Unexpected::Functions  qw( Unspecified );
+use Unexpected::Functions  qw( throw Unspecified );
 use Moo;
 
-extends q(App::MCP::Model);
-with    q(App::MCP::Role::CommonLinks);
-with    q(App::MCP::Role::JavaScript);
-with    q(App::MCP::Role::PageConfiguration);
-with    q(App::MCP::Role::Preferences);
-with    q(App::MCP::Role::FormBuilder);
-with    q(App::MCP::Role::WebAuthentication);
+extends 'App::MCP::Model';
+with    'App::MCP::Role::PageConfiguration';
+with    'App::MCP::Role::FormBuilder';
+with    'App::MCP::Role::WebAuthentication';
 
 has '+moniker' => default => 'job';
 
@@ -30,8 +26,7 @@ sub choose_action : Role(any) {
    my ($self, $req) = @_;
 
    my $job_rs   = $self->schema->resultset( 'Job' );
-   my $name     = $req->body_params->( 'name', { raw => TRUE } );
-   my $where    = $name =~ m{ :: }mx ? { fqjn => $name } : { name => $name };
+   my $where    = { fqjn => $req->body_params->( 'fqjn', { raw => TRUE } ) };
    my $job      = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
    my $location = $req->uri_for( 'job', [ $job ? $job->id : undef ] );
 
@@ -56,11 +51,12 @@ sub clear_action : Role(any) {
 sub delete_action : Role(any) {
    my ($self, $req) = @_;
 
-   my $id       = $req->args->[ 0 ]
-      or throw Unspecified, [ 'id' ], rv => HTTP_EXPECTATION_FAILED;
+   my $idorn    = $req->uri_params->( 0, {
+      scrubber => '[^ +\-\./0-9:@A-Z\\_a-z~]' } );
    my $location = $req->uri_for( 'job' );
-   my $message  = [ 'Job id [_1] not found', $id ];
-   my $job      = $self->schema->resultset( 'Job' )->find( $id )
+   my $message  = [ 'Job [_1] not found', $idorn ];
+   my $job_rs   = $self->schema->resultset( 'Job' );
+   my $job      = $job_rs->find_by_id_or_name( $idorn )
       or return { redirect => { location => $location, message => $message } };
    my $fqjn     = $job->fqjn; $job->delete;
 
@@ -72,10 +68,11 @@ sub delete_action : Role(any) {
 sub definition_form : Role(any) {
    my ($self, $req) = @_;
 
-   my $arg   = $req->args->[ 0 ];
    my $title = $req->loc( 'Job Definition' );
+   my $idorn = $req->uri_params->( 0, {
+      optional => TRUE, scrubber => '[^ +\-\./0-9:@A-Z\\_a-z~]' } );
+   my $job   = $self->schema->resultset( 'Job' )->find_by_id_or_name( $idorn );
    my $page  = { action => $req->uri, form_name => 'job', title => $title, };
-   my $job   = $self->schema->resultset( 'Job' )->find_by_id_or_name( $arg );
 
    $job and $page->{job_id} = $job->id;
 
@@ -105,7 +102,7 @@ sub grid_table : Role(any) {
    $args->{label} = 'Job names';
    $args->{total} = $self->schema->resultset( 'Job' )
                          ->search( { id   => { '>' => 1 },
-                                     name => { -like => $field_value } } )
+                                     fqjn => { -like => $field_value } } )
                          ->count;
 
    my $table = $self->build_grid_table( $req, $args );
@@ -119,11 +116,13 @@ sub grid_table : Role(any) {
 sub job_state : Role(any) {
    my ($self, $req) = @_;
 
-   my $form      = 'job_state_dialog';
-   my $page      = { meta => { id => $req->query_params->( 'id' ) } };
-   my $rs        = $self->schema->resultset( 'JobState' );
-   my $job_state = $rs->find_by_id_or_name( $req->args->[ 0 ] );
-   my $stash     = $self->get_stash( $req, $page, $form => $job_state );
+   my $form      =  'job_state_dialog';
+   my $idorn     =  $req->uri_params->( 0, {
+      scrubber   => '[^ +\-\./0-9:@A-Z\\_a-z~]' } );
+   my $rs        =  $self->schema->resultset( 'JobState' );
+   my $job_state =  $rs->find_by_id_or_name( $idorn );
+   my $page      =  { meta => { id => $req->query_params->( 'id' ) } };
+   my $stash     =  $self->get_stash( $req, $page, $form => $job_state );
 
    $stash->{view} = 'json';
    return $stash;
@@ -132,14 +131,16 @@ sub job_state : Role(any) {
 sub save_action : Role(any) {
    my ($self, $req) = @_; my $job; my $message;
 
-   my $args = { id     => $req->args->[ 0 ],
-                method => '_job_deflate_',
-                params => $req->body_params,
-                rs     => $self->schema->resultset( 'Job' ) };
+   my $idorn   =  $req->uri_params->( 0, {
+      optional => TRUE, scrubber => '[^ +\-\./0-9:@A-Z\\_a-z~]' } );
+   my $args    =  { id     => $idorn,
+                    method => '_job_deflate_',
+                    params => $req->body_params,
+                    rs     => $self->schema->resultset( 'Job' ) };
 
-   if ($args->{id}) {
+   if (defined $idorn and length $idorn) {
       $job = $self->find_and_update_record( $args )
-          or return $_job_not_found->( $req, $args->{id} );
+          or return $_job_not_found->( $req, $idorn );
       $message = [ 'Job name [_1] updated', $job->fqjn ];
    }
    else {
@@ -158,26 +159,27 @@ sub  _job_chooser_assign_hook {
 }
 
 sub _job_chooser_link_hash {
-   return { href => '#top',           text  => $_[ 3 ]->name,
+   return { href => '#top',           text  => $_[ 3 ]->fqjn,
             tip  => $_[ 3 ]->summary, value => $_[ 3 ]->fqjn, };
 }
 
 sub _job_chooser_search {
    my ($self, $req) = @_; my $params = $req->query_params;
 
-   my $value = $params->( 'field_value', { optional => TRUE } ) || '%';
+   my $args  = { optional => TRUE, scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' };
+   my $value = $params->( 'field_value', $args ) || '%';
 
    return [ $self->schema->resultset( 'Job' )->search
             ( { id       => { '>' => 1 },
-                name     => { -like => $value } },
-              { order_by => 'name',
+                fqjn     => { -like => $value } },
+              { order_by => 'fqjn',
                 page     => $params->( 'page' ) + 1,
                 rows     => $params->( 'page_size' ) } )->all ];
 }
 
 sub _job_deflate_crontab {
    my $v = join SPC, map { $_[ 1 ]->( "crontab_${_}", {
-      optional => TRUE } ) || NUL } CRONTAB_FIELD_NAMES;
+      optional => TRUE } ) // NUL } CRONTAB_FIELD_NAMES;
 
    $v =~ s{ \A \s+ \z }{}mx; return $v;
 }
@@ -200,14 +202,14 @@ sub _job_deflate_owner {
 
 sub _job_deflate_parent_id {
    my $rs   = $_[ 0 ]->schema->resultset( 'Job' );
-   my $name = $_[ 1 ]->( 'parent_name', {
-      optional => TRUE, raw => TRUE } ) || 'Main::Main';
+   my $fqjn = $_[ 1 ]->( 'parent_name', {
+      optional => TRUE, scrubber => '[^ +\-\./0-9:@A-Z\\_a-z~]' } ) // NUL;
 
-   return $rs->find_by_name( $name )->id;
+   return $rs->find_by_name( $fqjn )->id;
 }
 
 sub _job_deflate_permissions {
-   my $perms = $_[ 1 ]->( 'permissions', { optional => TRUE } );
+   my $perms = $_[ 1 ]->( 'permissions', { optional => TRUE } ) // NUL;
 
    return length $perms ? oct $perms : 0;
 }

@@ -2,21 +2,21 @@ package App::MCP::Daemon;
 
 use namespace::autoclean;
 
-use App::MCP;
 use App::MCP::Application;
-use App::MCP::Constants   qw( LANG NUL OK TRUE );
+use App::MCP::Constants    qw( LANG NUL OK TRUE );
 use App::MCP::DaemonControl;
-use App::MCP::Functions   qw( env_var terminate );
+use App::MCP::Util         qw( terminate );
 use Async::IPC;
-use Async::IPC::Functions qw( log_info );
-use Class::Usul::Types    qw( NonEmptySimpleStr NonZeroPositiveInt Object );
-use English               qw( -no_match_vars );
+use Async::IPC::Functions  qw( log_info );
+use Class::Usul::Functions qw( ensure_class_loaded );
+use Class::Usul::Types     qw( NonEmptySimpleStr NonZeroPositiveInt Object );
+use English                qw( -no_match_vars );
 use Plack::Runner;
-use Scalar::Util          qw( blessed );
+use Scalar::Util           qw( blessed );
 use Moo;
 use Class::Usul::Options;
 
-extends q(Class::Usul::Programs);
+extends 'Class::Usul::Programs';
 
 # Private methods
 my $_build_clock_tick = sub {
@@ -89,12 +89,15 @@ my $_get_listener_sub = sub {
       '--access-log' => $conf->logsdir->catfile( 'listener-access.log' ),
       '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
 
-   my $daemon_pid = $self->pid; my $debug = $self->debug;
+   my $appclass   = $conf->appclass;
+   my $daemon_pid = $self->pid;
+   my $debug      = $self->debug;
 
    return sub {
-      env_var 'DAEMON_PID',    $daemon_pid;
-      env_var 'DEBUG',         $debug;
-      env_var 'LISTENER_PORT', $port;
+      ensure_class_loaded $appclass;
+      $appclass->env_var( 'DAEMON_PID',    $daemon_pid );
+      $appclass->env_var( 'DEBUG',         $debug );
+      $appclass->env_var( 'LISTENER_PORT', $port );
       Plack::Runner->run( %{ $args } );
       return OK;
    };
@@ -116,7 +119,7 @@ my $_set_program_name = sub { # Localisation triggers cache file creation
 };
 
 my $_stdio_file = sub {
-   my ($self, $extn, $name) = @_; $name ||= $self->config->name;
+   my ($self, $extn, $name) = @_; $name //= $self->config->name;
 
    return $self->file->tempdir->catfile( "${name}.${extn}" );
 };
@@ -173,10 +176,9 @@ has '+config_class' => default => 'App::MCP::Config';
 
 # Object attributes (public)
 #   Visible to the command line
-option 'port'       => is => 'lazy', isa => NonZeroPositiveInt,
+option 'port'       => is => 'lazy', isa => NonZeroPositiveInt, format => 'i',
    documentation    => 'Port number for the input event listener',
-   builder          => sub { $_[ 0 ]->config->port }, format => 'i',
-   short            => 'p';
+   builder          => sub { $_[ 0 ]->config->port }, short => 'p';
 
 #   Ingnored by the command line
 has 'app'           => is => 'lazy', isa => Object, builder => sub {

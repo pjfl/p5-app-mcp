@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+	  - Switched to Web::Components
           - Toolchain update
           - Made ::Form::load_config a private function
           - Renumbered JS files

@@ -2,48 +2,36 @@ package App::MCP::Listener;
 
 use namespace::autoclean;
 
-use App::MCP;
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
-use App::MCP::Functions    qw( env_var );
+use App::MCP::Constants    qw( NUL TRUE );
+use App::MCP::Util         qw( enhance );
 use Class::Usul;
-use Class::Usul::Functions qw( find_apphome get_cfgfiles throw );
-use Class::Usul::Types     qw( BaseType );
+use Class::Usul::Types     qw( HashRef Plinth );
+use Class::Usul::Functions qw( ensure_class_loaded );
 use Plack::Builder;
-use Unexpected::Functions  qw( Unspecified );
 use Web::Simple;
 
-# Attribute construction
-my $_build_usul = sub {
-   my $self = shift;
-   my $attr = { config => $self->config, debug => env_var( 'DEBUG' ) // FALSE };
-   my $conf = $attr->{config};
-
-   $conf->{appclass    } or  throw Unspecified, [ 'application class' ];
-   $attr->{config_class} //= $conf->{appclass}.'::Config';
-   $conf->{name        } //= 'listener';
-   $conf->{home        }   = find_apphome $conf->{appclass};
-   $conf->{cfgfiles    }   = get_cfgfiles $conf->{appclass}, $conf->{home};
-
-   return Class::Usul->new( $attr );
-};
-
 # Public attributes
-has 'usul' => is => 'lazy', isa => BaseType, builder => $_build_usul,
-   handles => [ 'log' ];
+has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
+   init_arg        => 'config';
 
-with q(App::MCP::Role::ComponentLoading);
+has '_usul'        => is => 'lazy', isa => Plinth,
+   builder         => sub { Class::Usul->new( enhance $_[ 0 ]->_config_attr ) },
+   handles         => [ 'config', 'debug', 'dumper', 'l10n', 'lock', 'log' ];
+
+with 'Web::Components::Loader';
 
 # Construction
 around 'to_psgi_app' => sub {
    my ($orig, $self, @args) = @_; my $app = $orig->( $self, @args );
 
-   my $conf   = $self->usul->config;
-   my $point  = $conf->mount_point;
+   my $conf   = $self->config; my $static = $conf->serve_as_static;
+
    my $secret = $conf->salt.$self->models->{root}->get_connect_info->[ 2 ];
-   my $static = $conf->serve_as_static;
 
    builder {
-      mount "${point}" => builder {
+      mount $conf->mount_point => builder {
+         enable 'ContentLength';
+         enable 'FixMissingBodyInRedirect';
          enable "ConditionalGET";
          enable 'Deflater',
             content_type => $conf->deflate_types, vary_user_agent => TRUE;
@@ -51,32 +39,28 @@ around 'to_psgi_app' => sub {
             path => qr{ \A / (?: $static ) }mx, root => $conf->root;
          # TODO: Need to add domain from the request which we dont have yet
          enable 'Session::Cookie',
-            expires     => 7_776_000, httponly => TRUE,
-            path        => $point,    secret   => $secret,
+            expires     => 7_776_000,
+            httponly    => TRUE,
+            path        => $conf->mount_point,
+            secret      => $secret,
             session_key => 'mcp_session';
-         enable "LogDispatch", logger => $self->usul->log;
-         enable_if { $self->usul->debug } 'Debug';
+         enable "LogDispatch", logger => $self->log;
+         enable_if { $self->debug } 'Debug';
          $app;
       };
    };
 };
 
 sub BUILD {
-   my $self   = shift;
-   my $server = ucfirst( $ENV{ 'PLACK_ENV' } // NUL );
-   my $port   = env_var 'LISTENER_PORT';
-      $port   = $port ? " on port ${port}" : NUL;
-   my $ver    = $App::MCP::VERSION;
+   my $self     = shift;
+   my $server   = ucfirst( $ENV{PLACK_ENV} // NUL );
+   my $appclass = $self->config->appclass; ensure_class_loaded $appclass;
+   my $port     = $appclass->env_var( 'PORT' );
+   my $info     = 'v'.$appclass->VERSION; $port and $info .= " on port ${port}";
 
-   $self->log->info( "${server} Server started v${ver}${port}" );
+   $self->log->info( "${server} Server started ${info}" );
+
    return;
-}
-
-# Public methods
-sub dispatch_request {
-   my $f = sub () { my $self = shift; response_filter { $self->render( @_ ) } };
-
-   return $f, map { $_->dispatch_request } @{ $_[ 0 ]->controllers };
 }
 
 1;

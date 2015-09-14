@@ -2,35 +2,15 @@ package App::MCP::View::HTML;
 
 use namespace::autoclean;
 
-use Class::Usul::Constants qw( NUL TRUE );
-use Class::Usul::Functions qw( throw );
-use Encode;
-use File::DataClass::Types qw( Directory Object );
-use HTTP::Status           qw( HTTP_INTERNAL_SERVER_ERROR );
-use Scalar::Util           qw( weaken );
-use Template;
+use App::MCP::Util qw( stash_functions );
+use Encode         qw( encode );
 use Moo;
 
-with q(App::MCP::Role::Component);
-with q(App::MCP::Role::FormHandler);
+with 'Web::Components::Role';
+with 'Web::Components::Role::TT';
+with 'App::MCP::Role::FormHandler';
 
 has '+moniker' => default => 'html';
-
-# Public attributes
-has 'template_dir' => is => 'lazy', isa => Directory, coerce => TRUE,
-   builder         => sub { $_[ 0 ]->config->root->catdir( 'templates' ) };
-
-# Private attributes
-has '_template' => is => 'lazy', isa => Object, builder => sub {
-   my $self     =  shift;
-   my $args     =  { RELATIVE     => TRUE,
-                     INCLUDE_PATH => [ $self->template_dir->pathname ],
-                     WRAPPER      => 'wrapper.tt', };
-   my $template =  Template->new( $args )
-      or throw $Template::ERROR, rv => HTTP_INTERNAL_SERVER_ERROR;
-
-   return $template;
-};
 
 # Private functions
 my $_header = sub {
@@ -39,21 +19,11 @@ my $_header = sub {
 
 # Public methods
 sub serialize {
-   my ($self, $req, $stash) = @_; my $html = NUL; weaken( $req );
+   my ($self, $req, $stash) = @_; stash_functions $self, $req, $stash;
 
-   $stash->{req    } = $req;
-   $stash->{config } = $self->config;
-   $stash->{loc    } = sub { $req->loc( @_ ) };
-   $stash->{uri_for} = sub { $req->uri_for( @_ ) };
+   my $html = encode( $self->encoding, $self->render_template( $stash ) );
 
-   my $template = ($stash->{template} //= $self->config->template).'.tt';
-
-   $self->_template->process( $template, $stash, \$html ) or
-      throw $self->_template->error, rv => HTTP_INTERNAL_SERVER_ERROR;
-
-   my $content  = encode( 'UTF-8', $html );
-
-   return [ $stash->{code}, $_header->( $stash->{http_headers} ), [ $content ]];
+   return [ $stash->{code}, $_header->( $stash->{http_headers} ), [ $html ] ];
 }
 
 1;

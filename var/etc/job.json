@@ -2,7 +2,7 @@
    "_fields": {
       "job.chooser": {
          "container": "0",
-         "field": "name",
+         "field": "fqjn",
          "href": "...",
          "subtype": "modal",
          "tiptype": "normal",
@@ -61,9 +61,9 @@
          "width": "2"
       },
       "job.fqjn": {
-         "clear": "left",
-         "container": "1",
-         "type": "label"
+         "check_field" : "1",
+         "default": "*",
+         "required" : "1"
       },
       "job.group_rel": {
          "clear": "left",
@@ -73,11 +73,6 @@
          "check_field" : "1",
          "clear": "left",
          "default": "localhost",
-         "required" : "1"
-      },
-      "job.name": {
-         "check_field" : "1",
-         "default": "*",
          "required" : "1"
       },
       "job.owner_rel": {
@@ -124,20 +119,20 @@
          "default": "mcp",
          "required" : "1"
       },
-      "job_chooser.job_name": {
+      "job_chooser.job_fqjn": {
          "class": "hidden live_grid",
          "container": "0",
          "href": "#top",
          "subtype": "display",
          "type": "chooser"
       },
-      "job_grid_table.job_name_header": {
+      "job_grid_table.job_fqjn_header": {
          "class": "grid_subheader",
          "container_class": "grid_header",
          "href": "#top",
          "type": "anchor"
       },
-      "job_grid_table.job_name_grid": {
+      "job_grid_table.job_fqjn_grid": {
          "container": "1",
          "container_class": "grid_container",
          "hclass": "",
@@ -168,10 +163,6 @@
          "clear": "left",
          "type": "label"
       },
-      "job_state_dialog.name": {
-         "clear": "left",
-         "type": "label"
-      },
       "job_state_dialog.updated": {
          "clear": "left",
          "type": "label"
@@ -179,7 +170,7 @@
    },
    "job": {
       "meta": {
-         "first_field": "name",
+         "first_field": "fqjn",
          "max_pwidth": "200",
          "pwidth": "20",
          "result_class": "Job"
@@ -187,7 +178,7 @@
       "regions": [
          "header_fields",
          [ "+nav_panel", "+logout_button", "+logout_form" ],
-         [ "name", "fqjn", "type", "created", "parent_name", "command",
+         [ "fqjn", "type", "created", "parent_name", "command",
            "condition", "crontab_min", "crontab_hour", "crontab_mday",
            "crontab_mon", "crontab_wday", "host", "user", "directory",
            "expected_rv", "permissions", "owner_rel", "group_rel" ],
@@ -197,7 +188,7 @@
    },
    "job_chooser": {
       "regions": [
-         [ "job_name" ]
+         [ "job_fqjn" ]
       ]
    },
    "job_grid_rows": {
@@ -207,7 +198,7 @@
    },
    "job_grid_table": {
       "regions": [
-         [ "job_name_header", "job_name_grid" ]
+         [ "job_fqjn_header", "job_fqjn_grid" ]
       ]
    },
    "job_state_dialog": {
@@ -216,7 +207,7 @@
          "pwidth": "20"
       },
       "regions": [
-         [ "fqjn", "name", "updated", "last_start", "last_finish",
+         [ "fqjn", "updated", "last_start", "last_finish",
            "last_runid", "last_rv", "last_pid" ]
       ]
    }

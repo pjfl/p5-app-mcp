@@ -1,15 +1,12 @@
 package App::MCP::Model::State;
 
-use Moo;
 use App::MCP::Attributes;
+use Moo;
 
-extends q(App::MCP::Model);
-with    q(App::MCP::Role::CommonLinks);
-with    q(App::MCP::Role::JavaScript);
-with    q(App::MCP::Role::PageConfiguration);
-with    q(App::MCP::Role::Preferences);
-with    q(App::MCP::Role::FormBuilder);
-with    q(App::MCP::Role::WebAuthentication);
+extends 'App::MCP::Model';
+with    'App::MCP::Role::PageConfiguration';
+with    'App::MCP::Role::FormBuilder';
+with    'App::MCP::Role::WebAuthentication';
 
 has '+moniker' => default => 'state';
 

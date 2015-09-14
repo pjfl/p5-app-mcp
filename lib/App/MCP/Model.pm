@@ -2,14 +2,19 @@ package App::MCP::Model;
 
 use namespace::autoclean;
 
-use App::MCP::Constants   qw( EXCEPTION_CLASS NUL );
-use Class::Usul::Types    qw( LoadableClass Object );
+use App::MCP::Constants   qw( EXCEPTION_CLASS NUL TRUE );
+use Class::Usul::Types    qw( LoadableClass Object Plinth );
 use HTTP::Status          qw( HTTP_OK );
 use Unexpected::Functions qw( ValidationErrors );
 use Moo;
 
-with q(App::MCP::Role::Component);
-with q(Class::Usul::TraitFor::ConnectInfo);
+with 'Web::Components::Role';
+with 'Class::Usul::TraitFor::ConnectInfo';
+
+# Public attributes
+has 'application' => is => 'ro', isa => Plinth,
+   handles        => [ 'debug' ],
+   required       => TRUE,  weak_ref => TRUE;
 
 # Private attributes
 has '_schema'       => is => 'lazy', isa => Object, builder => sub {
@@ -37,19 +42,19 @@ sub execute {
 }
 
 sub get_stash {
-   my ($self, $req, @args) = @_;
+   my ($self, $req, $page) = @_; my $stash = $self->initialise_stash( $req );
 
-   return { code => HTTP_OK,
-            page => $self->load_page( $req, @args ),
-            view => $self->config->default_view, };
+   $stash->{page} = $self->load_page( $req, $page );
+
+   return $stash;
+}
+
+sub initialise_stash {
+   return { code => HTTP_OK, view => $_[ 0 ]->config->default_view, };
 }
 
 sub load_page {
-   my ($self, $req, $args) = @_; my $page = $args // {};
-
-   $page->{status_message} = $req->session->clear_status_message( $req );
-
-   return $page;
+   my ($self, $req, $page) = @_; $page //= {}; return $page;
 }
 
 1;

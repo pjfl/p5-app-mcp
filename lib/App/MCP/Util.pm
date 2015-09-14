@@ -1,42 +1,19 @@
-package App::MCP::Functions;
+package App::MCP::Util;
 
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE LANG NUL
-                               OK SPC TRUE VARCHAR_MAX_SIZE );
-use Class::Usul::Functions qw( first_char merge_attributes split_on__ throw );
-use English                qw( -no_match_vars );
-use Module::Pluggable::Object;
-use Storable               qw( nfreeze );
-use Unexpected::Functions  qw( Unspecified );
-use URI::Escape            qw( );
-use URI::http;
-use URI::https;
+use App::MCP::Constants    qw( FALSE NUL TRUE VARCHAR_MAX_SIZE );
+use Class::Usul::Functions qw( find_apphome get_cfgfiles is_member );
+use Class::Usul::Time      qw( str2time time2str );
+use Scalar::Util           qw( weaken );
 
-our @EXPORT_OK = ( qw( enumerated_data_type env_var extract_lang
-                       foreign_key_data_type get_hashed_pw get_salt
-                       load_components new_uri
-                       nullable_foreign_key_data_type
-                       nullable_varchar_data_type numerical_id_data_type
-                       qualify_job_name serial_data_type
-                       set_on_create_datetime_data_type terminate
-                       trigger_input_handler trigger_output_handler
-                       varchar_data_type ) );
-
-my $reserved   = q(;/?:@&=+$,[]);
-my $mark       = q(-_.!~*'());                                    #'; emacs
-my $unreserved = "A-Za-z0-9\Q${mark}\E";
-my $uric       = quotemeta( $reserved )."${unreserved}%";
-
-# Private functions
-my $_uric_escape = sub {
-    my $str = shift;
-
-    $str =~ s{([^$uric\#])}{ URI::Escape::escape_char($1) }ego;
-    utf8::downgrade( $str );
-    return \$str;
-};
+our @EXPORT_OK = qw( enumerated_data_type enhance foreign_key_data_type
+                     get_hashed_pw get_salt nullable_foreign_key_data_type
+                     nullable_varchar_data_type numerical_id_data_type
+                     serial_data_type set_on_create_datetime_data_type
+                     stash_functions terminate trigger_input_handler
+                     trigger_output_handler varchar_data_type );
 
 # Public functions
 sub enumerated_data_type ($;$) {
@@ -46,14 +23,17 @@ sub enumerated_data_type ($;$) {
             is_enum       => TRUE, };
 }
 
-sub env_var ($;$) {
-   defined $_[ 1 ] or return $ENV{ 'MCP_'.$_[ 0 ] };
+sub enhance ($) {
+   my $conf = shift;
+   my $attr = { config => { %{ $conf } }, }; $conf = $attr->{config};
 
-   return $ENV{ 'MCP_'.$_[ 0 ] } = $_[ 1 ];
-}
+   $conf->{appclass    } //= 'App::MCP';
+   $attr->{config_class} //= $conf->{appclass}.'::Config';
+   $conf->{name        } //= 'listener'; #TODO: app_prefix   $conf->{appclass};
+   $conf->{home        } //= find_apphome $conf->{appclass}, $conf->{home};
+   $conf->{cfgfiles    } //= get_cfgfiles $conf->{appclass}, $conf->{home};
 
-sub extract_lang ($) {
-   return $_[ 0 ] ? (split_on__ $_[ 0 ])[ 0 ] : LANG;
+   return $attr;
 }
 
 sub foreign_key_data_type (;$$) {
@@ -80,37 +60,6 @@ sub get_salt ($) {
    return join '$', @parts;
 }
 
-sub load_components ($$;$) {
-   my ($search_path, $config, $args) = @_; $args //= {};
-
-   $search_path or throw Unspecified,          [ 'search path' ];
-   $config = merge_attributes {}, $config, {}, [ 'appclass', 'monikers' ];
-   $config->{appclass} or throw Unspecified,   [ 'application class' ];
-
-   if (first_char $search_path eq '+') { $search_path = substr $search_path, 1 }
-   else { $search_path = $config->{appclass}."::${search_path}" }
-
-   my $depth    = () = split m{ :: }mx, $search_path, -1; $depth += 1;
-   my $finder   = Module::Pluggable::Object->new
-      ( max_depth   => $depth,           min_depth => $depth,
-        search_path => [ $search_path ], require   => TRUE, );
-   my $monikers = $config->{monikers} // {};
-   my $compos   = $args->{components}  = {};
-
-   for my $class ($finder->plugins) {
-      exists $monikers->{ $class } and defined $monikers->{ $class }
-         and $args->{moniker} = $monikers->{ $class };
-
-      my $comp  = $class->new( $args ); $compos->{ $comp->moniker } = $comp;
-   }
-
-   return $compos;
-}
-
-sub new_uri ($$) {
-   return bless $_uric_escape->( $_[ 0 ] ), 'URI::'.$_[ 1 ];
-}
-
 sub nullable_foreign_key_data_type () {
    return { data_type         => 'integer',
             default_value     => undef,
@@ -133,12 +82,6 @@ sub numerical_id_data_type (;$) {
             is_numeric        => TRUE, };
 }
 
-sub qualify_job_name (;$$) {
-   my ($name, $ns) = @_; $ns //= 'Main'; my $sep = '::'; $name //= 'void';
-
-   return $name =~ m{ $sep }mx ? $name : "${ns}${sep}${name}";
-}
-
 sub serial_data_type () {
    return { data_type         => 'integer',
             default_value     => undef,
@@ -151,6 +94,18 @@ sub serial_data_type () {
 sub set_on_create_datetime_data_type () {
    return { data_type         => 'datetime',
             set_on_create     => TRUE, };
+}
+
+sub stash_functions ($$$) {
+   my ($app, $src, $dest) = @_; weaken $src;
+
+   $dest->{is_member} = \&is_member;
+   $dest->{loc      } = sub { $src->loc( @_ ) };
+   $dest->{str2time } = \&str2time;
+   $dest->{time2str } = \&time2str;
+   $dest->{ucfirst  } = sub { ucfirst $_[ 0 ] };
+   $dest->{uri_for  } = sub { $src->uri_for( @_ ), };
+   return;
 }
 
 sub terminate ($) {
@@ -184,12 +139,11 @@ __END__
 
 =head1 Name
 
-App::MCP::Functions - One-line description of the modules purpose
+App::MCP::Util - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Functions;
-   # Brief but working code examples
+   use App::MCP::Util;
 
 =head1 Description
 

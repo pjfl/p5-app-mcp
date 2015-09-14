@@ -5,7 +5,7 @@ use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
 use parent   'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( NUL VARCHAR_MAX_SIZE );
-use App::MCP::Functions qw( serial_data_type varchar_data_type );
+use App::MCP::Util      qw( serial_data_type varchar_data_type );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -20,7 +20,6 @@ $class->set_primary_key( 'id' );
 $class->add_unique_constraint( [ 'rolename' ] );
 
 $class->has_many    ( user_role => "${result}::UserRole", 'role_id' );
-
 $class->many_to_many( users     => 'user_role',           'user_id' );
 
 sub as_string {

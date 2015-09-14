@@ -1,6 +1,4 @@
 #!/usr/bin/env perl
-# I blame t0m for this
-
 # If you have a $LOCAL_LIB directory then this script will set it up for
 # you as it executes
 
@@ -13,9 +11,9 @@
 # The local::lib behavior can be explicitly enabled or disabled by setting
 # the <APPNAME>_LOCAL_LIB enviromnent variable to true or false.
 
+use lib;
 use strict;
 use warnings;
-use lib;
 
 use Config;
 use Cwd                   qw( abs_path );
@@ -25,9 +23,21 @@ use File::Spec::Functions qw( catdir catfile );
 
 my $LOCAL_LIB  = 'local'; # This is the only configurable
 
+my $extend     = sub {
+   my ($k, $v, $sep) = @_; $sep //= $Config::Config{path_sep};
+
+   return $ENV{ $k } = $v.($ENV{ $k } ? $sep.$ENV{ $k } : q());
+};
+my $untaint    = sub {
+   my $v = shift;
+
+   $v = $v =~ m{ \A ([^\$%&\*;<>\`|]+) \z }mx ? $1 : die "Path ${v} tainted";
+
+   return $v;
+};
 my $was_called = caller() ? 1 : 0;
 my $our_path   = $was_called ? (caller())[ 1 ] : $PROGRAM_NAME;
-my $bindir     = abs_path( dirname( $our_path ) );
+my $bindir     = $untaint->( abs_path( dirname( $our_path ) ) );
 my $basedir    = -f catfile( $bindir, 'Build.PL' )
               || -f catfile( $bindir, 'Makefile.PL' )
                ? $bindir : dirname( $bindir );
@@ -35,7 +45,6 @@ my $libdir     = catdir( $basedir, 'lib' );
 my $local_lib  = catdir( $basedir, $LOCAL_LIB );
 my $appname    = (split m{ [\-_] }mx, basename( $our_path, '.pl' ))[ 0 ];
 my $active_key = (uc $appname).'_LOCAL_LIB';
-my $path_sep   = $Config::Config{path_sep};
 my $active     = -d $local_lib;
 
 exists $ENV{ $active_key } and defined $ENV{ $active_key }
@@ -43,19 +52,18 @@ exists $ENV{ $active_key } and defined $ENV{ $active_key }
 
 if ($active) {
    not -d $local_lib and warn "Path ${local_lib} not found from ${our_path}\n";
-
    # So we can find local::lib when fully self contained
-   lib->import( catdir( $local_lib, qw( lib perl5 ) ) );
+   lib->import( catdir( $local_lib, 'lib', 'perl5' ) );
 
    require local::lib; local::lib->import( $local_lib );
 
-   $ENV{PERL5_MB_OPT} .= ' INSTALLMAN1DIR=none INSTALLMAN3DIR=none';
-   $ENV{PERL5LIB    }  = $libdir.$path_sep.$ENV{PERL5LIB};
+   $extend->( 'PATH', catdir( $local_lib, 'bin' ) );
+   $extend->( 'PERL5_MB_OPT', 'INSTALLMAN1DIR=none INSTALLMAN3DIR=none', q( ) );
 }
 
-lib->import( $libdir );
+$extend->( 'PATH', $bindir ); $extend->( 'PERL5LIB', $libdir );
 
-$ENV{PATH} = $bindir.$path_sep.$ENV{PATH};
+lib->import( $libdir );
 
 not $was_called and @ARGV and exec @ARGV;
 
@@ -65,83 +73,67 @@ __END__
 
 =pod
 
-=head1 NAME
+=encoding utf-8
 
-mcp-localenv - I<One line abstract describing the programs purpose>
+=head1 Name
 
-=head1 SYNOPSIS
+mcp-localenv - Set environment to use a local library of Perl modules
 
-=over 3
+=head1 Synopsis
 
-=item B<mcp-localenv> B<> I<>
+   use English qw( -no_match_vars );
+   use FindBin qw( $Bin );
+   use File::Spec;
 
-I<Command line description>
+   BEGIN {
+      my $bind = $Bin; $bind =~ m{ \A ([^\$%&\*;<>\`|]+) \z }mx and $bind = $1;
+      my $path = File::Spec->catfile( $bind, 'mcp-localenv' );
 
-=item B<mcp-localenv> B<-H> | B<-h> I<[method]> | B<-?>
+      -f $path and (do $path or die $EVAL_ERROR || "Path ${path} not done\n");
+   }
 
-Display man page / method help  / usage strings
+=head1 Description
 
-=item B<mcp-localenv> B<list_methods>
+Set environment to use a local library of Perl modules
 
-Lists the methods available in this program
-
-=back
-
-=head1 DESCRIPTION
-
-I<Program description>
-
-=head1 REQUIRED ARGUMENTS
-
-=over 3
-
-=item I<>
-
-=back
-
-=head1 OPTIONS
-
-=over 3
-
-=item B<-D>
-
-Turn debugging on
-
-=back
-
-=head1 DIAGNOSTICS
-
-Prints errors to stderr
-
-=head1 EXIT STATUS
-
-Returns zero on success, non zero on failure
-
-=head1 CONFIGURATION
-
-Uses the constructor's C<appclass> attribute to locate a configuration file
-
-=head1 DEPENDENCIES
-
-=over 3
-
-=item L<Class::Usul>
-
-=back
-
-=head1 INCOMPATIBILITIES
+=head1 Required arguments
 
 None
 
-=head1 BUGS AND LIMITATIONS
+=head1 Options
+
+None
+
+=head1 Diagnostics
+
+Prints errors to stderr
+
+=head1 Exit status
+
+None
+
+=head1 Configuration
+
+Edit the C<$LOCAL_LIB> variable definition if a directory other than
+F<local> is required
+
+=head1 Dependencies
+
+None
+
+=head1 Incompatibilities
+
+None
+
+=head1 Bugs and limitations
 
 Send reports to address below
 
-=head1 AUTHOR
+=head1 Author
 
-Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
+Peter Flanigan, C<< <pjfl@cpan.org> >>
 
-=head1 LICENSE AND COPYRIGHT
+=head1 License and copyright
 
 Copyright (c) 2015 Peter Flanigan
 

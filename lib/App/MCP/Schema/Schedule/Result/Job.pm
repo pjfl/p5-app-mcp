@@ -7,14 +7,13 @@ use parent  'App::MCP::Schema::Base';
 use Algorithm::Cron;
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE JOB_TYPE_ENUM
                                NUL SEPARATOR SPC TRUE VARCHAR_MAX_SIZE );
-use App::MCP::Functions    qw( enumerated_data_type foreign_key_data_type
+use App::MCP::ExpressionParser;
+use App::MCP::Util         qw( enumerated_data_type foreign_key_data_type
                                nullable_foreign_key_data_type
                                nullable_varchar_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
                                varchar_data_type );
-use App::MCP::ExpressionParser;
-use App::MCP::Functions    qw( qualify_job_name );
 use Class::Usul::Functions qw( is_arrayref is_hashref is_member throw );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
@@ -26,10 +25,6 @@ $class->load_components( '+App::MCP::MaterialisedPath' );
 $class->add_columns
    ( id           => serial_data_type,
      created      => set_on_create_datetime_data_type,
-     fqjn         => { accessor      => '_fqjn',
-                       data_type     => 'varchar',
-                       is_nullable   => FALSE,
-                       size          => VARCHAR_MAX_SIZE, },
      type         => enumerated_data_type( JOB_TYPE_ENUM, 'box' ),
      owner_id     => foreign_key_data_type( 1, 'owner' ),
      group_id     => foreign_key_data_type( 1, 'group' ),
@@ -45,7 +40,7 @@ $class->add_columns
      parent_path  => nullable_varchar_data_type,
      host         => varchar_data_type( 64, 'localhost' ),
      user         => varchar_data_type( 32, 'mcp' ),
-     name         => varchar_data_type( 126 ),
+     fqjn         => varchar_data_type,
      command      => varchar_data_type,
      crontab      => varchar_data_type( 127 ),
      condition    => varchar_data_type,
@@ -104,6 +99,7 @@ my $_eval_condition = sub {
    state $parser //= App::MCP::ExpressionParser->new
       ( external => $job_rs, predicates => $job_rs->predicates );
 
+   # TODO: Is this still going to work?
    return $parser->parse( $self->condition, $self->namespace );
 };
 
@@ -127,34 +123,39 @@ my $_is_permitted = sub {
    return FALSE;
 };
 
-my $_set_parent_id = sub {
-   my ($self, $parent_name, $columns) = @_;
+my $_get_box = sub {
+   my ($self, $fqjn) = @_; $fqjn //= NUL;
 
    my $job_rs = $self->result_source->resultset;
-   my $parent = $job_rs->search( { fqjn => $parent_name } )->single
-      or throw 'Job [_1] unknown', [ $parent_name ];
+   my $parent = $job_rs->search( { fqjn => $fqjn } )->single
+      or throw 'Box [_1] unknown', [ $fqjn ];
 
-   $parent->is_writable_by( $columns->{owner} // 1 )
-      or throw 'Job [_1] write permission denied to [_1]',
-               [ $parent_name, $columns->{owner} ];
-   $columns->{parent_id} = $parent->id;
-   $self->set_inflated_columns( $columns );
-   return;
+   $parent->type eq 'box'
+      or throw 'Job [_1] is not a box', [ $fqjn ];
+
+   return $parent;
 };
 
 # Construction
 sub new {
-   my ($class, $attr) = @_; my $parent_name = delete $attr->{parent_name};
+   my ($class, $attr) = @_; my $name = delete $attr->{name};  my $prefix = NUL;
 
-   exists $attr->{name} and $attr->{name} ne 'Main'
-      and not $parent_name and $parent_name = 'Main::Main';
+   my $parent_name = delete $attr->{parent_name}; my $sep = SEPARATOR;
 
-   my $new = $class->next::method( $attr );
+   $parent_name and $prefix = (not $attr->{type} or $attr->{type} eq 'job')
+                            ? $parent_name.$sep
+                            : ((split m{ $sep }mx, $parent_name)[ 0 ]).$sep;
 
-   $parent_name
-      and $new->$_set_parent_id( $parent_name, { $new->get_inflated_columns } );
+   $name and $attr->{fqjn} //= $prefix.$name; $attr->{fqjn} //= NUL;
 
-   $new->fqjn; # Force the attribute to take on a value
+   my $new    = $class->next::method( $attr ); $name or return $new;
+   my $parent = $_get_box->( $new, $parent_name );
+
+   $parent->is_writable_by( $new->owner // 1 )
+      or throw 'Parent box [_1] write permission denied to user [_1]',
+               [ $parent_name, $new->owner // 1 ];
+
+   $new->parent_id( $parent->id );
 
    return $new;
 }
@@ -194,14 +195,9 @@ sub eval_condition {
    return $_[ 0 ]->$_eval_condition->[ 0 ];
 }
 
-sub fqjn { # Fully qualified job name
-   my $self = shift; $self->_fqjn and return $self->_fqjn;
-
-   return $self->_fqjn( qualify_job_name( $self->name, $self->namespace ) );
-}
-
 sub insert {
-   my $self = shift; $self->validate; my $job = $self->next::method;
+   my $self = shift; App::MCP->env_var( 'BULK_INSERT' ) or $self->validate;
+   my $job  = $self->next::method;
 
    $self->condition and $self->$_insert_condition( $job );
    $self->$_create_job_state( $job );
@@ -237,27 +233,16 @@ sub materialised_path_columns {
    };
 }
 
-sub namespace {
-   my $self = shift;
-   my $sep  = SEPARATOR;
-   my $path = $self->parent_path;
-   my $id   = (split m{ $sep }msx, $path || NUL)[ 0 ];
-
-   state $cache //= {}; $id and $cache->{ $id } and return $cache->{ $id };
-
-   my $root = $id   ? $self->result_source->resultset->find( $id ) : FALSE;
-   my $ns   = $root ? $root->id != $id ? $root->name : 'Main' : 'Main';
-
-   return $root ? $cache->{ $id } = $ns : $ns;
+sub name {
+   my $sep = SEPARATOR; return (reverse split m{ $sep }mx, $_[ 0 ]->fqjn)[ 0 ];
 }
 
-sub parent_name {
-   my $self      = shift;
-   my $parent_id = $self->parent_id or return NUL;
-   my $parent    = $self->result_source->resultset->find( $parent_id )
-      or throw error => 'Parent job [_1] unknown', [ $parent_id ];
+sub namespace {
+   my $sep   = SEPARATOR;
+   my @parts = reverse split m{ $sep }mx, $_[ 0 ]->fqjn; shift @parts;
+   my $ns    = join $sep, @parts; $ns //= NUL;
 
-   return $parent->fqjn eq 'Main::Main' ? NUL: $parent->fqjn;
+   return $ns;
 }
 
 sub permissions {
@@ -298,7 +283,8 @@ sub summary {
 sub update {
    my ($self, $columns) = @_; my $condition = $self->condition;
 
-   $columns and $self->set_inflated_columns( $columns ); $self->validate;
+   $columns and $self->set_inflated_columns( $columns );
+   App::MCP->env_var( 'BULK_INSERT' ) or $self->validate;
 
    my $job = $self->next::method;
 
@@ -311,19 +297,19 @@ sub update {
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       constraints      => {
-         name          => {
-            max_length => 126,
+         fqjn          => {
+            max_length => VARCHAR_MAX_SIZE,
             min_length => 1,
-            pattern    => '\A [a-zA-Z_][a-zA-Z0-9_\:]+ \z', } },
+            pattern    => '\A [A-Za-z_][/0-9A-Za-z_]+ \z', } },
       fields           => {
          host          => { validate => 'isValidHostname' },
-         name          => {
+         fqjn          => {
             filters    => 'filterReplaceRegex',
             validate   => 'isMandatory isMatchingRegex isValidLength' },
          permissions   => { validate => 'isValidInteger' },
          user          => { validate => 'isValidIdentifier' }, },
       filters          => {
-         name          => { pattern => '[\%\*]', replace => NUL }, },
+         fqjn          => { pattern => '[\%\*]', replace => NUL }, },
    };
 }
 

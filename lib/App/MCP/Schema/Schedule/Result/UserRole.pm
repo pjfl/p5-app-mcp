@@ -3,7 +3,7 @@ package App::MCP::Schema::Schedule::Result::UserRole;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Functions qw( foreign_key_data_type );
+use App::MCP::Util qw( foreign_key_data_type );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -15,7 +15,6 @@ $class->add_columns( user_id => foreign_key_data_type,
 $class->set_primary_key( qw( user_id role_id ) );
 
 $class->belongs_to( user => "${result}::User", 'user_id' );
-
 $class->belongs_to( role => "${result}::Role", 'role_id' );
 
 1;

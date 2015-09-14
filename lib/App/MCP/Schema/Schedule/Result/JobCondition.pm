@@ -3,7 +3,7 @@ package App::MCP::Schema::Schedule::Result::JobCondition;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Functions qw( foreign_key_data_type );
+use App::MCP::Util qw( foreign_key_data_type );
 
 my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
 

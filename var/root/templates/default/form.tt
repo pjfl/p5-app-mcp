@@ -1,5 +1,5 @@
-<!-- [% page.form_name %] -->
-<div class="body">
+[% WRAPPER 'default/wrapper.tt' -%]
+   <!-- Layout [% page.form_name %] -->
    <div class="region region0">
       <h3 class="page-header">[% config.title %] - [% page.title %]</h3>
    </div>
@@ -24,5 +24,7 @@
 [% END -%]
       </div>
    </form>
-[% INCLUDE footer.tt %]
-</div>
+[%    INCLUDE 'default/footer.tt' -%]
+[% END -%]
+
+

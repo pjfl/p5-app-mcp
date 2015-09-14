@@ -5,7 +5,7 @@ use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
 use parent   'App::MCP::Schema::Base';
 
 use App::MCP::Constants        qw( EXCEPTION_CLASS TRUE FALSE NUL );
-use App::MCP::Functions        qw( foreign_key_data_type get_salt
+use App::MCP::Util             qw( foreign_key_data_type get_salt
                                    serial_data_type varchar_data_type );
 use Class::Usul::Functions     qw( base64_encode_ns create_token throw );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
@@ -58,9 +58,7 @@ $class->set_primary_key( 'id' );
 $class->add_unique_constraint( [ 'username' ] );
 
 $class->belongs_to  ( primary_role => "${result}::Role",     'role_id' );
-
 $class->has_many    ( user_role    => "${result}::UserRole", 'user_id' );
-
 $class->many_to_many( roles        => 'user_role',              'role' );
 
 # Private functions

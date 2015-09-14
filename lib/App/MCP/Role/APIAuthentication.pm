@@ -3,12 +3,12 @@ package App::MCP::Role::APIAuthentication;
 use namespace::autoclean;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS TRUE );
-use App::MCP::Functions    qw( get_hashed_pw get_salt );
+use App::MCP::Util         qw( get_hashed_pw get_salt );
 use Class::Usul::Crypt     qw( decrypt );
 use Class::Usul::Functions qw( base64_decode_ns base64_encode_ns
                                bson64id bson64id_time throw );
 use Crypt::SRP;
-use Digest::MD5 qw( md5_hex );
+use Digest::MD5            qw( md5_hex );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
                                HTTP_OK HTTP_UNAUTHORIZED );
 use Try::Tiny;
@@ -19,12 +19,45 @@ requires qw( config log schema transcoder );
 
 my $Sessions = {}; my $Users = [];
 
+# Private methods
+my $_find_or_create_session = sub {
+   my ($self, $user) = @_; my $sess;
+
+   try   { $sess = $self->get_session( $Users->[ $user->id ] ) }
+   catch { # Create a new session
+      $self->log->debug( $_ );
+
+      my $id = $Users->[ $user->id ] = bson64id;
+
+      $sess = $Sessions->{ $id } = {
+         id        => $id,
+         key       => $user->username,
+         last_used => bson64id_time( $id ),
+         max_age   => $self->config->max_api_session_time,
+         role_id   => $user->role_id,
+         user_id   => $user->id, };
+   };
+
+   return $sess;
+};
+
+my $_find_user_from = sub {
+   my ($self, $req) = @_;
+
+   my $username = $req->uri_params->( 0, { optional => TRUE } ) || 'undef';
+   my $user     = $self->schema->resultset( 'User' )->find_by_name( $username );
+
+   $user->active or throw 'User [_1] account inactive', [ $username ],
+                       rv => HTTP_UNAUTHORIZED;
+   return $user;
+};
+
 # Public methods
 sub authenticate {
    my ($self, $req) = @_; $req->authenticate;
 
-   my $user     = $self->_find_user_from( $req );
-   my $sess     = $self->_find_or_create_session( $user );
+   my $user     = $self->$_find_user_from( $req );
+   my $sess     = $self->$_find_or_create_session( $user );
    my $username = $user->username;
    my $token    = $req->body_params->( 'M1_token' )
       or throw 'User [_1] no M1 token', [ $username ],
@@ -66,8 +99,8 @@ sub authenticate_params {
 sub exchange_pub_keys {
    my ($self, $req) = @_; $req->authenticate;
 
-   my $user           = $self->_find_user_from( $req );
-   my $sess           = $self->_find_or_create_session( $user );
+   my $user           = $self->$_find_user_from( $req );
+   my $sess           = $self->$_find_or_create_session( $user );
    my $srp            = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
    my $client_pub_key = base64_decode_ns $req->query_params->( 'public_key' );
    my $username       = $user->username;
@@ -108,40 +141,6 @@ sub get_session {
       and throw 'Session [_1] expired', [ $id ], rv => HTTP_UNAUTHORIZED;
    $sess->{last_used} = $now;
    return $sess;
-}
-
-# Private methods
-sub _find_or_create_session {
-   my ($self, $user) = @_; my $sess;
-
-   try   { $sess = $self->get_session( $Users->[ $user->id ] ) }
-   catch { # Create a new session
-      $self->log->debug( $_ );
-
-      my $id = $Users->[ $user->id ] = bson64id;
-
-      $sess = $Sessions->{ $id } = {
-         id        => $id,
-         key       => $user->username,
-         last_used => bson64id_time( $id ),
-         max_age   => $self->config->max_api_session_time,
-         role_id   => $user->role_id,
-         user_id   => $user->id, };
-   };
-
-   return $sess;
-}
-
-sub _find_user_from {
-   my ($self, $req) = @_;
-
-   my $username = $req->args->[ 0 ] // 'undef';
-   my $user_rs  = $self->schema->resultset( 'User' );
-   my $user     = $user_rs->find_by_name( $username );
-
-   $user->active or throw 'User [_1] account inactive', [ $username ],
-                       rv => HTTP_UNAUTHORIZED;
-   return $user;
 }
 
 1;

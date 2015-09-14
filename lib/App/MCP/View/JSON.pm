@@ -2,14 +2,14 @@ package App::MCP::View::JSON;
 
 use namespace::autoclean;
 
-use Moo;
 use Class::Usul::Constants qw( FALSE );
 use Class::Usul::Types     qw( Object );
 use Encode                 qw( encode );
 use JSON::MaybeXS          qw( );
+use Moo;
 
-with q(App::MCP::Role::Component);
-with q(App::MCP::Role::FormHandler);
+with 'Web::Components::Role';
+with 'App::MCP::Role::FormHandler';
 
 # Public attributes
 has '+moniker' => default => 'json';
@@ -20,7 +20,7 @@ has '_transcoder' => is => 'lazy', isa => Object,
 
 # Private functions
 my $_header = sub {
-   return [ 'Content-Type' => 'application/json', @{ $_[ 0 ] || [] } ];
+   return [ 'Content-Type' => 'application/json', @{ $_[ 0 ] // [] } ];
 };
 
 # Public methods

@@ -4,7 +4,7 @@ use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( STATE_ENUM );
-use App::MCP::Functions qw( enumerated_data_type foreign_key_data_type );
+use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 
@@ -21,43 +21,8 @@ $class->belongs_to( job              => "${result}::Job",            'job_id' );
 $class->has_many  ( events           => "${result}::Event",          'job_id' );
 $class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
-# Public methods
-sub fqjn {
-   return $_[ 0 ]->job->fqjn;
-}
-
-sub last_finish {
-   my $self = shift; my $event = $self->_last_finish_event;
-
-   return $event ? $event->processed : 'never';
-}
-
-sub last_pid {
-   my $self = shift; my $event = $self->_last_finish_event;
-
-   return $event ? $event->pid : 'none';
-}
-
-sub last_runid {
-   my $self = shift; my $event = $self->_last_finish_event;
-
-   return $event ? $event->runid : 'none';
-}
-
-sub last_rv {
-   my $self = shift; my $event = $self->_last_finish_event;
-
-   return $event ? $event->rv : 'none';
-}
-
-sub last_start {
-   my $self = shift; my $event = $self->_last_start_event;
-
-   return $event ? $event->created : 'never';
-}
-
 # Private methods
-sub _last_finish_event {
+my $_last_finish_event = sub {
    my $self = shift;
 
    exists $self->{_last_finish_event} and return $self->{_last_finish_event};
@@ -65,9 +30,9 @@ sub _last_finish_event {
    return $self->{_last_finish_event} = $self->processed_events->search
       ( { transition => 'finish' },
         { order_by   => { -desc => 'runid' } } )->first;
-}
+};
 
-sub _last_start_event {
+my $_last_start_event = sub {
    my $self = shift;
 
    exists $self->{_last_start_event} and return $self->{_last_start_event};
@@ -75,6 +40,41 @@ sub _last_start_event {
    return $self->{_last_start_event} = $self->processed_events->search
       ( { transition => 'start' },
         { order_by   => { -desc => 'runid' } } )->first;
+};
+
+# Public methods
+sub fqjn {
+   return $_[ 0 ]->job->fqjn;
+}
+
+sub last_finish {
+   my $self = shift; my $event = $_last_finish_event->( $self );
+
+   return $event ? $event->processed : 'never';
+}
+
+sub last_pid {
+   my $self = shift; my $event = $_last_finish_event->( $self );
+
+   return $event ? $event->pid : 'none';
+}
+
+sub last_runid {
+   my $self = shift; my $event = $_last_finish_event->( $self );
+
+   return $event ? $event->runid : 'none';
+}
+
+sub last_rv {
+   my $self = shift; my $event = $_last_finish_event->( $self );
+
+   return $event ? $event->rv : 'none';
+}
+
+sub last_start {
+   my $self = shift; my $event = $_last_start_event->( $self );
+
+   return $event ? $event->created : 'never';
 }
 
 1;

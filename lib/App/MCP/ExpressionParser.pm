@@ -3,6 +3,7 @@ package App::MCP::ExpressionParser;
 use strictures;
 use feature 'state';
 
+use App::MCP::Constants    qw( SEPARATOR );
 use Class::Usul::Functions qw( arg_list throw );
 use Marpa::R2;
 use Scalar::Util           qw( blessed );
@@ -118,8 +119,9 @@ sub _read_skip_ws {
    $token->[ 0 ] eq 'SP' and return $token->[ 2 ];
 
    if ($token->[ 0 ] eq 'IDENTIFIER') {
+      my $sep  = SEPARATOR;
       my $name = $token->[ 1 ];
-      my $fqjn = $ns && $name !~ m{ :: }msx ? "${ns}::${name}" : $name;
+      my $fqjn = $ns && $name !~ m{ $sep }msx ? "${ns}${sep}${name}" : $name;
 
       $identifiers->{ $token->[ 1 ] = $fqjn } = 1;
    }

@@ -2,7 +2,15 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 20 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 21 $ =~ /\d+/gmx );
+
+use Class::Usul::Functions qw( env_prefix );
+
+sub env_var {
+   my ($class, $var, $v) = @_; my $k = (env_prefix __PACKAGE__)."_${var}";
+
+   return defined $v ? $ENV{ $k } = $v : $ENV{ $k };
+}
 
 1;
 
@@ -18,7 +26,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.5.$Rev: 20 $ of L<App::MCP>
+Describes version v0.5.$Rev: 21 $ of L<App::MCP>
 
 =head1 Synopsis
 

@@ -142,3 +142,7 @@ msgstr "Saves or creates the job displayed on the form"
 msgctxt "_fields.tip"
 msgid "job.state_button"
 msgstr "State and event infomation"
+
+msgctxt "_fields.title"
+msgid "job.chooser"
+msgstr "Select Job"

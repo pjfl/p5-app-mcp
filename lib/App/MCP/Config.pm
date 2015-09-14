@@ -4,22 +4,19 @@ use namespace::autoclean;
 
 use App::MCP::Constants    qw( NUL TRUE );
 use Class::Usul::Functions qw( fqdn );
-use File::DataClass::Types qw( ArrayRef Directory File HashRef
+use File::DataClass::Types qw( ArrayRef CodeRef Directory File HashRef
                                NonEmptySimpleStr NonZeroPositiveInt
-                               PositiveInt SimpleStr Str );
+                               Object PositiveInt SimpleStr Str );
 use Sys::Hostname          qw( hostname );
 use Moo;
 
-extends q(Class::Usul::Config::Programs);
+extends 'Class::Usul::Config::Programs';
 
 has 'author'               => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'Dave';
 
 has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 3;
-
-has 'common_links'         => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
-   builder                 => sub { [ qw( css images js less ) ] };
 
 has 'connect_params'       => is => 'ro',   isa => HashRef,
    builder                 => sub { { quote_names => TRUE } };
@@ -51,6 +48,9 @@ has 'js'                   => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'js/';
 
 has 'keywords'             => is => 'ro',   isa => SimpleStr, default => NUL;
+
+has 'layout'               => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'form';
 
 has 'less'                 => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'less/';
@@ -95,14 +95,9 @@ has 'nav_list'             => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
 has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
    default                 => 2012;
 
-has 'preferences'          => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
-   builder                 => sub { [ qw( theme ) ] };
-
-has 'request_class'        => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'App::MCP::Request';
-
-has 'secret'               => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => hostname;
+has 'request_roles'        => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
+   builder                 => sub {
+      [ 'L10N', 'Session', 'JSON', 'Cookie', 'Authen::HTTP' ] };
 
 has 'schema_classes'       => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
    builder                 => sub { {
@@ -111,30 +106,84 @@ has 'schema_classes'       => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
 has 'scrubber'             => is => 'ro',   isa => Str,
    default                 => '[^ +\,\-\./0-9@A-Z\\_a-z~]';
 
-has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation           => 'Plack server class used for the event listener',
-   default                 => 'Twiggy';
+has 'secret'               => is => 'lazy', isa => Object, builder => sub {
+   App::MCP::_Secret->new( config => $_[ 0 ], value => $_[ 0 ]->_secret, ) },
+   init_arg                => undef;
 
 has 'serve_as_static'      => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'css | favicon.ico | img | js | less';
 
+has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
+   documentation           => 'Plack server class used for the event listener',
+   default                 => 'Twiggy';
+
 has 'servers'              => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
    builder                 => sub { [ fqdn ] };
+
+has 'session_attr'         => is => 'lazy', isa => HashRef[ArrayRef],
+   builder                 => sub { {
+      skin                 => [ NonEmptySimpleStr, $_[ 0 ]->skin ],
+      theme                => [ NonEmptySimpleStr, 'green'       ],
+      user_roles           => [ ArrayRef,          sub { [] }    ],
+      wanted               => [ SimpleStr,         NUL           ], } };
+
+has 'skin'                 => is => 'ro',   isa => NonEmptySimpleStr,
+   default                 => 'default';
 
 has 'ssh_dir'              => is => 'lazy', isa => Directory, coerce => TRUE,
    builder                 => sub { $_[ 0 ]->my_home->catdir( '.ssh' ) };
 
+has 'stash_attr'           => is => 'lazy', isa => HashRef[ArrayRef],
+   builder                 => sub { {
+      config               => [ qw( author description keywords ) ],
+      links                => [ qw( css images js less ) ],
+      request              => [ qw( authenticated host language username ) ],
+      session              => [ sort keys %{ $_[ 0 ]->session_attr } ], } };
+
 has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'TERM,10,KILL,1';
-
-has 'template'             => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'form';
 
 has 'title'                => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'MCP';
 
-has 'theme'                => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'green';
+# Private attributes
+has '_secret' => is => 'ro', isa => CodeRef|NonEmptySimpleStr,
+   builder    => sub { sub { hostname } }, init_arg => 'secret';
+
+package # Hide from indexer
+   App::MCP::_Secret;
+
+use Class::Usul::Constants   qw( EXCEPTION_CLASS TRUE );
+use Class::Usul::Crypt::Util qw( decrypt_from_config is_encrypted );
+use Class::Usul::Functions   qw( is_coderef );
+use Class::Usul::Types       qw( CodeRef HashRef NonEmptySimpleStr Object );
+use File::DataClass::IO      qw( io );
+use Unexpected::Functions    qw( throw );
+use Moo;
+
+use namespace::clean -except => [ 'meta' ];
+use overload '""' => sub { $_[ 0 ]->evaluate }, fallback => TRUE;
+
+has 'config' => is => 'ro', isa => HashRef|Object, required => TRUE,
+   weak_ref  => TRUE;
+
+has 'value'  => is => 'ro', isa => CodeRef|NonEmptySimpleStr, required => TRUE;
+
+sub evaluate {
+   my $self = shift; my $conf = $self->config; my $v = $self->value;
+
+   is_coderef $v and ($v = $v->() or throw 'Secret coderef is not true');
+
+   my $file = io $v;
+   my $raw  = (exists $ENV{ $v } and defined $ENV{ $v }  ) ? $ENV{ $v }
+            : ($file->exists     and $file->is_executable) ? qx( $v )
+            : $file->exists                                ? $file->all
+                                                           : $v;
+
+   (defined $raw and length $raw) or throw 'Secret not defined or no length';
+
+   return (is_encrypted $raw) ? decrypt_from_config( $conf, $raw ) : $raw;
+}
 
 1;
 

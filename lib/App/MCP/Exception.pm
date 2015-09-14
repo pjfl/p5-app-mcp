@@ -2,10 +2,10 @@ package App::MCP::Exception;
 
 use namespace::autoclean;
 
-use Moo;
 use Unexpected::Functions qw( has_exception );
+use Moo;
 
-extends q(Class::Usul::Exception);
+extends 'Class::Usul::Exception';
 
 my $class = __PACKAGE__;
 
@@ -13,28 +13,13 @@ has_exception $class              => parents => [ 'Class::Usul::Exception' ];
 
 has_exception 'Authentication'    => parents => [ $class ];
 
-has_exception 'MissingDependency' => parents => [ $class ];
-
 has_exception 'Workflow'          => parents => [ $class ];
 
 has_exception 'AccountInactive'   => parents => [ 'Authentication' ],
    error   => 'User [_1] authentication failed';
 
-has_exception 'ChecksumFailure'   => parents => [ 'Authentication' ],
-   error   => 'Signature [_1] checksum failure';
-
 has_exception 'IncorrectPassword' => parents => [ 'Authentication' ],
    error   => 'User [_1] authentication failed';
-
-has_exception 'MissingHeader'     => parents => [ 'Authentication' ],
-   error   => 'Signature [_1] missing header field';
-
-has_exception 'MissingKey'        => parents => [ 'Authentication' ];
-
-has_exception 'SigParserFailure'  => parents => [ 'Authentication' ];
-
-has_exception 'SigVerifyFailure'  => parents => [ 'Authentication' ],
-   error   => 'Signature [_1] verification failed';
 
 has_exception 'Condition'         => parents => [ 'Workflow' ],
    error   => 'Condition not true';

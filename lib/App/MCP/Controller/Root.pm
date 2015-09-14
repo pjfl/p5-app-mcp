@@ -2,7 +2,7 @@ package App::MCP::Controller::Root;
 
 use Web::Simple;
 
-with q(App::MCP::Role::Component);
+with 'Web::Components::Role';
 
 has '+moniker' => default => 'root';
 

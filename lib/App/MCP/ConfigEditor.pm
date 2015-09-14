@@ -6,7 +6,7 @@ use Class::Usul::Constants qw( FALSE TRUE );
 use Class::Usul::Functions qw( is_arrayref is_coderef is_hashref
                                list_attr_of throw );
 use Class::Usul::Response::Table;
-use Class::Usul::Types     qw( ArrayRef BaseType NonEmptySimpleStr );
+use Class::Usul::Types     qw( ArrayRef NonEmptySimpleStr Plinth );
 use Pod::Xhtml;
 use Moo;
 
@@ -15,7 +15,7 @@ has 'excludes' => is => 'ro', isa => ArrayRef[NonEmptySimpleStr],
                               canonicalise does inflate_path inflate_paths
                               inflate_symbol meta new ) ] };
 
-has 'usul'     => is => 'ro', isa => BaseType, handles => [ 'config', 'log' ],
+has 'app'      => is => 'ro', isa => Plinth, handles => [ 'config', 'log' ],
    init_arg    => 'builder', required => TRUE;
 
 # Private functions

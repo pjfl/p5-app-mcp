@@ -14,12 +14,12 @@ use Moo;
 
 # Attribute constructors
 my $_build_l10n = sub {
-   my $self = shift; state $cache //= {}; my $req = $self->req; weaken( $req );
+   my $self = shift; state $cache //= {}; my $req = $self->req; weaken $req;
 
    return sub {
       my ($opts, $text, @args) = @_; # Ignore $opts->{ ns, language }
 
-      my $key = $req->model_name.'.'.$req->locale.".${text}";
+      my $key = $req->domain.'.'.$req->locale.".${text}";
 
       (exists $cache->{ $key } and defined $cache->{ $key })
          or $cache->{ $key } = $req->loc( $text, @args );
@@ -29,7 +29,7 @@ my $_build_l10n = sub {
 };
 
 my $_build_uri_for = sub {
-   my $self = shift; my $req = $self->req; weaken( $req );
+   my $self = shift; my $req = $self->req; weaken $req;
 
    return sub { $req->uri_for( @_ ) };
 };
@@ -58,7 +58,7 @@ has 'model'        => is => 'ro',   isa => Object, required => TRUE;
 has 'name'         => is => 'ro',   isa => NonEmptySimpleStr, required => TRUE;
 
 has 'ns'           => is => 'lazy', isa => NonEmptySimpleStr,
-   builder         => sub { $_[ 0 ]->req->model_name };
+   builder         => sub { $_[ 0 ]->req->domain };
 
 has 'pwidth'       => is => 'ro',   isa => Int, default => 40;
 
@@ -67,16 +67,19 @@ has 'req'          => is => 'ro',   isa => Object, required => TRUE,
 
 has 'result_class' => is => 'ro',   isa => SimpleStr;
 
+has 'skin'         => is => 'lazy', isa => NonEmptySimpleStr,
+   builder         => sub { $_[ 0 ]->model->config->skin };
+
 has 'template'     => is => 'ro',   isa => NonEmptySimpleStr, default => 'form';
 
 has 'template_dir' => is => 'lazy', isa => Directory, coerce => TRUE,
    builder         => sub {
-      $_[ 0 ]->model->config->root->catdir( 'templates' ) };
+      $_[ 0 ]->model->config->root->catdir( 'templates', $_[ 0 ]->skin ) };
 
 has 'uri_for'      => is => 'lazy', isa => CodeRef, builder => $_build_uri_for;
 
-has 'width'        => is => 'lazy', isa => Int,
-   builder         => sub { $_[ 0 ]->req->ui_state->{width} // 1024 };
+has 'width'        => is => 'lazy', isa => Int, builder => sub {
+   $_[ 0 ]->req->get_cookie_hash( 'mcp_state' )->{width} // 1024 };
 
 # Private functions
 my $_extract_value = sub {
@@ -105,31 +108,6 @@ my $_field_list = sub {
    return grep { not m{ \A (?: _ | related_resultsets ) }mx } @{ $names };
 };
 
-my $_load_config = sub {
-   my $req      = shift;
-   my $domain   = $req->model_name;
-   my $language = $req->language;
-   my $key      = "${domain}.${language}";
-
-   state $cache //= {}; exists $cache->{ $key } and return $cache->{ $key };
-
-   my $builder  = $req->usul;
-   my $config   = $builder->config;
-   my $def_path = $config->ctrldir->catfile( 'form.json' );
-   my $ns_path  = $config->ctrldir->catfile( "${domain}.json" );
-
-   $ns_path->exists or ($builder->log->warn( "File ${ns_path} not found" )
-      and return {});
-
-   my $class    = File::Gettext::Schema->new( {
-      builder     => $builder,
-      cache_class => 'none',
-      lang        => $language,
-      localedir   => $config->localedir } );
-
-   return $cache->{ $key } = $class->load( $def_path, $ns_path );
-};
-
 # Private methods
 my $_assign_value = sub {
    my ($self, $field, $row) = @_;
@@ -150,18 +128,14 @@ my $_assign_value = sub {
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($orig, $self, $model, $req, $form_name, $row) = @_; my $attr = {};
+   my ($orig, $self, $model, $args) = @_; my $attr = { %{ $args } };
 
-   $attr->{model } = $model,
-   $attr->{name  } = $form_name;
-   $attr->{req   } = $req;
-   $attr->{row   } = $row;
-   $attr->{config} = $_load_config->( $req );
+   $attr->{config} = $self->load_config( $model, $args->{req} );
 
-   exists $attr->{config}->{ $form_name }
-      or throw 'Form name [_1] unknown', [ $form_name ];
+   exists $attr->{config}->{ $args->{name} }
+      or throw 'Form name [_1] unknown', [ $args->{name} ];
 
-   my $meta = $attr->{config}->{ $form_name }->{meta} // {};
+   my $meta = $attr->{config}->{ $args->{name} }->{meta} // {};
 
    $attr->{ $_ } //= $meta->{ $_ } for (keys %{ $meta });
 
@@ -196,6 +170,29 @@ sub BUILD {
    }
 
    return;
+}
+
+sub load_config {
+   my ($self, $model, $req, $domain) = @_; $domain //= $req->domain;
+
+   my $language = $req->language; my $key = "${domain}.${language}";
+
+   state $cache //= {}; exists $cache->{ $key } and return $cache->{ $key };
+
+   my $config   = $model->config;
+   my $def_path = $config->ctrldir->catfile( 'form.json' );
+   my $ns_path  = $config->ctrldir->catfile( "${domain}.json" );
+
+   $ns_path->exists or ($model->log->warn( "File ${ns_path} not found" )
+      and return {});
+
+   my $class    = File::Gettext::Schema->new( {
+      builder     => $model,
+      cache_class => 'none',
+      lang        => $language,
+      localedir   => $config->localedir } );
+
+   return $cache->{ $key } = $class->load( $def_path, $ns_path );
 }
 
 1;

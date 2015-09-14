@@ -3,16 +3,16 @@ package App::MCP::Schema;
 use namespace::autoclean;
 
 use App::MCP;
-use App::MCP::Constants    qw( EXCEPTION_CLASS OK );
-use App::MCP::Functions    qw( qualify_job_name trigger_input_handler );
+use App::MCP::Constants    qw( EXCEPTION_CLASS OK TRUE );
+use App::MCP::Util         qw( trigger_input_handler );
 use Class::Usul::Functions qw( throw );
 use Class::Usul::Types     qw( LoadableClass NonEmptySimpleStr Object );
 use Unexpected::Functions  qw( Unspecified );
 use Moo;
 use Class::Usul::Options;
 
-extends q(Class::Usul::Schema);
-with    q(App::MCP::Worker::Role::UserPassword);
+extends 'Class::Usul::Schema';
+with    'App::MCP::Worker::Role::UserPassword';
 
 our $VERSION          = $App::MCP::VERSION;
 my ($schema_version)  = $VERSION =~ m{ (\d+\.\d+) }mx;
@@ -63,11 +63,20 @@ my $_authenticated_user_info = sub {
    return $info;
 };
 
+# Construction
+around 'deploy_file' => sub {
+   my ($orig, $self, @args) = @_;
+
+   $self->config->appclass->env_var( 'BULK_INSERT', TRUE );
+
+   return $orig->( $self, @args );
+};
+
 # Public methods
 sub dump_jobs : method {
    my $self     = shift;
-   my $job_spec = $self->next_argv || '%';
-   my $path     = $self->next_argv || 'jobs.json';
+   my $job_spec = $self->next_argv // '%';
+   my $path     = $self->next_argv // 'jobs.json';
    my $data     = $self->schedule->resultset( 'Job' )->dump( $job_spec );
    my $count    = @{ $data };
 
@@ -79,7 +88,7 @@ sub dump_jobs : method {
 
 sub load_jobs : method {
    my $self     = shift;
-   my $path     = $self->next_argv || 'jobs.json';
+   my $path     = $self->next_argv // 'jobs.json';
    my $data     = $self->file->data_load( paths => [ $path ] );
    my $rs       = $self->schedule->resultset( 'Job' );
    my $count    = $rs->load( $self->$_authenticated_user_info, $data->{jobs} );
@@ -90,9 +99,9 @@ sub load_jobs : method {
 
 sub send_event : method {
    my $self     = shift;
-   my $job_name = $self->next_argv or throw Unspecified, [ 'job name' ];
-   my $trans    = $self->next_argv || 'start';
-   my $fqjn     = qualify_job_name $job_name;
+   my $fqjn     = $self->next_argv
+      or throw Unspecified, [ 'qualified job name' ];
+   my $trans    = $self->next_argv // 'start';
    my $schema   = $self->schedule;
    my $job_rs   = $schema->resultset( 'Job' );
    my $event_rs = $schema->resultset( 'Event' );
