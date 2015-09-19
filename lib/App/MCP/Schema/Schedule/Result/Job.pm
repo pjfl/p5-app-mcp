@@ -1,8 +1,7 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
 use strictures;
-use feature 'state';
-use parent  'App::MCP::Schema::Base';
+use parent 'App::MCP::Schema::Base';
 
 use Algorithm::Cron;
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE JOB_TYPE_ENUM
@@ -40,7 +39,7 @@ $class->add_columns
      parent_path  => nullable_varchar_data_type,
      host         => varchar_data_type( 64, 'localhost' ),
      user         => varchar_data_type( 32, 'mcp' ),
-     fqjn         => varchar_data_type,
+     name         => varchar_data_type,
      command      => varchar_data_type,
      crontab      => varchar_data_type( 127 ),
      condition    => varchar_data_type,
@@ -48,7 +47,7 @@ $class->add_columns
 
 $class->set_primary_key( 'id' );
 
-$class->add_unique_constraint( [ 'fqjn' ] );
+$class->add_unique_constraint( [ 'name' ] );
 
 $class->belongs_to( parent_box       => "${result}::Job",         'parent_id', {
                        join_type     => 'left' } );
@@ -91,16 +90,17 @@ my $_delete_condition = sub {
    return $schema->resultset( 'JobCondition' )->delete_dependents( $self );
 };
 
+my $_parser;
+
 my $_eval_condition = sub {
    my $self = shift; $self->condition or return [ TRUE, [] ];
 
    my $job_rs = $self->result_source->resultset;
 
-   state $parser //= App::MCP::ExpressionParser->new
+   $_parser //= App::MCP::ExpressionParser->new
       ( external => $job_rs, predicates => $job_rs->predicates );
 
-   # TODO: Is this still going to work?
-   return $parser->parse( $self->condition, $self->namespace );
+   return $_parser->parse( $self->condition, $self->namespace );
 };
 
 my $_insert_condition = sub {
@@ -122,43 +122,6 @@ my $_is_permitted = sub {
    $perms & $mask->[ 0 ] and $self->owner == $user->id and return TRUE;
    return FALSE;
 };
-
-my $_get_box = sub {
-   my ($self, $fqjn) = @_; $fqjn //= NUL;
-
-   my $job_rs = $self->result_source->resultset;
-   my $parent = $job_rs->search( { fqjn => $fqjn } )->single
-      or throw 'Box [_1] unknown', [ $fqjn ];
-
-   $parent->type eq 'box'
-      or throw 'Job [_1] is not a box', [ $fqjn ];
-
-   return $parent;
-};
-
-# Construction
-sub new {
-   my ($class, $attr) = @_; my $name = delete $attr->{name};  my $prefix = NUL;
-
-   my $parent_name = delete $attr->{parent_name}; my $sep = SEPARATOR;
-
-   $parent_name and $prefix = (not $attr->{type} or $attr->{type} eq 'job')
-                            ? $parent_name.$sep
-                            : ((split m{ $sep }mx, $parent_name)[ 0 ]).$sep;
-
-   $name and $attr->{fqjn} //= $prefix.$name; $attr->{fqjn} //= NUL;
-
-   my $new    = $class->next::method( $attr ); $name or return $new;
-   my $parent = $_get_box->( $new, $parent_name );
-
-   $parent->is_writable_by( $new->owner // 1 )
-      or throw 'Parent box [_1] write permission denied to user [_1]',
-               [ $parent_name, $new->owner // 1 ];
-
-   $new->parent_id( $parent->id );
-
-   return $new;
-}
 
 # Public method
 sub condition_dependencies {
@@ -233,13 +196,9 @@ sub materialised_path_columns {
    };
 }
 
-sub name {
-   my $sep = SEPARATOR; return (reverse split m{ $sep }mx, $_[ 0 ]->fqjn)[ 0 ];
-}
-
 sub namespace {
    my $sep   = SEPARATOR;
-   my @parts = reverse split m{ $sep }mx, $_[ 0 ]->fqjn; shift @parts;
+   my @parts = split m{ $sep }mx, $_[ 0 ]->name; pop @parts;
    my $ns    = join $sep, @parts; $ns //= NUL;
 
    return $ns;
@@ -263,7 +222,7 @@ sub should_start_now {
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
-  $sqlt_table->add_index( name => 'job_idx_fqjn', fields => [ 'fqjn' ] );
+  $sqlt_table->add_index( name => 'job_idx_name', fields => [ 'name' ] );
 
   return;
 }
@@ -271,7 +230,7 @@ sub sqlt_deploy_hook {
 sub summary {
    my $self = shift; my $text;
 
-   $text  = 'Qualified name: '.$self->fqjn.' ... ';
+   $text  = 'Qualified name: '.$self->name.' ... ';
    $self->type eq 'box' and $text .= 'Type: '.$self->type.' ... '
       and return $text;
    $text .= 'Command: '.(substr $self->command, 0, 50).' ... ';
@@ -297,19 +256,19 @@ sub update {
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       constraints      => {
-         fqjn          => {
+         name          => {
             max_length => VARCHAR_MAX_SIZE,
             min_length => 1,
             pattern    => '\A [A-Za-z_][/0-9A-Za-z_]+ \z', } },
       fields           => {
          host          => { validate => 'isValidHostname' },
-         fqjn          => {
+         name          => {
             filters    => 'filterReplaceRegex',
             validate   => 'isMandatory isMatchingRegex isValidLength' },
          permissions   => { validate => 'isValidInteger' },
          user          => { validate => 'isValidIdentifier' }, },
       filters          => {
-         fqjn          => { pattern => '[\%\*]', replace => NUL }, },
+         name          => { pattern => '[\%\*]', replace => NUL }, },
    };
 }
 
@@ -336,11 +295,11 @@ App::MCP::Schema::Schedule::Result::Job - <One-line description of module's purp
 
 =head2 new
 
-=head2 fqjn
-
 =head2 insert
 
 =head2 materialised_path_columns
+
+=head2 name
 
 =head2 namespace
 

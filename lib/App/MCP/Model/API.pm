@@ -81,14 +81,14 @@ sub snapshot_state {
    my $level  = $req->query_params->( 'level', { optional => TRUE } ) || 1;
    my $job_rs = $schema->resultset( 'Job' );
    my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
-         'columns'  => [ qw( fqjn id parent_id state.name type ) ],
+         'columns'  => [ qw( name id parent_id state.name type ) ],
          'join'     => 'state',
          'order_by' => [ 'parent_id', 'id' ], } );
 
    try {
       for my $job ($jobs->all) {
-         push @{ $frames }, { fqjn      => $job->fqjn,
-                              id        => $job->id,
+         push @{ $frames }, { id        => $job->id,
+                              name      => $job->name,
                               parent_id => $job->parent_id,
                               state     => NUL.$job->state->name,
                               type      => NUL.$job->type, };

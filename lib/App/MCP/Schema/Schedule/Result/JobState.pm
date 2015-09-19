@@ -43,8 +43,8 @@ my $_last_start_event = sub {
 };
 
 # Public methods
-sub fqjn {
-   return $_[ 0 ]->job->fqjn;
+sub job_name {
+   return $_[ 0 ]->job->name;
 }
 
 sub last_finish {

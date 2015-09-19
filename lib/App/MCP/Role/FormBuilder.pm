@@ -105,10 +105,9 @@ around 'get_stash' => sub {
    my ($orig, $self, $req, $page, $form_name, $row) = @_;
 
    my $stash = $orig->( $self, $req, $page ); $form_name or return $stash;
-   my $args  = { model => $self,      req => $req,
-                 name  => $form_name, row => $row,
-                 skin  => $stash->{skin} };
-   my $form  = App::MCP::Form->new( $self, $args );
+   my $form  = App::MCP::Form->new
+      ( { model => $self, req  => $req, name => $form_name,
+          row   => $row,  skin => $stash->{skin} } );
 
    $stash->{form} = $form;
    $stash->{page}->{first_field} = $form->first_field;
@@ -220,9 +219,9 @@ sub check_field : Role(anon) {
 }
 
 sub create_record {
-   my ($self, $args) = @_; my $rs = $args->{rs}; my $rec = {};
+   my ($self, $args, @cols) = @_; my $rs = $args->{rs}; my $rec = {};
 
-   for my $col ($rs->result_source->columns) {
+   for my $col ($rs->result_source->columns, @cols) {
       $_set_column->( $self, $args, $rec, $col );
    }
 
@@ -230,11 +229,11 @@ sub create_record {
 }
 
 sub find_and_update_record {
-   my ($self, $args) = @_; my $rs = $args->{rs};
+   my ($self, $args, @cols) = @_; my $rs = $args->{rs};
 
    my $rec = $rs->find( $args->{id} ) or return;
 
-   for my $col ($rs->result_source->columns) {
+   for my $col ($rs->result_source->columns, @cols) {
       $_set_column->( $self, $args, $rec, $col );
    }
 
@@ -261,7 +260,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 21 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 22 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

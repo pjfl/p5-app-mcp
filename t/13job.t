@@ -10,7 +10,7 @@ my $schema  = $factory->schedule;
 # Job
 my $rs = $schema->resultset( 'Job' ); my $job;
 
-$job = $rs->search( { fqjn => 'test' } )->first;
+$job = $rs->search( { name => 'test' } )->first;
 
 $job and $job->delete; # Left over job and event from previous run
 
@@ -41,9 +41,9 @@ $job = $rs->create( { command => 'sleep 1', name => 'test',
 
 ok $job->id > 0, 'Creates a job';
 
-is $job->fqjn, 'test', 'Sets fully qualified job name';
+is $job->name, 'test', 'Sets fully qualified job name';
 
-my $job1 = $rs->search( { fqjn => 'test1' } )->first;
+my $job1 = $rs->search( { name => 'test1' } )->first;
 
 $job1 and $job1->delete; # Left over job and event from previous run
 
@@ -51,9 +51,9 @@ $job1 = $rs->create( { condition => 'finished( test )',
                        command   => 'sleep 1', name => 'test1',
                        type      => 'job',     user => 'mcp' } );
 
-is $job1->fqjn, 'test1', 'Creates job with condition';
+is $job1->name, 'test1', 'Creates job with condition';
 
-my $job2 = $rs->search( { fqjn => 'test2' } )->first;
+my $job2 = $rs->search( { name => 'test2' } )->first;
 
 $job2 and $job2->delete; # Left over job and event from previous run
 
@@ -63,9 +63,9 @@ $job2 = $rs->create( { crontab => ($min + 1).' '.$hour.' * * *',
                        command => 'sleep 1', name => 'test2',
                        type    => 'job',     user => 'mcp' } );
 
-is $job2->fqjn, 'test2', 'Creates job with crontab';
+is $job2->name, 'test2', 'Creates job with crontab';
 
-my $job3 = $rs->search( { fqjn => 'remote1' } )->first;
+my $job3 = $rs->search( { name => 'remote1' } )->first;
 
 $job3 and $job3->delete;
 

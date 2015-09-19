@@ -27,7 +27,7 @@ sub create_and_or_update {
       my $e = $_; (blessed $e and $e->can( 'class' ))
          or $e = exception class => Unknown, error => $e;
 
-      $res = [ $event->transition->value, $job->fqjn, $e ];
+      $res = [ $event->transition->value, $job->name, $e ];
    };
 
    $res and return $res;
@@ -52,7 +52,7 @@ sub find_by_name {
    my ($self, $job_name) = @_;
 
    my $job_state = $self->search
-      ( { 'job.fqjn' => $job_name }, { join => 'job' } )->single
+      ( { 'job.name' => $job_name }, { join => 'job' } )->single
       or throw error => 'Job [_1] unknown',
                args  => [ $job_name ], rv => HTTP_NOT_FOUND;
 

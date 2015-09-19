@@ -128,9 +128,9 @@ my $_assign_value = sub {
 
 # Construction
 around 'BUILDARGS' => sub {
-   my ($orig, $self, $model, $args) = @_; my $attr = { %{ $args } };
+   my ($orig, $self, $args) = @_; my $attr = { %{ $args } };
 
-   $attr->{config} = $self->load_config( $model, $args->{req} );
+   $attr->{config} = $self->load_config( $args->{model}, $args->{req} );
 
    exists $attr->{config}->{ $args->{name} }
       or throw 'Form name [_1] unknown', [ $args->{name} ];

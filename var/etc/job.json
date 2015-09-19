@@ -2,7 +2,7 @@
    "_fields": {
       "job.chooser": {
          "container": "0",
-         "field": "fqjn",
+         "field": "name",
          "href": "...",
          "subtype": "modal",
          "tiptype": "normal",
@@ -60,7 +60,7 @@
          "default": "0",
          "width": "2"
       },
-      "job.fqjn": {
+      "job.name": {
          "check_field" : "1",
          "default": "*",
          "required" : "1"
@@ -119,27 +119,27 @@
          "default": "mcp",
          "required" : "1"
       },
-      "job_chooser.job_fqjn": {
+      "job_chooser.job_name": {
          "class": "hidden live_grid",
          "container": "0",
          "href": "#top",
          "subtype": "display",
          "type": "chooser"
       },
-      "job_grid_table.job_fqjn_header": {
+      "job_grid_table.job_name_header": {
          "class": "grid_subheader",
          "container_class": "grid_header",
          "href": "#top",
          "type": "anchor"
       },
-      "job_grid_table.job_fqjn_grid": {
+      "job_grid_table.job_name_grid": {
          "container": "1",
          "container_class": "grid_container",
          "hclass": "",
          "table_class": "grid",
          "type": "table"
       },
-      "job_state_dialog.fqjn": {
+      "job_state_dialog.name": {
          "container": "1",
          "type": "label"
       },
@@ -170,7 +170,7 @@
    },
    "job": {
       "meta": {
-         "first_field": "fqjn",
+         "first_field": "name",
          "max_pwidth": "200",
          "pwidth": "20",
          "result_class": "Job"
@@ -178,7 +178,7 @@
       "regions": [
          "header_fields",
          [ "+nav_panel", "+logout_button", "+logout_form" ],
-         [ "fqjn", "type", "created", "parent_name", "command",
+         [ "name", "type", "created", "parent_name", "command",
            "condition", "crontab_min", "crontab_hour", "crontab_mday",
            "crontab_mon", "crontab_wday", "host", "user", "directory",
            "expected_rv", "permissions", "owner_rel", "group_rel" ],
@@ -188,7 +188,7 @@
    },
    "job_chooser": {
       "regions": [
-         [ "job_fqjn" ]
+         [ "job_name" ]
       ]
    },
    "job_grid_rows": {
@@ -198,7 +198,7 @@
    },
    "job_grid_table": {
       "regions": [
-         [ "job_fqjn_header", "job_fqjn_grid" ]
+         [ "job_name_header", "job_name_grid" ]
       ]
    },
    "job_state_dialog": {
@@ -207,7 +207,7 @@
          "pwidth": "20"
       },
       "regions": [
-         [ "fqjn", "updated", "last_start", "last_finish",
+         [ "name", "updated", "last_start", "last_finish",
            "last_runid", "last_rv", "last_pid" ]
       ]
    }

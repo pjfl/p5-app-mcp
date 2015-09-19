@@ -1,7 +1,6 @@
 package App::MCP::ExpressionParser;
 
 use strictures;
-use feature 'state';
 
 use App::MCP::Constants    qw( SEPARATOR );
 use Class::Usul::Functions qw( arg_list throw );
@@ -23,53 +22,15 @@ my $_tokens = sub {
    };
 };
 
-# Construction
-sub new {
-   my ($self, @args) = @_; my $attr = arg_list @args;
-
-   $attr->{tokens} = $_tokens->( delete $attr->{predicates} );
-
-   return bless $attr, blessed $self || $self;
-}
-
-# Public methods
-sub parse {
-   my ($self, $line, $ns) = @_; my $identifiers = {}; my $last = 0;
-
-   my $line_length = length $line; my $pos = 0; my $recog = $self->_recogniser;
-
-   while ($pos < $line_length) {
-      my $expected_tokens = $recog->terminals_expected;
-
-      if (scalar @{ $expected_tokens }) {
-         for my $token ($self->_lex( \$line, $pos, $expected_tokens )) {
-            $pos += $self->_read_skip_ws( $token, $ns, $identifiers, $recog );
-         }
-      }
-
-      $pos == $last
-         and throw 'Expression [_1] parse error - char [_2]', [ $line, $pos ];
-      $last = $pos;
-   }
-
-   $recog->end_input; my $expr_value_ref = $recog->value;
-
-   $expr_value_ref or throw 'Expression [_1] has no value', [ $line ];
-
-   my $expr_value = ${ $expr_value_ref };
-
-   ref $expr_value eq 'CODE' and $expr_value = $expr_value->();
-
-   return [ $expr_value, [ keys %{ $identifiers } ] ];
-}
-
 # Private methods
-sub _grammar {
-   my $self = shift; state $cache; $cache and return $cache;
+my $_grammar_cache;
+
+my $_grammar = sub {
+   my $self = shift; $_grammar_cache and return $_grammar_cache;
 
    my $grammar = Marpa::R2::Grammar->new( {
       action_object   => 'external',
-      actions         => 'App::MCP::ExpressionParser::Actions',
+      actions         => 'App::MCP::ExpressionParser::_Actions',
       start           => 'expression',
       rules           => [
          [ expression => [ qw(expression OPERATOR expression) ] => 'operate'  ],
@@ -84,10 +45,10 @@ sub _grammar {
 
    $grammar->precompute;
 
-   return $cache = $grammar;
-}
+   return $_grammar_cache = $grammar;
+};
 
-sub _lex {
+my $_lex = sub {
    my ($self, $input, $pos, $expected) = @_; my @matches;
 
    for my $token_name ('SP', @{ $expected }) {
@@ -111,9 +72,9 @@ sub _lex {
    }
 
    return @matches;
-}
+};
 
-sub _read_skip_ws {
+my $_read_skip_ws = sub {
    my ($self, $token, $ns, $identifiers, $recogniser) = @_;
 
    $token->[ 0 ] eq 'SP' and return $token->[ 2 ];
@@ -129,13 +90,13 @@ sub _read_skip_ws {
    $recogniser->read( @{ $token } );
 
    return $token->[ 2 ];
-}
+};
 
-sub _recogniser {
+my $_recogniser = sub {
    my $self = shift;
    my $attr = {
       closures       => { 'external::new' => sub { $self->{external} } },
-      grammar        => $self->_grammar,
+      grammar        => $_grammar->( $self ),
       ranking_method => 'rule',
    };
 
@@ -146,10 +107,50 @@ sub _recogniser {
    }
 
    return Marpa::R2::Recognizer->new( $attr );
+};
+
+# Construction
+sub new {
+   my ($self, @args) = @_; my $attr = arg_list @args;
+
+   $attr->{tokens} = $_tokens->( delete $attr->{predicates} );
+
+   return bless $attr, blessed $self || $self;
+}
+
+# Public methods
+sub parse {
+   my ($self, $line, $ns) = @_; my $identifiers = {}; my $last = 0; my $pos = 0;
+
+   my $line_length = length $line; my $recog = $_recogniser->( $self );
+
+   while ($pos < $line_length) {
+      my $expected_tokens = $recog->terminals_expected;
+
+      if (scalar @{ $expected_tokens }) {
+         for my $token ($_lex->( $self, \$line, $pos, $expected_tokens )) {
+            $pos += $_read_skip_ws->( $self, $token, $ns, $identifiers, $recog);
+         }
+      }
+
+      $pos == $last
+         and throw 'Expression [_1] parse error - char [_2]', [ $line, $pos ];
+      $last = $pos;
+   }
+
+   $recog->end_input; my $expr_value_ref = $recog->value;
+
+   $expr_value_ref or throw 'Expression [_1] has no value', [ $line ];
+
+   my $expr_value = ${ $expr_value_ref };
+
+   ref $expr_value eq 'CODE' and $expr_value = $expr_value->();
+
+   return [ $expr_value, [ keys %{ $identifiers } ] ];
 }
 
 package # Hide from indexer
-   App::MCP::ExpressionParser::Actions;
+   App::MCP::ExpressionParser::_Actions;
 
 sub callfunc {
    my ($self, $func, undef, $job) = @_; return sub { $self->$func( $job ) };

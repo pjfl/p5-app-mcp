@@ -176,8 +176,8 @@ sub evaluate {
 
    my $file = io $v;
    my $raw  = (exists $ENV{ $v } and defined $ENV{ $v }  ) ? $ENV{ $v }
-            : ($file->exists     and $file->is_executable) ? qx( $v )
-            : $file->exists                                ? $file->all
+            : ($file->exists     and $file->is_executable) ?   qx( $v )
+            :  $file->exists                               ? $file->all
                                                            : $v;
 
    (defined $raw and length $raw) or throw 'Secret not defined or no length';

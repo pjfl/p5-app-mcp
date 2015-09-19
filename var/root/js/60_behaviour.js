@@ -75,7 +75,7 @@ var StateDiagram = new Class( {
 
       for (var max = frame.jobs.length; i < max; i++) {
          var job         = frame.jobs[ i ];
-         var name        = job.fqjn;
+         var name        = job.name;
          var label       = paper.text( name ).font( text_style ).center( x, y );
          var label_width = label.bbox().width;
          var left        = x - style.padding - label_width / 2;
