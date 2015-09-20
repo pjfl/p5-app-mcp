@@ -1,6 +1,5 @@
 package App::MCP::Form;
 
-use feature 'state';
 use namespace::autoclean;
 
 use App::MCP::Form::Field;
@@ -12,19 +11,23 @@ use File::DataClass::Types qw( Directory );
 use Scalar::Util           qw( blessed weaken );
 use Moo;
 
+# Private package variables
+my $_config_cache = {};
+my $_l10n_cache   = {};
+
 # Attribute constructors
 my $_build_l10n = sub {
-   my $self = shift; state $cache //= {}; my $req = $self->req; weaken $req;
+   my $self = shift; my $req = $self->req; weaken $req;
 
    return sub {
       my ($opts, $text, @args) = @_; # Ignore $opts->{ ns, language }
 
       my $key = $req->domain.'.'.$req->locale.".${text}";
 
-      (exists $cache->{ $key } and defined $cache->{ $key })
-         or $cache->{ $key } = $req->loc( $text, @args );
+      (exists $_l10n_cache->{ $key } and defined $_l10n_cache->{ $key })
+         or $_l10n_cache->{ $key } = $req->loc( $text, @args );
 
-      return $cache->{ $key };
+      return $_l10n_cache->{ $key };
    };
 };
 
@@ -177,7 +180,7 @@ sub load_config {
 
    my $language = $req->language; my $key = "${domain}.${language}";
 
-   state $cache //= {}; exists $cache->{ $key } and return $cache->{ $key };
+   exists $_config_cache->{ $key } and return $_config_cache->{ $key };
 
    my $config   = $model->config;
    my $def_path = $config->ctrldir->catfile( 'form.json' );
@@ -192,7 +195,7 @@ sub load_config {
       lang        => $language,
       localedir   => $config->localedir } );
 
-   return $cache->{ $key } = $class->load( $def_path, $ns_path );
+   return $_config_cache->{ $key } = $class->load( $def_path, $ns_path );
 }
 
 1;

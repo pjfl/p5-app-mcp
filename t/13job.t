@@ -10,7 +10,7 @@ my $schema  = $factory->schedule;
 # Job
 my $rs = $schema->resultset( 'Job' ); my $job;
 
-$job = $rs->search( { name => 'test' } )->first;
+$job = $rs->search( { name => 'DevSched' } )->first;
 
 $job and $job->delete; # Left over job and event from previous run
 
@@ -36,43 +36,62 @@ like $e && $e->args->[ 0 ], qr{ \Qnot a valid length\E }msx,
 
 $job and $job->delete; $job = undef;
 
-$job = $rs->create( { command => 'sleep 1', name => 'test',
-                      type    => 'job',     user => 'mcp' } );
+$job = $rs->create( { name => 'DevSched', type => 'box', user => 'mcp' } );
 
-ok $job->id > 0, 'Creates a job';
+ok $job->id > 0, 'Creates a box';
+is $job->name, 'DevSched', 'Sets fully qualified job name';
 
-is $job->name, 'test', 'Sets fully qualified job name';
+$job = $rs->create( { name => 'Batch', parent_name => 'DevSched',
+                      type => 'box',   user        => 'mcp' } );
 
-my $job1 = $rs->search( { name => 'test1' } )->first;
+is $job->name, 'DevSched/Batch', 'Non root parent';
 
-$job1 and $job1->delete; # Left over job and event from previous run
+$job = $rs->create( { name => 'Overnight', parent_name => 'DevSched/Batch',
+                      type => 'box',       user        => 'mcp' } );
 
-$job1 = $rs->create( { condition => 'finished( test )',
-                       command   => 'sleep 1', name => 'test1',
-                       type      => 'job',     user => 'mcp' } );
+is $job->name, 'DevSched/Overnight', 'Non root parent - 2';
 
-is $job1->name, 'test1', 'Creates job with condition';
+$job = $rs->create( { command     => 'sleep 1',
+                      name        => 'EOD',
+                      parent_name => 'DevSched/Overnight',
+                      type        => 'job',
+                      user        => 'mcp' } );
 
-my $job2 = $rs->search( { name => 'test2' } )->first;
+is $job->name, 'DevSched/Overnight/EOD', 'Creates job';
 
-$job2 and $job2->delete; # Left over job and event from previous run
+$job = $rs->create( { condition   => 'finished( EOD )',
+                      command     => 'sleep 1',
+                      name        => 'SOB',
+                      parent_name => 'DevSched/Overnight',
+                      type        => 'job',
+                      user        => 'mcp' } );
+
+is $job->name, 'DevSched/Overnight/SOB', 'Creates job with condition';
+
+$job = $rs->create( { condition   => 'finished( SOB )',
+                      command     => '/bin/sleep 2',
+                      host        => 'head',
+                      name        => 'Remote1',
+                      parent_name => 'DevSched/Overnight',
+                      type        => 'job',
+                      user        => 'mcp', } );
+
+$job = $rs->create( { name => 'Cron', parent_name => 'DevSched',
+                      type => 'box',  user        => 'mcp' } );
+
+is $job->name, 'DevSched/Cron', 'Non root parent - 3';
 
 my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime;
 
-$job2 = $rs->create( { crontab => ($min + 1).' '.$hour.' * * *',
-                       command => 'sleep 1', name => 'test2',
-                       type    => 'job',     user => 'mcp' } );
+$job = $rs->create( { crontab     => ($min + 1).' '.$hour.' * * *',
+                      command     => 'sleep 1',
+                      name        => 'Timed1',
+                      parent_name => 'DevSched/Cron',
+                      type        => 'job',
+                      user        => 'mcp' } );
 
-is $job2->name, 'test2', 'Creates job with crontab';
+is $job->name, 'DevSched/Cron/Timed1', 'Creates job with crontab';
 
-my $job3 = $rs->search( { name => 'remote1' } )->first;
-
-$job3 and $job3->delete;
-
-$job3 = $rs->create( { condition => 'finished( test1 )',
-                       command   => '/bin/sleep 2', host => 'head',
-                       name      => 'remote1', type => 'job',
-                       user      => 'mcp', } );
 done_testing;
 
 # Local Variables:

@@ -3,7 +3,7 @@ package App::MCP::Util;
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP::Constants    qw( FALSE NUL TRUE VARCHAR_MAX_SIZE );
+use App::MCP::Constants    qw( FALSE NUL SEPARATOR TRUE VARCHAR_MAX_SIZE );
 use Class::Usul::Functions qw( find_apphome get_cfgfiles is_member );
 use Class::Usul::Time      qw( str2time time2str );
 use Scalar::Util           qw( weaken );
@@ -12,8 +12,9 @@ our @EXPORT_OK = qw( enumerated_data_type enhance foreign_key_data_type
                      get_hashed_pw get_salt nullable_foreign_key_data_type
                      nullable_varchar_data_type numerical_id_data_type
                      serial_data_type set_on_create_datetime_data_type
-                     stash_functions terminate trigger_input_handler
-                     trigger_output_handler varchar_data_type );
+                     stash_functions strip_parent_name terminate
+                     trigger_input_handler trigger_output_handler
+                     varchar_data_type );
 
 # Public functions
 sub enumerated_data_type ($;$) {
@@ -106,6 +107,14 @@ sub stash_functions ($$$) {
    $dest->{ucfirst  } = sub { ucfirst $_[ 0 ] };
    $dest->{uri_for  } = sub { $src->uri_for( @_ ), };
    return;
+}
+
+sub strip_parent_name ($) {
+   my $v = shift; my $sep = SEPARATOR; my @values;
+
+   $v =~ m{ $sep }mx and @values = split m{ $sep }mx, $v and $v = pop @values;
+
+   return $v;
 }
 
 sub terminate ($) {

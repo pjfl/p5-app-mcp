@@ -2,7 +2,8 @@ package App::MCP::Model::Job;
 
 use App::MCP::Attributes;  # Will do cleaning
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES EXCEPTION_CLASS
-                               NUL SEPARATOR SPC TRUE );
+                               NUL SPC TRUE );
+use App::MCP::Util         qw( strip_parent_name );
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
 use Unexpected::Functions  qw( throw Unspecified );
 use Moo;
@@ -211,13 +212,7 @@ sub _job_deflate_permissions {
 }
 
 sub _job_name_assign_hook {
-   my ($self, $req, $field, $row, $value) = @_; my $sep = SEPARATOR; my @values;
-
-   $value =~ m{ $sep }mx
-      and @values = split m{ $sep }mx, $value
-      and $value  = pop @values;
-
-   return $value;
+   my ($self, $req, $field, $row, $value) = @_; return strip_parent_name $value;
 }
 
 sub _job_parent_name_assign_hook {

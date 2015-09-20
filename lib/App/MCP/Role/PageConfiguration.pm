@@ -28,7 +28,7 @@ around 'initialise_stash' => sub {
 
    for my $k (@{ $conf->stash_attr->{session} }) {
       try {
-         my $v = $params->( $k, { optional => 1 } );
+         my $v = $params->( $k, { optional => TRUE } );
 
          $stash->{prefs}->{ $k } = defined $v ? $sess->$k( $v ) : $sess->$k();
       }

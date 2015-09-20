@@ -1,7 +1,5 @@
 package App::MCP::Model::Root;
 
-use feature 'state';
-
 use App::MCP::Attributes; # Will do cleaning
 use App::MCP::ConfigEditor;
 use App::MCP::Constants qw( FALSE NUL TRUE );
@@ -71,10 +69,12 @@ sub logout_action : Role(any) {
    return { redirect => { location => $location, message => $message } };
 }
 
-sub navigator : Role(anon) {
-   my ($self, $req) = @_; state $cache = {}; my $data;
+my $nav_cache = {};
 
-   unless ($data = $cache->{ $req->locale }) {
+sub navigator : Role(anon) {
+   my ($self, $req) = @_; my $data;
+
+   unless ($data = $nav_cache->{ $req->locale }) {
       my $opts = { no_default => TRUE }; $data = [];
 
       for my $action (@{ $self->config->nav_list }) {
@@ -89,7 +89,7 @@ sub navigator : Role(anon) {
             tip       => $tip,  type => 'anchor', widget => TRUE } };
       }
 
-      $cache->{ $req->locale } = $data;
+      $nav_cache->{ $req->locale } = $data;
    }
 
    my $page  = { meta => { id    => 'nav_panel' } };

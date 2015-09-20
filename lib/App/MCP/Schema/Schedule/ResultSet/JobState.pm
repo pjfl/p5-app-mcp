@@ -1,8 +1,7 @@
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use strictures;
-use feature 'state';
-use parent  'DBIx::Class::ResultSet';
+use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants;
 use App::MCP::Workflow;
@@ -13,6 +12,27 @@ use Scalar::Util           qw( blessed );
 use Try::Tiny;
 use Unexpected::Functions  qw( Unknown );
 
+# Private methods
+my $_trigger_update_cascade = sub {
+   my ($self, $event) = @_; my $schema = $self->result_source->schema;
+
+   my $ev_rs = $schema->resultset( 'Event' );
+   my $jc_rs = $schema->resultset( 'JobCondition' );
+
+   for ($jc_rs->search( { job_id => $event->job_rel->id } )->all) {
+      $ev_rs->create( { job_id => $_->reverse_id, transition => 'start' } );
+   }
+
+   return;
+};
+
+my $_workflow_cache;
+
+my $_workflow = sub {
+   $_workflow_cache //= App::MCP::Workflow->new; return $_workflow_cache;
+};
+
+# Public methods
 sub create_and_or_update {
    my ($self, $event) = @_; my $res;
 
@@ -20,9 +40,7 @@ sub create_and_or_update {
    my $job_state  = $self->find_or_create( $job );
    my $state_name = $job_state->name->value;
 
-   try {
-      $state_name = $self->_workflow->process_event( $state_name, $event );
-   }
+   try   { $state_name = $_workflow->()->process_event( $state_name, $event ) }
    catch {
       my $e = $_; (blessed $e and $e->can( 'class' ))
          or $e = exception class => Unknown, error => $e;
@@ -34,17 +52,17 @@ sub create_and_or_update {
    $job_state->name( $state_name );
    $job_state->updated( DateTime->now );
    $job_state->update;
-   $self->_trigger_update_cascade( $event );
+   $self->$_trigger_update_cascade( $event );
    return;
 }
 
 sub find_by_id_or_name {
    my ($self, $arg) = @_; (defined $arg and length $arg) or return;
 
-   my $job_state;
+   my $job_state; $arg =~ m{ \A \d+ \z }mx and $job_state = $self->find( $arg );
 
-   $arg =~ m{ \A \d+ \z }mx and $job_state = $self->find( $arg );
    $job_state or $job_state = $self->find_by_name( $arg );
+
    return $job_state;
 }
 
@@ -78,24 +96,6 @@ sub find_or_create {
    return $self->create( { job_id  => $job->id,
                            name    => $initial_state,
                            updated => DateTime->now } );
-}
-
-# Private methods
-sub _trigger_update_cascade {
-   my ($self, $event) = @_; my $schema = $self->result_source->schema;
-
-   state $ev_rs //= $schema->resultset( 'Event' );
-   state $jc_rs //= $schema->resultset( 'JobCondition' );
-
-   for ($jc_rs->search( { job_id => $event->job_rel->id } )->all) {
-      $ev_rs->create( { job_id => $_->reverse_id, transition => 'start' } );
-   }
-
-   return;
-}
-
-sub _workflow {
-   state $wf //= App::MCP::Workflow->new; return $wf;
 }
 
 1;

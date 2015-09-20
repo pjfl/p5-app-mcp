@@ -4,6 +4,7 @@ use strictures;
 use parent 'DBIx::Class::ResultSet';
 
 use App::MCP::Constants    qw( FALSE NUL SEPARATOR TRUE );
+use App::MCP::Util         qw( strip_parent_name );
 use Class::Usul::Functions qw( throw );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
 
@@ -44,7 +45,7 @@ sub create {
    $col_data->{name} = defined $name ? $prefix.$name : NUL;
 
    $parent_name and $col_data->{parent_id}
-      = $self->writable_box_id_by_name( $parent_name, $col_data->{owner} );
+      = $self->writable_box_id_by_name( $parent_name, $col_data->{owner_id} );
    $col_data->{parent_id} //= 1;
 
    return $self->next::method( $col_data );
@@ -60,13 +61,16 @@ sub dump {
       } );
 
    for my $job ($rs->all) {
-      delete $job->{group}; delete $job->{owner}; delete $job->{parent_path};
+      delete $job->{group_id};
+      delete $job->{owner_id};
+      delete $job->{parent_path};
       $index->{ delete $job->{id} } = $job->{name};
 
       my $parent_id; $parent_id = delete $job->{parent_id}
          and $job->{parent_name} = $index->{ $parent_id };
 
-      push @jobs, $job;
+      length $job->{name} and $job->{name} = strip_parent_name $job->{name}
+         and push @jobs, $job;
    }
 
    return \@jobs;
@@ -120,8 +124,9 @@ sub job_id_by_name {
 sub load {
    my ($self, $auth, $jobs) = @_; my $count = 0;
 
-   for my $job (@{ $jobs || [] }) {
-      $job->{owner} = $auth->{user}->id; $job->{group} = $auth->{role}->id;
+   for my $job (@{ $jobs // [] }) {
+      $job->{owner_id} = $auth->{user}->id;
+      $job->{group_id} = $auth->{role}->id;
       $self->create( $job );
       $count++;
    }
