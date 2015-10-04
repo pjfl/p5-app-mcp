@@ -18,8 +18,6 @@ use Moo;
 
 Async::IPC::Functions->log_key_width( LOG_KEY_WIDTH );
 
-my $Identitfy_File_Cache = {};
-
 # Public attributes
 has 'app'    => is => 'ro',   isa => Plinth,
    handles   => [ 'config', 'debug', 'log' ], init_arg => 'builder',
@@ -45,6 +43,9 @@ has '_schema_class' => is => 'lazy', isa => LoadableClass,
 
 with 'Class::Usul::TraitFor::ConnectInfo';
 
+# Private package variables
+my $_identity_file_cache = {};
+
 # Private methods
 my $_cron_log_interval = sub {
    my ($self, $name) = @_;
@@ -62,17 +63,18 @@ my $_cron_log_interval = sub {
 my $_get_identity_file = sub {
    my ($self, $args) = @_; my $host = $args->{host}; my $user = $args->{user};
 
-   my $key    = "${user}\@${host}"; exists $Identitfy_File_Cache->{ $key }
-      and return $Identitfy_File_Cache->{ $key };
-   my $dir    = $self->config->ssh_dir;
-   my $prefix = distname $self->config->appclass;
+   my $key    = "${user}\@${host}"; exists $_identity_file_cache->{ $key }
+      and return $_identity_file_cache->{ $key };
+   my $conf   = $self->config;
+   my $dir    = $conf->ssh_dir;
+   my $prefix = distname $conf->appclass;
    my @files  = ("${host}-${user}", $user, $host);
 
    for my $path (map { $dir->catfile( "${prefix}_${_}.priv" ) } @files) {
-      $path->exists and return $Identitfy_File_Cache->{ $key } = $path;
+      $path->exists and return $_identity_file_cache->{ $key } = $path;
    }
 
-   return $Identitfy_File_Cache->{ $key } = $self->config->identity_file;
+   return $_identity_file_cache->{ $key } = $conf->identity_file;
 };
 
 my $_install_remote = sub {

@@ -15,6 +15,7 @@ my $_get_key = sub {
    return $type eq 'button'  ? 'name'
         : $type eq 'chooser' ? 'href'
         : $type eq 'label'   ? 'text'
+        : $type eq 'tree'    ? 'data'
                              : 'default';
 };
 

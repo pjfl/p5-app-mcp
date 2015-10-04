@@ -3,10 +3,9 @@ package App::MCP::Role::FormBuilder;
 use App::MCP::Attributes;  # Will clean namespace
 use App::MCP::Constants    qw( DOTS FALSE HASH_CHAR NUL TRUE );
 use App::MCP::Form;
-use Class::Usul::Functions qw( ensure_class_loaded first_char pad );
+use Class::Usul::Functions qw( ensure_class_loaded pad );
 use Class::Usul::Response::Table;
 use Data::Validation;
-use File::Gettext::Schema;
 use HTTP::Status           qw( HTTP_OK );
 use Scalar::Util           qw( blessed );
 use Try::Tiny;
@@ -41,7 +40,7 @@ my $_check_field = sub {
    my $id     = $params->( 'id'     );
    my $val    = $params->( 'val', { raw => TRUE } );
    my $config = App::MCP::Form->load_config( $self, $req, $domain );
-   my $meta   = $config->{ $form }->{meta};
+   my $meta   = $config->{ $form }->{defaults};
    my $class  = $self->schema_class.'::Result::'.$meta->{result_class};
 
    ensure_class_loaded( $class );
@@ -106,7 +105,7 @@ around 'get_stash' => sub {
 
    my $stash = $orig->( $self, $req, $page ); $form_name or return $stash;
    my $form  = App::MCP::Form->new
-      ( { model => $self, req  => $req, name => $form_name,
+      ( { model => $self, name => $form_name, req => $req,
           row   => $row,  skin => $stash->{skin} } );
 
    $stash->{form} = $form;
@@ -260,7 +259,7 @@ App::MCP::Role::FormBuilder - One-line description of the modules purpose
 
 =head1 Version
 
-This documents version v0.1.$Rev: 22 $ of L<App::MCP::Role::FormBuilder>
+This documents version v0.1.$Rev: 24 $ of L<App::MCP::Role::FormBuilder>
 
 =head1 Description
 

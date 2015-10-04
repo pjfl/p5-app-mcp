@@ -33,7 +33,7 @@
       ]
    },
    "login": {
-      "meta": {
+      "defaults": {
          "first_field": "username",
          "max_pwidth": "320",
          "pwidth": "20",

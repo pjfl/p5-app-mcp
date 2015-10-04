@@ -77,9 +77,8 @@ sub snapshot_state {
 
    my $frames = [];
    my $id     = bson64id;
-   my $schema = $self->schema;
+   my $job_rs = $self->schema->resultset( 'Job' );
    my $level  = $req->query_params->( 'level', { optional => TRUE } ) || 1;
-   my $job_rs = $schema->resultset( 'Job' );
    my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
          'columns'  => [ qw( name id parent_id state.name type ) ],
          'join'     => 'state',
@@ -90,8 +89,8 @@ sub snapshot_state {
          push @{ $frames }, { id        => $job->id,
                               name      => $job->name,
                               parent_id => $job->parent_id,
-                              state     => NUL.$job->state->name,
-                              type      => NUL.$job->type, };
+                              state     => $job->state->name.NUL,
+                              type      => $job->type.NUL, };
       }
    }
    catch { throw $_, rv => HTTP_BAD_REQUEST };

@@ -1,16 +1,16 @@
 {
    "_fields": {
-      "diagram.template": {
-         "container_class": "container template",
+      "diagram.tree": {
+         "container_class": "container",
          "name": "state",
-         "type": "template"
+         "type": "tree"
       }
    },
    "diagram": {
       "regions": [
          "header_fields",
          [ "+nav_panel", "+logout_button", "+logout_form" ],
-         [ "template" ],
+         [ "tree" ],
          [ ]
       ]
    }

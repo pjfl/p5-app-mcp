@@ -197,9 +197,6 @@ var Behaviour = new Class( {
          context       : this,
          iconClasses   : opt.iconClasses,
          url           : opt.baseURI } );
-      this.diagram     = new StateDiagram( {
-         context       : this,
-         url           : opt.baseURI } );
       this.replacement = new Replacements( { context: this } );
       this.server      = new ServerUtils( {
          context       : this,

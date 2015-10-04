@@ -16,6 +16,32 @@ sub diagram : Role(any) {
    return $self->get_stash( $req, $page, diagram => {} );
 }
 
+sub _diagram_state_assign_hook {
+   my ($self, $req, $field, $row, $value) = @_;
+
+   my $data = {
+      'Root Folder'           => {
+         'Label One'          => {
+            _tip              => q(Help text for label one),
+            'Label Three'     => {
+               _tip           => q(Help text for label three),
+               'Label Four'   => {
+                  _tip        => q(Help text for label four),
+                  'Label Six' => {
+                     _tip     => q(Help text for label six) }, },
+               'Label Five'   => {
+                  _tip        => q(Help text for label five) },
+               'Label Seven'  => {
+                  _tip        => q(Help text for label seven) }, },
+            'Label Eight'     => {
+               _tip           => q(Help text for label eight) }, },
+         'Label Two'          => {
+            _tip              => q(Help text for label two) },
+      } };
+
+   return { data => $data };
+}
+
 1;
 
 __END__

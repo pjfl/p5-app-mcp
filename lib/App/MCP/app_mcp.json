@@ -1,4 +1,5 @@
-{  "cron_log_interval": "60",
+{
+   "cron_log_interval": "60",
    "lock_attributes": {
       "mode": "0700",
       "type": "sysv"

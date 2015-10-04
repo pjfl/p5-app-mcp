@@ -8,6 +8,7 @@ use Class::Usul::Functions qw( first_char is_arrayref is_hashref throw );
 use Class::Usul::Types     qw( ArrayRef CodeRef HashRef Int
                                NonEmptySimpleStr SimpleStr Object );
 use File::DataClass::Types qw( Directory );
+use File::Gettext::Schema;
 use Scalar::Util           qw( blessed weaken );
 use Moo;
 
@@ -136,11 +137,11 @@ around 'BUILDARGS' => sub {
    $attr->{config} = $self->load_config( $args->{model}, $args->{req} );
 
    exists $attr->{config}->{ $args->{name} }
-      or throw 'Form name [_1] unknown', [ $args->{name} ];
+       or throw 'Form name [_1] unknown', [ $args->{name} ];
 
-   my $meta = $attr->{config}->{ $args->{name} }->{meta} // {};
+   my $defaults = $attr->{config}->{ $args->{name} }->{defaults} // {};
 
-   $attr->{ $_ } //= $meta->{ $_ } for (keys %{ $meta });
+   $attr->{ $_ } //= $defaults->{ $_ } for (keys %{ $defaults });
 
    return $attr;
 };
@@ -162,6 +163,8 @@ sub BUILD {
 
          $self->$_assign_value( $field, $row );
 
+         # TODO: This is unused and we have the assign hook
+         # The cache is only useful one fully populated
          my $hook  = "_${form_name}_".$field->name.'_field_hook';
          my $code; $code = $self->model->can( $hook )
             and $field = $code->( $self->model, $cache, $field );
@@ -182,9 +185,9 @@ sub load_config {
 
    exists $_config_cache->{ $key } and return $_config_cache->{ $key };
 
-   my $config   = $model->config;
-   my $def_path = $config->ctrldir->catfile( 'form.json' );
-   my $ns_path  = $config->ctrldir->catfile( "${domain}.json" );
+   my $conf     = $model->config;
+   my $def_path = $conf->ctrldir->catfile( 'form.json' );
+   my $ns_path  = $conf->ctrldir->catfile( "${domain}.json" );
 
    $ns_path->exists or ($model->log->warn( "File ${ns_path} not found" )
       and return {});
@@ -193,7 +196,7 @@ sub load_config {
       builder     => $model,
       cache_class => 'none',
       lang        => $language,
-      localedir   => $config->localedir } );
+      localedir   => $conf->localedir } );
 
    return $_config_cache->{ $key } = $class->load( $def_path, $ns_path );
 }
@@ -204,7 +207,7 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 
