@@ -9,13 +9,19 @@ use Moo;
 
 extends 'App::MCP::Model';
 with    'App::MCP::Role::PageConfiguration';
-with    'App::MCP::Role::FormBuilder';
 with    'App::MCP::Role::WebAuthentication';
+with    'Web::Components::Role::Forms';
 
 has '+moniker' => default => 'root';
 
 has 'config_editor' => is => 'lazy', isa => Object, builder => sub {
    App::MCP::ConfigEditor->new( builder => $_[ 0 ]->application ) };
+
+sub check_field : Role(anon) {
+   my ($self, $req) = @_;
+
+   return $self->check_form_field( $req, $self->schema_class.'::Result' );
+}
 
 sub config_form : Role(any) {
    my ($self, $req) = @_;

@@ -1,5 +1,8 @@
 {
    "cron_log_interval": "60",
+   "l10n_attributes": {
+      "gettext_catagory": ""
+   },
    "lock_attributes": {
       "mode": "0700",
       "type": "sysv"

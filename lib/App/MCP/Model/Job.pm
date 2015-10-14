@@ -2,7 +2,7 @@ package App::MCP::Model::Job;
 
 use App::MCP::Attributes;  # Will do cleaning
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES EXCEPTION_CLASS
-                               NUL SPC TRUE );
+                               NUL SEPARATOR SPC TRUE );
 use App::MCP::Util         qw( strip_parent_name );
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
 use Unexpected::Functions  qw( throw Unspecified );
@@ -10,8 +10,9 @@ use Moo;
 
 extends 'App::MCP::Model';
 with    'App::MCP::Role::PageConfiguration';
-with    'App::MCP::Role::FormBuilder';
 with    'App::MCP::Role::WebAuthentication';
+with    'Web::Components::Role::Forms';
+with    'Web::Components::Role::Forms::Chooser';
 
 has '+moniker' => default => 'job';
 
@@ -24,22 +25,65 @@ my $_job_not_found = sub {
 
 # Public methods
 sub choose_action : Role(any) {
-   my ($self, $req) = @_;
+   my ($self, $req) = @_; my $job;
 
-   my $job_rs   = $self->schema->resultset( 'Job' );
-   my $where    = { name => $req->body_params->( 'name', { raw => TRUE } ) };
-   my $job      = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
-   my $location = $req->uri_for( 'job', [ $job ? $job->id : undef ] );
+   my $job_rs = $self->schema->resultset( 'Job' );
+   my $idorn  = join SEPARATOR, @{ $req->uri_params->( { optional => TRUE } ) };
 
-   return { redirect => { location => $location } };
+   if ($idorn) { $job = $job_rs->find_by_id_or_name( $idorn ) }
+   else {
+      my $where = { name => $req->body_params->( 'name', { raw => TRUE } ) };
+
+      $job = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
+   }
+
+   my $id; $job and $id = $job->id;
+
+   return { redirect => { location => $req->uri_for( 'job', [ $id ] ) } };
 }
 
 sub chooser : Role(any) {
    my ($self, $req) = @_;
 
-   my $chooser = $self->build_chooser( $req );
+   my $chooser = $self->build_chooser
+      ( $req, { scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' } );
    my $page    = { meta => delete $chooser->{meta} };
    my $stash   = $self->get_stash( $req, $page, 'job_chooser' => $chooser );
+
+   $stash->{view} = 'json';
+   return $stash;
+}
+
+sub chooser_rows : Role(any) {
+   my ($self, $req) = @_;
+
+   my $args  = { form   => 'job',
+                 method => '_job_chooser_link_hash',
+                 values => $self->_job_chooser_search( $req ) };
+   my $rows  = $self->build_chooser_rows( $req, $args );
+   my $page  = { meta => delete $rows->{meta} };
+   my $stash = $self->get_stash( $req, $page, 'job_grid_rows' => $rows );
+
+   $stash->{view} = 'json';
+   return $stash;
+}
+
+sub chooser_table : Role(any) {
+   my ($self, $req) = @_;
+
+   my $params  = $req->query_params;
+   my $value   = $params->( 'field_value', { optional => TRUE } ) || '%';
+   my $total   = $self->schema->resultset( 'Job' )
+      ->search( { id => { '>' => 1 }, name => { -like => $value } } )
+      ->count;
+   my $args    = {
+      form     => 'job',
+      label    => 'Job names',
+      scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]',
+      total    => $total, };
+   my $table   = $self->build_chooser_table( $req, $args );
+   my $page    = { meta => delete $table->{meta} };
+   my $stash   = $self->get_stash( $req, $page, 'job_grid_table' => $table );
 
    $stash->{view} = 'json';
    return $stash;
@@ -69,7 +113,7 @@ sub definition_form : Role(any) {
    my ($self, $req) = @_;
 
    my $title = $req->loc( 'Job Definition' );
-   my $idorn = $req->uri_params->( 0, { optional => TRUE } );
+   my $idorn = join SEPARATOR, @{ $req->uri_params->( { optional => TRUE } ) };
    my $job   = $self->schema->resultset( 'Job' )->find_by_id_or_name( $idorn );
    my $page  = { action => $req->uri, form_name => 'job', title => $title, };
 
@@ -78,45 +122,12 @@ sub definition_form : Role(any) {
    return $self->get_stash( $req, $page, 'job' => $job );
 }
 
-sub grid_rows : Role(any) {
-   my ($self, $req) = @_;
-
-   my $args  = { form   => 'job',
-                 method => '_job_chooser_link_hash',
-                 values => $self->_job_chooser_search( $req ) };
-   my $rows  = $self->build_grid_rows( $req, $args );
-   my $page  = { meta => delete $rows->{meta} };
-   my $stash = $self->get_stash( $req, $page, 'job_grid_rows' => $rows );
-
-   $stash->{view} = 'json';
-   return $stash;
-}
-
-sub grid_table : Role(any) {
-   my ($self, $req) = @_; my $args = {}; my $params = $req->query_params;
-
-   my $field_value  = $params->( 'field_value', { optional => TRUE } ) || '%';
-
-   $args->{form } = 'job';
-   $args->{label} = 'Job names';
-   $args->{total} = $self->schema->resultset( 'Job' )
-                         ->search( { id   => { '>' => 1 },
-                                     name => { -like => $field_value } } )
-                         ->count;
-
-   my $table = $self->build_grid_table( $req, $args );
-   my $page  = { meta => delete $table->{meta} };
-   my $stash = $self->get_stash( $req, $page, 'job_grid_table' => $table );
-
-   $stash->{view} = 'json';
-   return $stash;
-}
-
 sub job_state : Role(any) {
    my ($self, $req) = @_;
 
+   my $sep       = SEPARATOR;
    my $form      = 'job_state_dialog';
-   my $idorn     = $req->uri_params->( 0 );
+   my $idorn     = join $sep, @{ $req->uri_params->( { optional => TRUE } ) };
    my $rs        = $self->schema->resultset( 'JobState' );
    my $job_state = $rs->find_by_id_or_name( $idorn );
    my $page      = { meta => { id => $req->query_params->( 'id' ) } };
@@ -129,19 +140,19 @@ sub job_state : Role(any) {
 sub save_action : Role(any) {
    my ($self, $req) = @_; my $job; my $message;
 
-   my $idorn = $req->uri_params->( 0, { optional => TRUE } );
+   my $idorn = join SEPARATOR, @{ $req->uri_params->( { optional => TRUE } ) };
    my $args  = { id     => $idorn,
                  method => '_job_deflate_',
                  params => $req->body_params,
                  rs     => $self->schema->resultset( 'Job' ) };
 
    if (defined $idorn and length $idorn) {
-      $job = $self->find_and_update_record( $args )
+      $job = $self->find_and_update_form_record( $args )
           or return $_job_not_found->( $req, $idorn );
       $message = [ 'Job [_1] updated', $job->name ];
    }
    else {
-      $job = $self->create_record( $args, 'parent_name' );
+      $job = $self->create_form_record( $args, 'parent_name' );
       $message = [ 'Job [_1] created', $job->name ];
    }
 

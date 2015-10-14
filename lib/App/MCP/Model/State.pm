@@ -5,8 +5,8 @@ use Moo;
 
 extends 'App::MCP::Model';
 with    'App::MCP::Role::PageConfiguration';
-with    'App::MCP::Role::FormBuilder';
 with    'App::MCP::Role::WebAuthentication';
+with    'Web::Components::Role::Forms';
 
 has '+moniker' => default => 'state';
 

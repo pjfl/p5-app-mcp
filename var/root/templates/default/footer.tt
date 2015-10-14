@@ -1,5 +1,20 @@
 <!-- Footer -->
 <div id="page-status" class="page-status"></div>
+[% FOREACH file = scripts -%]
+   <script src="[% links.js %][% file %]"></script>
+[% END -%]
+   <script type="text/javascript"><!--//--><![CDATA[//><!--
+      var behaviour  = new Behaviour( {
+         baseURI     : '[% links.base_uri %]',
+         cookieDomain: '[% req.domain %]',
+         cookiePath  : '[% config.mount_point %]',
+         cookiePrefix: '[% config.prefix %]',
+         firstField  : '[% page.first_field %]',
+         formName    : '[% page.form_name %]' } );
+[% FOREACH line = page.literal_js; -%]
+      [%+ line | eval %]
+[% END -%]
+   //--><!]]></script>
 [% IF config.google_analytics -%]
    <script type="text/javascript"><!--//--><![CDATA[//><!--
       ( function( w, d, t, s, f) {

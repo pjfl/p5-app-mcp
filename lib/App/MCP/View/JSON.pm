@@ -9,7 +9,7 @@ use JSON::MaybeXS          qw( );
 use Moo;
 
 with 'Web::Components::Role';
-with 'App::MCP::Role::FormHandler';
+with 'Web::Components::Role::Forms::View';
 
 # Public attributes
 has '+moniker' => default => 'json';

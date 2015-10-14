@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Uses Web::Components::Forms
           - Dumps and loads with new naming scheme
           - Switched to Web::Components
           - Toolchain update

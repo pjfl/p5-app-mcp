@@ -8,13 +8,13 @@ use Moo;
 
 with 'Web::Components::Role';
 with 'Web::Components::Role::TT';
-with 'App::MCP::Role::FormHandler';
+with 'Web::Components::Role::Forms::View';
 
 has '+moniker' => default => 'html';
 
 # Private functions
 my $_header = sub {
-   return [ 'Content-Type' => 'text/html', @{ $_[ 0 ] || [] } ];
+   return [ 'Content-Type' => 'text/html', @{ $_[ 0 ] // [] } ];
 };
 
 # Public methods
