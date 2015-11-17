@@ -54,7 +54,7 @@ my $_find_user_from = sub {
 
 # Public methods
 sub authenticate {
-   my ($self, $req) = @_; $req->authenticate;
+   my ($self, $req) = @_; $req->authenticate_headers;
 
    my $user     = $self->$_find_user_from( $req );
    my $sess     = $self->$_find_or_create_session( $user );
@@ -68,8 +68,8 @@ sub authenticate {
 
    $token       = base64_decode_ns $token;
    $self->log->debug( 'Auth M1 token '.(md5_hex $token) );
-   $self->log->debug( 'Auth verifier '
-                      .(md5_hex "${username}${salt}${verifier}") );
+   $self->log->debug( 'Server init - authenticate '
+                      .(md5_hex "${username}${salt}") );
    $srp->server_init( $username, $verifier, $salt, @{ $sess->{auth_keys} } );
    $srp->server_verify_M1( $token )
       or throw 'User [_1] M1 token verification failed', [ $username ],
@@ -97,7 +97,7 @@ sub authenticate_params {
 }
 
 sub exchange_pub_keys {
-   my ($self, $req) = @_; $req->authenticate;
+   my ($self, $req) = @_; $req->authenticate_headers;
 
    my $user           = $self->$_find_user_from( $req );
    my $sess           = $self->$_find_or_create_session( $user );
@@ -113,12 +113,13 @@ sub exchange_pub_keys {
    my $verifier = base64_decode_ns get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
 
+   $self->log->debug( 'Server init - exchange pubkeys '
+                      .(md5_hex "${username}${salt}") );
    $srp->server_init( $username, $verifier, $salt );
 
    my ($server_pub_key, $server_priv_key) = $srp->server_compute_B;
 
    $sess->{auth_keys} = [ $client_pub_key, $server_pub_key, $server_priv_key ];
-   $self->log->debug( 'Auth server pub key '.(md5_hex $server_pub_key ) );
 
    my $pub_key = base64_encode_ns $server_pub_key;
    my $content = { public_key => $pub_key, salt => $salt, };

@@ -204,6 +204,7 @@ ul { list-style-position: outside; list-style-type: disc; }
    display: block; font-size: 1.25em; line-height: 1.2em;
    padding: 9px 12px 3px 12px;
 }
+.tree_controls { display: block; position: absolute; right: 10px; z-index: 10; }
 
 table.grid { min-width: 200px; width: auto; }
 table.grid td.first { border-right: 1px solid; }
@@ -211,6 +212,65 @@ th.grid_header  {
    border-bottom: 1px solid; font-size: 0.875em; line-height: 1.714em;
    text-align: left;
 }
+
+/*  Tree Definitions */
+dd.tree_node_closed { display: none; margin-bottom: 0; }
+dd.tree_node_last_closed { display: none; margin-bottom: 0; }
+dd.tree_node_open { display: block; margin-bottom: 0; }
+dd.tree_node_last_open { display: block; margin-bottom: 0; }
+dl.tree a {
+   font-size: 1.2em; line-height: 1.5em; padding: 3px;
+   text-decoration: none; white-space: nowrap;
+}
+dl.tree a.tree_selected { text-decoration: underline; }
+dl.tree span { vertical-align: middle; }
+dl.tree_branch { margin-bottom: 0; }
+dl.tree_branch dt { display: block; }
+dt.tree_leaf span.tree_leaf_ctrl {
+   background: transparent url(../img/icons.png) no-repeat -30px -270px;
+}
+dt.tree_leaf_last span.tree_leaf_ctrl {
+   background: transparent url(../img/icons.png) no-repeat -60px -240px;
+}
+dt.tree_node_closed span.tree_node_icon,
+dt.tree_node_last_closed span.tree_node_icon {
+   background: transparent url(../img/icons.png) no-repeat 0 -240px;
+   display: inline-block; height: 30px; overflow: hidden;
+   vertical-align: middle; width: 16px;
+}
+dt.tree_node_closed span.tree_node_ctrl {
+   background: transparent url(../img/icons.png) no-repeat -90px -270px;
+}
+dt.tree_node_last_closed span.tree_node_ctrl {
+   background: transparent url(../img/icons.png) no-repeat -120px -240px;
+}
+dt.tree_node_open span.tree_node_icon,
+dt.tree_node_last_open span.tree_node_icon {
+   background: transparent url(../img/icons.png) no-repeat -210px -240px;
+   display: inline-block; height: 30px; overflow: hidden;
+   vertical-align: middle; width: 16px;
+}
+dt.tree_node_open span.tree_node_ctrl {
+    background: transparent url(../img/icons.png) no-repeat -60px -270px;
+}
+dt.tree_node_last_open span.tree_node_ctrl {
+    background: transparent url(../img/icons.png) no-repeat -90px -240px;
+}
+span.tree_fill, span.tree_last_fill, span.tree_leaf_ctrl, span.tree_node_ctrl {
+   display: inline-block; height: 30px; overflow: hidden; width: 16px;
+}
+span.tree_fill {
+   background: transparent url(../img/icons.png) no-repeat -30px -240px;
+}
+span.tree_last_fill {
+   background: transparent url(../img/icons.png) no-repeat 0 0;
+}
+span.tree_leaf_icon {
+   background: transparent url(../img/icons.png) no-repeat -150px -240px;
+   display: inline-block; height: 30px; overflow: hidden;
+   width: 16px;
+}
+span.tree_node_ctrl { cursor: pointer; }
 
 /* Colours */
 .chooser_button, .submit_button { background-color: #9c9; border-color: #336; }
@@ -227,8 +287,18 @@ th.grid_header  {
 .nav_list .anchor_button { color: #000; }
 .region1 { border-right-color: #336; }
 .required {    border-right-color: #f00; }
-.state-diagram { background-color: #e9f7dc; }
+.state-active { background-color: #fff; }
+.state-hold { background-color: #00f; }
+.state-failed { background-color: #b21818; }
+.state-finished { background-color: #99f; }
+.state-inactive { background-color: #cc9; }
+.state-running { background-color: #0f0; }
+.state-starting { background-color: #fbd12a; }
+.state-terminated { background-color: #f00; }
 .tips-mark0 { border-color: transparent transparent #336 #336; }
 .tips-mark1 { border-color: transparent transparent #9c9 #9c9; }
 .tips-defn { color: #000; }
-
+.tree { background-color: #e9f7dc; color: #cc9; }
+.tree a.selected a.selected-inactive { color: #000; }
+.tree_link { color: #336; }
+.tree_link:hover { background-color: #9c9; }

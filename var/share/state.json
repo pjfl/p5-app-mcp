@@ -1,6 +1,11 @@
 {
    "_fields": {
+      "diagram.minted" : {
+         "text": "[%- time2str( '%Y-%m-%d %H:%M:%S', page.minted ) %]",
+         "type": "template"
+      },
       "diagram.tree": {
+         "clear": "left",
          "container_class": "container",
          "name": "state",
          "type": "tree"
@@ -10,8 +15,7 @@
       "regions": [
          "header_fields",
          [ "+nav_panel", "+logout_button", "+logout_form" ],
-         [ "tree" ],
-         [ ]
+         [ "minted", "tree" ]
       ]
    }
 }

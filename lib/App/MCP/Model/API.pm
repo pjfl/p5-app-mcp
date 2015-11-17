@@ -25,7 +25,7 @@ with 'App::MCP::Role::APIAuthentication';
 
 # Public methods
 sub create_event {
-   my ($self, $req) = @_; my $event; $req->authenticate;
+   my ($self, $req) = @_; my $event; $req->authenticate_headers;
 
    my $schema = $self->schema;
    my $run_id = $req->query_params->( 'runid' );
@@ -48,7 +48,7 @@ sub create_event {
 }
 
 sub create_job {
-   my ($self, $req) = @_; my $job; $req->authenticate;
+   my ($self, $req) = @_; my $job; $req->authenticate_headers;
 
    my $sess_id = $req->query_params->( 'sessionid' );
    my $sess    = $self->get_session( $sess_id );
@@ -70,35 +70,6 @@ sub exception_handler {
    my ($self, $req, $e) = @_; my $msg = "${e}"; chomp $msg;
 
    return { code => $e->rv, content => { message => $msg }, view => 'json', };
-}
-
-sub snapshot_state {
-   my ($self, $req) = @_;
-
-   my $frames = [];
-   my $id     = bson64id;
-   my $job_rs = $self->schema->resultset( 'Job' );
-   my $level  = $req->query_params->( 'level', { optional => TRUE } ) || 1;
-   my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
-         'columns'  => [ qw( name id parent_id state.name type ) ],
-         'join'     => 'state',
-         'order_by' => [ 'parent_id', 'id' ], } );
-
-   try {
-      for my $job ($jobs->all) {
-         push @{ $frames }, { id        => $job->id,
-                              name      => $job->name,
-                              parent_id => $job->parent_id,
-                              state     => $job->state->name.NUL,
-                              type      => $job->type.NUL, };
-      }
-   }
-   catch { throw $_, rv => HTTP_BAD_REQUEST };
-
-   my $minted  = time2str undef, bson64id_time( $id );
-   my $content = { id => $id, jobs => $frames, minted => $minted };
-
-   return { code => HTTP_OK, content => $content, view => 'json', };
 }
 
 1;

@@ -220,9 +220,10 @@ sub should_start_now {
 }
 
 sub sqlt_deploy_hook {
-  my ($self, $sqlt_table) = @_;
+   my ($self, $st) = @_;
 
-  $sqlt_table->add_index( name => 'job_idx_name', fields => [ 'name' ] );
+   $st->add_index( name => 'job_idx_name', fields => [ 'name' ] );
+   $st->add_index( name => 'job_idx_parent_id', fields => [ 'parent_id' ] );
 
   return;
 }

@@ -2,7 +2,7 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 25 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 26 $ =~ /\d+/gmx );
 
 use Class::Usul::Functions qw( env_prefix );
 
@@ -26,7 +26,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.5.$Rev: 25 $ of L<App::MCP>
+Describes version v0.5.$Rev: 26 $ of L<App::MCP>
 
 =head1 Synopsis
 

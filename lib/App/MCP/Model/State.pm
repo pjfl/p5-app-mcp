@@ -1,6 +1,11 @@
 package App::MCP::Model::State;
 
 use App::MCP::Attributes;
+use App::MCP::Constants    qw( EXCEPTION_CLASS NUL TRUE );
+use Class::Usul::Functions qw( bson64id bson64id_time );
+use HTTP::Status           qw( HTTP_BAD_REQUEST );
+use Try::Tiny;
+use Unexpected::Functions  qw( throw );
 use Moo;
 
 extends 'App::MCP::Model';
@@ -11,35 +16,44 @@ with    'Web::Components::Role::Forms';
 has '+moniker' => default => 'state';
 
 sub diagram : Role(any) {
-   my ($self, $req) = @_; my $page = { title => 'State Diagram' };
+   my ($self, $req) = @_;
 
-   return $self->get_stash( $req, $page, diagram => {} );
+   # TODO: Use level to restrict rows in result
+   my $level  = $req->query_params->( 'level', { optional => TRUE } ) || 1;
+   my $job_rs = $self->schema->resultset( 'Job' );
+   my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
+         'columns'  => [ qw( name id parent_id state.name type ) ],
+         'join'     => 'state',
+         'order_by' => [ 'parent_id', 'id' ], } );
+
+   my $boxes = []; my $tree = {};
+
+   try {
+      for my $job ($jobs->all) {
+         my $box   = $job->parent_id > 1 ? $boxes->[ $job->parent_id ] : $tree;
+         my $item  = $box->{ $job->name } //= {};
+         my $sname = $job->state->name;
+
+         $box->{_keys} //= []; push @{ $box->{_keys} }, $job->name;
+         $item->{_link_class} = "tree_link state-${sname} fade";
+         $item->{_tip       } = "State: ${sname}";
+         $item->{_url       } = 'job/'.$job->name;
+
+         $job->type eq 'box' and $boxes->[ $job->id ] = $item;
+      }
+   }
+   catch { throw $_, rv => HTTP_BAD_REQUEST };
+
+   my $id     = bson64id;
+   my $page   = { minted => bson64id_time( $id ), title => 'State Diagram' };
+   my $source = { state => { 'Schedule' => $tree }, };
+   my $stash  = $self->get_stash( $req, $page, diagram => $source );
+
+   return $stash;
 }
 
 sub _diagram_state_assign_hook {
-   my ($self, $req, $field, $row, $value) = @_;
-
-   my $data = {
-      'Root Folder'           => {
-         'Label One'          => {
-            _tip              => q(Help text for label one),
-            'Label Three'     => {
-               _tip           => q(Help text for label three),
-               'Label Four'   => {
-                  _tip        => q(Help text for label four),
-                  'Label Six' => {
-                     _tip     => q(Help text for label six) }, },
-               'Label Five'   => {
-                  _tip        => q(Help text for label five) },
-               'Label Seven'  => {
-                  _tip        => q(Help text for label seven) }, },
-            'Label Eight'     => {
-               _tip           => q(Help text for label eight) }, },
-         'Label Two'          => {
-            _tip              => q(Help text for label two) },
-      } };
-
-   return { data => $data };
+   my ($self, $req, $field, $src, $value) = @_; return { data => $value };
 }
 
 1;

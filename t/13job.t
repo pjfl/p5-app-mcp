@@ -92,6 +92,10 @@ $job = $rs->create( { crontab     => ($min + 1).' '.$hour.' * * *',
 
 is $job->name, 'DevSched/Cron/Timed1', 'Creates job with crontab';
 
+$job = $rs->create( { name => 'TestSched', type => 'box', user => 'mcp' } );
+
+ok $job->id > 0, 'Creates test schedule container';
+
 done_testing;
 
 # Local Variables:
