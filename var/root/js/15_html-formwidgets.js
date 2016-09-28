@@ -662,6 +662,7 @@ var Dialog = new Class( {
       klass   : 'dialog',
       maskOpts: {},
       title   : 'Options',
+      useIcon : false,
       useMask : true,
    },
 
@@ -687,8 +688,14 @@ var Dialog = new Class( {
       var title   = new Element( 'div', { 'class': opt.klass + '-title' } )
           .appendText( opt.title ).inject( this.dialog );
 
-      this.close  = new Element( 'span', { 'class': opt.klass + '-close' } )
-          .appendText( 'x' ).inject( title );
+      if (opt.useIcon) {
+         this.close = new Element( 'i', {
+            'class': opt.klass + '-close close-icon' } ).inject( title );
+      }
+      else {
+         this.close = new Element( 'span', {
+            'class': opt.klass + '-close' } ).appendText( 'x' ).inject( title );
+      }
 
       body.addClass( opt.klass + '-body' ).inject( this.dialog );
       return this.close;
@@ -3959,6 +3966,7 @@ var WindowUtils = new Class( {
       config_attr: 'anchors',
       customLogFn: false,
       height     : 600,
+      maskOpts   : {},
       quiet      : false,
       selector   : '.windows',
       target     : null,
@@ -4004,6 +4012,9 @@ var WindowUtils = new Class( {
          var content = new Element( 'div', {
             'id': id } ).appendText( 'Loading...' );
 
+         opt.maskOpts.id     = 'mask-' + opt.name;
+         opt.maskOpts.height = window.getHeight();
+         opt.maskOpts.width  = window.getWidth();
          dialog = this.dialogs[ opt.name ]
                 = new Dialog( undefined, content, opt );
       }

@@ -10,7 +10,7 @@ use Class::Usul::Functions qw( ensure_class_loaded );
 use Plack::Builder;
 use Web::Simple;
 
-# Public attributes
+# Private attributes
 has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
    init_arg        => 'config';
 
@@ -22,7 +22,7 @@ with 'Web::Components::Loader';
 
 # Construction
 around 'to_psgi_app' => sub {
-   my ($orig, $self, @args) = @_; my $app = $orig->( $self, @args );
+   my ($orig, $self, @args) = @_; my $psgi_app = $orig->( $self, @args );
 
    my $conf   = $self->config; my $static = $conf->serve_as_static;
 
@@ -46,7 +46,7 @@ around 'to_psgi_app' => sub {
             session_key => 'mcp_session';
          enable "LogDispatch", logger => $self->log;
          enable_if { $self->debug } 'Debug';
-         $app;
+         $psgi_app;
       };
    };
 };

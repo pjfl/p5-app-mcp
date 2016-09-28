@@ -32,10 +32,7 @@ var Behaviour = new Class( {
    },
 
    attach: function() {
-      var opt = this.options;
-
-      window.addEvent( 'load',   function() {
-         this.load( opt.firstField ) }.bind( this ) );
+      window.addEvent( 'load',   function() { this.load()   }.bind( this ) );
       window.addEvent( 'resize', function() { this.resize() }.bind( this ) );
    },
 
@@ -43,7 +40,7 @@ var Behaviour = new Class( {
       this.collection.include( object ); return object;
    },
 
-   load: function( first_field ) {
+   load: function() {
       var opt = this.options;
 
       this.cookies     = new Cookies( {
@@ -86,10 +83,13 @@ var Behaviour = new Class( {
          onShow        : function() { this.fx.start( 1 ) },
          showDelay     : 666 } );
 
+      if (window.Chosens != undefined)
+         this.chosens  = new Chosens( { context: this } );
+
       if (opt.statusUpdPeriod && !opt.popup)
          this.statusUpdater.periodical( opt.statusUpdPeriod, this );
 
-      var el; if (first_field && (el = $( first_field ))) el.focus();
+      var el; if (opt.firstField && (el = $( opt.firstField ))) el.focus();
    },
 
    rebuild: function() {

@@ -5,7 +5,7 @@ use namespace::autoclean;
 use App::MCP;
 use App::MCP::Constants    qw( EXCEPTION_CLASS OK TRUE );
 use App::MCP::Util         qw( trigger_input_handler );
-use Class::Usul::Functions qw( throw );
+use Class::Usul::Functions qw( class2appdir throw );
 use Class::Usul::Types     qw( LoadableClass NonEmptySimpleStr Object );
 use Unexpected::Functions  qw( Unspecified );
 use Moo;
@@ -45,6 +45,23 @@ has '_schedule_class' => is => 'lazy', isa => LoadableClass,
    builder            => sub { $_[ 0 ]->schema_classes->{ 'mcp-model' } },
    reader             => 'schedule_class';
 
+# Construction
+around 'BUILDARGS' => sub {
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
+
+   my $conf = $attr->{config}; $conf->{name} //= class2appdir $conf->{appclass};
+
+   return $attr;
+};
+
+around 'deploy_file' => sub {
+   my ($orig, $self, @args) = @_;
+
+   $self->config->appclass->env_var( 'BULK_INSERT', TRUE );
+
+   return $orig->( $self, @args );
+};
+
 # Private methods
 my $_authenticated_user_info = sub {
    my $self    = shift;
@@ -63,16 +80,11 @@ my $_authenticated_user_info = sub {
    return $info;
 };
 
-# Construction
-around 'deploy_file' => sub {
-   my ($orig, $self, @args) = @_;
-
-   $self->config->appclass->env_var( 'BULK_INSERT', TRUE );
-
-   return $orig->( $self, @args );
-};
-
 # Public methods
+sub display_connect_info : method {
+   my $self = shift; $self->dumper( $self->connect_info ); return OK;
+}
+
 sub dump_jobs : method {
    my $self     = shift;
    my $job_spec = $self->next_argv // '%';
@@ -128,6 +140,8 @@ __END__
 
 =pod
 
+=encoding utf-8
+
 =head1 Name
 
 App::MCP::Schema - <One-line description of module's purpose>
@@ -142,6 +156,8 @@ App::MCP::Schema - <One-line description of module's purpose>
 =head1 Configuration and Environment
 
 =head1 Subroutines/Methods
+
+=head2 display_connect_info - Print the database connection information
 
 =head2 dump_jobs - Dump selected job definitions to a file
 

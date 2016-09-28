@@ -171,7 +171,7 @@ sub insert {
 
    $password and not $_is_encrypted->( $password ) and $columns->{password}
       = $self->$_encrypt_password( $username, $password );
-   $columns->{role_id} ||= $self->$_default_role_id;
+   $columns->{role_id} //= $self->$_default_role_id;
    $self->set_inflated_columns( $columns );
 
    return $self->next::method;

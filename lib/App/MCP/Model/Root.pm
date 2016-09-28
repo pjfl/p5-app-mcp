@@ -14,23 +14,21 @@ with    'Web::Components::Role::Forms';
 
 has '+moniker' => default => 'root';
 
-has 'config_editor' => is => 'lazy', isa => Object, builder => sub {
-   App::MCP::ConfigEditor->new( builder => $_[ 0 ]->application ) };
-
 sub check_field : Role(anon) {
    my ($self, $req) = @_;
 
    return $self->check_form_field( $req, $self->schema_class.'::Result' );
 }
 
-sub config_form : Role(any) {
+sub login : Role(anon) {
    my ($self, $req) = @_;
 
-   my $title = $req->loc( 'Configuration' );
-   my $page  = { action => $req->uri, form_name => 'config', title => $title, };
-   my $data  = { values => { data => $self->config_editor->config_data }, };
+   my $title = $req->loc( 'Login' );
+   my $idorn = $req->uri_params->( 0, { optional => TRUE } );
+   my $user  = $self->schema->resultset( 'User' )->find_by_id_or_name( $idorn );
+   my $page  = { action => $req->uri, form_name => 'login', title => $title, };
 
-   return $self->get_stash( $req, $page, config => $data );
+   return $self->get_stash( $req, $page, login => $user );
 }
 
 sub login_action : Role(anon) {
@@ -53,17 +51,6 @@ sub login_action : Role(anon) {
    my $message  = [ 'User [_1] logged in', $username ];
 
    return { redirect => { location => $location, message => $message } };
-}
-
-sub login_form : Role(anon) {
-   my ($self, $req) = @_;
-
-   my $title = $req->loc( 'Login' );
-   my $idorn = $req->uri_params->( 0, { optional => TRUE } );
-   my $user  = $self->schema->resultset( 'User' )->find_by_id_or_name( $idorn );
-   my $page  = { action => $req->uri, form_name => 'login', title => $title, };
-
-   return $self->get_stash( $req, $page, login => $user );
 }
 
 sub logout_action : Role(any) {
@@ -111,7 +98,7 @@ sub not_found : Role(anon) {
 
    my $page = { code  => HTTP_NOT_FOUND,
                 error => $req->loc( 'Resource [_1] not found', $req->uri ),
-                title => $req->loc( 'Not found' ) };
+                title => $req->loc( 'Not Found' ) };
 
    return $self->get_stash( $req, $page, exception => {} );
 }

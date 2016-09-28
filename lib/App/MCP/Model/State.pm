@@ -47,9 +47,8 @@ sub diagram : Role(any) {
    my $id     = bson64id;
    my $page   = { minted => bson64id_time( $id ), title => 'State Diagram' };
    my $source = { state => { 'Schedule' => $tree }, };
-   my $stash  = $self->get_stash( $req, $page, diagram => $source );
 
-   return $stash;
+   return $self->get_stash( $req, $page, diagram => $source );
 }
 
 sub _diagram_state_assign_hook {

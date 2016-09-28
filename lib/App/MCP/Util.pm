@@ -4,7 +4,8 @@ use strictures;
 use parent 'Exporter::Tiny';
 
 use App::MCP::Constants    qw( FALSE NUL SEPARATOR TRUE VARCHAR_MAX_SIZE );
-use Class::Usul::Functions qw( find_apphome get_cfgfiles is_member );
+use Class::Usul::Functions qw( class2appdir find_apphome
+                               get_cfgfiles is_member );
 use Class::Usul::Time      qw( str2time time2str );
 use Scalar::Util           qw( weaken );
 
@@ -30,7 +31,7 @@ sub enhance ($) {
 
    $conf->{appclass    } //= 'App::MCP';
    $attr->{config_class} //= $conf->{appclass}.'::Config';
-   $conf->{name        } //= 'listener'; #TODO: app_prefix   $conf->{appclass};
+   $conf->{name        } //= class2appdir $conf->{appclass};
    $conf->{home        } //= find_apphome $conf->{appclass}, $conf->{home};
    $conf->{cfgfiles    } //= get_cfgfiles $conf->{appclass}, $conf->{home};
 

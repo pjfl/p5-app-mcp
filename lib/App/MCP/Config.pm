@@ -7,7 +7,6 @@ use Class::Usul::Functions qw( fqdn );
 use File::DataClass::Types qw( ArrayRef CodeRef Directory File HashRef
                                NonEmptySimpleStr NonZeroPositiveInt
                                Object PositiveInt SimpleStr Str );
-use Sys::Hostname          qw( hostname );
 use Moo;
 
 extends 'Class::Usul::Config::Programs';
@@ -106,10 +105,6 @@ has 'schema_classes'       => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
 has 'scrubber'             => is => 'ro',   isa => Str,
    default                 => '[^ +\,\-\./0-9@A-Z\\_a-z~]';
 
-has 'secret'               => is => 'lazy', isa => Object, builder => sub {
-   App::MCP::_Secret->new( config => $_[ 0 ], value => $_[ 0 ]->_secret, ) },
-   init_arg                => undef;
-
 has 'serve_as_static'      => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'css | favicon.ico | img | js | less';
 
@@ -145,45 +140,6 @@ has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
 
 has 'title'                => is => 'ro',   isa => NonEmptySimpleStr,
    default                 => 'MCP';
-
-# Private attributes
-has '_secret' => is => 'ro', isa => CodeRef|NonEmptySimpleStr,
-   builder    => sub { sub { hostname } }, init_arg => 'secret';
-
-package # Hide from indexer
-   App::MCP::_Secret;
-
-use Class::Usul::Constants   qw( EXCEPTION_CLASS TRUE );
-use Class::Usul::Crypt::Util qw( decrypt_from_config is_encrypted );
-use Class::Usul::Functions   qw( is_coderef );
-use Class::Usul::Types       qw( CodeRef HashRef NonEmptySimpleStr Object );
-use File::DataClass::IO      qw( io );
-use Unexpected::Functions    qw( throw );
-use Moo;
-
-use namespace::clean -except => [ 'meta' ];
-use overload '""' => sub { $_[ 0 ]->evaluate }, fallback => TRUE;
-
-has 'config' => is => 'ro', isa => HashRef|Object, required => TRUE,
-   weak_ref  => TRUE;
-
-has 'value'  => is => 'ro', isa => CodeRef|NonEmptySimpleStr, required => TRUE;
-
-sub evaluate {
-   my $self = shift; my $conf = $self->config; my $v = $self->value;
-
-   is_coderef $v and ($v = $v->() or throw 'Secret coderef is not true');
-
-   my $file = io $v;
-   my $raw  = (exists $ENV{ $v } and defined $ENV{ $v }  ) ? $ENV{ $v }
-            : ($file->exists     and $file->is_executable) ?   qx( $v )
-            :  $file->exists                               ? $file->all
-                                                           : $v;
-
-   (defined $raw and length $raw) or throw 'Secret not defined or no length';
-
-   return (is_encrypted $raw) ? decrypt_from_config( $conf, $raw ) : $raw;
-}
 
 1;
 
@@ -244,7 +200,6 @@ A non empty simple string which defaults to B<schedule>.
 A simple string which defaults to B<html>.
 
 =item C<deflate_types>
-
 
 An array reference of non empty simple strings that defaults to
 B<[ text/css text/html text/javascript application/javascript ]>
@@ -337,10 +292,6 @@ B<[ theme ]>
 
 A non empty simple string which defaults to B<App::MCP::Request>.
 
-=item C<secret>
-
-A non empty simple string which defaults to B<hostname>.
-
 =item C<schema_classes>
 
 A hash reference of non empty simple strings which defaults to
@@ -350,20 +301,25 @@ B<< { 'mcp-model' => 'App::MCP::Schema::Schedule' } >>
 
 A string which defaults to B<[^ +\,\-\./0-9@A-Z\\_a-z]>.
 
-=item C<server>
-
-A non empty simple string which defaults to B<Twiggy>. The Plack server class
-used for the event listener
-
 =item C<serve_as_static>
 
 A non empty simple string which defaults to
 B<css | favicon.ico | img | js | less>.
 
+=item C<server>
+
+A non empty simple string which defaults to B<Twiggy>. The Plack server class
+used for the event listener
+
 =item C<servers>
 
 An array reference of non empty simple strings that defaults to
-B<[ fqdn ]>
+B<[ fully_qualified_domain_name_of_this_host ]>
+
+=item C<skin>
+
+A non empty simple string which defaults to B<default>. The name of the default
+CSS skin
 
 =item C<ssh_dir>
 

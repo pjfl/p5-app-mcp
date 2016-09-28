@@ -45,8 +45,8 @@ sub choose_action : Role(any) {
 sub chooser : Role(any) {
    my ($self, $req) = @_;
 
-   my $chooser = $self->build_chooser
-      ( $req, { scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' } );
+   my $opts    = { scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' };
+   my $chooser = $self->build_chooser( $req, $opts );
    my $page    = { meta => delete $chooser->{meta} };
    my $stash   = $self->get_stash( $req, $page, 'job_chooser' => $chooser );
 
@@ -57,10 +57,10 @@ sub chooser : Role(any) {
 sub chooser_rows : Role(any) {
    my ($self, $req) = @_;
 
-   my $args  = { form   => 'job',
+   my $opts  = { form   => 'job',
                  method => '_job_chooser_link_hash',
                  values => $self->_job_chooser_search( $req ) };
-   my $rows  = $self->build_chooser_rows( $req, $args );
+   my $rows  = $self->build_chooser_rows( $req, $opts );
    my $page  = { meta => delete $rows->{meta} };
    my $stash = $self->get_stash( $req, $page, 'job_grid_rows' => $rows );
 
@@ -76,12 +76,12 @@ sub chooser_table : Role(any) {
    my $total   = $self->schema->resultset( 'Job' )
       ->search( { id => { '>' => 1 }, name => { -like => $value } } )
       ->count;
-   my $args    = {
+   my $opts    = {
       form     => 'job',
       label    => 'Job names',
       scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]',
       total    => $total, };
-   my $table   = $self->build_chooser_table( $req, $args );
+   my $table   = $self->build_chooser_table( $req, $opts );
    my $page    = { meta => delete $table->{meta} };
    my $stash   = $self->get_stash( $req, $page, 'job_grid_table' => $table );
 
@@ -174,8 +174,8 @@ sub _job_chooser_link_hash {
 sub _job_chooser_search {
    my ($self, $req) = @_; my $params = $req->query_params;
 
-   my $args  = { optional => TRUE, scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' };
-   my $value = $params->( 'field_value', $args ) || '%';
+   my $opts  = { optional => TRUE, scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' };
+   my $value = $params->( 'field_value', $opts ) || '%';
 
    return [ $self->schema->resultset( 'Job' )->search
             ( { id       => { '>' => 1 },
@@ -238,7 +238,7 @@ __END__
 
 =pod
 
-=encoding utf8
+=encoding utf-8
 
 =head1 Name
 

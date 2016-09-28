@@ -12,15 +12,14 @@ with 'Web::Components::Role';
 with 'Class::Usul::TraitFor::ConnectInfo';
 
 # Public attributes
-has 'application' => is => 'ro', isa => Plinth,
-   handles        => [ 'debug' ],
-   required       => TRUE,  weak_ref => TRUE;
+has 'application'   => is => 'ro',   isa => Plinth, handles => [ 'debug' ],
+   required         => TRUE, weak_ref => TRUE;
 
 # Private attributes
-has '_schema'       => is => 'lazy', isa => Object, builder => sub {
+has '_schema'       => is => 'lazy', isa => Object, reader => 'schema',
+   builder          => sub {
    my $self = shift; my $extra = $self->config->connect_params;
-   $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) },
-   reader           => 'schema';
+   $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) };
 
 has '_schema_class' => is => 'lazy', isa => LoadableClass,
    builder          => sub { $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },

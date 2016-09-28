@@ -7,7 +7,7 @@ use Class::Usul::Types     qw( ArrayRef );
 use Try::Tiny;
 use Moo::Role;
 
-requires qw( components config initialise_stash load_page log );
+requires qw( config initialise_stash load_page log );
 
 # Private attributes
 has '_js_files' => is => 'lazy', isa => ArrayRef, builder => sub {

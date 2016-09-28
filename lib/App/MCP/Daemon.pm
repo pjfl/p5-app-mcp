@@ -8,7 +8,7 @@ use App::MCP::DaemonControl;
 use App::MCP::Util         qw( terminate );
 use Async::IPC;
 use Async::IPC::Functions  qw( log_info );
-use Class::Usul::Functions qw( ensure_class_loaded );
+use Class::Usul::Functions qw( class2appdir ensure_class_loaded );
 use Class::Usul::Types     qw( NonEmptySimpleStr NonZeroPositiveInt Object );
 use English                qw( -no_match_vars );
 use Plack::Runner;
@@ -86,7 +86,7 @@ my $_get_listener_sub = sub {
    my $args = {
       '--port'       => $port,
       '--server'     => $conf->server,
-      '--access-log' => $conf->logsdir->catfile( 'listener-access.log' ),
+      '--access-log' => $conf->logsdir->catfile( "access-${port}.log" ),
       '--app'        => $conf->binsdir->catfile( 'mcp-listener' ), };
 
    my $appclass   = $conf->appclass;
@@ -209,6 +209,14 @@ has 'op_ev_hndlr'   => is => 'lazy', isa => Object,
    builder          => $_build_op_ev_hndlr;
 
 # Construction
+around 'BUILDARGS' => sub {
+   my ($orig, $self, @args) = @_; my $attr = $orig->( $self, @args );
+
+   my $conf = $attr->{config}; $conf->{name} //= class2appdir $conf->{appclass};
+
+   return $attr;
+};
+
 before 'run' => sub {
    my $self = shift; $self->quiet( TRUE ); return;
 };

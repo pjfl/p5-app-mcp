@@ -13,7 +13,7 @@ use App::MCP::Util         qw( enumerated_data_type foreign_key_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
                                varchar_data_type );
-use Class::Usul::Functions qw( is_arrayref is_hashref is_member throw );
+use Class::Usul::Functions qw( is_arrayref is_member throw );
 
 my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
 

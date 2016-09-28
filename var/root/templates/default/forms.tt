@@ -10,6 +10,7 @@
    </div>
    <form action="[% page.action %]" enctype="application/x-www-form-urlencoded"
          method="post" name="[% page.form_name %]">
+[% FOREACH field = page.hidden.fields; field.content; END; %]
       <div class="region region2">
 [% IF page.status_message -%]
          <h5 class="status_message">[% page.status_message %]</h5>
