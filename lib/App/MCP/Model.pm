@@ -1,59 +1,88 @@
 package App::MCP::Model;
 
-use namespace::autoclean;
-
-use App::MCP::Constants   qw( EXCEPTION_CLASS NUL TRUE );
-use Class::Usul::Types    qw( LoadableClass Object Plinth );
-use HTTP::Status          qw( HTTP_OK );
-use Unexpected::Functions qw( ValidationErrors );
+use App::MCP::Constants qw( FALSE NUL TRUE );
+use App::MCP::Util      qw( formpost );
+use Type::Utils         qw( class_type );
+use HTML::Forms::Manager;
+use HTML::StateTable::Manager;
+#use App::MCP::JobServer;
+use Web::Components::Navigation;
 use Moo;
+use App::MCP::Attributes; # Will do namespace cleaning
 
-with 'Web::Components::Role';
-with 'Class::Usul::TraitFor::ConnectInfo';
+extends 'Web::Components::Model';
+with    'App::MCP::Role::Authorisation';
+with    'App::MCP::Role::Schema';
 
-# Public attributes
-has 'application'   => is => 'ro',   isa => Plinth, handles => [ 'debug' ],
-   required         => TRUE, weak_ref => TRUE;
+has '+context_class' => default => 'App::MCP::Context';
 
-# Private attributes
-has '_schema'       => is => 'lazy', isa => Object, reader => 'schema',
-   builder          => sub {
-   my $self = shift; my $extra = $self->config->connect_params;
-   $self->schema_class->connect( @{ $self->get_connect_info }, $extra ) };
+has 'form' =>
+   is      => 'lazy',
+   isa     => class_type('HTML::Forms::Manager'),
+   handles => { new_form => 'new_with_context' },
+   default => sub {
+      my $self     = shift;
+      my $appclass = $self->config->appclass;
 
-has '_schema_class' => is => 'lazy', isa => LoadableClass,
-   builder          => sub { $_[ 0 ]->config->schema_classes->{ 'mcp-model' } },
-   reader           => 'schema_class';
+      return HTML::Forms::Manager->new({
+         namespace => "${appclass}::Form", schema => $self->schema
+      });
+   };
 
-sub exception_handler {
-   my ($self, $req, $e) = @_;
+# has 'jobdaemon' =>
+#    is      => 'lazy',
+#    isa     => class_type('App::MCP::JobServer'),
+#    default => sub {
+#       my $self = shift;
 
-   my $title = $req->loc( 'Exception Handler' );
-   my $page  = { code => $e->rv, error => "${e}", title => $title };
+#       return App::MCP::JobServer->new(config => {
+#          appclass => $self->config->appclass,
+#          pathname => $self->config->bin->catfile('mcat-jobserver'),
+#       });
+#    };
 
-   $e->class eq ValidationErrors->() and $page->{validation_error} = $e->args;
+has 'table' =>
+   is      => 'lazy',
+   isa     => class_type('HTML::StateTable::Manager'),
+   handles => { new_table => 'new_with_context' },
+   default => sub {
+      my $self     = shift;
+      my $appclass = $self->config->appclass;
 
-   return $self->get_stash( $req, $page, exception => {} );
-}
+      return HTML::StateTable::Manager->new({
+         log          => $self->log,
+         namespace    => "${appclass}::Table",
+         page_manager => $self->config->wcom_resources->{navigation},
+         view_name    => 'table',
+      });
+   };
 
-sub execute {
-   my ($self, $method, $req) = @_; return $self->$method( $req );
-}
+# Public methods
+sub root : Auth('none') {
+   my ($self, $context) = @_;
 
-sub get_stash {
-   my ($self, $req, $page) = @_; my $stash = $self->initialise_stash( $req );
+   my $args = { context => $context, model => $self };
+   my $nav  = Web::Components::Navigation->new($args);
 
-   $stash->{page} = $self->load_page( $req, $page );
+   $nav->list('_control');
 
-   return $stash;
-}
+   my $session = $context->session;
 
-sub initialise_stash {
-   return { code => HTTP_OK, view => $_[ 0 ]->config->default_view, };
-}
+   if ($session->authenticated) {
+      $nav->item('page/changes');
+      $nav->item('page/password', [$session->id]);
+#      $nav->item('user/profile', [$session->id]);
+      $nav->item('user/totp', [$session->id]) if $session->enable_2fa;
+      $nav->item(formpost, 'page/logout');
+   }
+   else {
+      $nav->item('page/login');
+      $nav->item('page/password', [$session->id]);
+      $nav->item('page/register', []) if $self->config->registration;
+   }
 
-sub load_page {
-   my ($self, $req, $page) = @_; $page //= {}; return $page;
+   $context->stash($self->navigation_key => $nav);
+   return;
 }
 
 1;

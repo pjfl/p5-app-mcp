@@ -1,6 +1,0 @@
-{
-   "fields": "name type host group_id",
-   "rows": [
-      ", box, localhost, 2"
-   ]
-}

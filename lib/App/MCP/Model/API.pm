@@ -1,74 +1,80 @@
 package App::MCP::Model::API;
 
-use namespace::autoclean;
-
-use App::MCP::Constants    qw( NUL TRUE );
-use App::MCP::Util         qw( trigger_input_handler );
-use Class::Usul::Functions qw( throw );
-use Class::Usul::Types     qw( Object );
-use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED
-                               HTTP_NOT_FOUND HTTP_OK );
-use JSON::MaybeXS          qw( );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use Unexpected::Types      qw( HashRef );
+use Class::Usul::Cmd::Util qw( ensure_class_loaded );
+use App::MCP::Util         qw( clear_redirect );
+use Unexpected::Functions  qw( catch_class throw APIMethodFailed
+                               UnauthorisedAPICall UnknownAPIClass
+                               UnknownAPIMethod UnknownView );
 use Try::Tiny;
-use Moo;
+use Web::Simple;
+use App::MCP::Attributes; # Will do namespace cleaning
 
 extends 'App::MCP::Model';
+with    'Web::Components::Role';
+# TODO: Integrate api authentication
+#with    'App::MCP::Role::APIAuthentication';
 
 has '+moniker' => default => 'api';
 
-# Private attributes
-has '_transcoder' => is => 'lazy', isa => Object,
-   builder        => sub { JSON::MaybeXS->new }, reader => 'transcoder';
+has 'routes' => is => 'ro', isa => HashRef, default => sub {
+   return {
+      'api/form/field/validate' => 'api/form/*/field/*/validate',
+      'api/navigation_messages' => 'api/navigation/collect/messages',
+      'api/object_get'          => 'api/object/*/get',
+      'api/table_action'        => 'api/table/*/action',
+      'api/table_preference'    => 'api/table/*/preference',
+   };
+};
 
-with 'App::MCP::Role::APIAuthentication';
+sub dispatch : Auth('none') {
+   my ($self, $context, @args) = @_;
 
-# Public methods
-sub create_event {
-   my ($self, $req) = @_; my $event; $req->authenticate_headers;
+   throw UnknownView, ['json'] unless exists $context->views->{'json'};
 
-   my $schema = $self->schema;
-   my $run_id = $req->query_params->( 'runid' );
-   my $pe_rs  = $schema->resultset( 'ProcessedEvent' )
-                       ->search( { runid   => $run_id },
-                                 { columns => [ 'token' ] } );
-   my $pevent = $pe_rs->first
-     or throw 'Runid [_1] not found', [ $run_id ], rv => HTTP_NOT_FOUND;
-   my $params = $self->authenticate_params
-      ( $run_id, $pevent->token, $req->body_params->( 'event' ) );
+   my ($ns, $name, $method) = splice @args, 0, 3;
+   my $class = ('+' eq substr $ns, 0, 1)
+      ? substr $ns, 1 : 'App::MCP::API::' . ucfirst lc $ns;
 
-   try    { $event = $schema->resultset( 'Event' )->create( $params ) }
-   catch  { throw $_, rv => HTTP_BAD_REQUEST };
+   try   { ensure_class_loaded($class) }
+   catch { $self->error($context, UnknownAPIClass, [$class, $_]) };
 
-   trigger_input_handler $self->config->appclass->env_var( 'DAEMON_PID' );
+   return if $context->stash->{finalised};
 
-   return { code    => HTTP_CREATED,
-            content => { message => 'Event '.$event->id.' created' },
-            view    => 'json', };
+   my $handler = $class->new(name => $name);
+   my $coderef = $handler->can($method);
+
+   return $self->error($context, UnknownAPIMethod, [$class, $method])
+      unless $coderef;
+
+   return $self->error($context, UnauthorisedAPICall, [$class, $method])
+      unless $self->_api_allowed($context, $coderef);
+
+   return if $context->posted && !$context->verify_form_post;
+
+   try { $handler->$method($context, @args) }
+   catch_class [
+      'App::MCP::Exception' => sub { $self->error($context, $_) },
+      '*' => sub { $self->error($context, APIMethodFailed, [$class,$method,$_])}
+   ];
+
+   $context->stash(json => (delete($context->stash->{response}) || {}))
+      unless $context->stash('json');
+
+   return if $context->stash->{finalised};
+
+   $context->stash(view => 'json') unless $context->stash->{view};
+   return;
 }
 
-sub create_job {
-   my ($self, $req) = @_; my $job; $req->authenticate_headers;
+sub _api_allowed {
+   my ($self, $context, $coderef) = @_;
 
-   my $sess_id = $req->query_params->( 'sessionid' );
-   my $sess    = $self->get_session( $sess_id );
-   my $params  = $self->authenticate_params
-      ( $sess->{key}, $sess->{shared_secret}, $req->body_params->( 'job' ) );
+   return TRUE if $self->is_authorised($context, $coderef);
 
-   $params->{owner_id} = $sess->{user_id};
-   $params->{group_id} = $sess->{role_id};
-
-   try    { $job = $self->schema->resultset( 'Job' )->create( $params ) }
-   catch  { throw $_, rv => HTTP_BAD_REQUEST };
-
-   return { code    => HTTP_CREATED,
-            content => { message => 'Job '.$job->id.' created' },
-            view    => 'json', };
-}
-
-sub exception_handler {
-   my ($self, $req, $e) = @_; my $msg = "${e}"; chomp $msg;
-
-   return { code => $e->rv, content => { message => $msg }, view => 'json', };
+   clear_redirect $context;
+   return FALSE;
 }
 
 1;

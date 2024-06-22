@@ -1,25 +1,92 @@
 package App::MCP::Exception;
 
-use namespace::autoclean;
-
+use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_NOT_FOUND
+                              HTTP_UNAUTHORIZED );
+use Unexpected::Types     qw( Int Object );
+use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( has_exception );
+use DateTime;
+use App::MCP;
 use Moo;
 
-extends 'Class::Usul::Exception';
+extends 'HTML::Forms::Exception', 'HTML::StateTable::Exception';
+
+has 'created' =>
+   is      => 'ro',
+   isa     => class_type('DateTime'),
+   default => sub {
+      return DateTime->now( locale => 'en_GB', time_zone => 'UTC' );
+   };
+
+has 'rv' => is => 'ro', isa => Int, default => 1;
+
+has 'version' =>
+   is      => 'ro',
+   isa     => Object,
+   default => sub { $App::MCP::VERSION };
 
 my $class = __PACKAGE__;
 
-has_exception $class              => parents => [ 'Class::Usul::Exception' ];
+has '+class' => default => $class;
+
+has_exception $class;
 
 has_exception 'Authentication'    => parents => [ $class ];
 
 has_exception 'Workflow'          => parents => [ $class ];
 
+has_exception 'AuthenticationRequired' => parents => ['Authentication'],
+   error   => 'Resource [_1] authentication required';
+
 has_exception 'AccountInactive'   => parents => [ 'Authentication' ],
+   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
+
+has_exception 'IncorrectAuthCode' => parents => ['Authentication'],
    error   => 'User [_1] authentication failed';
 
 has_exception 'IncorrectPassword' => parents => [ 'Authentication' ],
-   error   => 'User [_1] authentication failed';
+   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
+
+has_exception 'PasswordDisabled' => parents => ['Authentication'],
+   error   => 'User [_1] password disabled';
+
+has_exception 'PasswordExpired' => parents => ['Authentication'],
+   error   => 'User [_1] password expired';
+
+has_exception 'APIMethodFailed', parents => [$class],
+   error   => 'API class [_1] method [_2] call failed: [_3]',
+   rv      => HTTP_BAD_REQUEST;
+
+has_exception 'NoMethod' => parents => [$class],
+   error   => 'Class [_1] has no method [_2]', rv => HTTP_NOT_FOUND;
+
+has_exception 'PageNotFound' => parents => [$class],
+   error   => 'Page [_1] not found', rv => HTTP_NOT_FOUND;
+
+has_exception 'UnauthorisedAPICall' => parents => [$class],
+   error   => 'Class [_1] method [_2] unauthorised call attempt',
+   rv      => HTTP_UNAUTHORIZED;
+
+has_exception 'UnknownAPIClass' => parents => [$class],
+   error   => 'API class [_1] not found: [_2]', rv => HTTP_NOT_FOUND;
+
+has_exception 'UnknownAPIMethod' => parents => [$class],
+   error   => 'Class [_1] has no [_2] method', rv => HTTP_NOT_FOUND;
+
+has_exception 'UnknownJob' => parents => [$class],
+   error   => 'Job [_1] not found', rv => HTTP_NOT_FOUND;
+
+has_exception 'UnknownModel' => parents => [$class],
+   error   => 'Model [_1] (moniker) not found', rv => HTTP_NOT_FOUND;
+
+has_exception 'UnknownToken' => parents => [$class],
+   error   => 'Token [_1] not found', rv => HTTP_NOT_FOUND;
+
+has_exception 'UnknownUser' => parents => [$class],
+   error   => 'User [_1] not found', rv => HTTP_NOT_FOUND;
+
+has_exception 'NoUserRole' => parents => [$class],
+   error   => 'User [_1] no role found on session', rv => HTTP_NOT_FOUND;
 
 has_exception 'Condition'         => parents => [ 'Workflow' ],
    error   => 'Condition not true';
@@ -35,11 +102,7 @@ has_exception 'Retry'             => parents => [ 'Workflow' ],
 
 has_exception 'Unknown'           => parents => [ 'Workflow' ];
 
-has '+class' => default => $class;
-
-sub code {
-   return $_[ 0 ]->rv;
-}
+use namespace::autoclean;
 
 1;
 

@@ -1,30 +1,22 @@
 package App::MCP::Schema::Schedule::ResultSet::Job;
 
-use strictures;
-use parent 'DBIx::Class::ResultSet';
+use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL SEPARATOR TRUE );
+use HTTP::Status          qw( HTTP_NOT_FOUND );
+use App::MCP::Util        qw( strip_parent_name );
+use Unexpected::Functions qw( throw Unspecified UnknownJob UnknownUser );
+use Moo;
 
-use App::MCP::Constants    qw( FALSE NUL SEPARATOR TRUE );
-use App::MCP::Util         qw( strip_parent_name );
-use Class::Usul::Functions qw( throw );
-use HTTP::Status           qw( HTTP_NOT_FOUND );
-
-# Private methods
-my $_get_job_state = sub {
-   my ($self, $name) = @_;
-
-   my $job = $self->search( { 'me.name' => $name }, {
-      prefetch => 'state' } )->single or throw 'Job [_1] unknown', [ $name ];
-
-   return $job->state ? $job->state->name : 'inactive';
-};
+extends 'DBIx::Class::ResultSet';
 
 # Public methods
 sub assert_executable {
-   my ($self, $name, $user) = @_; my $job = $self->find_by_name( $name );
+   my ($self, $job_key, $user) = @_;
 
-   $job->is_executable_by( $user->id )
-        or throw 'Job [_1] execute permission denied to [_2]',
-                 [ $name, $user->username ];
+   my $job = $self->find_by_key($job_key);
+
+   throw 'Job [_1] execute permission denied to [_2]',
+      [$job->job_name, $user->user_name]
+      unless $job->is_executable_by($user->id);
 
    return $job;
 }
@@ -34,100 +26,108 @@ sub create {
 
    my $prefix      = NUL;
    my $sep         = SEPARATOR;
-   my $name        = delete $col_data->{name};
+   my $job_name    = delete $col_data->{job_name};
    my $parent_name = delete $col_data->{parent_name};
 
-   defined $parent_name and length $parent_name
-       and $prefix = (not $col_data->{type} or $col_data->{type} eq 'job')
-                   ? $parent_name.$sep
-                   : ((split m{ $sep }mx, $parent_name)[ 0 ]).$sep;
+   if (defined $parent_name and length $parent_name) {
+      $prefix = (not $col_data->{type} or $col_data->{type} eq 'job')
+              ? $parent_name.$sep
+              : ((split m{ $sep }mx, $parent_name)[0]).$sep;
+   }
 
-   $col_data->{name} = defined $name ? $prefix.$name : NUL;
+   $col_data->{job_name} = defined $job_name ? $prefix.$job_name : NUL;
 
-   $parent_name and $col_data->{parent_id}
-      = $self->writable_box_id_by_name( $parent_name, $col_data->{owner_id} );
+   if ($parent_name) {
+      $col_data->{parent_id}
+         = $self->writable_box_id_by_name($parent_name, $col_data->{owner_id});
+   }
+
    $col_data->{parent_id} //= 1;
 
-   return $self->next::method( $col_data );
+   return $self->next::method($col_data);
 }
 
 sub dump {
-   my ($self, $job_spec) = @_; my $index = {}; my @jobs;
+   my ($self, $job_spec) = @_;
 
-   my $rs = $self->search( {
-      name => { like => $job_spec }, }, {
-         order_by     => 'id',
-         result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-      } );
+   my $index = {};
+   my @jobs;
+
+   my $rs = $self->search({ 'me.job_name' => { like => $job_spec } }, {
+      order_by     => 'id',
+      result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+   });
 
    for my $job ($rs->all) {
       delete $job->{group_id};
       delete $job->{owner_id};
       delete $job->{parent_path};
-      $index->{ delete $job->{id} } = $job->{name};
+      $index->{ delete $job->{id} } = $job->{job_name};
 
-      my $parent_id; $parent_id = delete $job->{parent_id}
-         and $job->{parent_name} = $index->{ $parent_id };
+      my $parent_id = delete $job->{parent_id};
 
-      length $job->{name} and $job->{name} = strip_parent_name $job->{name}
-         and push @jobs, $job;
+      $job->{parent_name} = $index->{$parent_id} if $parent_id;
+
+      if (length $job->{job_name}) {
+         $job->{job_name} = strip_parent_name $job->{job_name};
+         push @jobs, $job;
+      }
    }
 
    return \@jobs;
 }
 
-sub find_by_id_or_name {
-   my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $job;
+sub find_by_key {
+   my ($self, $job_key, $options) = @_;
 
-   $arg =~ m{ \A \d+ }mx and $job = $self->find( $arg );
-   $job or $job = $self->find_by_name( $arg );
-   return $job;
-}
+   throw Unspecified, ['job key'] unless defined $job_key and length $job_key;
 
-sub find_by_name {
-   my ($self, $name) = @_;
+   my $job; $options //= {};
 
-   my $job = $self->search( { name => $name } )->single
-      or throw 'Job [_1] unknown', [ $name ], rv => HTTP_NOT_FOUND;
+   if ($job_key =~ m{ \A \d+ \z }mx) { $job = $self->find($job_key, $options) }
+   else { $job = $self->search({'me.job_name' => $job_key}, $options)->single }
+
+   throw UnknownJob, [$job_key] unless $job;
 
    return $job;
 }
 
 sub finished {
-   return $_[ 0 ]->$_get_job_state( $_[ 1 ] ) eq 'finished' ? TRUE : FALSE ;
+   return $_[0]->_get_job_state($_[1]) eq 'finished' ? TRUE : FALSE;
 }
 
 sub writable_box_id_by_name {
-   my ($self, $name, $user_idorn) = @_; my $job = $self->find_by_name( $name );
+   my ($self, $job_key, $user_key) = @_;
 
-   $job->type eq 'box' or throw 'Job [_1] is not a box', [ $name ];
+   my $job = $self->find_by_key($job_key);
 
-   my $user_rs = $self->result_source->schema->resultset( 'User' );
-   my $user    = $user_rs->find_by_id_or_name( $user_idorn // 1 );
+   throw 'Job [_1] is not a box', [$job->job_name] unless $job->type eq 'box';
 
-   $job->is_writable_by( $user->id )
-      or throw 'Job [_1] write permission denied to [_1]',
-               [ $name, $user->username ];
+   my $user_rs = $self->result_source->schema->resultset('User');
+   my $user    = $user_rs->find_by_key($user_key // 0);
 
-   return $job->id;
-};
-
-sub job_id_by_name {
-   my ($self, $name) = @_;
-
-   my $job = $self->search( { name => $name }, { columns => [ 'id' ] } )->single
-      or throw 'Job [_1] unknown', [ $name ];
+   throw UnknownUser, [$user_key] unless $user;
+   throw 'Job [_1] write permission denied to [_1]',
+      [$job->job_name, $user->user_name] unless $job->is_writable_by($user->id);
 
    return $job->id;
 }
 
+sub job_id_by_name {
+   my ($self, $job_key) = @_;
+
+   return $self->find_by_key($job_key, { columns => ['id'] })->id;
+}
+
 sub load {
-   my ($self, $auth, $jobs) = @_; my $count = 0;
+   my ($self, $auth, $jobs) = @_;
+
+   my $count = 0;
 
    for my $job (@{ $jobs // [] }) {
       $job->{owner_id} = $auth->{user}->id;
       $job->{group_id} = $auth->{role}->id;
-      $self->create( $job );
+      $self->create($job);
       $count++;
    }
 
@@ -139,11 +139,20 @@ sub predicates {
 }
 
 sub running {
-   return $_[ 0 ]->$_get_job_state( $_[ 1 ] ) eq 'running' ? TRUE : FALSE
+   return $_[0]->_get_job_state($_[1]) eq 'running' ? TRUE : FALSE;
 }
 
 sub terminated {
-   return $_[ 0 ]->$_get_job_state( $_[ 1 ] ) eq 'terminated' ? TRUE : FALSE;
+   return $_[0]->_get_job_state($_[1]) eq 'terminated' ? TRUE : FALSE;
+}
+
+# Private methods
+sub _get_job_state {
+   my ($self, $job_key) = @_;
+
+   my $job = $self->find_by_key($job_key, { prefetch => 'state' });
+
+   return $job->state ? $job->state->state_name : 'inactive';
 }
 
 1;

@@ -1,0 +1,15 @@
+<div class="exception">
+[% header("", "Exception Awarded") -%]
+Message: [% exception.original | html %]<br/>
+[% IF exception.class == 'ValidationErrors' -%]
+[%    FOR error IN exception.args -%]
+<span>[% error %]<span><br />
+[%    END -%]
+[% END -%]
+Thrown by: [% exception.leader %]<br/>
+Created: [% exception.created %]<br />
+Class: [% exception.class %]<br/>
+Version: [% exception.version %]<br/>
+Session updated: [% context.request.session.updated %]<br/>
+Code: [% exception.rv %]<br/>
+</div>

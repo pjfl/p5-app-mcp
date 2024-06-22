@@ -1,29 +1,135 @@
 package App::MCP::Model::Job;
 
-use App::MCP::Attributes;  # Will do cleaning
 use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES EXCEPTION_CLASS
                                NUL SEPARATOR SPC TRUE );
-use App::MCP::Util         qw( strip_parent_name );
 use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
-use Unexpected::Functions  qw( throw Unspecified );
-use Moo;
+use App::MCP::Util         qw( redirect redirect2referer strip_parent_name );
+use Unexpected::Functions  qw( throw UnknownJob Unspecified );
+use Web::Simple;
+use App::MCP::Attributes;  # Will do cleaning
 
 extends 'App::MCP::Model';
-with    'App::MCP::Role::PageConfiguration';
-with    'App::MCP::Role::WebAuthentication';
-with    'Web::Components::Role::Forms';
-with    'Web::Components::Role::Forms::Chooser';
+with    'Web::Components::Role';
 
 has '+moniker' => default => 'job';
 
-# Private functions
-my $_job_not_found = sub {
-   return { redirect    => {
-               location => $_[ 0 ]->uri_for( 'job' ),
-               message  => [ 'Job id [_1] not found', $_[ 1 ] ] } };
-};
-
 # Public methods
+sub base : Auth('view') {
+   my ($self, $context, $jobid) = @_;
+
+   my $nav = $context->stash('nav')->list('job')->item('job/create');
+
+   if ($jobid) {
+      my $job = $context->model('Job')->find($jobid);
+
+      return $self->error($context, UnknownJob, [$jobid]) unless $job;
+
+      $context->stash(job => $job);
+      $nav->crud('job', $jobid);
+   }
+
+   $nav->finalise;
+   return;
+}
+
+sub create : Nav('Create Job') {
+   my ($self, $context) = @_;
+
+   my $options = { context => $context, title => 'Create Job' };
+   my $form    = $self->new_form('Job', $options);
+
+   if ($form->process(posted => $context->posted)) {
+      my $view    = $context->uri_for_action('job/view', [$form->item->id]);
+      my $message = ['Job [_1] created', $form->item->job_name];
+
+      $context->stash(redirect $view, $message);
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
+sub delete : Nav('Delete Job') {
+   my ($self, $context, $jobid) = @_;
+
+   return unless $context->verify_form_post;
+
+   my $job = $context->stash('job');
+
+   return $self->error($context, UnknownJob, [$jobid]) unless $job;
+
+   my $name = $job->job_name;
+
+   $job->delete;
+
+   my $list = $context->uri_for_action('job/list');
+
+   $context->stash(redirect $list, ['Job [_1] deleted', $name]);
+   return;
+}
+
+sub edit : Nav('Edit Job') {
+   my ($self, $context) = @_;
+
+   my $job  = $context->stash('job');
+   my $options = {context => $context, item => $job, title => 'Edit job'};
+   my $form    = $self->new_form('Job', $options);
+
+   if ($form->process(posted => $context->posted)) {
+      my $view = $context->uri_for_action('job/view', [$job->jobid]);
+      my $message = ['Job [_1] updated', $form->item->job_name];
+
+      $context->stash(redirect $view, $message);
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
+sub list : Auth('view') Nav('Jobs|img/job.svg') {
+   my ($self, $context) = @_;
+
+   my $options = { context => $context };
+
+   if (my $list_id = $context->request->query_parameters->{list_id}) {
+      $options->{list_id} = $list_id;
+   }
+
+   $context->stash(table => $self->new_table('Job', $options));
+   return;
+}
+
+sub remove {
+   my ($self, $context) = @_;
+
+   return unless $context->verify_form_post;
+
+   my $value = $context->request->body_parameters->{data} or return;
+   my $rs    = $context->model('Job');
+   my $count = 0;
+
+   for my $job (grep { $_ } map { $rs->find($_) } @{$value->{selector}}) {
+      $job->delete;
+      $count++;
+   }
+
+   $context->stash(redirect2referer $context, ["${count} job(s) deleted"]);
+   return;
+}
+
+sub view : Auth('view') Nav('View Job') {
+   my ($self, $context) = @_;
+
+   my $job     = $context->stash('job');
+   my $options = { caption => 'Job View', context => $context, result => $job };
+
+   $context->stash(table => $self->new_table('Object::View', $options));
+   return;
+}
+
+
+
+# TODO: Old job model methods parked here
 sub choose_action : Role(any) {
    my ($self, $req) = @_; my $job;
 
@@ -93,35 +199,6 @@ sub clear_action : Role(any) {
    return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
 }
 
-sub delete_action : Role(any) {
-   my ($self, $req) = @_;
-
-   my $idorn    = $req->uri_params->( 0 );
-   my $location = $req->uri_for( 'job' );
-   my $message  = [ 'Job [_1] not found', $idorn ];
-   my $job_rs   = $self->schema->resultset( 'Job' );
-   my $job      = $job_rs->find_by_id_or_name( $idorn )
-      or return { redirect => { location => $location, message => $message } };
-   my $name     = $job->name; $job->delete;
-
-   $message = [ 'Job name [_1] deleted', $name ];
-
-   return { redirect => { location => $location, message => $message } };
-}
-
-sub definition_form : Role(any) {
-   my ($self, $req) = @_;
-
-   my $title = $req->loc( 'Job Definition' );
-   my $idorn = join SEPARATOR, @{ $req->uri_params->( { optional => TRUE } ) };
-   my $job   = $self->schema->resultset( 'Job' )->find_by_id_or_name( $idorn );
-   my $page  = { action => $req->uri, form_name => 'job', title => $title, };
-
-   $job and $page->{job_id} = $job->id;
-
-   return $self->get_stash( $req, $page, 'job' => $job );
-}
-
 sub job_state : Role(any) {
    my ($self, $req) = @_;
 
@@ -137,38 +214,14 @@ sub job_state : Role(any) {
    return $stash;
 }
 
-sub save_action : Role(any) {
-   my ($self, $req) = @_; my $job; my $message;
-
-   my $idorn = join SEPARATOR, @{ $req->uri_params->( { optional => TRUE } ) };
-   my $args  = { id     => $idorn,
-                 method => '_job_deflate_',
-                 params => $req->body_params,
-                 rs     => $self->schema->resultset( 'Job' ) };
-
-   if (defined $idorn and length $idorn) {
-      $job = $self->find_and_update_form_record( $args )
-          or return $_job_not_found->( $req, $idorn );
-      $message = [ 'Job [_1] updated', $job->name ];
-   }
-   else {
-      $job = $self->create_form_record( $args, 'parent_name' );
-      $message = [ 'Job [_1] created', $job->name ];
-   }
-
-   my $location = $req->uri_for( 'job', [ $job->id ] );
-
-   return { redirect => { location => $location, message => $message } };
-}
-
 # Private methods
 sub  _job_chooser_assign_hook {
    return $_[ 1 ]->uri_for( 'job_chooser' );
 }
 
 sub _job_chooser_link_hash {
-   return { href => '#top',           text  => $_[ 3 ]->name,
-            tip  => $_[ 3 ]->summary, value => $_[ 3 ]->name, };
+   return { href => '#top',           text  => $_[ 3 ]->job_name,
+            tip  => $_[ 3 ]->summary, value => $_[ 3 ]->job_name, };
 }
 
 sub _job_chooser_search {
@@ -229,7 +282,7 @@ sub _job_name_assign_hook {
 sub _job_parent_name_assign_hook {
    my ($self, $req, $field, $row, $value) = @_; $row or return $value;
 
-   return $self->schema->resultset( 'Job' )->find( $row->parent_id )->name;
+   return $self->schema->resultset( 'Job' )->find( $row->parent_id )->job_name;
 }
 
 1;

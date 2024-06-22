@@ -1,0 +1,5 @@
+[%
+   html = page.html;
+   wrapper = page.wrapper;
+   content WRAPPER "${skin}/site/wrapper/${wrapper}.tt" WRAPPER "${skin}/site/html/${html}.tt";
+-%]

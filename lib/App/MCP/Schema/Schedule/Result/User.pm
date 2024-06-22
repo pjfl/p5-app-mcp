@@ -1,199 +1,319 @@
 package App::MCP::Schema::Schedule::Result::User;
 
-use strictures;
-use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
-use parent   'App::MCP::Schema::Base';
+use overload '""' => sub { $_[0]->_as_string },
+             '+'  => sub { $_[0]->_as_number }, fallback => 1;
 
-use App::MCP::Constants        qw( EXCEPTION_CLASS TRUE FALSE NUL );
-use App::MCP::Util             qw( foreign_key_data_type get_salt
-                                   serial_data_type varchar_data_type );
-use Class::Usul::Functions     qw( base64_encode_ns create_token throw );
-use Crypt::Eksblowfish::Bcrypt qw( bcrypt en_base64 );
+use App::MCP::Constants        qw( EXCEPTION_CLASS FALSE NUL TRUE );
+use Unexpected::Types          qw( Bool HashRef Int Object );
+use App::MCP::Util             qw( base64_encode boolean_data_type
+                                   foreign_key_data_type get_salt new_salt
+                                   serial_data_type random_digest
+                                   text_data_type truncate varchar_data_type );
+use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
+use Scalar::Util               qw( blessed );
+use Unexpected::Functions      qw( throw AccountInactive IncorrectAuthCode
+                                   IncorrectPassword PasswordDisabled
+                                   PasswordExpired Unspecified );
+use Auth::GoogleAuth;
 use Crypt::SRP;
-use Digest::MD5                qw( md5_hex );
-use HTTP::Status               qw( HTTP_UNAUTHORIZED );
-use Try::Tiny;
-use Unexpected::Functions      qw( AccountInactive IncorrectPassword );
+use DBIx::Class::Moo::ResultClass;
 
-my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
+extends 'App::MCP::Schema::Base';
 
-$class->table( 'user' );
+my $class  = __PACKAGE__;
+my $result = 'App::MCP::Schema::Schedule::Result';
 
-$class->add_columns
-   ( id            => serial_data_type,
-     username      => varchar_data_type( 64, NUL ),
-     active        => { data_type     => 'boolean',
-                        default_value => FALSE,
-                        is_nullable   => FALSE, },
-     role_id       => foreign_key_data_type,
-     pwlast        => { data_type     => 'mediumint',
-                        default_value => 0,
-                        is_nullable   => FALSE, },
-     pwnext        => { data_type     => 'mediumint',
-                        default_value => 0,
-                        is_nullable   => FALSE, },
-     pwafter       => { data_type     => 'mediumint',
-                        default_value => 99999,
-                        is_nullable   => FALSE, },
-     pwwarn        => { data_type     => 'mediumint',
-                        default_value => 7,
-                        is_nullable   => FALSE, },
-     pwexpires     => { data_type     => 'mediumint',
-                        default_value => 90,
-                        is_nullable   => FALSE, },
-     pwdisable     => { data_type     => 'mediumint',
-                        default_value => undef,
-                        is_nullable   => TRUE, },
-     password      => varchar_data_type( 384, NUL ),
-     email_address => varchar_data_type(  64, NUL ),
-     first_name    => varchar_data_type(  64, NUL ),
-     last_name     => varchar_data_type(  64, NUL ),
-     home_phone    => varchar_data_type(  64, NUL ),
-     location      => varchar_data_type(  64, NUL ),
-     project       => varchar_data_type(  64, NUL ),
-     work_phone    => varchar_data_type(  64, NUL ), );
+$class->table('users');
 
-$class->set_primary_key( 'id' );
+$class->add_columns(
+   id        => { %{serial_data_type()}, label => 'User ID' },
+   user_name => varchar_data_type(64),
+   email     => text_data_type(),
+   role_id   => {
+      %{foreign_key_data_type()},
+      cell_traits => ['Capitalise'],
+      display     => 'role.name',
+      label       => 'Role',
+   },
+   active    => { %{boolean_data_type()}, label => 'Still Active', },
+   password_expired => { %{boolean_data_type()}, label => 'Password Expired', },
+   password  => {
+      %{text_data_type()},
+      display => sub { truncate shift->result->password, 20 },
+   },
+);
 
-$class->add_unique_constraint( [ 'username' ] );
+$class->set_primary_key('id');
 
-$class->belongs_to  ( primary_role => "${result}::Role",     'role_id' );
-$class->has_many    ( user_role    => "${result}::UserRole", 'user_id' );
-$class->many_to_many( roles        => 'user_role',              'role' );
+$class->add_unique_constraint('users_email_uniq', ['email']);
+
+$class->add_unique_constraint('users_user_name_uniq', ['user_name']);
+
+$class->belongs_to('role' => "${result}::Role", 'role_id');
+
+$class->has_many('preferences' => "${result}::Preference", 'user_id');
+
+$class->might_have('profile' => "${result}::Preference", sub {
+   my $args    = shift;
+   my $foreign = $args->{foreign_alias};
+   my $self    = $args->{self_alias};
+
+   return {
+      "${foreign}.user_id" => { -ident => "${self}.id" },
+      "${foreign}.name"    => { '=' => 'profile' }
+   };
+});
+
+# TODO: Derive default role_id from self
+has 'default_role_id' => is => 'ro', isa => Int, default => 3;
+
+has 'profile_value' => is => 'lazy', isa => HashRef, default => sub {
+   my $self    = shift;
+   my $profile = $self->profile;
+
+   return $profile ? $profile->value : {};
+};
+
+has 'totp_authenticator' => is => 'lazy', isa => Object, default => sub {
+   my $self = shift;
+
+   return Auth::GoogleAuth->new({
+      issuer => $self->result_source->schema->config->prefix,
+      key_id => $self->user_name,
+      secret => $self->totp_secret,
+   });
+};
 
 # Private functions
-my $_new_salt = sub {
-   my ($type, $lf) = @_;
+sub _is_disabled ($) {
+   return $_[0] =~ m{ \* }mx ? TRUE : FALSE;
+}
 
-   return "\$${type}\$${lf}\$"
-      .(en_base64( pack( 'H*', substr( create_token, 0, 32 ) ) ) );
-};
-
-my $_is_encrypted = sub {
-   return $_[ 0 ] =~ m{ \A \$\d+[a]?\$ }mx ? TRUE : FALSE;
-};
-
-# Private methods
-my $_default_role_id = sub {
-   my $self = shift; return 1; # TODO: Derive default role_id from self
-};
-
-my $_encrypt_password = sub {
-   my ($self, $username, $password, $stored) = @_;
-
-   if ($password =~ m{ \A \{ 5054 \} }mx
-       or (defined $stored and $stored =~ m{ \A \$ 5054 \$ }mx)) {
-       $password =~ s{ \A \{ 5054 \} }{}mx;
-
-      my $salt     = defined $stored ? get_salt $stored
-                                     : $_new_salt->( '5054', '00' );
-      my $srp      = Crypt::SRP->new( 'RFC5054-2048bit', 'SHA512' );
-      my $verifier = $srp->compute_verifier( $username, $password, $salt );
-
-      return $salt.base64_encode_ns( $verifier );
-   }
-
-   my $salt = defined $stored ? get_salt( $stored )
-      : $_new_salt->( '2a', $self->result_source->resultset->load_factor );
-
-   return bcrypt( $password, $salt );
-};
+sub _is_encrypted ($) {
+   return $_[0] =~ m{ \A \$\d+[a]?\$ }mx ? TRUE : FALSE;
+}
 
 # Public methods
 sub activate {
-   my $self = shift; $self->active( TRUE ); return $self->update;
+   my $self = shift; $self->active(TRUE); return $self->update;
 }
 
-sub add_member_to {
-   my ($self, $role) = @_; my $failed = FALSE;
+sub assert_can_email {
+   my $self = shift;
 
-   try { $self->assert_member_of( $role ) } catch { $failed = TRUE };
+   throw 'User [_1] has no email address', [$self] unless $self->email;
+   throw 'User [_1] has an example email address', [$self]
+      unless $self->can_email;
 
-   $failed or throw 'User [_1] already a member of role [_2]',
-                    [ $self->username, $role->rolename ];
-
-   return $self->user_role->create( { user_id => $self->id,
-                                      role_id => $role->id } );
+   return;
 }
 
-sub as_string {
-   return $_[ 0 ]->username;
-}
+sub authenticate {
+   my ($self, $password, $code, $for_update) = @_;
 
-sub assert_member_of {
-   my ($self, $role) = @_;
+   throw AccountInactive, [$self] unless $self->active;
 
-   $self->role_id == $role->id and return TRUE;
+   throw PasswordDisabled, [$self] if _is_disabled $self->password;
 
-   my $user_role = $self->user_role->find( $self->id, $role->id )
-      or throw 'User [_1] not member of role [_2]',
-               [ $self->username, $role->rolename ];
+   throw PasswordExpired, [$self] if $self->password_expired && !$for_update;
+
+   throw Unspecified, ['Password'] unless $password;
+
+   my $supplied = $self->encrypt_password($password, $self->password);
+
+   throw IncorrectPassword, [$self] unless $self->password eq $supplied;
+
+   return TRUE if !$self->totp_secret || $for_update;
+
+   throw Unspecified, ['Auth. Code'] unless $code;
+
+   throw IncorrectAuthCode, [$self]
+      unless $self->totp_authenticator->verify($code);
 
    return TRUE;
 }
 
-sub authenticate {
-   my ($self, $passwd) = @_;
+sub can_email {
+   my $self = shift;
 
-   $self->active
-      or throw AccountInactive, [ $self->username ], rv => HTTP_UNAUTHORIZED;
-
-   my $username = $self->username;
-   my $stored   = $self->password || NUL;
-   my $supplied = $self->$_encrypt_password( $username, $passwd, $stored );
-
-   $supplied eq $stored
-      or throw IncorrectPassword, [ $self->username ], rv => HTTP_UNAUTHORIZED;
-   return;
+   return FALSE unless $self->email;
+   return FALSE if $self->email =~ m{ \@example\.com \z }mx;
+   return TRUE;
 }
 
 sub deactivate {
-   my $self = shift; $self->active( FALSE ); return $self->update;
+   my $self = shift; $self->active(FALSE); return $self->update;
 }
 
-sub delete_member_from {
-   my ($self, $role) = @_;
+sub encrypt_password {
+   my ($self, $password, $stored) = @_;
 
-   $self->role_id == $role->id and throw 'Cannot delete from primary role';
+   my $username = $self->user_name;
 
-   my $user_role = $self->user_role->find( $self->id, $role->id )
-      or throw 'User [_1] not member of role [_2]',
-               [ $self->username, $role->rolename ];
+   if ($password =~ m{ \A \{ 5054 \} }mx
+       or (defined $stored and $stored =~ m{ \A \$ 5054 \$ }mx)) {
+      $password =~ s{ \A \{ 5054 \} }{}mx;
 
-   return $user_role->delete;
+      my $salt     = $stored ? get_salt $stored : new_salt '5054', '00';
+      my $srp      = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
+      my $verifier = $srp->compute_verifier($username, $password, $salt);
+
+      return $salt.base64_encode($verifier);
+   }
+
+   my $lf   = $self->result_source->schema->config->user->{load_factor};
+   my $salt = $stored ? get_salt $stored : new_salt '2a', $lf;
+
+   return bcrypt($password, $salt);
+}
+
+sub enable_2fa {
+   my ($self, $value) = @_; return $self->_profile('enable_2fa', $value);
+}
+
+sub execute {
+   my ($self, $method) = @_;
+
+   return FALSE unless exists { enable_2fa => TRUE }->{$method};
+
+   return $self->$method();
 }
 
 sub insert {
-   my $self     = shift;
-   my $columns  = { $self->get_inflated_columns };
-   my $password = $columns->{password};
-   my $username = $columns->{username};
+   my $self    = shift;
+   my $columns = { $self->get_inflated_columns };
 
-   $password and not $_is_encrypted->( $password ) and $columns->{password}
-      = $self->$_encrypt_password( $username, $password );
-   $columns->{role_id} //= $self->$_default_role_id;
-   $self->set_inflated_columns( $columns );
+   $self->_encrypt_password_column($columns);
+
+   $columns->{role_id} //= $self->default_role_id;
+   $self->set_inflated_columns($columns);
 
    return $self->next::method;
 }
 
-sub list_other_roles {
-   my $self = shift;
+sub mobile_phone {
+   my ($self, $value) = @_; return $self->_profile('mobile_phone', $value);
+}
 
-   return [ map { NUL.$_->role }
-            $self->user_role->search( { user_id => $self->id } )->all ];
+sub postcode {
+   my ($self, $value) = @_; return $self->_profile('postcode', $value);
+}
+
+sub set_password {
+   my ($self, $old, $new) = @_;
+
+   $self->authenticate($old, NUL, TRUE);
+   $self->password($new);
+   $self->password_expired(FALSE);
+   return $self->update;
+}
+
+sub set_totp_secret {
+   my ($self, $enabled) = @_;
+
+   my $current = $self->totp_secret ? TRUE : FALSE;
+
+   return $self->totp_secret(substr random_digest->b64digest, 0, 16)
+      if $enabled && !$current;
+
+   return $self->totp_secret(NUL) if $current && !$enabled;
+
+   return $self->totp_secret;
+}
+
+sub to_session {
+   my ($self, $session) = @_;
+
+   return unless $session && blessed $session;
+
+   my $profile = $self->profile_value;
+
+   for my $key (grep { $_ ne 'authenticated' } keys %{$profile}) {
+      my $value       = $profile->{$key};
+      my $value_class = blessed $value;
+
+      if ($value_class && $value_class eq 'JSON::PP::Boolean') {
+         $value = "${value}" ? TRUE : FALSE;
+      }
+
+      $session->$key($value) if defined $value && $session->can($key);
+   }
+
+   $session->email($self->email)          if $session->can('email');
+   $session->id($self->id)                if $session->can('id');
+   $session->role($self->role->role_name) if $session->can('role');
+   $session->username($self->user_name)   if $session->can('username');
+
+   return;
+}
+
+sub totp_secret {
+   my ($self, $value) = @_; return $self->_profile('totp_secret', $value);
+}
+
+sub update {
+   my ($self, $columns) = @_;
+
+   $self->set_inflated_columns($columns) if $columns;
+
+   $columns = { $self->get_inflated_columns };
+   $self->_encrypt_password_column($columns);
+
+   return $self->next::method;
 }
 
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       constraints    => {
-         username    => { max_length => 64, min_length => 1, } },
+         user_name   => { max_length => 64, min_length => 1, } },
       fields         => {
          password    => { validate => 'isMandatory' },
-         username    => {
+         user_name   => {
             validate => 'isMandatory isValidIdentifier isValidLength' }, },
    };
 }
+
+# Private methods
+sub _as_number {
+   return $_[0]->id;
+}
+
+sub _as_string {
+   return $_[0]->user_name;
+}
+
+sub _encrypt_password_column {
+   my ($self, $columns) = @_;
+
+   my $password = $columns->{password} or return;
+
+   return if _is_disabled $password or _is_encrypted $password;
+
+   $columns->{password} = $self->encrypt_password($password);
+   $self->set_inflated_columns($columns);
+   return;
+}
+
+sub _profile {
+   my ($self, $key, $value) = @_;
+
+   my $profile = $self->profile_value;
+
+   if (defined $value) {
+      $profile->{$key} = $value;
+
+      my $rs = $self->result_source->schema->resultset('Preference');
+      my $options = {
+         name => 'profile', user_id => $self->id, value => $profile
+      };
+
+      $rs->update_or_create($options);
+   }
+
+   return $profile->{$key};
+}
+
+use namespace::autoclean;
 
 1;
 

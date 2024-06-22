@@ -1,29 +1,36 @@
 package App::MCP::Schema::Schedule::Result::Role;
 
-use strictures;
-use overload '""' => sub { $_[ 0 ]->as_string }, fallback => 1;
-use parent   'App::MCP::Schema::Base';
+use overload '""' => sub { $_[0]->_as_string },
+             '+'  => sub { $_[0]->_as_number }, fallback => 1;
 
-use App::MCP::Constants qw( NUL VARCHAR_MAX_SIZE );
-use App::MCP::Util      qw( serial_data_type varchar_data_type );
+use App::MCP::Util qw( serial_data_type text_data_type );
+use DBIx::Class::Moo::ResultClass;
 
-my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
+extends 'App::MCP::Schema::Base';
 
-$class->table( 'role' );
+my $class  = __PACKAGE__;
+my $result = 'App::MCP::Schema::Schedule::Result';
 
-$class->add_columns
-   (  id       => serial_data_type,
-      rolename => varchar_data_type( VARCHAR_MAX_SIZE, NUL ), );
+$class->table('roles');
 
-$class->set_primary_key( 'id' );
+$class->add_columns(
+   id        => { %{serial_data_type()}, label => 'Role ID' },
+   role_name => text_data_type(),
+);
 
-$class->add_unique_constraint( [ 'rolename' ] );
+$class->set_primary_key('id');
 
-$class->has_many    ( user_role => "${result}::UserRole", 'role_id' );
-$class->many_to_many( users     => 'user_role',           'user_id' );
+$class->add_unique_constraint('roles_role_name_uniq', ['role_name']);
 
-sub as_string {
-   return $_[ 0 ]->rolename;
+$class->has_many('users' => "${result}::User", 'role_id');
+
+# Private methods
+sub _as_number {
+   return $_[0]->id;
+}
+
+sub _as_string {
+   return $_[0]->role_name;
 }
 
 1;

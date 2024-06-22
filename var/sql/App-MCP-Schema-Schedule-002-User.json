@@ -1,0 +1,7 @@
+{
+   "fields": "user_name email active password role_id",
+   "rows": [
+      "unknown, unknown@example.com, 1, {5054}none, 1",
+      "mcp, mcp@example.com, 1, mcp, 2"
+   ]
+}

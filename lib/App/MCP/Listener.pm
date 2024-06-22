@@ -1,67 +1,72 @@
 package App::MCP::Listener;
 
-use namespace::autoclean;
+use App::MCP::Constants    qw( FALSE NUL TRUE );
+use HTTP::Status           qw( HTTP_FOUND );
+use Class::Usul::Cmd::Util qw( ensure_class_loaded ns_environment );
 
-use App::MCP::Constants    qw( NUL TRUE );
-use App::MCP::Util         qw( enhance );
-use Class::Usul;
-use Class::Usul::Types     qw( HashRef Plinth );
-use Class::Usul::Functions qw( ensure_class_loaded );
 use Plack::Builder;
 use Web::Simple;
 
-# Private attributes
-has '_config_attr' => is => 'ro',   isa => HashRef, builder => sub { {} },
-   init_arg        => 'config';
-
-has '_usul'        => is => 'lazy', isa => Plinth,
-   builder         => sub { Class::Usul->new( enhance $_[ 0 ]->_config_attr ) },
-   handles         => [ 'config', 'debug', 'dumper', 'l10n', 'lock', 'log' ];
-
+with 'App::MCP::Role::Config';
+with 'App::MCP::Role::Log';
+with 'App::MCP::Role::Session';
 with 'Web::Components::Loader';
 
 # Construction
 around 'to_psgi_app' => sub {
-   my ($orig, $self, @args) = @_; my $psgi_app = $orig->( $self, @args );
+   my ($orig, $self, @args) = @_;
 
-   my $conf   = $self->config; my $static = $conf->serve_as_static;
-
-   my $secret = $conf->salt.$self->models->{root}->get_connect_info->[ 2 ];
+   my $psgi_app = $orig->($self, @args);
+   my $config   = $self->config;
+   my $static   = $config->static;
 
    builder {
-      mount $conf->mount_point => builder {
-         enable 'ContentLength';
-         enable 'FixMissingBodyInRedirect';
-         enable "ConditionalGET";
-         enable 'Deflater',
-            content_type => $conf->deflate_types, vary_user_agent => TRUE;
+      enable 'ConditionalGET';
+      enable 'Options', allowed => [ qw( DELETE GET POST PUT HEAD ) ];
+      enable 'Head';
+      enable 'ContentLength';
+      enable 'FixMissingBodyInRedirect';
+      enable 'Deflater',
+         content_type    => $config->deflate_types,
+         vary_user_agent => TRUE;
+      mount $config->mount_point => builder {
          enable 'Static',
-            path => qr{ \A / (?: $static ) }mx, root => $conf->root;
-         # TODO: Need to add domain from the request which we dont have yet
-         enable 'Session::Cookie',
-            expires     => 7_776_000,
-            httponly    => TRUE,
-            path        => $conf->mount_point,
-            secret      => $secret,
-            session_key => 'mcp_session';
-         enable "LogDispatch", logger => $self->log;
-         enable_if { $self->debug } 'Debug';
+            path => qr{ \A / (?: $static) / }mx,
+            root => $config->root;
+         enable 'Session', $self->session->middleware_config;
+         enable 'LogDispatch', logger => $self->log;
          $psgi_app;
+      };
+      mount '/' => builder {
+         sub { [ HTTP_FOUND, [ 'Location', $config->default_route ], [] ] }
       };
    };
 };
 
 sub BUILD {
-   my $self     = shift;
-   my $server   = ucfirst( $ENV{PLACK_ENV} // NUL );
-   my $appclass = $self->config->appclass; ensure_class_loaded $appclass;
-   my $port     = $appclass->env_var( 'PORT' );
-   my $info     = 'v'.$appclass->VERSION; $port and $info .= " on port ${port}";
+   my $self   = shift;
+   my $class  = $self->config->appclass;
+   my $server = ucfirst($ENV{PLACK_ENV} // NUL);
+   my $port   = ns_environment($class, 'port') // 5_000;
 
-   $self->log->info( "${server} Server started ${info}" );
+   ensure_class_loaded $class;
 
+   my $info   = 'v' . $class->VERSION . " started on port ${port}";
+
+   $self->log->info("HTTPServer: ${class} ${server} ${info}");
    return;
 }
+
+sub _build__factory {
+   my $self = shift;
+
+   return Web::ComposableRequest->new(
+      buildargs => $self->factory_args,
+      config    => $self->config->request,
+   );
+}
+
+use namespace::autoclean;
 
 1;
 

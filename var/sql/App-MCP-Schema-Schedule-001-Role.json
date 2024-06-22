@@ -1,0 +1,4 @@
+{
+   "fields": "role_name",
+   "rows": [ "view", "edit", "manager", "admin" ]
+}

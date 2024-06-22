@@ -1,30 +1,26 @@
 package App::MCP::Schema::Schedule::ResultSet::User;
 
-use strictures;
-use parent 'DBIx::Class::ResultSet';
+use App::MCP::Constants qw( FALSE TRUE );
+use Moo;
 
-use Class::Usul::Functions qw( throw );
-use HTTP::Status           qw( HTTP_NOT_FOUND );
+extends 'DBIx::Class::ResultSet';
 
-sub find_by_id_or_name {
-   my ($self, $arg) = @_; (defined $arg and length $arg) or return; my $user;
-
-   $arg =~ m{ \A \d+ \z }mx and $user = $self->find( $arg );
-   $user or $user = $self->find_by_name( $arg );
-   return $user;
+sub active {
+   my $self = shift; return $self->search({ 'me.active' => TRUE });
 }
 
-sub find_by_name {
-   my ($self, $user_name) = @_;
+sub find_by_key {
+   my ($self, $user_key, $options) = @_;
 
-   my $user = $self->search( { username => $user_name } )->single
-     or throw 'User [_1] unknown', [ $user_name ], rv => HTTP_NOT_FOUND;
+   return unless $user_key;
 
-   return $user;
-}
+   $options //= {};
 
-sub load_factor {
-   return 14;
+   return $self->find($user_key, $options) if $user_key =~ m{ \A \d+ \z }mx;
+
+   my $select = [{ 'me.user_name' => $user_key }, { 'me.email' => $user_key }];
+
+   return $self->search({ -or => $select }, $options)->single;
 }
 
 1;

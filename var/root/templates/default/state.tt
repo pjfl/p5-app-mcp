@@ -1,7 +1,0 @@
-<!-- Template [% page.form_name %] -->
-<div class="page">
-   <div class="container">
-      <div id="state-diagram" class="state-diagram">
-      </div>
-   </div>
-</div>

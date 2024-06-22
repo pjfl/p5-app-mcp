@@ -1,0 +1,11 @@
+[% menu_location = 'navigation-' _ nav.menu_location -%]
+[% link_display = 'link-display-' _ nav.link_display %]
+<header>[% nav.render %]</header>
+<div id="sidebar" class="sidebar [% menu_location %] [% link_display %]"></div>
+<div id="frame" class="frame [% menu_location %] [% link_display %]">
+   <div id="[% nav.container_name %]" class="[% nav.container_class %]">
+      <div id="[% nav.content_name %]" class="[% nav.content_name %]">
+[% content %]
+      </div>
+   </div>
+</div>

@@ -1,0 +1,6 @@
+{
+   "fields": "job_name type host user_name group_id command crontab condition directory",
+   "rows": [
+      "Test, box, localhost, mcp, 2, bin/false, , , "
+   ]
+}

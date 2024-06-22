@@ -1,56 +1,66 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
-use strictures;
+use utf8; # -*- coding: utf-8; -*-
 use parent 'App::MCP::Schema::Base';
 
-use Algorithm::Cron;
-use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES FALSE JOB_TYPE_ENUM
-                               NUL SEPARATOR SPC TRUE VARCHAR_MAX_SIZE );
-use App::MCP::ExpressionParser;
-use App::MCP::Util         qw( enumerated_data_type foreign_key_data_type
+use App::MCP::Constants    qw( EXCEPTION_CLASS CRONTAB_FIELD_NAMES FALSE
+                               JOB_TYPE_ENUM NUL SEPARATOR SPC TRUE
+                               VARCHAR_MAX_SIZE );
+use App::MCP::Util         qw( boolean_data_type enumerated_data_type
+                               foreign_key_data_type
                                nullable_foreign_key_data_type
                                nullable_varchar_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
-                               varchar_data_type );
-use Class::Usul::Functions qw( is_arrayref is_member throw );
+                               truncate varchar_data_type );
+use Class::Usul::Cmd::Util qw( is_member );
+use Ref::Util              qw( is_arrayref );
+use Unexpected::Functions  qw( throw );
+use Algorithm::Cron;
+use App::MCP::ExpressionParser;
+use DBIx::Class::Moo::ResultClass;
 
-my $class = __PACKAGE__; my $result = 'App::MCP::Schema::Schedule::Result';
+my $class  = __PACKAGE__;
+my $result = 'App::MCP::Schema::Schedule::Result';
 
-$class->table( 'job' );
+$class->table('jobs');
 
-$class->load_components( '+App::MCP::MaterialisedPath' );
+$class->load_components('+App::MCP::MaterialisedPath');
 
-$class->add_columns
-   ( id           => serial_data_type,
-     created      => set_on_create_datetime_data_type,
-     type         => enumerated_data_type( JOB_TYPE_ENUM, 'box' ),
-     owner_id     => foreign_key_data_type( 1, 'owner' ),
-     group_id     => foreign_key_data_type( 1, 'group' ),
-     permissions  => { accessor      => '_permissions',
-                       data_type     => 'smallint',
-                       default_value => 488,
-                       is_nullable   => FALSE, },
-     expected_rv  => numerical_id_data_type( 0 ),
-     delete_after => { data_type     => 'boolean',
-                       default_value => FALSE,
-                       is_nullable   => FALSE, },
-     parent_id    => nullable_foreign_key_data_type,
-     parent_path  => nullable_varchar_data_type,
-     host         => varchar_data_type( 64, 'localhost' ),
-     user         => varchar_data_type( 32, 'mcp' ),
-     name         => varchar_data_type,
-     command      => varchar_data_type,
-     crontab      => varchar_data_type( 127 ),
-     condition    => varchar_data_type,
-     directory    => varchar_data_type, );
+$class->add_columns(
+   id           => serial_data_type,
+   created      => {
+      %{set_on_create_datetime_data_type()},
+      cell_traits => ['DateTime'],
+   },
+   type         => enumerated_data_type( JOB_TYPE_ENUM, 'box' ),
+   owner_id     => foreign_key_data_type( 1, 'owner' ),
+   group_id     => foreign_key_data_type( 1, 'group' ),
+   permissions  => {
+      accessor      => '_permissions',
+      data_type     => 'smallint',
+      default_value => 488,
+      is_nullable   => FALSE,
+   },
+   expected_rv  => numerical_id_data_type( 0 ),
+   delete_after => boolean_data_type,
+   parent_id    => nullable_foreign_key_data_type,
+   parent_path  => nullable_varchar_data_type,
+   host         => varchar_data_type( 64, 'localhost' ),
+   user_name    => { %{varchar_data_type( 32, 'mcp' )}, label => 'User Name' },
+   job_name     => { %{varchar_data_type()}, label => 'Job Name' },
+   command      => varchar_data_type,
+   crontab      => nullable_varchar_data_type( 127 ),
+   condition    => nullable_varchar_data_type,
+   directory    => nullable_varchar_data_type,
+);
 
-$class->set_primary_key( 'id' );
+$class->set_primary_key('id');
 
-$class->add_unique_constraint( [ 'name' ] );
+$class->add_unique_constraint('jobs_job_name_uniq', ['job_name']);
 
-$class->belongs_to( parent_box       => "${result}::Job",         'parent_id', {
-                       join_type     => 'left' } );
+$class->belongs_to( parent_box       => "${result}::Job",         'parent_id',
+                    { join_type      => 'left' } );
 $class->has_many  ( child_jobs       => "${result}::Job",         'parent_id' );
 $class->has_many  ( dependents       => "${result}::JobCondition",   'job_id' );
 $class->has_many  ( events           => "${result}::Event",          'job_id' );
@@ -59,124 +69,78 @@ $class->might_have( state            => "${result}::JobState",       'job_id' );
 $class->belongs_to( owner_rel        => "${result}::User",         'owner_id' );
 $class->belongs_to( group_rel        => "${result}::Role",         'group_id' );
 
-# Private methods
-my $_create_job_state = sub {
-   my $self = shift; my $schema = $self->result_source->schema;
+has '_parser' =>
+   is      => 'lazy',
+   default => sub {
+      my $self   = shift;
+      my $job_rs = $self->result_source->resultset;
 
-   return $schema->resultset( 'JobState' )->find_or_create( @_ );
-};
-
-my $_crontab = sub {
-   my ($self, $k, $v) = @_; my @names = CRONTAB_FIELD_NAMES;
-
-   unless (defined $self->{_crontab}) {
-      my @fields = split m{ \s+ }mx, $self->crontab;
-
-      $self->{_crontab}->{ $names[ $_ ] } = ($fields[ $_ ] // NUL) for (0 .. 4);
-   }
-
-   if (defined $v) {
-      $self->{_crontab}->{ $k } = $v;
-      $self->crontab( join SPC,
-                      map  { $self->{_crontab}->{ $names[ $_ ] } } 0 .. 4);
-   }
-
-   return $self->{_crontab}->{ $k };
-};
-
-my $_delete_condition = sub {
-   my $self = shift; my $schema = $self->result_source->schema;
-
-   return $schema->resultset( 'JobCondition' )->delete_dependents( $self );
-};
-
-my $_parser;
-
-my $_eval_condition = sub {
-   my $self = shift; $self->condition or return [ TRUE, [] ];
-
-   my $job_rs = $self->result_source->resultset;
-
-   $_parser //= App::MCP::ExpressionParser->new
-      ( external => $job_rs, predicates => $job_rs->predicates );
-
-   return $_parser->parse( $self->condition, $self->namespace );
-};
-
-my $_insert_condition = sub {
-   my $self = shift; my $schema = $self->result_source->schema;
-
-   return $schema->resultset( 'JobCondition' )->create_dependents( $self );
-};
-
-my $_is_permitted = sub {
-   my ($self, $user_id, $mask) = @_; my $perms = $self->_permissions;
-
-   my $user_rs = $self->result_source->schema->resultset( 'User' );
-   my $user    = $user_rs->find( $user_id );
-
-   $perms & $mask->[ 2 ] and return TRUE;
-   $perms & $mask->[ 1 ]
-      and is_member( $self->group, map { $_->id } $user->roles )
-      and return TRUE;
-   $perms & $mask->[ 0 ] and $self->owner == $user->id and return TRUE;
-   return FALSE;
-};
+      return App::MCP::ExpressionParser->new(
+         external => $job_rs, predicates => $job_rs->predicates
+      );
+   };
 
 # Public method
 sub condition_dependencies {
-   return $_[ 0 ]->$_eval_condition->[ 1 ];
+   return $_[0]->_eval_condition->[1];
 }
 
 sub crontab_hour {
-   return $_[ 0 ]->$_crontab( 'hour', $_[ 1 ] );
+   return $_[0]->_crontab('hour', $_[1]);
 }
 
 sub crontab_mday {
-   return $_[ 0 ]->$_crontab( 'mday', $_[ 1 ] );
+   return $_[0]->_crontab('mday', $_[1]);
 }
 
 sub crontab_min {
-   return $_[ 0 ]->$_crontab( 'min',  $_[ 1 ] );
+   return $_[0]->_crontab('min',  $_[1]);
 }
 
 sub crontab_mon {
-   return $_[ 0 ]->$_crontab( 'mon',  $_[ 1 ] );
+   return $_[0]->_crontab('mon',  $_[1]);
 }
 
 sub crontab_wday {
-   return $_[ 0 ]->$_crontab( 'wday', $_[ 1 ] );
+   return $_[0]->_crontab('wday', $_[1]);
 }
 
 sub delete {
-   my $self = shift; $self->condition and $self->$_delete_condition;
+   my $self = shift;
+
+   $self->_delete_condition if $self->condition;
 
    return $self->next::method;
 }
 
 sub eval_condition {
-   return $_[ 0 ]->$_eval_condition->[ 0 ];
+   return $_[0]->_eval_condition->[0];
 }
 
 sub insert {
-   my $self = shift; App::MCP->env_var( 'BULK_INSERT' ) or $self->validate;
-   my $job  = $self->next::method;
+   my $self = shift;
 
-   $self->condition and $self->$_insert_condition( $job );
-   $self->$_create_job_state( $job );
+   $self->validate unless App::MCP->env_var('bulk_insert');
+
+   my $job = $self->next::method;
+
+   $self->_insert_condition($job) if $self->condition;
+
+   $self->_create_job_state($job);
+
    return $job;
 }
 
 sub is_executable_by {
-   return $_[ 0 ]->$_is_permitted( $_[ 1 ], [ 64, 8, 1 ] );
+   return $_[0]->_is_permitted($_[1], [ 64, 8, 1 ]);
 }
 
 sub is_readable_by {
-   return $_[ 0 ]->$_is_permitted( $_[ 1 ], [ 256, 32, 4 ] );
+   return $_[0]->_is_permitted($_[1], [ 256, 32, 4 ]);
 }
 
 sub is_writable_by {
-   return $_[ 0 ]->$_is_permitted( $_[ 1 ], [ 128, 16, 2 ] );
+   return $_[0]->_is_permitted($_[1], [ 128, 16, 2 ]);
 }
 
 sub materialised_path_columns {
@@ -197,15 +161,18 @@ sub materialised_path_columns {
 }
 
 sub namespace {
+   my $self  = shift;
    my $sep   = SEPARATOR;
-   my @parts = split m{ $sep }mx, $_[ 0 ]->name; pop @parts;
+   my @parts = split m{ $sep }mx, $self->name; pop @parts;
    my $ns    = join $sep, @parts; $ns //= NUL;
 
    return $ns;
 }
 
 sub permissions {
-   my ($self, $perms) = @_; $perms and $self->_permissions( $perms );
+   my ($self, $perms) = @_;
+
+   $self->_permissions($perms) if defined $perms;
 
    return sprintf '0%o', $self->_permissions;
 }
@@ -214,42 +181,50 @@ sub should_start_now {
    my $self      = shift;
    my $crontab   = $self->crontab or return TRUE;
    my $last_time = $self->state ? $self->state->updated->epoch : 0;
-   my $cron      = Algorithm::Cron->new( base => 'utc', crontab => $crontab );
+   my $cron      = Algorithm::Cron->new(base => 'utc', crontab => $crontab);
 
-   return time >= $cron->next_time( $last_time ) ? TRUE : FALSE;
+   return time >= $cron->next_time($last_time) ? TRUE : FALSE;
 }
 
 sub sqlt_deploy_hook {
    my ($self, $st) = @_;
 
-   $st->add_index( name => 'job_idx_name', fields => [ 'name' ] );
-   $st->add_index( name => 'job_idx_parent_id', fields => [ 'parent_id' ] );
+   $st->add_index( name => 'jobs_idx_job_name',  fields => [ 'job_name' ] );
+   $st->add_index( name => 'jobs_idx_parent_id', fields => ['parent_id']  );
 
   return;
 }
 
 sub summary {
-   my $self = shift; my $text;
+   my $self = shift;
+   my $text = 'Qualified name: '. $self->name . '…';
 
-   $text  = 'Qualified name: '.$self->name.' ... ';
-   $self->type eq 'box' and $text .= 'Type: '.$self->type.' ... '
-      and return $text;
-   $text .= 'Command: '.(substr $self->command, 0, 50).' ... ';
-   $text .= 'Host: '.$self->host.' ... ';
-   $text .= 'User: '.$self->user;
+   if ($self->type eq 'box') {
+      $text .= 'Type: '. $self->type . '…';
+      return $text;
+   }
+
+   $text .= 'Command: ' . truncate $self->command, 50;
+   $text .= 'Host: ' . $self->host . '…';
+   $text .= 'User: ' . $self->user;
    return $text;
 }
 
 sub update {
-   my ($self, $columns) = @_; my $condition = $self->condition;
+   my ($self, $columns) = @_;
 
-   $columns and $self->set_inflated_columns( $columns );
-   App::MCP->env_var( 'BULK_INSERT' ) or $self->validate;
+   my $condition = $self->condition;
+
+   $self->set_inflated_columns($columns) if $columns;
+
+   $self->validate unless App::MCP->env_var('bulk_insert');
 
    my $job = $self->next::method;
 
-   $condition ne $self->condition
-      and $self->$_delete_condition and $job->$_insert_condition;
+   if ($condition ne $self->condition) {
+      $self->_delete_condition;
+      $job->_insert_condition;
+   }
 
    return $job;
 }
@@ -257,20 +232,88 @@ sub update {
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       constraints      => {
-         name          => {
+         job_name      => {
             max_length => VARCHAR_MAX_SIZE,
             min_length => 1,
             pattern    => '\A [A-Za-z_][/0-9A-Za-z_]+ \z', } },
       fields           => {
-         host          => { validate => 'isValidHostname' },
-         name          => {
+         command       => { validate => 'isMandatory' },
+         host          => { validate => 'isMandatory isValidHostname' },
+         job_name      => {
             filters    => 'filterReplaceRegex',
             validate   => 'isMandatory isMatchingRegex isValidLength' },
          permissions   => { validate => 'isValidInteger' },
-         user          => { validate => 'isValidIdentifier' }, },
+         user_name     => { validate => 'isMandatory isValidIdentifier' }, },
       filters          => {
-         name          => { pattern => '[\%\*]', replace => NUL }, },
+         job_name      => { pattern => '[\%\*]', replace => NUL }, },
    };
+}
+
+# Private methods
+sub _create_job_state {
+   my $self   = shift;
+   my $schema = $self->result_source->schema;
+
+   return $schema->resultset('JobState')->find_or_create(@_);
+}
+
+sub _crontab {
+   my ($self, $k, $v) = @_;
+
+   my @names = CRONTAB_FIELD_NAMES;
+
+   unless (defined $self->{_crontab}) {
+      my @fields = split m{ \s+ }mx, $self->crontab;
+
+      $self->{_crontab}->{$names[$_]} = ($fields[$_] // NUL) for (0 .. 4);
+   }
+
+   if (defined $v) {
+      $self->{_crontab}->{$k} = $v;
+      $self->crontab(join SPC,
+                     map  { $self->{_crontab}->{$names[$_]} } 0 .. 4);
+   }
+
+   return $self->{_crontab}->{$k};
+}
+
+sub _delete_condition {
+   my $self   = shift;
+   my $schema = $self->result_source->schema;
+
+   return $schema->resultset('JobCondition')->delete_dependents($self);
+}
+
+sub _eval_condition {
+   my $self = shift;
+
+   return [ TRUE, [] ] unless $self->condition;
+
+   return $self->_parser->parse($self->condition, $self->namespace);
+}
+
+sub _insert_condition {
+   my $self   = shift;
+   my $schema = $self->result_source->schema;
+
+   return $schema->resultset('JobCondition')->create_dependents($self);
+}
+
+sub _is_permitted {
+   my ($self, $user_id, $mask) = @_;
+
+   my $perms   = $self->_permissions;
+   my $user_rs = $self->result_source->schema->resultset('User');
+   my $user    = $user_rs->find($user_id);
+
+   return TRUE if $perms & $mask->[2];
+
+   return TRUE if $perms & $mask->[1]
+      and is_member($self->group, map { $_->id } $user->roles);
+
+   return TRUE if $perms & $mask->[0] and $self->owner == $user->id;
+
+   return FALSE;
 }
 
 1;

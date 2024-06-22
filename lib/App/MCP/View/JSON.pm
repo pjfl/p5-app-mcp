@@ -1,44 +1,35 @@
 package App::MCP::View::JSON;
 
-use namespace::autoclean;
-
-use Class::Usul::Constants qw( FALSE );
-use Class::Usul::Types     qw( Object );
-use Encode                 qw( encode );
+use HTML::Forms::Constants qw( FALSE TRUE );
 use JSON::MaybeXS          qw( );
+use Type::Utils            qw( class_type );
 use Moo;
 
 with 'Web::Components::Role';
-with 'Web::Components::Role::Forms::View';
 
-# Public attributes
 has '+moniker' => default => 'json';
 
-# Private attributes
-has '_transcoder' => is => 'lazy', isa => Object,
-   builder        => sub { JSON::MaybeXS->new( utf8 => FALSE ) };
+has '_json' =>
+   is      => 'ro',
+   isa     => class_type(JSON::MaybeXS::JSON),
+   default => sub { JSON::MaybeXS->new( convert_blessed => TRUE ) };
 
-# Private functions
-my $_header = sub {
-   return [ 'Content-Type' => 'application/json', @{ $_[ 0 ] // [] } ];
-};
-
-# Public methods
 sub serialize {
-   my ($self, $req, $stash) = @_;
+   my ($self, $context) = @_;
 
-   my $content = $stash->{form} ? $stash->{form}->[ 0 ] : $stash->{content};
-   my $meta    = $stash->{page}->{meta} // {};
+   my $stash = $context->stash;
+   my $json; $json = $stash->{body} if $stash->{body};
 
-   $content->{ $_ } = $meta->{ $_ } for (keys %{ $meta });
+   $json = $self->_json->encode($stash->{json}) unless $json;
 
-   my $js; $js = join "\n", @{ $stash->{page}->{literal_js} // [] }
-      and $content->{script} = $js;
-
-   $content = encode( $self->encoding, $self->_transcoder->encode( $content ) );
-
-   return [ $stash->{code}, $_header->( $stash->{http_headers} ), [ $content ]];
+   return [ $stash->{code}, _header($stash->{http_headers}), [$json] ];
 }
+
+sub _header {
+   return [ 'Content-Type' => 'application/json', @{ $_[0] // [] } ];
+}
+
+use namespace::autoclean;
 
 1;
 

@@ -9,9 +9,7 @@ use Unexpected::Functions  qw( throw );
 use Moo;
 
 extends 'App::MCP::Model';
-with    'App::MCP::Role::PageConfiguration';
-with    'App::MCP::Role::WebAuthentication';
-with    'Web::Components::Role::Forms';
+with    'Web::Components::Role';
 
 has '+moniker' => default => 'state';
 

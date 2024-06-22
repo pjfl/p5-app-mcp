@@ -1,0 +1,21 @@
+<!doctype html>
+<html class="[% context.session.theme || 'light' %]" lang="en">
+<head>
+   <meta charset="utf-8">
+   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="description" content="[% config.name %]">
+   <meta name="keywords" content="[% config.name %]">
+   <meta name="generator" content="[% config.name %] v[% version %]">
+   <title>[% nav.title_abbrev _ ' - ' _ nav.title_entry %]</title>
+   <link rel="shortcut icon" href="[% uri_for('img/favicon.ico') %]">
+[% css = uri_for('css/' _ config.prefix _ '-' _ skin _ '.css') -%]
+   <link rel="stylesheet" href="[% css %]" type="text/css">
+   <script src="[% uri_for('js/' _ config.prefix _ '.js') %]"></script>
+   <script src="https://code.highcharts.com/highcharts.js"></script>
+</head>
+<body id="body">
+[% content -%]
+</body>
+</html>

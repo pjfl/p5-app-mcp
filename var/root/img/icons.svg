@@ -1,0 +1,1070 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   style="position:absolute; width: 0; height: 0"
+   version="1.1"
+   id="svg430"
+   sodipodi:docname="icons.svg"
+   inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)">
+  <metadata id="metadata434">
+    <rdf:RDF>
+      <cc:Work rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1860"
+     inkscape:window-height="1055"
+     id="namedview432"
+     showgrid="false"
+     inkscape:zoom="2.36"
+     inkscape:cx="-12.923728"
+     inkscape:cy="-153.38983"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg430" />
+  <defs id="defs9">
+    <filter id="avatar-blank-a">
+      <feFlood
+         result="shadow-flood"
+         x="250"
+         width="250"
+         height="500"
+         flood-color="#8B572A"
+         flood-opacity=".2"
+         id="feFlood2" />
+      <feComposite
+         operator="in"
+         in2="SourceGraphic"
+         in="shadow-flood"
+         result="shadow-area"
+         id="feComposite4" />
+      <feBlend
+         in="SourceGraphic"
+         in2="shadow-area"
+         mode="multiply"
+         id="feBlend6" />
+    </filter>
+  </defs>
+  <symbol viewBox="0 96 960 960" id="icon-close" height="20" width="20">
+    <path
+       d="M 330,768 480,618 630,768 672,726 522,576 672,426 630,384 480,534 330,384 288,426 438,576 288,726 Z M 480,976 Q 398,976 325,944.5 252,913 197.5,858.5 143,804 111.5,731 80,658 80,576 80,493 111.5,420 143,347 197.5,293 252,239 325,207.5 398,176 480,176 q 83,0 156,31.5 73,31.5 127,85.5 54,54 85.5,127 31.5,73 31.5,156 0,82 -31.5,155 Q 817,804 763,858.5 709,913 636,944.5 563,976 480,976 Z m 0,-60 Q 622,916 721,816.5 820,717 820,576 820,434 721,335 622,236 480,236 339,236 239.5,335 140,434 140,576 140,717 239.5,816.5 339,916 480,916 Z m 0,-340 z"
+       id="path11"
+       inkscape:connector-curvature="0"
+       style="fill:firebrick" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-add">
+    <g
+       class="feather feather-plus"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g16">
+      <path
+         d="M12 5v14M5 12h14"
+         id="path14" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-admin">
+    <g
+       class="feather feather-sliders"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g35">
+      <path
+         d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"
+         id="path33" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 21" id="icon-alert">
+    <g
+       transform="translate(1 1)"
+       fill="none"
+       fill-rule="evenodd"
+       id="g42">
+      <path
+         d="M9.29 1.86L.82 16a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L12.71 1.86a2 2 0 0 0-3.42 0zM11 7v4"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         id="path38" />
+      <circle
+         fill="currentColor"
+         cx="11"
+         cy="15"
+         r="1"
+         id="circle40" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-automation">
+    <g
+       class="feather feather-fast-forward"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g47">
+      <path
+         d="M13 19l9-7-9-7v14zM2 19l9-7-9-7v14z"
+         id="path45" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 500 500" id="icon-avatar-blank">
+    <path
+       fill="#d8d8d8"
+       d="M0 0h500v500H0z"
+       id="path50" />
+    <path
+       d="M250 146h66l184 123v231H250z"
+       opacity=".1"
+       id="path52" />
+    <path
+       d="M250 109c-27 0-47 12-60 27-16 18-16 55-17 70-12 0-20 5-20 19s9 31 20 31c4 26 16 48 39 60v47c-8 2-28 7-59 15-47 12-67 30-72 122h338c-5-92-25-110-72-122-31-8-51-13-59-15v-47c23-12 35-34 39-60 13 0 20-17 20-31s-7.5-19-20-19c-1-15-4-55-17-70s-33-27-60-27z"
+       fill="#aaa"
+       filter="url(#avatar-blank-a)"
+       id="path54" />
+  </symbol>
+  <symbol viewBox="0 0 500 500" id="icon-avatar-body">
+    <path
+       d="M250 109c-27 0-47 12-60 27-16 18-16 55-17 70-12 0-20 5-20 19s9 31 20 31c4 26 16 48 39 60v47c-8 2-28 7-59 15-47 12-67 30-72 122h338c-5-92-25-110-72-122-31-8-51-13-59-15v-47c23-12 35-34 39-60 13 0 20-17 20-31s-7.5-19-20-19c-1-15-4-55-17-70s-33-27-60-27z"
+       fill="currentColor"
+       id="path57" />
+  </symbol>
+  <symbol viewBox="0 0 500 500" id="icon-avatar-chin">
+    <path
+       d="M230 327l20 8v14z"
+       fill="currentColor"
+       opacity=".2"
+       id="path60" />
+  </symbol>
+  <symbol viewBox="0 0 500 500" id="icon-avatar-shadow">
+    <path
+       d="M250 146h66l184 123v231H250z"
+       opacity=".1"
+       id="path63" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-email">
+    <g
+       stroke="currentColor"
+       stroke-width="2"
+       fill="none"
+       id="g70">
+      <rect
+         x="1"
+         y="4"
+         width="22"
+         height="16"
+         rx="3"
+         id="rect66" />
+      <path
+         d="M1 6l9 7c1 1 3 1 4 0l9-7M1 18l8-6M23 18l-8-6"
+         id="path68" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-check">
+    <path
+       class="feather feather-check"
+       d="M20 6L9 17l-5-5"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path73" />
+  </symbol>
+  <symbol viewBox="0 0 14 9" id="icon-chevron-down">
+    <path
+       stroke="currentColor"
+       stroke-width="2"
+       d="M1.59 1.855l5.353 5.353 5.306-5.306"
+       fill="none"
+       fill-rule="evenodd"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path76" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-chevron-left">
+    <path
+       class="feather feather-chevron-left"
+       d="M15 18l-6-6 6-6"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path79" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-chevron-right-end">
+    <desc
+       id="desc82"><![CDATA[Chevron left end rotated through 180 degrees]]></desc>
+    <path
+       fill="none"
+       stroke-width="2"
+       stroke="currentColor"
+       stroke-linecap="round"
+       d="M4 22l10-10L4 2M17 22V2"
+       id="path84" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-chevron-right">
+    <desc
+       id="desc87"><![CDATA[Chevron left rotated through 180 degrees]]></desc>
+    <path
+       fill="none"
+       stroke-width="2"
+       stroke="currentColor"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       d="M7 22l10-10L7 2"
+       id="path89" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-clear">
+    <g
+       class="feather feather-x"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g94">
+      <path
+         d="M16 8l-8 8M8 8l8 8"
+         id="path92" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-copy">
+    <g
+       class="feather feather-copy"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g101">
+      <rect
+         x="9"
+         y="9"
+         width="13"
+         height="13"
+         rx="2"
+         ry="2"
+         id="rect97" />
+      <path
+         d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+         id="path99" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-data">
+    <g
+       class="feather feather-database"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g110">
+      <ellipse
+         cx="12"
+         cy="5"
+         rx="9"
+         ry="3"
+         id="ellipse104" />
+      <path
+         d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"
+         id="path106" />
+      <path
+         d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"
+         id="path108" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-delete">
+    <g
+       class="feather feather-x"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g115">
+      <path
+         d="M18 6L6 18M6 6l12 12"
+         id="path113" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-download">
+    <g
+       class="feather feather-download"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g120">
+      <path
+         d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"
+         id="path118" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-edit-2">
+    <path
+       class="feather feather-edit-2"
+       d="M16 3l5 5L8 21H3v-5L16 3z"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path123" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-edit-3">
+    <g
+       class="feather feather-edit-3"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g128">
+      <path
+         d="M14 2l4 4L7 17H3v-4L14 2zM3 22h18"
+         id="path126" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 28 28" id="icon-edit">
+    <g
+       class="feather feather-edit"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g135">
+      <path
+         d="M22 16.66V22a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5.34"
+         id="path131" />
+      <path
+         d="M20 4l4 4-10 10h-4v-4L20 4z"
+         id="path133" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-file">
+    <g
+       class="feather feather-file-text"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g142">
+      <path
+         d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+         id="path138" />
+      <path
+         d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+         id="path140" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-filter">
+    <path
+       class="feather feather-filter"
+       d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path145" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-directory">
+     <path
+       class="feather feather-folder"
+       d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path148" />
+  </symbol>
+  <symbol viewBox="0 0 22 22" id="icon-help">
+    <g
+       transform="translate(1 1)"
+       fill="none"
+       fill-rule="evenodd"
+       id="g157">
+      <path
+         d="M7.09 7a3 3 0 0 1 5.83 1c0 2-3 3-3 3"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         id="path151" />
+      <circle
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         cx="10"
+         cy="10"
+         r="10"
+         id="circle153" />
+      <circle
+         fill="currentColor"
+         cx="10"
+         cy="15"
+         r="1"
+         id="circle155" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-home">
+    <g
+       class="feather feather-home"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g164">
+      <path
+         d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+         id="path160" />
+      <path
+         d="M9 22V12h6v10"
+         id="path162" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-image">
+    <g
+       class="feather feather-image"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g173">
+      <rect
+         x="3"
+         y="3"
+         width="18"
+         height="18"
+         rx="2"
+         ry="2"
+         id="rect167" />
+      <circle
+         cx="8.5"
+         cy="8.5"
+         r="1.5"
+         id="circle169" />
+      <path
+         d="M21 15l-5-5L5 21"
+         id="path171" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 22 22" id="icon-info">
+    <g
+       transform="translate(1 1)"
+       fill="none"
+       fill-rule="evenodd"
+       id="g182">
+      <circle
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         cx="10"
+         cy="10"
+         r="10"
+         id="circle176" />
+      <path
+         d="M10 14v-4"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         id="path178" />
+      <circle
+         fill="currentColor"
+         cx="10"
+         cy="6"
+         r="1"
+         id="circle180" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-link">
+    <g
+       class="feather feather-link"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g189">
+      <path
+         d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+         id="path185" />
+      <path
+         d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+         id="path187" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-list">
+    <g
+       transform="translate(2 5)"
+       fill="none"
+       fill-rule="evenodd"
+       id="g200">
+      <path
+         d="M6 1h13M6 7h13M6 13h13"
+         stroke="currentColor"
+         stroke-width="2"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         id="path192" />
+      <circle
+         fill="currentColor"
+         cx="1"
+         cy="1"
+         r="1"
+         id="circle194" />
+      <circle
+         fill="currentColor"
+         cx="1"
+         cy="7"
+         r="1"
+         id="circle196" />
+      <circle
+         fill="currentColor"
+         cx="1"
+         cy="13"
+         r="1"
+         id="circle198" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-menu">
+    <g
+       class="feather feather-menu"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g205">
+      <path
+         d="M3 12h18M3 6h18M3 18h18"
+         id="path203" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-message-square">
+    <path
+       class="feather feather-message-square"
+       d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path217" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-more">
+    <circle
+       fill="currentColor"
+       cx="12"
+       cy="12"
+       r="2"
+       id="circle220" />
+    <circle
+       fill="currentColor"
+       cx="19"
+       cy="12"
+       r="2"
+       id="circle222" />
+    <circle
+       fill="currentColor"
+       cx="5"
+       cy="12"
+       r="2"
+       id="circle224" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-pause">
+    <g
+       class="feather feather-pause"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g229">
+      <path
+         d="M6 4h4v16H6zM14 4h4v16h-4z"
+         id="path227" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-phone">
+    <path
+       class="feather feather-phone"
+       d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path232" />
+  </symbol>
+  <symbol viewBox="0 0 168 206" id="icon-phrasee">
+    <style
+       id="style235"><![CDATA[.st0{fill:#fe5000}]]></style>
+    <path
+       class="st0"
+       d="M164 84c0-45.4-37.8-82-83.7-79.9C37.4 6 4 42.2 4 85.1v107.7c0 7.7 8.3 12.1 14.4 7.3l34.7-32.8c4-3.1 9-4.6 14-4 3.2.4 13.6.6 16.9.6 43.5 0 78.8-34.7 79.9-77.9l.1-2z"
+       id="path237" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-pin">
+    <g
+       class="feather feather-settings"
+       fill="inherit"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g242">
+      <path
+         d="M9.914 14.086L.5 23.5M21.414 8.586a.707.707 0 0 0 1 0l.793-.793a1 1 0 0 0 0-1.414L17.621.793a1 1 0 0 0-1.414 0l-.793.793a.707.707 0 0 0 0 1 .707.707 0 0 1 0 1l-4.207 4.207a1 1 0 0 1-.707.293H7.328a1 1 0 0 0-.707.293l-.5.5a1 1 0 0 0 0 1.414l7.586 7.586a1 1 0 0 0 1.414 0l.5-.5a1 1 0 0 0 .293-.707V13.5a1 1 0 0 1 .293-.707l4.207-4.207a.707.707 0 0 1 1 0z"
+         id="path240" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-play">
+    <path
+       class="feather feather-play"
+       d="M5 3l14 9-14 9V3z"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path245" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-radio">
+    <g
+       class="feather feather-radio"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g252">
+      <circle
+         cx="12"
+         cy="12"
+         r="2"
+         id="circle248" />
+      <path
+         d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"
+         id="path250" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-refresh">
+    <g
+       class="feather feather-refresh-cw"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g259">
+      <path
+         d="M23 4v6h-6M1 20v-6h6"
+         id="path255" />
+      <path
+         d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+         id="path257" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-reports">
+    <g
+       class="feather feather-pie-chart"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g264">
+      <path
+         d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"
+         id="path262" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-search">
+    <g
+       class="feather feather-search"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g271">
+      <circle
+         cx="11"
+         cy="11"
+         r="8"
+         id="circle267" />
+      <path
+         d="M21 21l-4.35-4.35"
+         id="path269" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-send">
+    <g
+       class="feather feather-send"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g276">
+      <path
+         d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+         id="path274" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-settings">
+    <g
+       class="feather feather-settings"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g283">
+      <circle
+         cx="12"
+         cy="12"
+         r="3"
+         id="circle279" />
+      <path
+         d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+         id="path281" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-slash">
+    <g
+       class="feather feather-slash"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g290">
+      <circle
+         cx="12"
+         cy="12"
+         r="10"
+         id="circle286" />
+      <path
+         d="M4.93 4.93l14.14 14.14"
+         id="path288" />
+    </g>
+  </symbol>
+  <symbol viewBox="25 25 50 50" id="icon-spinner">
+    <circle
+       stroke-linecap="round"
+       fill="none"
+       stroke-miterlimit="10"
+       stroke="currentColor"
+       cx="50"
+       cy="50"
+       r="20"
+       id="circle293" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-split">
+    <g
+       stroke="currentColor"
+       stroke-width="2"
+       fill="none"
+       fill-rule="evenodd"
+       id="g300">
+      <path
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         d="M4 4h16v16H4z"
+         id="path296" />
+      <path
+         d="M11.5 4.5v15"
+         stroke-linecap="square"
+         stroke-dasharray="2,4"
+         id="path298" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 240 240" id="icon-standalone-error">
+    <path
+       d="M137.314 13.357l98.466 170.341c5.528 9.563 2.256 21.797-7.306 27.325a20 20 0 0 1-10.01 2.684H21.532c-11.046 0-20-8.954-20-20a20 20 0 0 1 2.685-10.009l98.466-170.34c5.528-9.564 17.761-12.835 27.324-7.307a20 20 0 0 1 7.307 7.306zM120 54c-7.732 0-14 6.268-14 14v56c0 7.732 6.268 14 14 14s14-6.268 14-14V68c0-7.732-6.268-14-14-14zm0 133c7.732 0 14-6.268 14-14s-6.268-14-14-14-14 6.268-14 14 6.268 14 14 14z"
+       fill="#EAEAEA"
+       fill-rule="evenodd"
+       id="path303" />
+  </symbol>
+  <symbol viewBox="0 0 240 240" id="icon-standalone-locked">
+    <path
+       d="M165 113V95c0-24.853-20.147-45-45-45S75 70.147 75 95v18H62v63h116v-63h-13zm-45 122C56.487 235 5 183.513 5 120S56.487 5 120 5s115 51.487 115 115-51.487 115-115 115zm0-161c11.598 0 21 9.402 21 21v18H99V95c0-11.598 9.402-21 21-21z"
+       fill="#EAEAEA"
+       fill-rule="evenodd"
+       id="path306" />
+  </symbol>
+  <symbol viewBox="0 0 240 240" id="icon-standalone-maintenance">
+    <g
+       fill="none"
+       fill-rule="evenodd"
+       id="g311">
+      <path
+         d="M120 235C56.487 235 5 183.513 5 120S56.487 5 120 5s115 51.487 115 115-51.487 115-115 115zm43.727-97.273a9.75 9.75 0 0 1 8.923-5.909h.532c6.527 0 11.818-5.291 11.818-11.818 0-6.527-5.291-11.818-11.818-11.818h-1.005a9.75 9.75 0 0 1-8.922-5.91v-.472a9.75 9.75 0 0 1 1.95-10.755l.354-.354a11.818 11.818 0 0 0 0-16.723 11.818 11.818 0 0 0-16.723 0l-.354.355a9.75 9.75 0 0 1-10.755 1.95 9.75 9.75 0 0 1-5.909-8.923v-.532C131.818 60.291 126.527 55 120 55c-6.527 0-11.818 5.291-11.818 11.818v1.005a9.75 9.75 0 0 1-5.91 8.922h-.472a9.75 9.75 0 0 1-10.755-1.95l-.354-.354a11.818 11.818 0 0 0-16.723 0 11.818 11.818 0 0 0 0 16.723l.355.354a9.75 9.75 0 0 1 1.95 10.755 9.75 9.75 0 0 1-8.923 6.382h-.532c-6.527 0-11.818 5.29-11.818 11.818 0 6.527 5.291 11.818 11.818 11.818h1.005a9.75 9.75 0 0 1 8.922 5.909 9.75 9.75 0 0 1-1.95 10.755l-.354.354a11.818 11.818 0 0 0 0 16.723 11.818 11.818 0 0 0 16.723 0l.354-.355a9.75 9.75 0 0 1 10.755-1.95 9.75 9.75 0 0 1 6.382 8.923v.532c0 6.527 5.29 11.818 11.818 11.818 6.527 0 11.818-5.291 11.818-11.818v-1.005a9.75 9.75 0 0 1 5.909-8.922 9.75 9.75 0 0 1 10.755 1.95l.354.354a11.818 11.818 0 0 0 16.723 0 11.818 11.818 0 0 0 0-16.723l-.355-.354a9.75 9.75 0 0 1-1.95-10.755zM119.5 143c-12.979 0-23.5-10.521-23.5-23.5S106.521 96 119.5 96s23.5 10.521 23.5 23.5-10.521 23.5-23.5 23.5z"
+         fill="#EAEAEA"
+         id="path309" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 240 240" id="icon-standalone-news">
+    <path
+       d="M96.731 160H180V80H60v80h12v24.731L96.731 160zM120 235C56.487 235 5 183.513 5 120S56.487 5 120 5s115 51.487 115 115-51.487 115-115 115z"
+       fill="#EAEAEA"
+       fill-rule="evenodd"
+       id="path314" />
+  </symbol>
+  <symbol viewBox="0 0 240 240" id="icon-standalone-password">
+    <path
+       d="M185.916 132.397l6.379 8.78a6 6 0 0 0 9.708-7.054l-6.717-9.244 11.096-3.606a6 6 0 0 0-3.708-11.412l-10.758 3.495V102a6 6 0 0 0-12 0v11.454l-11.06-3.593a6 6 0 0 0-3.708 11.412l11.34 3.685-6.659 9.165a6 6 0 1 0 9.708 7.054l6.38-8.78zm-125.53 0l6.379 8.78a6 6 0 0 0 9.708-7.054l-6.717-9.244 11.096-3.606a6 6 0 1 0-3.708-11.412l-10.758 3.495V102a6 6 0 1 0-12 0v11.454l-11.06-3.593a6 6 0 0 0-3.708 11.412l11.34 3.685-6.659 9.165a6 6 0 1 0 9.709 7.054l6.378-8.78zm62.53 0l6.379 8.78a6 6 0 0 0 9.708-7.054l-6.717-9.244 11.096-3.606a6 6 0 0 0-3.708-11.412l-10.758 3.495V102a6 6 0 0 0-12 0v11.454l-11.06-3.593a6 6 0 0 0-3.708 11.412l11.34 3.685-6.659 9.165a6 6 0 1 0 9.708 7.054l6.38-8.78zM120 235C56.487 235 5 183.513 5 120S56.487 5 120 5s115 51.487 115 115-51.487 115-115 115z"
+       fill="#EAEAEA"
+       fill-rule="evenodd"
+       id="path317" />
+  </symbol>
+  <symbol viewBox="0 0 240 240" id="icon-standalone-warning">
+    <path
+       d="M120 235C56.487 235 5 183.513 5 120S56.487 5 120 5s115 51.487 115 115-51.487 115-115 115zm0-181c-7.732 0-14 6.268-14 14v56c0 7.732 6.268 14 14 14s14-6.268 14-14V68c0-7.732-6.268-14-14-14zm0 133c7.732 0 14-6.268 14-14s-6.268-14-14-14-14 6.268-14 14 6.268 14 14 14z"
+       fill="#EAEAEA"
+       fill-rule="evenodd"
+       id="path320" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-stop">
+    <path
+       stroke="currentColor"
+       stroke-width="2"
+       d="M4 4h16v16H4z"
+       fill="none"
+       fill-rule="evenodd"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path323" />
+  </symbol>
+  <symbol viewBox="0 0 19 19" id="icon-success">
+    <g
+       transform="translate(1 1)"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       id="g330">
+      <path
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         d="M12 6.146l-5.063 5.11L5 9.317"
+         id="path326" />
+      <circle
+         cx="8.5"
+         cy="8.5"
+         r="8.5"
+         id="circle328" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 25 25" id="icon-switch">
+    <g
+       fill="none"
+       fill-rule="evenodd"
+       stroke="currentColor"
+       stroke-width="2"
+       id="g341">
+      <path
+         d="M20.5 7.5H4.469"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         id="path333" />
+      <path
+         d="M4.5 7.5L11 12M4.5 7.5L11 3"
+         id="path335" />
+      <path
+         d="M4.5 17.5h16.031"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         id="path337" />
+      <path
+         d="M20.5 17.5L14 13M20.5 17.5L14 22"
+         id="path339" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-tick">
+    <path
+       class="feather feather-check"
+       d="M20 6L9 17l-5-5"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path344" />
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-trash">
+    <g
+       class="feather feather-trash-2"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g349">
+      <path
+         d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"
+         id="path347" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-user">
+    <g
+       class="feather feather-user"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g375">
+      <path
+         d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+         id="path371" />
+      <circle
+         cx="12"
+         cy="7"
+         r="4"
+         id="circle373" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 24 24" id="icon-view">
+    <g
+       class="feather feather-eye"
+       fill="none"
+       stroke="currentColor"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="g382">
+      <path
+         d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+         id="path378" />
+      <circle
+         cx="12"
+         cy="12"
+         r="3"
+         id="circle380" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 512 512" id="icon-grab">
+    <g
+       transform="translate(1 1)"
+       id="g427">
+      <g
+         id="g395">
+        <path
+           style="fill:#FFE100;"
+           d="M80.067,135.533c-5.12,0-8.533-3.413-8.533-8.533V7.533c0-5.12,3.413-8.533,8.533-8.533 c5.12,0,8.533,3.413,8.533,8.533V127C88.6,132.12,85.187,135.533,80.067,135.533z"
+           id="path385" />
+        <path
+           style="fill:#FFE100;"
+           d="M105.667,41.667c-2.56,0-4.267-0.853-5.973-2.56L80.067,19.48L60.44,39.107 c-3.413,3.413-8.533,3.413-11.947,0c-3.413-3.413-3.413-8.533,0-11.947l25.6-25.6c3.413-3.413,8.533-3.413,11.947,0l25.6,25.6 c3.413,3.413,3.413,8.533,0,11.947C109.933,40.813,108.227,41.667,105.667,41.667z"
+           id="path387" />
+        <path
+           style="fill:#FFE100;"
+           d="M80.067,135.533c-2.56,0-4.267-0.853-5.973-2.56l-25.6-25.6c-3.413-3.413-3.413-8.533,0-11.947 s8.533-3.413,11.947,0l19.627,19.627l19.627-19.627c3.413-3.413,8.533-3.413,11.947,0c3.413,3.413,3.413,8.533,0,11.947 l-25.6,25.6C84.333,134.68,82.627,135.533,80.067,135.533z"
+           id="path389" />
+        <path
+           style="fill:#FFE100;"
+           d="M173.933,186.733v76.8l-15.36-23.04c-17.067-29.867-58.027-43.52-85.333-33.28 c-4.267,0.853-6.827,3.413-10.24,5.12c-10.24,6.827-8.533,14.507-8.533,17.067s48.64,52.053,76.8,102.4 c0,0,24.747,40.96,51.2,68.267v25.6c0,42.667,34.133,76.8,76.8,76.8H344.6c33.28,0,67.413-28.16,75.093-60.587 c1.707-7.68,5.12-18.773,10.24-24.747C437.613,408.6,447,387.267,447,357.4V220.867c0-18.773-15.36-34.133-34.133-34.133 c-18.773,0-34.133,15.36-34.133,34.133V178.2c0-18.773-15.36-34.133-34.133-34.133c-18.773,0-34.133,15.36-34.133,34.133V41.667 c0-18.773-15.36-34.133-34.133-34.133l0,0c-18.773,0-34.133,15.36-34.133,34.133V178.2V75.8c0-18.773-15.36-34.133-34.133-34.133 l0,0c-18.773,0-34.133,15.36-34.133,34.133v42.667"
+           id="path391" />
+        <path
+           style="fill:#FFE100;"
+           d="M438.467,186.733c-4.267,0-8.533,0.853-12.8,2.56c12.8,5.12,21.333,17.067,21.333,31.573V357.4 c0,29.867-9.387,51.2-17.067,59.733c-5.12,5.973-8.533,17.067-10.24,24.747c-7.68,32.427-41.813,60.587-75.093,60.587h25.6 c33.28,0,67.413-28.16,75.093-60.587c1.707-7.68,5.12-18.773,10.24-24.747c7.68-8.533,17.067-29.867,17.067-59.733V220.867 C472.6,202.093,457.24,186.733,438.467,186.733"
+           id="path393" />
+      </g>
+      <g
+         id="g401">
+        <path
+           style="fill:#FFFFFF;"
+           d="M208.067,425.667v-25.6c-26.453-27.307-51.2-68.267-51.2-68.267 c-28.16-50.347-76.8-99.84-76.8-102.4s-1.707-10.24,8.533-17.067c3.413-1.707,5.973-4.267,10.24-5.12 c2.56-0.853,5.12-1.707,7.68-1.707c-11.947-2.56-23.04-1.707-33.28,1.707c-3.413,0.853-6.827,3.413-10.24,5.12 c-10.24,6.827-8.533,14.507-8.533,17.067s48.64,52.053,76.8,102.4c0,0,24.747,40.96,51.2,68.267v25.6 c0,42.667,8.533,76.8,51.2,76.8h25.6C216.6,502.467,208.067,468.333,208.067,425.667"
+           id="path397" />
+        <path
+           style="fill:#FFFFFF;"
+           d="M184.173,274.627l15.36,23.04V75.8c0-12.8,3.413-24.747,11.947-29.867 c-2.56-2.56-5.973-4.267-11.947-4.267c-18.773,0-25.6,15.36-25.6,34.133v186.027C177.347,266.093,180.76,270.36,184.173,274.627"
+           id="path399" />
+      </g>
+      <path
+         style="fill:#FFA800;"
+         d="M412.867,186.733c-4.267,0-8.533,0.853-12.8,2.56c12.8,5.12,21.333,17.067,21.333,31.573V357.4 c0,29.867-9.387,51.2-17.067,59.733c-5.12,5.973-8.533,17.067-10.24,24.747c-7.68,32.427-41.813,60.587-75.093,60.587h25.6 c33.28,0,67.413-28.16,75.093-60.587c1.707-7.68,5.12-18.773,10.24-24.747C437.613,408.6,447,387.267,447,357.4V220.867 C447,202.093,431.64,186.733,412.867,186.733"
+         id="path403" />
+      <path
+         d="M71.533,135.533c-5.12,0-8.533-3.413-8.533-8.533V7.533C63,2.413,66.413-1,71.533-1c5.12,0,8.533,3.413,8.533,8.533V127 C80.067,132.12,76.653,135.533,71.533,135.533z"
+         id="path405" />
+      <path
+         d="M97.133,41.667c-2.56,0-4.267-0.853-5.973-2.56L71.533,19.48L51.907,39.107c-3.413,3.413-8.533,3.413-11.947,0 c-3.413-3.413-3.413-8.533,0-11.947l25.6-25.6c3.413-3.413,8.533-3.413,11.947,0l25.6,25.6c3.413,3.413,3.413,8.533,0,11.947 C101.4,40.813,99.693,41.667,97.133,41.667z"
+         id="path407" />
+      <path
+         d="M71.533,135.533c-2.56,0-4.267-0.853-5.973-2.56l-25.6-25.6c-3.413-3.413-3.413-8.533,0-11.947s8.533-3.413,11.947,0 l19.627,19.627L91.16,95.427c3.413-3.413,8.533-3.413,11.947,0c3.413,3.413,3.413,8.533,0,11.947l-25.6,25.6 C75.8,134.68,74.093,135.533,71.533,135.533z"
+         id="path409" />
+      <path
+         d="M182.467,289.133c-3.413,0-5.973-1.707-7.68-5.12l-8.533-17.067c-1.707-4.267,0-9.387,3.413-11.093 c4.267-1.707,9.387,0,11.093,3.413l8.533,17.067c1.707,4.267,0,9.387-3.413,11.093 C185.027,289.133,184.173,289.133,182.467,289.133z"
+         id="path411" />
+      <path
+         d="M242.2,289.133c-5.12,0-8.533-3.413-8.533-8.533v-99.84c0-5.12,3.413-8.533,8.533-8.533s8.533,3.413,8.533,8.533v99.84 C250.733,285.72,247.32,289.133,242.2,289.133z"
+         id="path413" />
+      <path
+         d="M310.467,280.6c-5.12,0-8.533-3.413-8.533-8.533v-99.84c0-5.12,3.413-8.533,8.533-8.533c5.12,0,8.533,3.413,8.533,8.533 v99.84C319,277.187,315.587,280.6,310.467,280.6z"
+         id="path415" />
+      <path
+         d="M378.733,289.133c-5.12,0-8.533-3.413-8.533-8.533v-65.707c0-5.12,3.413-8.533,8.533-8.533c5.12,0,8.533,3.413,8.533,8.533 V280.6C387.267,285.72,383.853,289.133,378.733,289.133z"
+         id="path417" />
+      <path
+         d="M395.8,434.2c-3.413,0-6.827-2.56-8.533-5.973c-0.853-4.267,1.707-9.387,5.973-10.24l5.973-1.707 c17.067-4.267,24.747-6.827,29.013-12.8c2.56-3.413,8.533-4.267,11.947-1.707c3.413,2.56,4.267,8.533,1.707,11.947 c-8.533,11.093-21.333,14.507-39.253,19.627l-4.267,0.853C397.507,434.2,396.653,434.2,395.8,434.2z"
+         id="path419" />
+      <path
+         d="M216.6,434.2c-1.707,0-3.413-0.853-5.12-1.707c-5.12-4.267-9.387-6.827-14.507-11.093 c-6.827-4.267-12.8-9.387-19.627-15.36c-3.413-3.413-3.413-8.533-0.853-11.947c3.413-3.413,8.533-3.413,11.947-0.853 c5.973,5.12,11.947,9.387,17.92,13.653c5.12,3.413,10.24,6.827,15.36,11.947c3.413,3.413,4.267,8.533,0.853,11.947 C221.72,433.347,219.16,434.2,216.6,434.2z"
+         id="path421" />
+      <path
+         d="M344.6,511h-85.333c-46.933,0-85.333-38.4-85.333-85.333V403.48c-25.6-28.16-48.64-65.707-50.347-67.413 c-19.627-35.84-51.2-71.68-65.707-88.747c-11.947-13.653-12.8-14.507-11.947-19.627c0-3.413-0.853-14.507,11.947-23.04 c4.267-2.56,7.68-5.12,11.947-5.973c33.28-11.947,76.8,4.267,95.573,36.693v-48.64c0-5.12,3.413-8.533,8.533-8.533 c5.12,0,8.533,3.413,8.533,8.533v76.8c0,3.413-2.56,6.827-5.973,8.533c-3.413,0.853-7.68,0-9.387-3.413l-15.36-23.04 c-16.213-28.16-52.907-38.4-75.093-30.72c-2.56,0.853-5.12,2.56-8.533,4.267C63,222.573,63,224.28,63,226.84 c1.707,1.707,5.12,5.973,7.68,9.387c15.36,17.92,47.787,54.613,68.267,91.307c0,0,24.747,40.107,50.347,66.56 c1.707,1.707,2.56,3.413,2.56,5.973v25.6c0,37.547,30.72,68.267,68.267,68.267h85.333c29.013,0,60.587-24.747,66.56-53.76 c2.56-12.8,6.827-23.04,11.947-29.013c5.12-5.973,15.36-24.747,15.36-53.76V220.867c0-14.507-11.093-25.6-25.6-25.6 c-14.507,0-25.6,11.093-25.6,25.6c0,5.12-3.413,8.533-8.533,8.533s-8.533-3.413-8.533-8.533V178.2c0-14.507-11.093-25.6-25.6-25.6 s-25.6,11.093-25.6,25.6c0,5.12-3.413,8.533-8.533,8.533s-8.533-3.413-8.533-8.533V41.667c0-14.507-11.093-25.6-25.6-25.6 c-14.507,0-25.6,11.093-25.6,25.6V178.2c0,5.12-3.413,8.533-8.533,8.533c-5.12,0-8.533-3.413-8.533-8.533V75.8 c0-14.507-11.093-25.6-25.6-25.6s-25.6,11.093-25.6,25.6v42.667c0,5.12-3.413,8.533-8.533,8.533c-5.12,0-8.533-3.413-8.533-8.533 V75.8c0-23.893,18.773-42.667,42.667-42.667c9.387,0,18.773,3.413,25.6,8.533l0,0C234.52,17.773,253.293-1,277.187-1 c23.893,0,42.667,18.773,42.667,42.667v102.4c6.827-5.12,16.213-8.533,25.6-8.533c23.893,0,42.667,18.773,42.667,42.667v8.533 c6.827-5.12,16.213-8.533,25.6-8.533c23.893,0,42.667,18.773,42.667,42.667V357.4c0,31.573-10.24,55.467-18.773,65.707 c-3.413,3.413-5.973,11.093-8.533,21.333C419.693,480.28,381.293,511,344.6,511z"
+         id="path423" />
+      <path
+         d="M182.467,152.6c0-5.12-3.413-8.533-8.533-8.533c-5.12,0-8.533,3.413-8.533,8.533c0,5.12,3.413,8.533,8.533,8.533 C179.053,161.133,182.467,157.72,182.467,152.6"
+         id="path425" />
+    </g>
+  </symbol>
+  <symbol viewBox="0 0 960 960" id="icon-control" height="20" width="20">
+    <path
+       d="M427 936V711h60v83h353v60H487v82h-60Zm-307-82v-60h247v60H120Zm187-166v-82H120v-60h187v-84h60v226h-60Zm120-82v-60h413v60H427Zm166-165V216h60v82h187v60H653v83h-60Zm-473-83v-60h413v60H120Z"
+       fill="gray" />
+  </symbol>
+  <symbol height="24" id="icon-user-settings" viewBox="0 96 960 960" width="24">
+    <path fill="seagreen" d="M576 1016q-25 0-42.5-17.5T516 956V676q0-25 17.5-42.5T576 616h280q25 0 42.5 17.5T916 676v280q0 25-17.5 42.5T856 1016H576Zm0-60h280v-32q-25-31-61-49.5T716 856q-43 0-79 18.5T576 924v32Zm140-140q25 0 42.5-17.5T776 756q0-25-17.5-42.5T716 696q-25 0-42.5 17.5T656 756q0 25 17.5 42.5T716 816ZM480 576Zm0-130q-54 0-92 38t-38 92q0 43 24 76t62 47v-68q-11-9-18.5-24.5T410 576q0-29 20.5-49.5T480 506q18 0 33 8t24 22h66q-13-39-46.5-64.5T480 446Zm-92 530-20-126q-19-7-40-19t-37-25l-118 54-93-164 108-79q-2-9-2.5-20.5T185 576q0-9 .5-20.5T188 535L80 456l93-164 118 54q16-13 37-25t40-18l20-127h184l20 126q19 7 40.5 18.5T669 346l118-54 93 164-108 80v1-1h-61q-1-7-2-13.5t-3-13.5l94-69-40-72-106 46q-23-26-52-43.5T538 348l-14-112h-88l-14 112q-34 7-63.5 24T306 414l-106-46-40 72 94 69q-4 17-6.5 33.5T245 576q0 17 2.5 33.5T254 643l-94 69 40 72 106-46q26 26 59.5 43.5T436 807v169h-48Z"/>
+  </symbol>
+</svg>

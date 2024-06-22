@@ -2,38 +2,47 @@ package App::MCP::Attributes;
 
 use strictures;
 use namespace::autoclean ();
-use parent 'Exporter::Tiny';
 
-our @EXPORT = qw( FETCH_CODE_ATTRIBUTES MODIFY_CODE_ATTRIBUTES );
+use Sub::Install qw( install_sub );
 
 my $Code_Attr = {};
 
+# Public
 sub import {
-   my $class = shift;
-   my $global_opts = { $_[ 0 ] && ref $_[ 0 ] eq 'HASH' ? %{+ shift } : () };
+   my ($class, @wanted) = @_;
 
-   namespace::autoclean->import
-      ( -cleanee => scalar caller, -except => [ @EXPORT ] );
-   $global_opts->{into} //= caller;
-   $class->SUPER::import( $global_opts );
+   my @export = (qw( FETCH_CODE_ATTRIBUTES MODIFY_CODE_ATTRIBUTES ));
+   my $target = caller;
+
+   namespace::autoclean->import( -cleanee => $target, -except => [@export] );
+
+   return unless !defined $wanted[0] || $wanted[0];
+
+   install_sub { as => $export[0], into => $target, code => \&fetch };
+   install_sub { as => $export[1], into => $target, code => \&modify };
    return;
 }
 
-sub FETCH_CODE_ATTRIBUTES {
+sub fetch {
    my ($class, $code) = @_; return $Code_Attr->{ 0 + $code } // {};
 }
 
-sub MODIFY_CODE_ATTRIBUTES {
+sub modify {
    my ($class, $code, @attrs) = @_;
 
    for my $attr (@attrs) {
       my ($k, $v) = $attr =~ m{ \A ([^\(]+) (?: [\(] ([^\)]+) [\)] )? \z }mx;
 
-      my $vals = $Code_Attr->{ 0 + $code }->{ $k } // [];
+      my $vals = $Code_Attr->{ 0 + $code }->{$k} //= [];
 
-      defined $v and push @{ $vals }, $v;
+      next unless defined $v;
 
-      $Code_Attr->{ 0 + $code }->{ $k } = $vals;
+         $v =~ s{ \A \` (.*) \` \z }{$1}msx
+      or $v =~ s{ \A \" (.*) \" \z }{$1}msx
+      or $v =~ s{ \A \' (.*) \' \z }{$1}msx;
+
+      push @{$vals}, $v;
+      $Code_Attr->{ 0 + $code }->{$k} = $vals;
    }
 
    return ();

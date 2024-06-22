@@ -1,149 +1,20 @@
 package App::MCP::Config;
 
-use namespace::autoclean;
+use utf8; # -*- coding: utf-8; -*-
 
-use App::MCP::Constants    qw( NUL TRUE );
+use App::MCP::Constants    qw( FALSE NUL TRUE );
+use File::DataClass::Types qw( ArrayRef Bool CodeRef Directory File HashRef
+                               LoadableClass NonEmptySimpleStr
+                               NonZeroPositiveInt Object Path PositiveInt
+                               SimpleStr Str Undef );
+use App::MCP::Util         qw( base64_decode );
 use Class::Usul::Functions qw( fqdn );
-use File::DataClass::Types qw( ArrayRef CodeRef Directory File HashRef
-                               NonEmptySimpleStr NonZeroPositiveInt
-                               Object PositiveInt SimpleStr Str );
+use English                qw( -no_match_vars );
+use File::DataClass::IO    qw( io );
+use HTML::Forms::Util      qw( cipher );
 use Moo;
 
-extends 'Class::Usul::Config::Programs';
-
-has 'author'               => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'Dave';
-
-has 'clock_tick_interval'  => is => 'ro',   isa => NonZeroPositiveInt,
-   default                 => 3;
-
-has 'connect_params'       => is => 'ro',   isa => HashRef,
-   builder                 => sub { { quote_names => TRUE } };
-
-has 'cron_log_interval'    => is => 'ro',   isa => PositiveInt,
-   default                 => 0;
-
-has 'css'                  => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'css/';
-
-has 'database'             => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'schedule';
-
-has 'default_view'         => is => 'ro',   isa => SimpleStr, default => 'html';
-
-has 'deflate_types'        => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
-   builder                 => sub {
-      [ qw( text/css text/html text/javascript application/javascript ) ] };
-
-has 'description'          => is => 'ro',   isa => SimpleStr, default => NUL;
-
-has 'identity_file'        => is => 'lazy', isa => File, coerce => TRUE,
-   builder                 => sub { $_[ 0 ]->ssh_dir->catfile( 'id_rsa' ) };
-
-has 'images'               => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'img/';
-
-has 'js'                   => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'js/';
-
-has 'keywords'             => is => 'ro',   isa => SimpleStr, default => NUL;
-
-has 'layout'               => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'form';
-
-has 'less'                 => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'less/';
-
-has 'library_class'        => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'App::MCP::SSHLibrary';
-
-has 'load_factor'          => is => 'ro',   isa => NonZeroPositiveInt,
-   default                 => 14;
-
-has 'log_key'              => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'daemon';
-
-has 'max_asset_size'       => is => 'ro',   isa => PositiveInt,
-   default                 => 4_194_304;
-
-has 'max_messages'         => is => 'ro',   isa => NonZeroPositiveInt,
-   default                 => 3;
-
-has 'max_web_session_time' => is => 'ro',   isa => PositiveInt,
-   default                 => 3_600;
-
-has 'max_api_session_time' => is => 'ro',   isa => PositiveInt,
-   default                 => 300;
-
-has 'max_ssh_worker_calls' => is => 'ro',   isa => PositiveInt,
-   default                 => 0;
-
-has 'max_ssh_workers'      => is => 'ro',   isa => NonZeroPositiveInt,
-   documentation           => 'Maximum number of SSH worker processes',
-   default                 => 3;
-
-has 'monikers'             => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
-   builder                 => sub { {} };
-
-has 'mount_point'          => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => '/';
-
-has 'nav_list'             => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
-   builder                 => sub { [ qw( config job state_diagram help ) ] };
-
-has 'port'                 => is => 'ro',   isa => NonZeroPositiveInt,
-   default                 => 2012;
-
-has 'request_roles'        => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
-   builder                 => sub {
-      [ 'L10N', 'Session', 'JSON', 'Cookie', 'Authen::HTTP' ] };
-
-has 'schema_classes'       => is => 'ro',   isa => HashRef[NonEmptySimpleStr],
-   builder                 => sub { {
-      'mcp-model'          => 'App::MCP::Schema::Schedule', } };
-
-has 'scrubber'             => is => 'ro',   isa => Str,
-   default                 => '[^ +\,\-\./0-9@A-Z\\_a-z~]';
-
-has 'serve_as_static'      => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'css | favicon.ico | img | js | less';
-
-has 'server'               => is => 'ro',   isa => NonEmptySimpleStr,
-   documentation           => 'Plack server class used for the event listener',
-   default                 => 'Twiggy';
-
-has 'servers'              => is => 'ro',   isa => ArrayRef[NonEmptySimpleStr],
-   builder                 => sub { [ fqdn ] };
-
-has 'session_attr'         => is => 'lazy', isa => HashRef[ArrayRef],
-   builder                 => sub { {
-      skin                 => [ NonEmptySimpleStr, $_[ 0 ]->skin ],
-      theme                => [ NonEmptySimpleStr, 'green'       ],
-      user_roles           => [ ArrayRef,          sub { [] }    ],
-      wanted               => [ SimpleStr,         NUL           ], } };
-
-has 'skin'                 => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'default';
-
-has 'ssh_dir'              => is => 'lazy', isa => Directory, coerce => TRUE,
-   builder                 => sub { $_[ 0 ]->my_home->catdir( '.ssh' ) };
-
-has 'stash_attr'           => is => 'lazy', isa => HashRef[ArrayRef],
-   builder                 => sub { {
-      config               => [ qw( author description keywords ) ],
-      links                => [ qw( css images js less ) ],
-      request              => [ qw( authenticated host language username ) ],
-      session              => [ sort keys %{ $_[ 0 ]->session_attr } ], } };
-
-has 'stop_signals'         => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'TERM,10,KILL,1';
-
-has 'title'                => is => 'ro',   isa => NonEmptySimpleStr,
-   default                 => 'MCP';
-
-1;
-
-__END__
+with 'Web::Components::Role::ConfigLoader';
 
 =pod
 
@@ -151,14 +22,16 @@ __END__
 
 =head1 Name
 
-App::MCP::Config - One-line description of the modules purpose
+App::MCP::Config - Configuration class for the Master Control Program
 
 =head1 Synopsis
 
    use App::MCP::Config;
-   # Brief but working code examples
 
 =head1 Description
+
+Configuration attribute defaults are overridden by loading a configuration
+file. An optional local configuration file can also be read
 
 =head1 Configuration and Environment
 
@@ -166,193 +39,727 @@ Defines the following attributes;
 
 =over 3
 
+=item C<appclass>
+
+The application class name. Required by component loader to find controllers,
+models, and views
+
+=cut
+
+has 'appclass' => is => 'ro', isa => Str, required => TRUE;
+
+=item C<appldir>
+
+A synonym for 'home'
+
+=cut
+
+has 'appldir' => is => 'lazy', isa => Directory, default => sub { shift->home };
+
+=item C<authentication>
+
+Configuration parameters for the plugin authentication system
+
+=cut
+
+has 'authentication' => is => 'ro', isa => HashRef,
+   default => sub { { default_realm => 'DBIC' } };
+
 =item C<author>
 
 A non empty simple string which defaults to B<Dave>.
+
+=cut
+
+has 'author' => is => 'ro', isa => NonEmptySimpleStr, default => 'Dave';
+
+=item C<bin>
+
+A directory object which locates the applications executable files
+
+=cut
+
+has 'bin' =>
+   is      => 'lazy',
+   isa     => Directory,
+   default => sub { shift->pathname->parent };
 
 =item C<clock_tick_interval>
 
 A non zero positive integer that defaults to B<3>.
 
-=item C<common_links>
+=cut
 
-An array reference of non empty simple strings that defaults to
-B<[ css images js less ]>
+has 'clock_tick_interval' =>
+   is      => 'ro',
+   isa     => NonZeroPositiveInt,
+   default => 3;
 
-=item C<connect_params>
+=item C<connect_info>
 
-A hash reference which defaults to B<< { quote_names => TRUE } >>
+Used to connect to the database, the 'dsn', 'db_username', and 'db_password'
+attributes are returned in an array reference. The password will be decoded
+and decrypted
+
+=cut
+
+has 'connect_info' =>
+   is      => 'lazy',
+   isa     => ArrayRef,
+   default => sub {
+      my $self     = shift;
+      my $password = cipher->decrypt(base64_decode $self->db_password);
+
+      return [$self->dsn, $self->db_username, $password, $self->db_extra];
+   };
 
 =item C<cron_log_interval>
 
 A positive integer that defaults to B<0>.
 
-=item C<css>
+=cut
 
-A non empty simple string which defaults to B<css/>.
+has 'cron_log_interval' => is => 'ro', isa => PositiveInt, default => 0;
 
-=item C<database>
+=item C<db_extra>
 
-A non empty simple string which defaults to B<schedule>.
+Additional attributes passed to the database connection method
+
+=cut
+
+has 'db_extra' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub { { AutoCommit => TRUE } };
+
+=item C<db_password>
+
+Password used to connect to the database. This has no default. It should be
+set using the command 'bin/mcp-schema --set-db-password' before the application
+is started
+
+=cut
+
+has 'db_password' => is => 'ro', isa => Str;
+
+=item C<db_username>
+
+The username used to connect to the database
+
+=cut
+
+has 'db_username' => is => 'ro', isa => Str, default => 'mcp';
+
+=item C<default_route>
+
+The applications default route used as a target for redirects when the
+request does get as far as the mount point
+
+=cut
+
+has 'default_route' => is => 'ro', isa => Str, default => '/mcp/login';
 
 =item C<default_view>
 
 A simple string which defaults to B<html>.
 
+=cut
+
+has 'default_view' => is => 'ro', isa => SimpleStr, default => 'html';
+
 =item C<deflate_types>
 
-An array reference of non empty simple strings that defaults to
-B<[ text/css text/html text/javascript application/javascript ]>
+List of mime types that the middleware will compress on the fly if the
+request allows for it
+
+=cut
+
+has 'deflate_types' =>
+   is      => 'ro',
+   isa     => ArrayRef[Str],
+   default => sub {
+      return [
+         qw( application/javascript image/svg+xml text/css text/html
+         text/javascript )
+      ];
+   };
 
 =item C<description>
 
 A simple string which defaults to B<NUL>.
+
+=cut
+
+has 'description' => is => 'ro', isa => SimpleStr, default => NUL;
+
+=item C<dsn>
+
+String used to select a database type and specific database by name
+
+=cut
+
+has 'dsn' => is => 'ro', isa => Str, default => 'dbi:Pg:dbname=schedule';
+
+=item C<encoding>
+
+The output encoding used by the application
+
+=cut
+
+has 'encoding' => is => 'ro', isa => Str, default => 'utf-8';
 
 =item C<identity_file>
 
 A file object reference that defaults to the F<id_rsa> file in the L</ssh_dir>
 directory
 
-=item C<images>
+=cut
 
-A non empty simple string which defaults to B<img/>.
-
-=item C<js>
-
-A non empty simple string which defaults to B<js/>.
+has 'identity_file' =>
+   is      => 'lazy',
+   isa     => File|Path,
+   coerce  => TRUE,
+   default => sub { shift->ssh_dir->catfile('id_rsa') };
 
 =item C<keywords>
 
 A simple string which defaults to B<NUL>.
 
-=item C<less>
+=cut
 
-A non empty simple string which defaults to B<less/>.
+has 'keywords' => is => 'ro', isa => SimpleStr, default => NUL;
+
+=item C<layout>
+
+The name of the default template to render
+
+=cut
+
+has 'layout' => is => 'ro', isa => NonEmptySimpleStr, default => 'not_found';
 
 =item C<library_class>
 
 A non empty simple string which defaults to B<App::MCP::SSHLibrary>.
 
-=item C<load_factor>
+=cut
 
-A non zero positive integer that defaults to B<14>.
+has 'library_class' =>
+   is      => 'ro',
+   isa     => NonEmptySimpleStr,
+   default => 'App::MCP::SSHLibrary';
 
-=item C<log_key>
+=item C<loader_attr>
 
-A non empty simple string which defaults to B<DAEMON>.
+Configuration parameters used by the component loader
+
+=cut
+
+has 'loader_attr' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return { should_log_errors => FALSE, should_log_messages => TRUE };
+   };
+
+=item C<logdir>
+
+Directory containing logfiles
+
+=cut
+
+has 'logdir' =>
+   is      => 'lazy',
+   isa     => Directory,
+   default => sub { shift->vardir->catdir('log') };
+
+=item C<logfile>
+
+Set in the configuration file, the name of the logfile used by the logging
+class
+
+=cut
+
+has 'logfile' =>
+   is       => 'lazy',
+   isa      => File|Path|Undef,
+   init_arg => undef,
+   default  => sub {
+      my $self = shift;
+
+      return $self->logdir->catfile($self->_logfile);
+   };
+
+has '_logfile' =>
+   is       => 'ro',
+   isa      => Str,
+   default  => 'app-mcp.log',
+   init_arg => 'logfile';
 
 =item C<max_asset_size>
 
 A positive integer that defaults to B<4_194_304>.
 
+=cut
+
+has 'max_asset_size' =>
+   is      => 'ro',
+   isa     => PositiveInt,
+   default => 4_194_304;
+
 =item C<max_messages>
 
 A non zero positive integer that defaults to B<3>.
+
+=cut
+
+has 'max_messages' => is => 'ro', isa => NonZeroPositiveInt, default => 3;
 
 =item C<max_web_session_time>
 
 A positive integer that defaults to B<3_600>.
 
+=cut
+
+has 'max_web_session_time' => is => 'ro', isa => PositiveInt, default => 3_600;
+
 =item C<max_api_session_time>
 
 A positive integer that defaults to B<300>.
 
+=cut
+
+has 'max_api_session_time' => is => 'ro', isa => PositiveInt, default => 300;
+
 =item C<max_ssh_worker_calls>
 
 A positive integer that defaults to B<0>.
+
+=cut
+
+has 'max_ssh_worker_calls' => is => 'ro', isa => PositiveInt, default => 0;
 
 =item C<max_ssh_workers>
 
 A non zero positive integer that defaults to B<3>. The maximum number of SSH
 worker processes
 
-=item C<monikers>
+=cut
 
-A hash reference of non empty simple strings which defaults to B<{}>
+has 'max_ssh_workers' =>
+   is            => 'ro',
+   isa           => NonZeroPositiveInt,
+   documentation => 'Maximum number of SSH worker processes',
+   default       => 3;
 
 =item C<mount_point>
 
 A non empty simple string which defaults to B</>.
 
-=item C<nav_list>
+=cut
 
-An array reference of non empty simple strings that defaults to
-B<[ config job state_diagram help ]>
+has 'mount_point' => is => 'ro', isa => NonEmptySimpleStr, default => '/mcp';
+
+=item C<name>
+
+The display name for the applicaton
+
+=cut
+
+has 'name' => is => 'ro', isa => Str, default => 'Master Control Program';
+
+=item C<navigation>
+
+Hash reference of configuration attributes applied the the L<MCat::Navigation>
+object
+
+=cut
+
+has 'navigation' =>
+   is       => 'lazy',
+   isa      => HashRef,
+   init_arg => undef,
+   default  => sub {
+      my $self = shift;
+
+      return {
+         messages => { 'buffer-limit' => $self->max_messages },
+         title => $self->name . ' v' . App::MCP->VERSION,
+         title_abbrev => 'MCP',
+         %{$self->_navigation},
+         global => [
+            qw( job/list )
+         ],
+      };
+   };
+
+has '_navigation' =>
+   is       => 'ro',
+   isa      => HashRef,
+   init_arg => 'navigation',
+   default  => sub { {} };
+
+=item C<page>
+
+Defines the names of the C<site/html> and C<site/wrapper> templates used to
+produce all the pages
+
+=cut
+
+has 'page' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub { { html => 'base', wrapper => 'standard' } };
+
+=item C<pathname>
+
+File object for absolute pathname to the running program
+
+=cut
+
+has 'pathname' => is => 'ro', isa => File, default => sub {
+   my $name = $PROGRAM_NAME;
+
+   $name = '-' eq substr($name, 0, 1) ? $EXECUTABLE_NAME : $name;
+
+   return io((split m{ [ ][\-][ ] }mx, $name)[0])->absolute;
+};
 
 =item C<port>
 
 A non zero positive integer that defaults to B<2012>.
 
-=item C<preferences>
+=cut
 
-An array reference of non empty simple strings that defaults to
-B<[ theme ]>
+has 'port' => is => 'ro', isa => NonZeroPositiveInt, default => 2012;
 
-=item C<request_class>
+=item C<prefix>
 
-A non empty simple string which defaults to B<App::MCP::Request>.
+Used as a prefix when creating identifiers
 
-=item C<schema_classes>
+=cut
 
-A hash reference of non empty simple strings which defaults to
-B<< { 'mcp-model' => 'App::MCP::Schema::Schedule' } >>
+has 'prefix' => is => 'ro', isa => Str, default => 'mcp';
+
+=item C<redirect>
+
+The default action path to redirect to after logging in, changing password etc.
+
+=cut
+
+has 'redirect' => is => 'ro', isa => SimpleStr, default => 'job/list';
+
+=item C<redis>
+
+Configuration hash reference used to configure the connection to the Redis
+cache
+
+=cut
+
+has 'redis' => is => 'ro', isa => HashRef, default => sub { {} };
+
+=item registration
+
+Boolean which defaults false. If true user registration is allowed otherwise
+it is unavailable
+
+=cut
+
+has 'registration' => is => 'ro', isa => Bool, coerce => TRUE, default => FALSE;
+
+=item C<root>
+
+Directory which is the document root for assets being served by the application
+
+=cut
+
+has 'root' =>
+   is      => 'lazy',
+   isa     => Directory,
+   default => sub { shift->vardir->catdir('root') };
+
+=item C<rundir>
+
+Used to store runtime files
+
+=cut
+
+has 'rundir' =>
+   is      => 'lazy',
+   isa     => Directory,
+   default => sub { shift->tempdir };
+
+=item C<schema_class>
+
+The name of the lazily loaded database schema class
+
+=cut
+
+has 'schema_class' =>
+   is      => 'lazy',
+   isa     => LoadableClass,
+   coerce  => TRUE,
+   default => 'App::MCP::Schema::Schedule';
+
+=item C<script>
+
+Name of the program being executed. Appears on the manual page output
+
+=cut
+
+has 'script' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub { shift->pathname->basename };
 
 =item C<scrubber>
 
 A string which defaults to B<[^ +\,\-\./0-9@A-Z\\_a-z]>.
 
-=item C<serve_as_static>
+=cut
 
-A non empty simple string which defaults to
-B<css | favicon.ico | img | js | less>.
+has 'scrubber' =>
+   is      => 'ro',
+   isa     => Str,
+   default => '[^ +\,\-\./0-9@A-Z\\_a-z~]';
 
 =item C<server>
 
 A non empty simple string which defaults to B<Twiggy>. The Plack server class
 used for the event listener
 
+=cut
+
+has 'server' =>
+   is            => 'ro',
+   isa           => NonEmptySimpleStr,
+   documentation => 'Plack server class used for the event listener',
+   default       => 'Twiggy';
+
 =item C<servers>
 
 An array reference of non empty simple strings that defaults to
 B<[ fully_qualified_domain_name_of_this_host ]>
+
+=cut
+
+has 'servers' =>
+   is      => 'ro',
+   isa     => ArrayRef[NonEmptySimpleStr],
+   default => sub { [ fqdn ] };
+
+=item C<request>
+
+Hash reference passed to the request object factory constructor by the
+component loader. Includes;
+
+=over 3
+
+=item max_messages
+
+The maximum number of response to post messages to buffer both in the session
+object where they are stored and the JS object where they are displayed
+
+=item prefix
+
+See 'prefix'
+
+=item request_roles
+
+List of roles to be applied to the request class base
+
+=item serialise_session_attr
+
+List of session attributes that are included for serialisation to the CSRF
+token
+
+=item session_attr
+
+A list of names, types, and default values. These are composed into the
+session object
+
+=back
+
+=cut
+
+has 'request' => is => 'lazy', isa => HashRef, default => sub {
+   my $self = shift;
+
+   return {
+      max_messages => $self->max_messages,
+      prefix => $self->prefix,
+      request_roles => [ qw( L10N Session JSON Cookie Headers Compat ) ],
+      serialise_session_attr => [ qw( id ) ],
+      session_attr => {
+         email         => [ Str, NUL ],
+         enable_2fa    => [ Bool, FALSE ],
+         id            => [ PositiveInt, 0 ],
+         link_display  => [ Str, 'both' ],
+         menu_location => [ Str, 'header' ],
+         realm         => [ Str, NUL ],
+         role          => [ Str, NUL ],
+         skin          => [ Str, $self->skin ],
+         theme         => [ Str, 'light' ],
+         timezone      => [ Str, 'Europe/London' ],
+         wanted        => [ Str, NUL ],
+      },
+   };
+};
 
 =item C<skin>
 
 A non empty simple string which defaults to B<default>. The name of the default
 CSS skin
 
+=cut
+
+has 'skin' => is => 'ro', isa => NonEmptySimpleStr, default => 'default';
+
+=item C<sqldir>
+
+Directory object which contains the SQL DDL files used to create, populate
+and upgrade the database
+
+=cut
+
+has 'sqldir' => is => 'lazy', isa => Directory,
+   default => sub { shift->vardir->catdir('sql') };
+
 =item C<ssh_dir>
 
 A directory object reference that defaults to the F<.ssh> directory in the
 users home
 
+=cut
+
+has 'ssh_dir' =>
+   is      => 'lazy',
+   isa     => Directory,
+   coerce  => TRUE,
+   default => sub { shift->home->catdir('.ssh') };
+
+=item C<stash_attr>
+
+=cut
+
+has 'stash_attr' =>
+   is      => 'lazy',
+   isa     => HashRef[ArrayRef],
+   default => sub {
+      return {
+         config  => [ qw( author description keywords ) ],
+         links   => [ qw( css images js less ) ],
+         request => [ qw( authenticated host language username ) ],
+         session => [ sort keys %{ $_[ 0 ]->session_attr } ],
+      };
+   };
+
+=item C<static>
+
+A non empty simple string which defaults to B<css | file | font | img | js>.
+
+=cut
+
+has 'static' =>
+   is      => 'ro',
+   isa     => NonEmptySimpleStr,
+   default => 'css | file | font | img | js';
+
 =item C<stop_signals>
 
 A non empty simple string which defaults to B<TERM,10,KILL,1>.
 
-=item C<template>
+=cut
 
-A non empty simple string which defaults to B<form>.
+has 'stop_signals' =>
+   is      => 'ro',
+   isa     => NonEmptySimpleStr,
+   default => 'TERM,10,KILL,1';
 
-=item C<title>
+=item C<tempdir>
 
-A non empty simple string which defaults to B<MCP>.
+The temporary directory used by the application
 
-=item C<theme>
+=cut
 
-A non empty simple string which defaults to B<green>.
+has 'tempdir' =>
+   is      => 'lazy',
+   isa     => Directory,
+   default => sub { shift->vardir->catdir('tmp') };
+
+=item C<token_lifetime>
+
+Time in seconds the CSRF token has to live before it is declared invalid
+
+=cut
+
+has 'token_lifetime' => is => 'ro', isa => PositiveInt, default => 3_600;
+
+=item C<user>
+
+Configuration options for the 'User' result class. Includes 'load_factor'
+used in the encrypting of passwords
+
+=cut
+
+has 'user' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub { { load_factor => 14 } };
+
+=item C<vardir>
+
+Directory where all non program files and directories are expected to be found
+
+=cut
+
+has 'vardir' =>
+   is      => 'ro',
+   isa     => Directory,
+   coerce  => TRUE,
+   default => sub { io['var'] };
+
+=item C<wcom_resources>
+
+Names of the JS management objects
+
+=cut
+
+has 'wcom_resources' =>
+   is      => 'ro',
+   isa     => HashRef[Str],
+   default => sub {
+      return {
+         data_structure => 'WCom.Form.DataStructure',
+         downloadable   => 'WCom.Table.Role.Downloadable',
+         form_util      => 'WCom.Form.Util',
+         modal          => 'WCom.Modal',
+         navigation     => 'WCom.Navigation.manager',
+         table_renderer => 'WCom.Table.Renderer.manager',
+         toggle         => 'WCom.Form.Toggle'
+      };
+   };
+
+use namespace::autoclean;
+
+1;
+
+__END__
 
 =back
 
 =head1 Subroutines/Methods
 
+Defines no subroutines or methods
+
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Moo>
 
 =item L<File::DataClass>
 
@@ -364,9 +771,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
-Patches are welcome
+There are no known bugs in this module.  Please report problems to the address
+below.  Patches are welcome
 
 =head1 Acknowledgements
 
