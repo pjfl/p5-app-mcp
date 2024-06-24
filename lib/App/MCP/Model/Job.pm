@@ -20,7 +20,7 @@ sub base : Auth('view') {
    my $nav = $context->stash('nav')->list('job')->item('job/create');
 
    if ($jobid) {
-      my $job = $context->model('Job')->find($jobid);
+      my $job = $context->model('Job')->find_by_key($jobid);
 
       return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
@@ -52,12 +52,9 @@ sub create : Nav('Create Job') {
 sub delete : Nav('Delete Job') {
    my ($self, $context, $jobid) = @_;
 
-   return unless $context->verify_form_post;
+   return unless $self->verify_form_post($context);
 
-   my $job = $context->stash('job');
-
-   return $self->error($context, UnknownJob, [$jobid]) unless $job;
-
+   my $job  = $context->stash('job');
    my $name = $job->job_name;
 
    $job->delete;
@@ -71,12 +68,12 @@ sub delete : Nav('Delete Job') {
 sub edit : Nav('Edit Job') {
    my ($self, $context) = @_;
 
-   my $job  = $context->stash('job');
-   my $options = {context => $context, item => $job, title => 'Edit job'};
+   my $job     = $context->stash('job');
+   my $options = { context => $context, item => $job, title => 'Edit job' };
    my $form    = $self->new_form('Job', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $view = $context->uri_for_action('job/view', [$job->jobid]);
+      my $view    = $context->uri_for_action('job/view', [$job->jobid]);
       my $message = ['Job [_1] updated', $form->item->job_name];
 
       $context->stash(redirect $view, $message);
@@ -102,7 +99,7 @@ sub list : Auth('view') Nav('Jobs|img/job.svg') {
 sub remove {
    my ($self, $context) = @_;
 
-   return unless $context->verify_form_post;
+   return unless $self->verify_form_post($context);
 
    my $value = $context->request->body_parameters->{data} or return;
    my $rs    = $context->model('Job');
@@ -120,169 +117,10 @@ sub remove {
 sub view : Auth('view') Nav('View Job') {
    my ($self, $context) = @_;
 
-   my $job     = $context->stash('job');
-   my $options = { caption => 'Job View', context => $context, result => $job };
+   my $options = { context => $context, result => $context->stash('job') };
 
-   $context->stash(table => $self->new_table('Object::View', $options));
+   $context->stash(table => $self->new_table('Job::View', $options));
    return;
-}
-
-
-
-# TODO: Old job model methods parked here
-sub choose_action : Role(any) {
-   my ($self, $req) = @_; my $job;
-
-   my $job_rs = $self->schema->resultset( 'Job' );
-   my $idorn  = join SEPARATOR, @{ $req->uri_params->( { optional => TRUE } ) };
-
-   if ($idorn) { $job = $job_rs->find_by_id_or_name( $idorn ) }
-   else {
-      my $where = { name => $req->body_params->( 'name', { raw => TRUE } ) };
-
-      $job = $job_rs->search( $where, { columns => [ 'id' ] } )->first;
-   }
-
-   my $id; $job and $id = $job->id;
-
-   return { redirect => { location => $req->uri_for( 'job', [ $id ] ) } };
-}
-
-sub chooser : Role(any) {
-   my ($self, $req) = @_;
-
-   my $opts    = { scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' };
-   my $chooser = $self->build_chooser( $req, $opts );
-   my $page    = { meta => delete $chooser->{meta} };
-   my $stash   = $self->get_stash( $req, $page, 'job_chooser' => $chooser );
-
-   $stash->{view} = 'json';
-   return $stash;
-}
-
-sub chooser_rows : Role(any) {
-   my ($self, $req) = @_;
-
-   my $opts  = { form   => 'job',
-                 method => '_job_chooser_link_hash',
-                 values => $self->_job_chooser_search( $req ) };
-   my $rows  = $self->build_chooser_rows( $req, $opts );
-   my $page  = { meta => delete $rows->{meta} };
-   my $stash = $self->get_stash( $req, $page, 'job_grid_rows' => $rows );
-
-   $stash->{view} = 'json';
-   return $stash;
-}
-
-sub chooser_table : Role(any) {
-   my ($self, $req) = @_;
-
-   my $params  = $req->query_params;
-   my $value   = $params->( 'field_value', { optional => TRUE } ) || '%';
-   my $total   = $self->schema->resultset( 'Job' )
-      ->search( { id => { '>' => 1 }, name => { -like => $value } } )
-      ->count;
-   my $opts    = {
-      form     => 'job',
-      label    => 'Job names',
-      scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]',
-      total    => $total, };
-   my $table   = $self->build_chooser_table( $req, $opts );
-   my $page    = { meta => delete $table->{meta} };
-   my $stash   = $self->get_stash( $req, $page, 'job_grid_table' => $table );
-
-   $stash->{view} = 'json';
-   return $stash;
-}
-
-sub clear_action : Role(any) {
-   return { redirect => { location => $_[ 1 ]->uri_for( 'job' ) } };
-}
-
-sub job_state : Role(any) {
-   my ($self, $req) = @_;
-
-   my $sep       = SEPARATOR;
-   my $form      = 'job_state_dialog';
-   my $idorn     = join $sep, @{ $req->uri_params->( { optional => TRUE } ) };
-   my $rs        = $self->schema->resultset( 'JobState' );
-   my $job_state = $rs->find_by_id_or_name( $idorn );
-   my $page      = { meta => { id => $req->query_params->( 'id' ) } };
-   my $stash     = $self->get_stash( $req, $page, $form => $job_state );
-
-   $stash->{view} = 'json';
-   return $stash;
-}
-
-# Private methods
-sub  _job_chooser_assign_hook {
-   return $_[ 1 ]->uri_for( 'job_chooser' );
-}
-
-sub _job_chooser_link_hash {
-   return { href => '#top',           text  => $_[ 3 ]->job_name,
-            tip  => $_[ 3 ]->summary, value => $_[ 3 ]->job_name, };
-}
-
-sub _job_chooser_search {
-   my ($self, $req) = @_; my $params = $req->query_params;
-
-   my $opts  = { optional => TRUE, scrubber => '[^ \%\*+\-\./0-9@A-Z\\_a-z~]' };
-   my $value = $params->( 'field_value', $opts ) || '%';
-
-   return [ $self->schema->resultset( 'Job' )->search
-            ( { id       => { '>' => 1 },
-                name     => { -like => $value } },
-              { order_by => 'name',
-                page     => $params->( 'page' ) + 1,
-                rows     => $params->( 'page_size' ) } )->all ];
-}
-
-sub _job_deflate_crontab {
-   my $v = join SPC, map { $_[ 1 ]->( "crontab_${_}", {
-      optional => TRUE } ) // NUL } CRONTAB_FIELD_NAMES;
-
-   $v =~ s{ \A \s+ \z }{}mx; return $v;
-}
-
-sub _job_deflate_group {
-   my $role_rs = $_[ 0 ]->schema->resultset( 'Role' );
-   my $role    = $role_rs->find_by_name( $_[ 1 ]->( 'group_rel', {
-      optional => TRUE } ) || 'unknown' );
-
-   return $role ? $role->id : undef;
-}
-
-sub _job_deflate_owner {
-   my $user_rs = $_[ 0 ]->schema->resultset( 'User' );
-   my $user    = $user_rs->find_by_name( $_[ 1 ]->( 'owner_rel', {
-      optional => TRUE } ) || 'unknown' );
-
-   return $user ? $user->id : undef;
-}
-
-sub _job_deflate_parent_id {
-   my $job_rs = $_[ 0 ]->schema->resultset( 'Job' );
-   my $parent = $_[ 1 ]->( 'parent_name', { optional => TRUE } ) // NUL;
-   my $owner  = $_[ 1 ]->( 'owner_rel',   { optional => TRUE } ) || 'unknown';
-
-   return $job_rs->writable_box_id_by_name( $parent, $owner );
-}
-
-sub _job_deflate_permissions {
-   my $perms = $_[ 1 ]->( 'permissions', { optional => TRUE } ) // NUL;
-
-   return length $perms ? oct $perms : 0;
-}
-
-sub _job_name_assign_hook {
-   my ($self, $req, $field, $row, $value) = @_; return strip_parent_name $value;
-}
-
-sub _job_parent_name_assign_hook {
-   my ($self, $req, $field, $row, $value) = @_; $row or return $value;
-
-   return $self->schema->resultset( 'Job' )->find( $row->parent_id )->job_name;
 }
 
 1;

@@ -4,15 +4,11 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-Describes version v0.5.$Rev: 28 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
+Describes version v0.5.$Rev: 29 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
 
 # Synopsis
 
 # Description
-
-<div>
-    <p><center><img src="http://cpan.org/authors/id/P/PJ/PJFL/images/one_thousand_words.png" width="882" height="462" /></center></p>
-</div>
 
 # Configuration and Environment
 

@@ -80,14 +80,12 @@ sub dump {
 sub find_by_key {
    my ($self, $job_key, $options) = @_;
 
-   throw Unspecified, ['job key'] unless defined $job_key and length $job_key;
+   return unless defined $job_key and length $job_key;
 
    my $job; $options //= {};
 
    if ($job_key =~ m{ \A \d+ \z }mx) { $job = $self->find($job_key, $options) }
    else { $job = $self->search({'me.job_name' => $job_key}, $options)->single }
-
-   throw UnknownJob, [$job_key] unless $job;
 
    return $job;
 }

@@ -3,7 +3,6 @@ package App::MCP::Model::API;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
 use Unexpected::Types      qw( HashRef );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
-use App::MCP::Util         qw( clear_redirect );
 use Unexpected::Functions  qw( catch_class throw APIMethodFailed
                                UnauthorisedAPICall UnknownAPIClass
                                UnknownAPIMethod UnknownView );
@@ -13,8 +12,6 @@ use App::MCP::Attributes; # Will do namespace cleaning
 
 extends 'App::MCP::Model';
 with    'Web::Components::Role';
-# TODO: Integrate api authentication
-#with    'App::MCP::Role::APIAuthentication';
 
 has '+moniker' => default => 'api';
 
@@ -42,16 +39,17 @@ sub dispatch : Auth('none') {
 
    return if $context->stash->{finalised};
 
-   my $handler = $class->new(name => $name);
-   my $coderef = $handler->can($method);
+   my $args    = { config => $self->config, log => $self->log, name => $name };
+   my $handler = $class->new($args);
+   my $action  = $handler->can($method);
 
    return $self->error($context, UnknownAPIMethod, [$class, $method])
-      unless $coderef;
+      unless $action;
 
    return $self->error($context, UnauthorisedAPICall, [$class, $method])
-      unless $self->_api_allowed($context, $coderef);
+      unless $self->_api_allowed($context, $action);
 
-   return if $context->posted && !$context->verify_form_post;
+   return if $context->posted && !$self->verify_form_post($context);
 
    try { $handler->$method($context, @args) }
    catch_class [
@@ -69,11 +67,11 @@ sub dispatch : Auth('none') {
 }
 
 sub _api_allowed {
-   my ($self, $context, $coderef) = @_;
+   my ($self, $context, $action) = @_;
 
-   return TRUE if $self->is_authorised($context, $coderef);
+   return TRUE if $self->is_authorised($context, $action);
 
-   clear_redirect $context;
+   $context->clear_redirect;
    return FALSE;
 }
 

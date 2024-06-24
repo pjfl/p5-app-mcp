@@ -9,7 +9,9 @@ use DateTime;
 use App::MCP;
 use Moo;
 
-extends 'HTML::Forms::Exception', 'HTML::StateTable::Exception';
+extends 'HTML::Forms::Exception',
+   'HTML::StateTable::Exception',
+   'Web::ComposableRequest::Exception::Authen::HTTP';
 
 has 'created' =>
    is      => 'ro',
@@ -18,7 +20,7 @@ has 'created' =>
       return DateTime->now( locale => 'en_GB', time_zone => 'UTC' );
    };
 
-has 'rv' => is => 'ro', isa => Int, default => 1;
+has 'rv' => is => 'ro', isa => Int, default => 0;
 
 has 'version' =>
    is      => 'ro',
@@ -31,28 +33,6 @@ has '+class' => default => $class;
 
 has_exception $class;
 
-has_exception 'Authentication'    => parents => [ $class ];
-
-has_exception 'Workflow'          => parents => [ $class ];
-
-has_exception 'AuthenticationRequired' => parents => ['Authentication'],
-   error   => 'Resource [_1] authentication required';
-
-has_exception 'AccountInactive'   => parents => [ 'Authentication' ],
-   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
-
-has_exception 'IncorrectAuthCode' => parents => ['Authentication'],
-   error   => 'User [_1] authentication failed';
-
-has_exception 'IncorrectPassword' => parents => [ 'Authentication' ],
-   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
-
-has_exception 'PasswordDisabled' => parents => ['Authentication'],
-   error   => 'User [_1] password disabled';
-
-has_exception 'PasswordExpired' => parents => ['Authentication'],
-   error   => 'User [_1] password expired';
-
 has_exception 'APIMethodFailed', parents => [$class],
    error   => 'API class [_1] method [_2] call failed: [_3]',
    rv      => HTTP_BAD_REQUEST;
@@ -60,12 +40,18 @@ has_exception 'APIMethodFailed', parents => [$class],
 has_exception 'NoMethod' => parents => [$class],
    error   => 'Class [_1] has no method [_2]', rv => HTTP_NOT_FOUND;
 
+has_exception 'NoUserRole' => parents => [$class],
+   error   => 'User [_1] no role found on session', rv => HTTP_NOT_FOUND;
+
 has_exception 'PageNotFound' => parents => [$class],
    error   => 'Page [_1] not found', rv => HTTP_NOT_FOUND;
 
 has_exception 'UnauthorisedAPICall' => parents => [$class],
    error   => 'Class [_1] method [_2] unauthorised call attempt',
    rv      => HTTP_UNAUTHORIZED;
+
+has_exception 'UnauthorisedAccess' => parents => [$class],
+   error   => 'Access to resource denied', rv => HTTP_UNAUTHORIZED;
 
 has_exception 'UnknownAPIClass' => parents => [$class],
    error   => 'API class [_1] not found: [_2]', rv => HTTP_NOT_FOUND;
@@ -85,22 +71,41 @@ has_exception 'UnknownToken' => parents => [$class],
 has_exception 'UnknownUser' => parents => [$class],
    error   => 'User [_1] not found', rv => HTTP_NOT_FOUND;
 
-has_exception 'NoUserRole' => parents => [$class],
-   error   => 'User [_1] no role found on session', rv => HTTP_NOT_FOUND;
+has_exception 'Authentication'    => parents => [$class];
 
-has_exception 'Condition'         => parents => [ 'Workflow' ],
+has_exception 'AccountInactive'   => parents => ['Authentication'],
+   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
+
+has_exception 'AuthenticationRequired' => parents => ['Authentication'],
+   error   => 'Resource [_1] authentication required';
+
+has_exception 'IncorrectAuthCode' => parents => ['Authentication'],
+   error   => 'User [_1] authentication failed';
+
+has_exception 'IncorrectPassword' => parents => ['Authentication'],
+   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
+
+has_exception 'PasswordDisabled' => parents => ['Authentication'],
+   error   => 'User [_1] password disabled';
+
+has_exception 'PasswordExpired' => parents => ['Authentication'],
+   error   => 'User [_1] password expired';
+
+has_exception 'Workflow'  => parents => [$class];
+
+has_exception 'Condition' => parents => ['Workflow'],
    error   => 'Condition not true';
 
-has_exception 'Crontab'           => parents => [ 'Workflow' ],
+has_exception 'Crontab'   => parents => ['Workflow'],
    error   => 'Not at this time';
 
-has_exception 'Illegal'           => parents => [ 'Workflow' ],
+has_exception 'Illegal'   => parents => ['Workflow'],
    error   => 'Transition [_1] from state [_2] illegal';
 
-has_exception 'Retry'             => parents => [ 'Workflow' ],
+has_exception 'Retry'     => parents => ['Workflow'],
    error   => 'Rv [_1] greater than expected [_2]';
 
-has_exception 'Unknown'           => parents => [ 'Workflow' ];
+has_exception 'Unknown'   => parents => ['Workflow'];
 
 use namespace::autoclean;
 

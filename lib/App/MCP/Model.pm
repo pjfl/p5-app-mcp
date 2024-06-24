@@ -5,7 +5,6 @@ use App::MCP::Util      qw( formpost );
 use Type::Utils         qw( class_type );
 use HTML::Forms::Manager;
 use HTML::StateTable::Manager;
-#use App::MCP::JobServer;
 use Web::Components::Navigation;
 use Moo;
 use App::MCP::Attributes; # Will do namespace cleaning
@@ -28,18 +27,6 @@ has 'form' =>
          namespace => "${appclass}::Form", schema => $self->schema
       });
    };
-
-# has 'jobdaemon' =>
-#    is      => 'lazy',
-#    isa     => class_type('App::MCP::JobServer'),
-#    default => sub {
-#       my $self = shift;
-
-#       return App::MCP::JobServer->new(config => {
-#          appclass => $self->config->appclass,
-#          pathname => $self->config->bin->catfile('mcat-jobserver'),
-#       });
-#    };
 
 has 'table' =>
    is      => 'lazy',
@@ -71,7 +58,7 @@ sub root : Auth('none') {
    if ($session->authenticated) {
       $nav->item('page/changes');
       $nav->item('page/password', [$session->id]);
-#      $nav->item('user/profile', [$session->id]);
+      $nav->item('user/profile', [$session->id]);
       $nav->item('user/totp', [$session->id]) if $session->enable_2fa;
       $nav->item(formpost, 'page/logout');
    }

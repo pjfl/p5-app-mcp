@@ -1,19 +1,54 @@
 package App::MCP::Model::State;
 
-use App::MCP::Attributes;
-use App::MCP::Constants    qw( EXCEPTION_CLASS NUL TRUE );
-use Class::Usul::Functions qw( bson64id bson64id_time );
-use HTTP::Status           qw( HTTP_BAD_REQUEST );
+use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE NUL TRUE );
+use Web::ComposableRequest::Util qw( bson64id bson64id_time );
+use Unexpected::Functions        qw( throw );
 use Try::Tiny;
-use Unexpected::Functions  qw( throw );
 use Moo;
+use App::MCP::Attributes;
 
 extends 'App::MCP::Model';
 with    'Web::Components::Role';
 
 has '+moniker' => default => 'state';
 
-sub diagram : Role(any) {
+# Public methods
+sub base : Auth('view') {
+   my ($self, $context) = @_;
+
+   my $nav = $context->stash('nav')->list('job')->item('job/view');
+
+   $nav->container_layout(NUL) if $context->endpoint eq 'view';
+
+   $nav->finalise;
+   return;
+}
+
+sub edit  {
+   my ($self, $context) = @_;
+
+   my $form = $self->new_form('State', { context => $context });
+
+   if ($form->process(posted => $context->posted)) {
+      my $view     = $context->uri_for_action('state/view');
+      my $message  = [''];
+
+      $context->stash(redirect $view, $message);
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
+sub view : Auth('view') Nav('State') {
+   my ($self, $context) = @_;
+
+   $context->stash(state_config => {});
+   return;
+}
+
+# Private methods
+sub _get_job_tree {
    my ($self, $req) = @_;
 
    # TODO: Use level to restrict rows in result
@@ -40,7 +75,7 @@ sub diagram : Role(any) {
          $job->type eq 'box' and $boxes->[ $job->id ] = $item;
       }
    }
-   catch { throw $_, rv => HTTP_BAD_REQUEST };
+   catch { throw $_ };
 
    my $id     = bson64id;
    my $page   = { minted => bson64id_time( $id ), title => 'State Diagram' };

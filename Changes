@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Reintegrated APIAuthorisation
           - Replacing Web::Components::Forms with HTML::Forms
           - Uses Web::ComposableRequest::Authen::HTTP
           - Uses Web::Components::Forms

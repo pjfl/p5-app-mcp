@@ -9,7 +9,7 @@ use List::Util            qw( pairs );
 use Ref::Util             qw( is_arrayref is_coderef is_hashref );
 use Scalar::Util          qw( blessed );
 use Type::Utils           qw( class_type );
-use Unexpected::Functions qw( throw BadToken NoMethod UnknownModel );
+use Unexpected::Functions qw( throw NoMethod UnknownModel );
 use App::MCP::Response;
 use Moo;
 
@@ -24,19 +24,11 @@ has 'config' =>
 
 has 'controllers' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'jobdaemon' =>
-   is      => 'lazy',
-   isa     => Maybe[class_type('App::Job::Daemon')],
-   default => sub {
-      my $self = shift;
-      my $jobd = $self->models->{jobdaemon} or return;
-
-      return $jobd->jobdaemon;
-   };
-
 has 'models' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has 'posted' => is => 'lazy', isa => Bool,
+has 'posted' =>
+   is      => 'lazy',
+   isa     => Bool,
    default => sub { lc shift->request->method eq 'post' ? TRUE : FALSE };
 
 has 'request' =>
@@ -46,31 +38,41 @@ has 'request' =>
    weak_ref => TRUE;
 
 has 'response' =>
-   is      => 'ro',
+   is      => 'lazy',
    isa     => class_type('App::MCP::Response'),
    default => sub { App::MCP::Response->new };
 
 has 'session' => is => 'lazy', default => sub { shift->request->session };
 
-has 'time_zone' => is => 'lazy', isa => Str,
+has 'time_zone' =>
+   is      => 'lazy',
+   isa     => Str,
    default => sub { shift->session->timezone };
 
 has 'views' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has '_api_routes' => is => 'lazy', isa => HashRef, default => sub {
-   my $self   = shift;
-   my $models = $self->models;
+has '_api_routes' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      my $self   = shift;
+      my $models = $self->models;
 
-   return {} unless exists $models->{api};
+      return {} unless exists $models->{api};
 
-   return $models->{api}->can('routes') ? $models->{api}->routes : {};
-};
+      return $models->{api}->can('routes') ? $models->{api}->routes : {};
+   };
 
-has '_stash' => is => 'ro', isa => HashRef, default => sub {
-   return { version => App::MCP->VERSION };
-};
+has '_stash' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub { { version => App::MCP->VERSION } };
 
 with 'App::MCP::Role::Authentication';
+
+sub clear_redirect {
+   return delete shift->stash->{redirect};
+}
 
 sub endpoint {
    return (split m{ / }mx, shift->stash('method_chain'))[-1];
@@ -180,15 +182,10 @@ sub verification_token {
 }
 
 sub verify_form_post {
-   my $self = shift;
+   my $self  = shift;
+   my $token = $self->get_body_parameters->{_verify};
 
-   my $token  = $self->get_body_parameters->{_verify};
-   my $reason = verify_token $token, $self->session->serialise;
-
-   return TRUE unless $reason;
-
-   $self->models->{page}->error($self, BadToken, [$reason], level => 3);
-   return FALSE;
+   return verify_token $token, $self->session->serialise;
 }
 
 sub view {

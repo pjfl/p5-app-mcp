@@ -17,15 +17,19 @@ return (
    'GET + /job/* + ?*'           => sub {['job/root/base/view',   @_]},
    'GET + /job + ?*'             => sub {['job/root/base/list',   @_]},
 
-   'GET  + /job_chooser    + ?*' => sub {['job/chooser',         @_]},
-   'GET  + /job_grid_rows  + ?*' => sub {['job/chooser_rows',    @_]},
-   'GET  + /job_grid_table + ?*' => sub {['job/chooser_table',   @_]},
-   'GET  + /job_state/**   + ?*' => sub {['job/job_state',       @_]},
-   'GET  + /state_diagram      ' => sub {['state/diagram',       @_]},
+   'GET  + /state + ?*' => sub {['state/root/base/view', @_]},
 
+   'GET|POST + /user/create + ?*'     => sub {['user/root/base/create',    @_]},
+   'POST     + /user/*/delete + ?*'   => sub {['user/root/base/delete',    @_]},
+   'GET|POST + /user/*/edit + ?*'     => sub {['user/root/base/edit',      @_]},
    'GET|POST + /user/*/password/* + ?*'
                                  => sub {['page/root/base/password_reset', @_]},
    'GET|POST + /user/*/password + ?*' => sub {['page/root/base/password',  @_]},
+   'GET|POST + /user/*/profile + ?*'  => sub {['user/root/base/profile',   @_]},
+   'GET|POST + /user/*/totp/* + ?*'   => sub {['page/root/base/totp_reset',@_]},
+   'GET      + /user/*/totp + ?*'     => sub {['user/root/base/totp',      @_]},
+   'GET      + /user/* + ?*'          => sub {['user/root/base/view',      @_]},
+   'GET      + /user + ?*'            => sub {['user/root/base/list',      @_]},
 
    'GET      + /access_denied + ?*'
                                => sub {['page/root/base/access_denied', @_]},

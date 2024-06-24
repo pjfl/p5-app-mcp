@@ -918,10 +918,17 @@ form.classic .label-right label {
 }
 .form-error {
   background: lightpink;
+  border: 1px solid gray;
   border-radius: 5px;
-  max-height: 12rem;
-  max-width: 20rem;
+  box-shadow: 3px 3px 3px gray;
+  max-width: 50rem;
   overflow: hidden;
+  padding: 0.5rem;
+}
+.form-error h1,
+.form-error h2,
+.form-error h3 {
+  margin: 0.5rem 0 !important;
 }
 .form-messages .alert {
   font-family: Roboto, system-ui, sans-serif;
@@ -930,7 +937,7 @@ form.classic .label-right label {
 .form-messages .alert .card {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
   margin-top: 0.25rem;
-  max-width: 20rem;
+  max-width: 50rem;
   padding: 0 0.25rem;
 }
 .form-messages .alert .card p {
@@ -1775,6 +1782,7 @@ header {
 .navigation li.global a img,
 .sidebar li.global .drop-menu img,
 .navigation li.global .drop-menu img {
+  padding-right: 0.25rem;
   position: relative;
   z-index: -1;
 }
@@ -2060,9 +2068,6 @@ header {
 }
 .navigation.navigation-header li.global a {
   padding: 0.5rem;
-}
-.navigation.navigation-header li.global a img {
-  padding-right: 0.25rem;
 }
 .navigation.navigation-header .nav-menu {
   padding-top: 0;

@@ -18,14 +18,13 @@ use URI::Escape                qw( );
 use URI::http;
 use URI::https;
 
-our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
-   clear_redirect create_token enumerated_data_type enhance
-   foreign_key_data_type formpost get_hashed_pw get_salt new_salt new_uri
-   nullable_foreign_key_data_type nullable_varchar_data_type
-   numerical_id_data_type random_digest redirect redirect2referer
-   serial_data_type set_on_create_datetime_data_type stash_functions
-   strip_parent_name terminate text_data_type trigger_input_handler
-   trigger_output_handler truncate varchar_data_type );
+our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type create_token
+   enumerated_data_type enhance foreign_key_data_type formpost get_hashed_pw
+   get_salt new_salt new_uri nullable_foreign_key_data_type
+   nullable_varchar_data_type numerical_id_data_type random_digest redirect
+   redirect2referer serial_data_type set_on_create_datetime_data_type
+   stash_functions strip_parent_name terminate text_data_type
+   trigger_input_handler trigger_output_handler truncate varchar_data_type );
 
 my $digest_cache;
 my $reserved   = q(;/?:@&=+$,[]);
@@ -143,10 +142,6 @@ sub boolean_data_type {
       default_value => $_[0] ? SQL_TRUE : SQL_FALSE,
       is_nullable   => FALSE,
    };
-}
-
-sub clear_redirect ($) {
-   return delete shift->stash->{redirect};
 }
 
 sub create_token () {

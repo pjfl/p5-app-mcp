@@ -8,10 +8,10 @@ use File::DataClass::Types qw( ArrayRef Bool CodeRef Directory File HashRef
                                NonZeroPositiveInt Object Path PositiveInt
                                SimpleStr Str Undef );
 use App::MCP::Util         qw( base64_decode );
-use Class::Usul::Functions qw( fqdn );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use HTML::Forms::Util      qw( cipher );
+use Web::Components::Util  qw( fqdn );
 use Moo;
 
 with 'Web::Components::Role::ConfigLoader';
@@ -62,7 +62,9 @@ Configuration parameters for the plugin authentication system
 
 =cut
 
-has 'authentication' => is => 'ro', isa => HashRef,
+has 'authentication' =>
+   is      => 'ro',
+   isa     => HashRef,
    default => sub { { default_realm => 'DBIC' } };
 
 =item C<author>
@@ -184,14 +186,6 @@ has 'deflate_types' =>
       ];
    };
 
-=item C<description>
-
-A simple string which defaults to B<NUL>.
-
-=cut
-
-has 'description' => is => 'ro', isa => SimpleStr, default => NUL;
-
 =item C<dsn>
 
 String used to select a database type and specific database by name
@@ -220,22 +214,6 @@ has 'identity_file' =>
    isa     => File|Path,
    coerce  => TRUE,
    default => sub { shift->ssh_dir->catfile('id_rsa') };
-
-=item C<keywords>
-
-A simple string which defaults to B<NUL>.
-
-=cut
-
-has 'keywords' => is => 'ro', isa => SimpleStr, default => NUL;
-
-=item C<layout>
-
-The name of the default template to render
-
-=cut
-
-has 'layout' => is => 'ro', isa => NonEmptySimpleStr, default => 'not_found';
 
 =item C<library_class>
 
@@ -387,7 +365,7 @@ has 'navigation' =>
          title_abbrev => 'MCP',
          %{$self->_navigation},
          global => [
-            qw( job/list )
+            qw( job/list state/view )
          ],
       };
    };
@@ -587,7 +565,9 @@ has 'request' => is => 'lazy', isa => HashRef, default => sub {
    return {
       max_messages => $self->max_messages,
       prefix => $self->prefix,
-      request_roles => [ qw( L10N Session JSON Cookie Headers Compat ) ],
+      request_roles => [
+         qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
+      ],
       serialise_session_attr => [ qw( id ) ],
       session_attr => {
          email         => [ Str, NUL ],
@@ -636,22 +616,6 @@ has 'ssh_dir' =>
    isa     => Directory,
    coerce  => TRUE,
    default => sub { shift->home->catdir('.ssh') };
-
-=item C<stash_attr>
-
-=cut
-
-has 'stash_attr' =>
-   is      => 'lazy',
-   isa     => HashRef[ArrayRef],
-   default => sub {
-      return {
-         config  => [ qw( author description keywords ) ],
-         links   => [ qw( css images js less ) ],
-         request => [ qw( authenticated host language username ) ],
-         session => [ sort keys %{ $_[ 0 ]->session_attr } ],
-      };
-   };
 
 =item C<static>
 

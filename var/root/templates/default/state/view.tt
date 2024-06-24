@@ -1,0 +1,3 @@
+<div id="state-container" class="state-container"
+   data-state-config="[% encode_entities(encode_json(state_config)) %]">
+</div>
