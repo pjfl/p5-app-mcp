@@ -16,7 +16,7 @@ with 'App::MCP::Role::Config';
 with 'App::MCP::Role::Log';
 with 'App::MCP::Role::APIAuthentication';
 
-has 'name' => is => 'ro', isa => Str; # collect
+has 'name' => is => 'ro', isa => Str; # username or runid
 
 # Private attributes
 has '_transcoder' =>
