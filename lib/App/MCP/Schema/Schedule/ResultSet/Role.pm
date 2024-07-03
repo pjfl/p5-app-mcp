@@ -6,13 +6,16 @@ use parent 'DBIx::Class::ResultSet';
 use App::MCP::Constants;
 use Class::Usul::Functions  qw( throw );
 
-sub find_by_name {
-   my ($self, $rolename) = @_;
+sub find_by_key {
+   my ($self, $role_key, $options) = @_;
 
-   my $role = $self->search( { rolename => $rolename } )->single
-      or throw 'Role [_1] unknown', [ $rolename ];
+   return unless defined $role_key and length $role_key;
 
-   return $role;
+   $options //= {};
+
+   return $self->find($role_key, $options) if $role_key =~ m{ \A \d+ \z }mx;
+
+   return $self->search({ 'rolename' => $role_key }, $options)->single;
 }
 
 1;

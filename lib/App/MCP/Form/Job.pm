@@ -20,6 +20,20 @@ has_field 'type' =>
       { label => 'Box', value => 'box' }, { label => 'Job', value => 'job' }
    ];
 
+has_field 'parent_box' => type => 'Select';
+
+sub options_parent_box {
+   my $self    = shift;
+   my $rs      = $self->context->model($self->item_class);
+   my $boxes   = [ $rs->search({ type => 'box' })->all ];
+   my $option  = sub { { label => $_[0]->job_name, value => $_[0]->id } };
+   my $options = [ map { $option->($_) } @{$boxes} ];
+
+   unshift @{$options}, { label => NUL, value => 0 };
+
+   return $options;
+}
+
 has_field 'expected_rv' =>
    type    => 'PosInteger',
    default => 0,

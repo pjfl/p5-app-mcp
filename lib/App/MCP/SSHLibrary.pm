@@ -32,9 +32,10 @@ init q{
       my $local_lib = catdir( $config->{home}, 'perl5' );
       my $perl_lib  = catdir( $local_lib, 'lib', 'perl5' );
 
-      -d $perl_lib or return; lib->import( $perl_lib );
+      return unless -d $perl_lib;
+      lib->import( $perl_lib );
       eval { require local::lib };
-      $EVAL_ERROR or local::lib->setup_local_lib_for( $local_lib );
+      local::lib->setup_local_lib_for( $local_lib ) unless $EVAL_ERROR;
       return;
    }
 };
@@ -45,101 +46,131 @@ func 'dispatch' => q{
    my $worker   = $args->{worker  } or die 'No worker class';
 
    local_lib( $appclass );
-   eval "require ${worker}"; $EVAL_ERROR and die $EVAL_ERROR;
+   eval "require ${worker}";
+   die $EVAL_ERROR if $EVAL_ERROR;
    return $worker->new( $args )->dispatch;
 };
 
 func 'distclean' => q{
    require File::Copy;
 
-   my $appclass = shift;  $appclass or die 'No appclass';
-   my $config   = config( $appclass ); my $tempdir = $config->{tempdir};
+   my $appclass = shift or die 'No appclass';
+   my $config   = config( $appclass );
+   my $tempdir  = $config->{tempdir};
 
-   chdir $tempdir or die "Directory ${tempdir} cannot chdir: ${OS_ERROR}";
+   die "Directory ${tempdir} cannot chdir: ${OS_ERROR}" unless chdir $tempdir;
 
-   my @list     = glob( '*.tar.gz' );
+   my @list = glob( '*.tar.gz' );
 
-   for (@list) { unlink $_; s{ \.tar\.gz \z }{}mx; -e $_ and remove_tree( $_ ) }
+   for (@list) {
+      unlink $_;
+      s{ \.tar\.gz \z }{}mx;
+      remove_tree( $_ ) if -e $_;
+   }
 
-   my $build    = catdir( $config->{home}, '.cpanm' );
+   my $build = catdir( $config->{home}, '.cpanm' );
 
-   chdir $build or die "Directory ${build} cannot chdir: ${OS_ERROR}";
+   die "Directory ${build} cannot chdir: ${OS_ERROR}" unless chdir $build;
 
-   -e 'build.log'    and File::Copy::copy( 'build.log', 'last-build.log' );
-   -e 'build.log'    and unlink 'build.log';
-   -e 'latest-build' and unlink 'latest-build';
-   -d 'work'         and remove_tree( 'work' );
+   File::Copy::copy( 'build.log', 'last-build.log' ) if -e 'build.log';
+   unlink 'build.log' if -e 'build.log';
+   unlink 'latest-build' if -e 'latest-build';
+   remove_tree( 'work' ) if -d 'work';
    return 'Installation cleaned';
 };
 
 func 'install_cpan_minus' => q{
    require Archive::Tar;
 
-   my $appclass = shift;   $appclass or die 'No appclass';
-   my $file     = shift;   $file     or die 'No filename';
-   my $config   = config ( $appclass ); chdir $config->{tempdir};
-   my $path     = catfile( $config->{tempdir}, $file );
-   -f $path    or die "File ${path} not found";
-   my $tar      = Archive::Tar->new; $tar->read( $path ); $tar->extract;
-      $path     =~ s{ \.tar\.gz \z }{}mx;
-   -e $path    or die "Path ${path} not found";
-   my $cmd      = "${EXECUTABLE_NAME} ${path} App::cpanminus";
-   my $cpanm    = catfile( $config->{home}, 'perl5', 'bin', 'cpanm' );
+   my $appclass = shift or die 'No appclass';
+   my $file     = shift or die 'No filename';
+   my $config   = config ( $appclass );
 
-   chdir $config->{home}; qx( $cmd ); -x $cpanm or die 'No cpanm';
+   chdir $config->{tempdir};
+
+   my $path = catfile( $config->{tempdir}, $file );
+
+   die "File ${path} not found" unless -f $path;
+
+   my $tar = Archive::Tar->new;
+
+   $tar->read( $path );
+   $tar->extract;
+   $path =~ s{ \.tar\.gz \z }{}mx;
+
+   die "Path ${path} not found" unless -e $path;
+
+   my $cmd   = "${EXECUTABLE_NAME} ${path} App::cpanminus";
+   my $cpanm = catfile( $config->{home}, 'perl5', 'bin', 'cpanm' );
+
+   chdir $config->{home};
+   qx( $cmd );
+   die 'No cpanm' unless -x $cpanm;
    return 'Installed cpanm';
 };
 
 func 'install_distribution' => q{
-   my $appclass = shift;   $appclass or die 'No appclass';
-   my $file     = shift;   $file     or die 'No filename';
-   my $config   = config ( $appclass ); chdir $config->{home};
-   my $path     = $file !~ m{ \A [a-zA-Z0-9_]+ : }mx
-                ? catfile( $config->{tempdir}, $file ) : $file;
-   my $base     = catfile( $config->{home}, 'perl5' );
-   my $cpanm    = catfile( $base, 'bin', 'cpanm' );
-   my $cmd      = "${cpanm} -l ${base} --notest ${path}"; qx( $cmd );
-  (my $dist     = $file) =~ s{ \.tar\.gz \z }{}mx;
+   my $appclass = shift or die 'No appclass';
+   my $file     = shift or die 'No filename';
+   my $config   = config ( $appclass );
+
+   chdir $config->{home};
+
+   my $path  = $file !~ m{ \A [a-zA-Z0-9_]+ : }mx
+            ? catfile( $config->{tempdir}, $file ) : $file;
+   my $base  = catfile( $config->{home}, 'perl5' );
+   my $cpanm = catfile( $base, 'bin', 'cpanm' );
+   my $cmd   = "${cpanm} -l ${base} --notest ${path}"; qx( $cmd );
+  (my $dist  = $file) =~ s{ \.tar\.gz \z }{}mx;
 
    return "Installed ${dist}";
 };
 
 func 'provision' => q{
-   my $appclass = shift;  $appclass or die 'No appclass';
+   my $appclass = shift or die 'No appclass';
    my $worker   = shift;
    my $config   = config( $appclass );
-     ($config->{home   } and -d $config->{home}) or die 'No home';
-   -d $config->{appldir} or  mkpath( $config->{appldir}, { mode => 0750 } );
-   -d $config->{logsdir} or  mkpath( $config->{logsdir}, { mode => 0750 } );
-   -d $config->{tempdir} or  mkpath( $config->{tempdir}, { mode => 0750 } );
+
+   die 'No home' unless $config->{home} and -d $config->{home};
+   mkpath( $config->{appldir}, { mode => 0750 } ) unless -d $config->{appldir};
+   mkpath( $config->{logsdir}, { mode => 0750 } ) unless -d $config->{logsdir};
+   mkpath( $config->{tempdir}, { mode => 0750 } ) unless -d $config->{tempdir};
+
    my $cfgfile  = $config->{cfgfile};
 
    unless (-f $cfgfile) {
       my $conf  = "{\n   \"name\" : \"worker\"\n}\n";
-      open( my $fh, '>', $cfgfile ) or die "Path ${cfgfile} cannot open - $!";
-      print $fh $conf or die "Path ${cfgfile} cannot write - $!"; close $fh;
-      chmod 0640, $cfgfile or die "Path ${cfgfile} cannot chmod - $!";
+      die "Path ${cfgfile} cannot open - $!" unless open(my $fh, '>', $cfgfile);
+      die "Path ${cfgfile} cannot write - $!" unless print $fh $conf;
+      close $fh;
+      die "Path ${cfgfile} cannot chmod - $!" unless chmod 0640, $cfgfile;
    }
 
-   $worker or return; local_lib( $appclass ); eval "require ${worker}";
+   return unless $worker;
+
+   local_lib( $appclass );
+   eval "require ${worker}";
 
    return $EVAL_ERROR ? "${EVAL_ERROR}"
                       : sprintf 'version=%s', $worker->VERSION;
 };
 
 func 'remote_env' => q{
-   my $appclass = shift; $appclass or die 'No appclass'; local_lib( $appclass );
+   my $appclass = shift or die 'No appclass';
+
+   local_lib( $appclass );
 
    return join "\n", map { "${_}=".$ENV{ $_ } } keys %ENV;
 };
 
 func 'writefile' => q{
-   my $appclass = shift; $appclass or die 'No appclass';
-   my $file     = shift; $file     or die 'No filename';
+   my $appclass = shift or die 'No appclass';
+   my $file     = shift or die 'No filename';
    my $path     = catfile( config( $appclass )->{tempdir}, $file );
 
-   open( my $fh, '>', $path ) or die "Path ${path} cannot open - ${OS_ERROR}";
-   print $fh $_[ 0 ] or die "Path ${path} cannot write - $OS_ERROR"; close $fh;
+   die "Path ${path} cannot open - ${OS_ERROR}" unless open(my $fh, '>', $path);
+   die "Path ${path} cannot write - $OS_ERROR" unless print $fh $_[ 0 ];
+   close $fh;
    return "Wrote ${file} length ".(-s $path);
 };
 

@@ -49,6 +49,7 @@ sub _add_tt_defaults {
    return {
       context         => $context,
       encode_entities => \&encode_entities,
+      encode_for_html => sub { encode_entities(encode_json(shift)) },
       encode_json     => \&encode_json,
       process_attrs   => \&process_attrs,
       token           => sub { $context->verification_token },

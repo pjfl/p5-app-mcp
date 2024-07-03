@@ -1,0 +1,9 @@
+{
+   "exclude": "\\.\\#.+ | \\.git.+",
+   "watchers": {
+      "\\.burp\\.json": [ "burp", "restart" ],
+      "share/js/.+\\.js": [ "bin/mcp-cli", "--quiet", "make-js" ],
+      "share/css/.+\\.css": [ "bin/mcp-cli", "--quiet", "make-css" ],
+      "share/less/.+\\.less": [ "bin/mcp-cli", "--quiet", "make-less" ]
+   }
+}

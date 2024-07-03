@@ -163,7 +163,7 @@ sub materialised_path_columns {
 sub namespace {
    my $self  = shift;
    my $sep   = SEPARATOR;
-   my @parts = split m{ $sep }mx, $self->name; pop @parts;
+   my @parts = split m{ $sep }mx, $self->job_name; pop @parts;
    my $ns    = join $sep, @parts; $ns //= NUL;
 
    return $ns;
@@ -193,21 +193,6 @@ sub sqlt_deploy_hook {
    $st->add_index( name => 'jobs_idx_parent_id', fields => ['parent_id']  );
 
   return;
-}
-
-sub summary {
-   my $self = shift;
-   my $text = 'Qualified name: '. $self->name . '…';
-
-   if ($self->type eq 'box') {
-      $text .= 'Type: '. $self->type . '…';
-      return $text;
-   }
-
-   $text .= 'Command: ' . truncate $self->command, 50;
-   $text .= 'Host: ' . $self->host . '…';
-   $text .= 'User: ' . $self->user;
-   return $text;
 }
 
 sub update {

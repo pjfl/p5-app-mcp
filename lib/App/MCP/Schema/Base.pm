@@ -9,19 +9,21 @@ use Data::Validation;
 __PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 
 sub validate {
-   my $self = shift; my $attr = $self->validation_attributes;
+   my $self = shift;
+   my $attr = $self->validation_attributes;
 
-   defined $attr->{fields} or return;
+   return unless defined $attr->{fields};
 
    my $columns = { $self->get_inflated_columns };
 
-   for my $field (keys %{ $attr->{fields} }) {
-      my $valids =  $attr->{fields}->{ $field }->{validate} or next;
-         $valids =~ m{ isMandatory }msx and $columns->{ $field } //= undef;
+   for my $field (keys %{$attr->{fields}}) {
+      my $valids =  $attr->{fields}->{$field}->{validate} or next;
+
+      $columns->{$field} //= undef if $valids =~ m{ isMandatory }msx;
    }
 
-   $columns = Data::Validation->new( $attr )->check_form( NUL, $columns );
-   $self->set_inflated_columns( $columns );
+   $columns = Data::Validation->new($attr)->check_form(NUL, $columns);
+   $self->set_inflated_columns($columns);
    return;
 }
 

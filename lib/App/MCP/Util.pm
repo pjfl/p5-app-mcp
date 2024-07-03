@@ -13,18 +13,20 @@ use Crypt::Eksblowfish::Bcrypt qw( en_base64 );
 use Digest                     qw( );
 use English                    qw( -no_match_vars );
 use File::DataClass::IO        qw( io );
+use HTML::Entities             qw( encode_entities );
+use JSON::MaybeXS              qw( encode_json );
 use Scalar::Util               qw( weaken );
 use URI::Escape                qw( );
 use URI::http;
 use URI::https;
 
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type create_token
-   enumerated_data_type enhance foreign_key_data_type formpost get_hashed_pw
-   get_salt new_salt new_uri nullable_foreign_key_data_type
+   encode_for_html enumerated_data_type foreign_key_data_type formpost
+   get_hashed_pw get_salt new_salt new_uri nullable_foreign_key_data_type
    nullable_varchar_data_type numerical_id_data_type random_digest redirect
    redirect2referer serial_data_type set_on_create_datetime_data_type
-   stash_functions strip_parent_name terminate text_data_type
-   trigger_input_handler trigger_output_handler truncate varchar_data_type );
+   strip_parent_name terminate text_data_type trigger_input_handler
+   trigger_output_handler truncate varchar_data_type );
 
 my $digest_cache;
 my $reserved   = q(;/?:@&=+$,[]);
@@ -169,6 +171,10 @@ sub digest ($) {
    return $digest;
 }
 
+sub encode_for_html ($) {
+   return encode_entities(encode_json(shift));
+}
+
 sub enumerated_data_type ($;$) {
    return {
       data_type     => 'enum',
@@ -176,19 +182,6 @@ sub enumerated_data_type ($;$) {
       extra         => { list => $_[0] },
       is_enum       => TRUE,
    };
-}
-
-sub enhance ($) {
-   my $conf = shift;
-   my $attr = { config => { %{ $conf } }, }; $conf = $attr->{config};
-
-   $conf->{appclass    } //= 'App::MCP';
-   $attr->{config_class} //= $conf->{appclass}.'::Config';
-   $conf->{name        } //= class2appdir $conf->{appclass};
-   $conf->{home        } //= find_apphome $conf->{appclass}, $conf->{home};
-   $conf->{cfgfiles    } //= get_cfgfiles $conf->{appclass}, $conf->{home};
-
-   return $attr;
 }
 
 sub foreign_key_data_type (;$$) {
@@ -289,18 +282,6 @@ sub serial_data_type () {
 sub set_on_create_datetime_data_type () {
    return { data_type         => 'datetime',
             set_on_create     => TRUE, };
-}
-
-sub stash_functions ($$$) {
-   my ($app, $src, $dest) = @_; weaken $src;
-
-   $dest->{is_member} = \&is_member;
-   $dest->{loc      } = sub { $src->loc( @_ ) };
-   $dest->{str2time } = \&str2time;
-   $dest->{time2str } = \&time2str;
-   $dest->{ucfirst  } = sub { ucfirst $_[ 0 ] };
-   $dest->{uri_for  } = sub { $src->uri_for( @_ ), };
-   return;
 }
 
 sub strip_parent_name ($) {

@@ -1781,7 +1781,11 @@ header {
 .sidebar li.global a img,
 .navigation li.global a img,
 .sidebar li.global .drop-menu img,
-.navigation li.global .drop-menu img {
+.navigation li.global .drop-menu img,
+.sidebar li.global a svg,
+.navigation li.global a svg,
+.sidebar li.global .drop-menu svg,
+.navigation li.global .drop-menu svg {
   padding-right: 0.25rem;
   position: relative;
   z-index: -1;
@@ -1877,7 +1881,11 @@ header {
 .sidebar .nav-list a img,
 .navigation .nav-list a img,
 .sidebar .nav-list .drop-menu img,
-.navigation .nav-list .drop-menu img {
+.navigation .nav-list .drop-menu img,
+.sidebar .nav-list a svg,
+.navigation .nav-list a svg,
+.sidebar .nav-list .drop-menu svg,
+.navigation .nav-list .drop-menu svg {
   height: 24px;
   width: 24px;
   vertical-align: middle;
@@ -2360,4 +2368,25 @@ header {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
+}
+.state-container {
+  display: flex;
+}
+.state-container .box {
+  display: flex;
+}
+.state-container .box-tile,
+.state-container .job-tile {
+  border: 1px solid grey;
+  border-radius: 5px;
+  color: black;
+  margin: 0.25rem;
+  padding: 0.25rem;
+}
+.state-container .box-tile.active,
+.state-container .job-tile.active {
+  background: lightgreen;
+}
+.state-container .title a {
+  text-decoration: none;
 }

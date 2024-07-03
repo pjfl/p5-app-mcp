@@ -105,7 +105,7 @@ sub writable_box_id_by_name {
    my $user    = $user_rs->find_by_key($user_key // 0);
 
    throw UnknownUser, [$user_key] unless $user;
-   throw 'Job [_1] write permission denied to [_1]',
+   throw 'Box [_1] write permission denied to [_1]',
       [$job->job_name, $user->user_name] unless $job->is_writable_by($user->id);
 
    return $job->id;
@@ -150,7 +150,7 @@ sub _get_job_state {
 
    my $job = $self->find_by_key($job_key, { prefetch => 'state' });
 
-   return $job->state ? $job->state->state_name : 'inactive';
+   return $job->state ? $job->state->name : 'inactive';
 }
 
 1;

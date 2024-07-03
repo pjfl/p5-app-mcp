@@ -5,22 +5,27 @@ use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Util qw( foreign_key_data_type );
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
+my $class  = __PACKAGE__;
+my $schema = 'App::MCP::Schema::Schedule';
 
-$class->table( 'job_condition' );
+$class->table('job_conditions');
 
-$class->add_columns( job_id     => foreign_key_data_type,
-                     reverse_id => foreign_key_data_type, );
+$class->add_columns(
+   job_id     => foreign_key_data_type,
+   reverse_id => foreign_key_data_type,
+);
 
-$class->set_primary_key( 'job_id', 'reverse_id' );
+$class->set_primary_key('job_id', 'reverse_id');
 
-$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
+$class->belongs_to('job' => "${schema}::Result::Job", 'job_id');
 
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
-  $sqlt_table->add_index( name   => 'job_condition_idx_reverse_id',
-                          fields => [ 'reverse_id' ] );
+  $sqlt_table->add_index(
+     name   => 'job_conditions_reverse_id_idx',
+     fields => ['reverse_id'],
+  );
 
   return;
 }

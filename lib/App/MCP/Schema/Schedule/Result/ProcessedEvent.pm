@@ -9,31 +9,35 @@ use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
                             set_on_create_datetime_data_type
                             varchar_data_type );
 
-my $class = __PACKAGE__; my $schema = 'App::MCP::Schema::Schedule';
+my $class  = __PACKAGE__;
+my $schema = 'App::MCP::Schema::Schedule';
 
-$class->table( 'processed_event' );
+$class->table('processed_events');
 
-$class->add_columns
-   ( id         => serial_data_type,
-     created    => { data_type => 'datetime' },
-     processed  => set_on_create_datetime_data_type,
-     job_id     => foreign_key_data_type,
-     transition => enumerated_data_type( TRANSITION_ENUM ),
-     rejected   => varchar_data_type( 16 ),
-     runid      => varchar_data_type( 20 ),
-     token      => varchar_data_type( 32 ),
-     pid        => numerical_id_data_type,
-     rv         => numerical_id_data_type, );
+$class->add_columns(
+   id         => serial_data_type,
+   created    => { data_type => 'datetime' },
+   processed  => set_on_create_datetime_data_type,
+   job_id     => foreign_key_data_type,
+   transition => enumerated_data_type( TRANSITION_ENUM ),
+   rejected   => varchar_data_type( 16 ),
+   runid      => varchar_data_type( 20 ),
+   token      => varchar_data_type( 32 ),
+   pid        => numerical_id_data_type,
+   rv         => numerical_id_data_type,
+);
 
-$class->set_primary_key( 'id' );
+$class->set_primary_key('id');
 
-$class->belongs_to( job_rel => "${schema}::Result::Job", 'job_id' );
+$class->belongs_to('job' => "${schema}::Result::Job", 'job_id');
 
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
-  $sqlt_table->add_index( name   => 'processed_event_idx_runid',
-                          fields => [ 'runid' ] );
+  $sqlt_table->add_index(
+     name   => 'processed_events_runid_idx',
+     fields => ['runid'],
+  );
 
   return;
 }

@@ -1,19 +1,19 @@
 package App::MCP::Workflow;
 
-use namespace::autoclean;
-
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
-use App::MCP::Workflow::Transition;
-use Class::Usul::Functions qw( throw );
-use Moo;
 use Scalar::Util           qw( blessed );
+use Unexpected::Functions  qw( throw catch_class Condition Crontab Illegal
+                               Retry );
+use App::MCP::Workflow::Transition;
 use Try::Tiny;
-use Unexpected::Functions  qw( catch_class Condition Crontab Illegal Retry );
+use Moo;
 
-extends q(Class::Workflow);
+extends 'Class::Workflow';
 
 around 'BUILDARGS' => sub {
-   my ($next, $self, @args) = @_; my $attr = $self->$next( @args );
+   my ($orig, $self, @args) = @_;
+
+   my $attr = $orig->($self, @args);
 
    $attr->{transition_class} = __PACKAGE__.'::Transition';
 
@@ -48,9 +48,11 @@ sub BUILD {
 
    $self->transition( 'finish',    to_state => 'finished', validators => [
       sub {
-         my ($self, $instance, $event) = @_; my $job = $event->job_rel;
+         my ($self, $instance, $event) = @_;
 
-         $event->rv <= $job->expected_rv and return;
+         my $job = $event->job;
+
+         return if $event->rv <= $job->expected_rv;
          $event->transition->set_fail;
          throw Retry, [ $event->rv, $job->expected_rv ];
       }, ] );
@@ -61,11 +63,12 @@ sub BUILD {
 
    $self->transition( 'start',     to_state => 'starting', validators => [
       sub {
-         my ($self, $instance, $event) = @_; my $job = $event->job_rel;
+         my ($self, $instance, $event) = @_;
 
-         $job->should_start_now or throw Crontab;
+         my $job = $event->job;
 
-         $job->eval_condition or throw Condition;
+         throw Crontab   unless $job->should_start_now;
+         throw Condition unless $job->eval_condition;
 
          return;
       }, ] );
@@ -77,19 +80,21 @@ sub BUILD {
 }
 
 sub process_event {
-   my ($self, $state_name, $event) = @_; my $trigger = TRUE;
+   my ($self, $state_name, $event) = @_;
+
+   my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
 
       try {
          my $ev_t       = $event->transition;
-         my $state      = $self->state( $state_name );
-         my $instance   = $self->new_instance( state => $state );
-         my $transition = $instance->state->get_transition( $ev_t->value )
-            or throw Illegal, [ $ev_t->value, $state_name ];
+         my $state      = $self->state($state_name);
+         my $instance   = $self->new_instance(state => $state);
+         my $transition = $instance->state->get_transition($ev_t->value)
+            or throw Illegal, [$ev_t->value, $state_name];
 
-         $instance   = $transition->apply( $instance, $event );
+         $instance   = $transition->apply($instance, $event);
          $state_name = $instance->state->name;
       }
       catch_class [ Retry => sub { $trigger = TRUE } ];
@@ -97,6 +102,8 @@ sub process_event {
 
    return $state_name;
 }
+
+use namespace::autoclean;
 
 1;
 

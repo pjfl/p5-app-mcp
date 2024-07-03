@@ -105,7 +105,7 @@ sub input_handler {
          transition => [qw( activate finish started terminate )]
       }, {
          order_by   => { -asc => 'me.id' },
-         prefetch   => 'job_rel'
+         prefetch   => 'job'
       });
 
       for my $event ($events->all) {
@@ -243,19 +243,16 @@ sub output_handler {
       my $ev_rs  = $schema->resultset('Event');
       my $js_rs  = $schema->resultset('JobState');
       my $pev_rs = $schema->resultset('ProcessedEvent');
-      my $events = $ev_rs->search({
-         transition => 'start'
-      }, {
-         prefetch => 'job_rel'
-      } );
+      my $events = $ev_rs->search(
+         { transition => 'start' }, { prefetch => 'job' }
+      );
 
       for my $event ($events->all) {
          $schema->txn_do(sub {
             my $p_ev = $self->_process_event($name, $js_rs, $event);
 
             unless ($p_ev->{rejected}) {
-               my ($runid, $token)
-                  = $self->_start_job($ipc_ssh, $event->job_rel);
+               my ($runid, $token) = $self->_start_job($ipc_ssh, $event->job);
 
                $p_ev->{runid} = $runid;
                $p_ev->{token} = $token;

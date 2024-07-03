@@ -430,9 +430,11 @@ sub _create_user {
    my $driver  = $self->_driver;
    my $cmd;
 
+   throw 'Must set a user password' unless length $upasswd;
+
    if ($driver eq 'pg') {
       $cmd = "psql -h ${host} -q -t -U postgres -w -c "
-           . "\"create role ${user} login password '${upasswd}';\"";
+           . "\"create role ${user} with login password '${upasswd}';\"";
    }
 
    throw 'No create user command for driver [_1]', [$driver] unless $cmd;

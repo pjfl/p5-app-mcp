@@ -6,19 +6,21 @@ use parent 'DBIx::Class::ResultSet';
 use Class::Usul::Functions qw( throw );
 
 sub create_dependents {
-   my ($self, $depend) = @_; my $job_rs = $depend->result_source->resultset;
+   my ($self, $depend) = @_;
 
-   for my $fqjn (@{ $depend->condition_dependencies }) {
-      my $job_id = $job_rs->job_id_by_name( $fqjn );
+   my $job_rs = $depend->result_source->resultset;
 
-      $self->create( { job_id => $job_id, reverse_id => $depend->id } );
+   for my $fqjn (@{$depend->condition_dependencies}) {
+      my $job_id = $job_rs->job_id_by_name($fqjn);
+
+      $self->create({ job_id => $job_id, reverse_id => $depend->id });
    }
 
    return;
 }
 
 sub delete_dependents {
-   $_[ 0 ]->search( { reverse_id => $_[ 1 ]->id } )->delete; return;
+   $_[0]->search({ reverse_id => $_[1]->id })->delete; return;
 }
 
 1;

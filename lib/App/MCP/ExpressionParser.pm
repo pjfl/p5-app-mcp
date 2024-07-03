@@ -4,29 +4,65 @@ use strictures;
 
 use App::MCP::Constants    qw( SEPARATOR );
 use Class::Usul::Functions qw( arg_list throw );
-use Marpa::R2;
 use Scalar::Util           qw( blessed );
+use Marpa::R2;
 
-# Private functions
-my $_tokens = sub {
-   my $predicates = shift; $predicates = join '|', @{ $predicates };
-
-   return {
-      'LP'         => [ qr{ \G [\(]                }msx      ],
-      'RP'         => [ qr{ \G [\)]                }msx      ],
-      'SP'         => [ qr{ \G [ ]                 }msx, ' ' ],
-      'NOT'        => [ qr{ \G [\!]                }msx      ],
-      'OPERATOR'   => [ qr{ \G (\&|\|)             }msx      ],
-      'PREDICATE'  => [ qr{ \G ($predicates)       }msx      ],
-      'IDENTIFIER' => [ qr{ \G ([a-zA-Z0-9_\-+:]+) }msx      ],
-   };
-};
-
-# Private methods
 my $_grammar_cache;
 
-my $_grammar = sub {
-   my $self = shift; $_grammar_cache and return $_grammar_cache;
+# Construction
+sub new {
+   my ($self, @args) = @_;
+
+   my $attr = arg_list @args;
+
+   $attr->{tokens} = _tokens(delete $attr->{predicates});
+
+   return bless $attr, blessed $self || $self;
+}
+
+# Public methods
+sub parse {
+   my ($self, $line, $ns) = @_;
+
+   my $identifiers = {};
+   my $last = 0;
+   my $pos = 0;
+   my $line_length = length $line;
+   my $recog = $self->_recogniser;
+
+   while ($pos < $line_length) {
+      my $expected_tokens = $recog->terminals_expected;
+
+      if (scalar @{$expected_tokens}) {
+         for my $token (_lex($self, \$line, $pos, $expected_tokens)) {
+            $pos += _read_skip_ws($self, $token, $ns, $identifiers, $recog);
+         }
+      }
+
+      throw 'Expression [_1] parse error - char [_2]', [$line, $pos]
+         if $pos == $last;
+
+      $last = $pos;
+   }
+
+   $recog->end_input;
+
+   my $expr_value_ref = $recog->value;
+
+   throw 'Expression [_1] has no value', [$line] unless $expr_value_ref;
+
+   my $expr_value = ${$expr_value_ref};
+
+   $expr_value = $expr_value->() if ref $expr_value eq 'CODE';
+
+   return [$expr_value, [keys %{$identifiers}]];
+}
+
+# Private methods
+sub _grammar {
+   my $self = shift;
+
+   return $_grammar_cache if $_grammar_cache;
 
    my $grammar = Marpa::R2::Grammar->new( {
       action_object   => 'external',
@@ -46,21 +82,26 @@ my $_grammar = sub {
    $grammar->precompute;
 
    return $_grammar_cache = $grammar;
-};
+}
 
-my $_lex = sub {
-   my ($self, $input, $pos, $expected) = @_; my @matches;
+sub _lex {
+   my ($self, $input, $pos, $expected) = @_;
 
-   for my $token_name ('SP', @{ $expected }) {
-      my $token = $self->{tokens}->{ $token_name }
-         or throw 'Token [_1] unknown', [ $token_name ];
-      my $rule  = $token->[ 0 ];
+   my @matches;
 
-      pos( ${ $input } ) = $pos; ${ $input } =~ $rule or next;
+   for my $token_name ('SP', @{$expected}) {
+      my $token = $self->{tokens}->{$token_name}
+         or throw 'Token [_1] unknown', [$token_name];
+      my $rule  = $token->[0];
 
-      my $matched_len = $+[ 0 ] - $-[ 0 ]; my $matched_value = undef;
+      pos(${$input}) = $pos;
 
-      if (defined( my $val = $token->[ 1 ] )) {
+      next unless ${$input} =~ $rule;
+
+      my $matched_len = $+[0] - $-[0];
+      my $matched_value = undef;
+
+      if (defined(my $val = $token->[1])) {
          if (ref $val eq 'CODE') { $matched_value = $val->() }
          else { $matched_value = $val }
       }
@@ -68,35 +109,35 @@ my $_lex = sub {
          $matched_value = $1;
       }
 
-      push @matches, [ $token_name, $matched_value, $matched_len ];
+      push @matches, [$token_name, $matched_value, $matched_len];
    }
 
    return @matches;
-};
+}
 
-my $_read_skip_ws = sub {
+sub _read_skip_ws {
    my ($self, $token, $ns, $identifiers, $recogniser) = @_;
 
-   $token->[ 0 ] eq 'SP' and return $token->[ 2 ];
+   return $token->[ 2 ] if $token->[0] eq 'SP';
 
-   if ($token->[ 0 ] eq 'IDENTIFIER') {
+   if ($token->[0] eq 'IDENTIFIER') {
       my $sep  = SEPARATOR;
-      my $name = $token->[ 1 ];
+      my $name = $token->[1];
       my $fqjn = $ns && $name !~ m{ $sep }msx ? "${ns}${sep}${name}" : $name;
 
-      $identifiers->{ $token->[ 1 ] = $fqjn } = 1;
+      $identifiers->{ $token->[1] = $fqjn } = 1;
    }
 
-   $recogniser->read( @{ $token } );
+   $recogniser->read(@{$token});
 
-   return $token->[ 2 ];
-};
+   return $token->[2];
+}
 
-my $_recogniser = sub {
+sub _recogniser {
    my $self = shift;
    my $attr = {
       closures       => { 'external::new' => sub { $self->{external} } },
-      grammar        => $_grammar->( $self ),
+      grammar        => $self->_grammar,
       ranking_method => 'rule',
    };
 
@@ -106,76 +147,55 @@ my $_recogniser = sub {
       $attr->{trace_actions  } = 1;
    }
 
-   return Marpa::R2::Recognizer->new( $attr );
-};
-
-# Construction
-sub new {
-   my ($self, @args) = @_; my $attr = arg_list @args;
-
-   $attr->{tokens} = $_tokens->( delete $attr->{predicates} );
-
-   return bless $attr, blessed $self || $self;
+   return Marpa::R2::Recognizer->new($attr);
 }
 
-# Public methods
-sub parse {
-   my ($self, $line, $ns) = @_; my $identifiers = {}; my $last = 0; my $pos = 0;
+# Private functions
+sub _tokens {
+   my $predicates = shift;
 
-   my $line_length = length $line; my $recog = $_recogniser->( $self );
+   $predicates = join '|', @{$predicates};
 
-   while ($pos < $line_length) {
-      my $expected_tokens = $recog->terminals_expected;
-
-      if (scalar @{ $expected_tokens }) {
-         for my $token ($_lex->( $self, \$line, $pos, $expected_tokens )) {
-            $pos += $_read_skip_ws->( $self, $token, $ns, $identifiers, $recog);
-         }
-      }
-
-      $pos == $last
-         and throw 'Expression [_1] parse error - char [_2]', [ $line, $pos ];
-      $last = $pos;
-   }
-
-   $recog->end_input; my $expr_value_ref = $recog->value;
-
-   $expr_value_ref or throw 'Expression [_1] has no value', [ $line ];
-
-   my $expr_value = ${ $expr_value_ref };
-
-   ref $expr_value eq 'CODE' and $expr_value = $expr_value->();
-
-   return [ $expr_value, [ keys %{ $identifiers } ] ];
+   return {
+      'LP'         => [ qr{ \G [\(]                }msx      ],
+      'RP'         => [ qr{ \G [\)]                }msx      ],
+      'SP'         => [ qr{ \G [ ]                 }msx, ' ' ],
+      'NOT'        => [ qr{ \G [\!]                }msx      ],
+      'OPERATOR'   => [ qr{ \G (\&|\|)             }msx      ],
+      'PREDICATE'  => [ qr{ \G ($predicates)       }msx      ],
+      'IDENTIFIER' => [ qr{ \G ([a-zA-Z0-9_\-+:]+) }msx      ],
+   };
 }
 
 package # Hide from indexer
    App::MCP::ExpressionParser::_Actions;
 
 sub callfunc {
-   my ($self, $func, undef, $job) = @_; return sub { $self->$func( $job ) };
+   my ($self, $func, undef, $job) = @_; return sub { $self->$func($job) };
 }
 
 sub negate {
-   return (ref $_[ 2 ] eq 'CODE' ? $_[ 2 ]->() : $_[ 2 ]) ? 0 : 1;
+   return (ref $_[2] eq 'CODE' ? $_[2]->() : $_[2]) ? 0 : 1;
 }
 
 sub operate {
-   my $lhs = ref $_[ 1 ] eq 'CODE' ? $_[ 1 ]->() : $_[ 1 ];
+   my $lhs = ref $_[1] eq 'CODE' ? $_[1]->() : $_[1];
 
-   if ($_[ 2 ] eq '&') {
-      $lhs or return 0; return ref $_[ 3 ] eq 'CODE' ? $_[ 3 ]->() : $_[ 3 ];
+   if ($_[2] eq '&') {
+      return 0 unless $lhs;
+      return ref $_[3] eq 'CODE' ? $_[3]->() : $_[3];
    }
 
-   $lhs and return 1; return ref $_[ 3 ] eq 'CODE' ? $_[ 3 ]->() : $_[ 3 ];
+   return 1 if $lhs;
+   return ref $_[3] eq 'CODE' ? $_[3]->() : $_[3];
 }
 
 sub subrule1 {
-   return $_[ 1 ];
+   return $_[1];
 }
 
 sub subrule2 {
-   return $_[ 2 ];
+   return $_[2];
 }
 
 1;

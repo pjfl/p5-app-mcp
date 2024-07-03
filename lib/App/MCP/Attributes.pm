@@ -1,7 +1,6 @@
 package App::MCP::Attributes;
 
 use strictures;
-use namespace::autoclean ();
 
 use Sub::Install qw( install_sub );
 
@@ -47,6 +46,8 @@ sub modify {
 
    return ();
 }
+
+use namespace::autoclean ();
 
 1;
 

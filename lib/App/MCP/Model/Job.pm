@@ -73,7 +73,7 @@ sub edit : Nav('Edit Job') {
    my $form    = $self->new_form('Job', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $view    = $context->uri_for_action('job/view', [$job->jobid]);
+      my $view    = $context->uri_for_action('job/view', [$job->id]);
       my $message = ['Job [_1] updated', $form->item->job_name];
 
       $context->stash(redirect $view, $message);

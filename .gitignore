@@ -19,6 +19,7 @@ pm_to_blib
 README
 README.pod
 jobs.json
+share/js/wcom-0-lib.js
 t/ipc_srlock*
 var/etc/app-mcp-local.json
 var/log

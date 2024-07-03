@@ -16,7 +16,7 @@ has '+moniker' => default => 'state';
 sub base : Auth('view') {
    my ($self, $context) = @_;
 
-   my $nav = $context->stash('nav')->list('job')->item('job/view');
+   my $nav = $context->stash('nav')->list('job')->item('job/create');
 
    $nav->container_layout(NUL) if $context->endpoint eq 'view';
 
@@ -30,8 +30,8 @@ sub edit  {
    my $form = $self->new_form('State', { context => $context });
 
    if ($form->process(posted => $context->posted)) {
-      my $view     = $context->uri_for_action('state/view');
-      my $message  = [''];
+      my $view    = $context->uri_for_action('state/view');
+      my $message = [''];
 
       $context->stash(redirect $view, $message);
    }
@@ -40,52 +40,66 @@ sub edit  {
    return;
 }
 
-sub view : Auth('view') Nav('State') {
+sub view : Auth('view') Nav('State|info') {
    my ($self, $context) = @_;
 
-   $context->stash(state_config => {});
+   my $params = $context->request->query_parameters;
+
+   if (($params->{'state-data'} // NUL) eq 'true') {
+      my $tree = $self->_get_job_tree($context, $params);
+
+      $context->stash(json => $tree, view => 'json')
+         unless $context->stash->{finalised};
+
+      return;
+   }
+
+   $params = { 'state-data' => 'true' };
+
+   my $uri    = $context->uri_for_action('state/view', [], $params);
+   my $config = { 'data-uri' => $uri->as_string };
+
+   $context->stash(state_config => $config);
    return;
 }
 
 # Private methods
 sub _get_job_tree {
-   my ($self, $req) = @_;
+   my ($self, $context, $params) = @_;
 
    # TODO: Use level to restrict rows in result
-   my $level  = $req->query_params->( 'level', { optional => TRUE } ) || 1;
-   my $job_rs = $self->schema->resultset( 'Job' );
-   my $jobs   = $job_rs->search( { id => { '>' => 1 } }, {
-         'columns'  => [ qw( name id parent_id state.name type ) ],
-         'join'     => 'state',
-         'order_by' => [ 'parent_id', 'id' ], } );
+   my $level = $params->{level} // 1;
+   my $jobs  = $self->schema->resultset('Job')->search({}, {
+      'columns'  => [ qw( id condition job_name parent_id state.name type ) ],
+      'order_by' => [\'parent_id NULLS FIRST', 'id'], #'emacs
+      'prefetch' => 'state',
+   });
 
-   my $boxes = []; my $tree = {};
+   my $nodes = [[]];
+   my $count = 0;
 
    try {
       for my $job ($jobs->all) {
-         my $box   = $job->parent_id > 1 ? $boxes->[ $job->parent_id ] : $tree;
-         my $item  = $box->{ $job->name } //= {};
-         my $sname = $job->state->name;
+         my $uri  = $context->uri_for_action('job/view', [$job->job_name]);
+         my $item = {
+            'depends'    => $job->condition_dependencies,
+            'job-name'   => $job->job_name,
+            'job-uri'    => $uri->as_string,
+            'state-name' => $job->state->name,
+            'type'       => $job->type,
+         };
 
-         $box->{_keys} //= []; push @{ $box->{_keys} }, $job->name;
-         $item->{_link_class} = "tree_link state-${sname} fade";
-         $item->{_tip       } = "State: ${sname}";
-         $item->{_url       } = 'job/'.$job->name;
+         $nodes->[$job->id] = $item->{'nodes'} = [] if $job->type eq 'box';
 
-         $job->type eq 'box' and $boxes->[ $job->id ] = $item;
+         my $list = $job->parent_id ? $nodes->[$job->parent_id] : $nodes->[0];
+
+         push @{$list}, $item;
+         $count++;
       }
    }
-   catch { throw $_ };
+   catch { $self->error($context, $_) };
 
-   my $id     = bson64id;
-   my $page   = { minted => bson64id_time( $id ), title => 'State Diagram' };
-   my $source = { state => { 'Schedule' => $tree }, };
-
-   return $self->get_stash( $req, $page, diagram => $source );
-}
-
-sub _diagram_state_assign_hook {
-   my ($self, $req, $field, $src, $value) = @_; return { data => $value };
+   return { 'job-count' => $count, jobs => $nodes->[0] };
 }
 
 1;

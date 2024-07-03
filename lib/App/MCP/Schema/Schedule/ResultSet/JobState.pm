@@ -3,89 +3,69 @@ package App::MCP::Schema::Schedule::ResultSet::JobState;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
+use HTTP::Status           qw( HTTP_NOT_FOUND );
+use Class::Usul::Functions qw( exception throw );
+use Scalar::Util           qw( blessed );
+use Unexpected::Functions  qw( Unknown );
 use App::MCP::Constants;
 use App::MCP::Workflow;
-use Class::Usul::Functions qw( exception throw );
 use DateTime;
-use HTTP::Status           qw( HTTP_NOT_FOUND );
-use Scalar::Util           qw( blessed );
 use Try::Tiny;
-use Unexpected::Functions  qw( Unknown );
-
-# Private methods
-my $_trigger_update_cascade = sub {
-   my ($self, $event) = @_; my $schema = $self->result_source->schema;
-
-   my $ev_rs = $schema->resultset( 'Event' );
-   my $jc_rs = $schema->resultset( 'JobCondition' );
-
-   for ($jc_rs->search( { job_id => $event->job_rel->id } )->all) {
-      $ev_rs->create( { job_id => $_->reverse_id, transition => 'start' } );
-   }
-
-   return;
-};
-
-my $_workflow_cache;
-
-my $_workflow = sub {
-   $_workflow_cache //= App::MCP::Workflow->new; return $_workflow_cache;
-};
 
 # Public methods
 sub create_and_or_update {
-   my ($self, $event) = @_; my $res;
+   my ($self, $event) = @_;
 
-   my $job        = $event->job_rel;
-   my $job_state  = $self->find_or_create( $job );
+   my $job        = $event->job;
+   my $job_state  = $self->find_or_create($job);
    my $state_name = $job_state->name->value;
+   my $res;
 
-   try   { $state_name = $_workflow->()->process_event( $state_name, $event ) }
+   try   { $state_name = _workflow()->process_event($state_name, $event) }
    catch {
-      my $e = $_; (blessed $e and $e->can( 'class' ))
-         or $e = exception class => Unknown, error => $e;
+      my $e = $_;
 
-      $res = [ $event->transition->value, $job->name, $e ];
+      $e = exception class => Unknown, error => $e
+         unless blessed $e and $e->can('class');
+
+      $res = [$event->transition->value, $job->name, $e];
    };
 
-   $res and return $res;
-   $job_state->name( $state_name );
-   $job_state->updated( DateTime->now );
+   return $res if $res;
+
+   $job_state->name($state_name);
+   $job_state->updated(DateTime->now);
    $job_state->update;
-   $self->$_trigger_update_cascade( $event );
+   $self->_trigger_update_cascade($event);
    return;
 }
 
-sub find_by_id_or_name {
-   my ($self, $arg) = @_; (defined $arg and length $arg) or return;
+sub find_by_key {
+   my ($self, $state_key, $options) = @_;
 
-   my $job_state; $arg =~ m{ \A \d+ \z }mx and $job_state = $self->find( $arg );
+   return unless defined $state_key and length $state_key;
 
-   $job_state or $job_state = $self->find_by_name( $arg );
+   $options //= {};
 
-   return $job_state;
-}
+   return $self->find($state_key, $options) if $state_key =~ m{ \A \d+ \z }mx;
 
-sub find_by_name {
-   my ($self, $job_name) = @_;
+   $options->{prefetch} = 'job';
 
-   my $job_state = $self->search
-      ( { 'job.name' => $job_name }, { join => 'job' } )->single
-      or throw error => 'Job [_1] unknown',
-               args  => [ $job_name ], rv => HTTP_NOT_FOUND;
-
-   return $job_state;
+   return $self->search({ 'me.job_name' => $state_key }, $options)->single;
 }
 
 sub find_or_create {
-   my ($self, $job) = @_; my $parent_state = 'active';
+   my ($self, $job) = @_;
 
-   my $job_state; $job_state = $self->find( $job->id ) and return $job_state;
+   my $parent_state = 'active';
+   my $job_state = $self->find($job->id);
+
+   return $job_state if $job_state;
 
    if ($job->parent_id and $job->id != $job->parent_id) {
-      $parent_state = $self->find( $job->parent_id );
-      $parent_state and $parent_state = $parent_state->name;
-      $parent_state or  $parent_state = 'inactive';
+      $parent_state = $self->find($job->parent_id);
+      $parent_state = $parent_state->name if $parent_state;
+      $parent_state = 'inactive' unless $parent_state;
    }
 
    my $initial_state = ($parent_state eq 'active'
@@ -93,9 +73,32 @@ sub find_or_create {
                      or $parent_state eq 'starting')
                      ?  'active' : 'inactive';
 
-   return $self->create( { job_id  => $job->id,
-                           name    => $initial_state,
-                           updated => DateTime->now } );
+   return $self->create({
+      job_id  => $job->id,
+      name    => $initial_state,
+      updated => DateTime->now
+   });
+}
+
+# Private methods
+sub _trigger_update_cascade {
+   my ($self, $event) = @_;
+
+   my $schema = $self->result_source->schema;
+   my $ev_rs  = $schema->resultset('Event');
+   my $jc_rs  = $schema->resultset('JobCondition');
+
+   for ($jc_rs->search({ job_id => $event->job->id })->all) {
+      $ev_rs->create({ job_id => $_->reverse_id, transition => 'start' });
+   }
+
+   return;
+};
+
+my $_workflow_cache;
+
+sub _workflow {
+   $_workflow_cache //= App::MCP::Workflow->new; return $_workflow_cache;
 }
 
 1;

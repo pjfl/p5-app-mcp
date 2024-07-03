@@ -10,6 +10,6 @@ Thrown by: [% exception.leader %]<br/>
 Created: [% exception.created %]<br />
 Class: [% exception.class %]<br/>
 Version: [% exception.version %]<br/>
-Session updated: [% context.request.session.updated %]<br/>
+Session updated: [% context.session.updated %]<br/>
 Code: [% exception.rv %]<br/>
 </div>
