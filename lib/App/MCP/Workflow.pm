@@ -132,7 +132,7 @@ App::MCP::Workflow - <One-line description of module's purpose>
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Workflow>
 
 =back
 

@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Removes dependency on Class::Usul
           - Checkpoint
           - Moved templates to var from var/root
           - Reintegrated APIAuthorisation

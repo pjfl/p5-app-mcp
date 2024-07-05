@@ -9,7 +9,8 @@ use DateTime;
 use App::MCP;
 use Moo;
 
-extends 'HTML::Forms::Exception',
+extends 'Class::Usul::Cmd::Exception',
+   'HTML::Forms::Exception',
    'HTML::StateTable::Exception',
    'Web::ComposableRequest::Exception::Authen::HTTP';
 
@@ -144,7 +145,7 @@ Defines the following attributes;
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Unexpected>
 
 =back
 

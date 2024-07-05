@@ -1,10 +1,10 @@
 package App::MCP::Daemon;
 
 use App::MCP::Constants    qw( LANG NUL OK TRUE );
-use Class::Usul::Types     qw( NonEmptySimpleStr NonZeroPositiveInt Object );
-use App::MCP::Util         qw( terminate );
+use Unexpected::Types      qw( NonEmptySimpleStr NonZeroPositiveInt Object );
+use App::MCP::Util         qw( distname terminate );
 use Async::IPC::Functions  qw( log_info );
-use Class::Usul::Functions qw( class2appdir ensure_class_loaded );
+use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( blessed );
 use App::MCP::Application;
@@ -12,12 +12,11 @@ use App::MCP::DaemonControl;
 use Async::IPC;
 use Plack::Runner;
 use Moo;
-use Class::Usul::Options;
+use Class::Usul::Cmd::Options;
 
-extends 'Class::Usul::Programs';
-
-# Override defaults in parent class
-has '+config_class' => default => 'App::MCP::Config';
+extends 'Class::Usul::Cmd';
+with    'App::MCP::Role::Config';
+with    'App::MCP::Role::Log';
 
 # Object attributes (public)
 #   Visible to the command line
@@ -69,7 +68,7 @@ around 'BUILDARGS' => sub {
    my $attr = $orig->( $self, @args );
    my $conf = $attr->{config};
 
-   $conf->{name} //= class2appdir $conf->{appclass};
+   $conf->{name} //= lc distname $conf->{appclass};
 
    return $attr;
 };
@@ -328,10 +327,6 @@ None
 =item L<App::MCP::Async>
 
 =item L<App::MCP::DaemonControl>
-
-=item L<Class::Usul>
-
-=item L<File::DataClass>
 
 =item L<Plack::Runner>
 

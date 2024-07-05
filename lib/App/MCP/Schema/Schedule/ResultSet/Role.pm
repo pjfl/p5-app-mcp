@@ -1,10 +1,8 @@
 package App::MCP::Schema::Schedule::ResultSet::Role;
 
-use strictures;
-use parent 'DBIx::Class::ResultSet';
+use Moo;
 
-use App::MCP::Constants;
-use Class::Usul::Functions  qw( throw );
+extends 'DBIx::Class::ResultSet';
 
 sub find_by_key {
    my ($self, $role_key, $options) = @_;
@@ -53,7 +51,7 @@ Defines the following attributes;
 
 =over 3
 
-=item L<Class::Usul>
+=item L<DBIx::Class::ResultSet>
 
 =back
 

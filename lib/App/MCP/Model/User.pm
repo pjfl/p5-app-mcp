@@ -34,6 +34,23 @@ sub base : Auth('view') {
    return;
 }
 
+sub bugreport : Auth('view') Nav('Report Bug') {
+   my ($self, $context) = @_;
+
+   my $options = { context => $context, user => $context->stash->{user} };
+   my $form    = $self->new_form('BugReport', $options);
+
+   if ($form->process(posted => $context->posted)) {
+      my $default = $context->uri_for_action($self->config->redirect);
+      my $message = ['User [_1] bug report created', $form->user->user_name];
+
+      $context->stash(redirect $default, $message);
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
 sub create : Auth('admin') Nav('Create User') {
    my ($self, $context) = @_;
 

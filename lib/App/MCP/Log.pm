@@ -3,7 +3,7 @@ package App::MCP::Log;
 use HTML::Forms::Constants  qw( DOT FALSE NUL TRUE USERNAME );
 use Class::Usul::Cmd::Types qw( ConfigProvider );
 use HTML::Forms::Types      qw( Bool );
-use Class::Usul::Cmd::Util  qw( now_dt ns_environment trim );
+use Class::Usul::Cmd::Util  qw( now_dt trim );
 use HTML::StateTable::Util  qw( escape_formula );
 use Ref::Util               qw( is_arrayref is_coderef );
 use Type::Utils             qw( class_type );
@@ -24,10 +24,10 @@ has '_debug' =>
    isa      => Bool,
    init_arg => 'debug',
    default  => sub {
-      my $self = shift;
-      my $env  = ns_environment $self->config->appclass, 'debug';
+      my $self  = shift;
+      my $debug = $self->config->appclass->env_var('debug');
 
-      return defined $env ? !!$env : FALSE;
+      return defined $debug ? !!$debug : FALSE;
    };
 
 around 'BUILDARGS' => sub {

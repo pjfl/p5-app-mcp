@@ -19,17 +19,18 @@ return (
 
    'GET  + /state + ?*' => sub {['state/root/base/view', @_]},
 
-   'GET|POST + /user/create + ?*'     => sub {['user/root/base/create',    @_]},
-   'POST     + /user/*/delete + ?*'   => sub {['user/root/base/delete',    @_]},
-   'GET|POST + /user/*/edit + ?*'     => sub {['user/root/base/edit',      @_]},
+   'GET|POST + /user/create + ?*'      => sub {['user/root/base/create',   @_]},
+   'POST     + /user/*/delete + ?*'    => sub {['user/root/base/delete',   @_]},
+   'GET|POST + /user/*/edit + ?*'      => sub {['user/root/base/edit',     @_]},
    'GET|POST + /user/*/password/* + ?*'
                                  => sub {['page/root/base/password_reset', @_]},
-   'GET|POST + /user/*/password + ?*' => sub {['page/root/base/password',  @_]},
-   'GET|POST + /user/*/profile + ?*'  => sub {['user/root/base/profile',   @_]},
-   'GET|POST + /user/*/totp/* + ?*'   => sub {['page/root/base/totp_reset',@_]},
-   'GET      + /user/*/totp + ?*'     => sub {['user/root/base/totp',      @_]},
-   'GET      + /user/* + ?*'          => sub {['user/root/base/view',      @_]},
-   'GET      + /user + ?*'            => sub {['user/root/base/list',      @_]},
+   'GET|POST + /user/*/password + ?*'  => sub {['page/root/base/password', @_]},
+   'GET|POST + /user/*/profile + ?*'   => sub {['user/root/base/profile',  @_]},
+   'GET|POST + /user/*/bugreport + ?*' => sub {['user/root/base/bugreport',@_]},
+   'GET|POST + /user/*/totp/* + ?*'  => sub {['page/root/base/totp_reset', @_]},
+   'GET      + /user/*/totp + ?*'      => sub {['user/root/base/totp',     @_]},
+   'GET      + /user/* + ?*'           => sub {['user/root/base/view',     @_]},
+   'GET      + /user + ?*'             => sub {['user/root/base/list',     @_]},
 
    'GET      + /access_denied + ?*'
                                => sub {['page/root/base/access_denied', @_]},

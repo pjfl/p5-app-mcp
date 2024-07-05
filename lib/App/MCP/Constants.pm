@@ -5,13 +5,7 @@ use parent 'Exporter::Tiny';
 
 use App::MCP;
 use App::MCP::Exception;
-use Class::Usul::Constants ( );
-use Data::Validation::Constants ( );
-use Web::ComposableRequest::Constants ( );
-
-Class::Usul::Constants->Exception_Class( 'App::MCP::Exception' );
-Data::Validation::Constants->Exception_Class( 'App::MCP::Exception' );
-Web::ComposableRequest::Constants->Exception_Class('App::MCP::Exception');
+use Class::Usul::Cmd::Constants ( );
 
 our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
                   JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_TRUE STATE_ENUM
@@ -21,16 +15,16 @@ my $Code_Attr = {};
 
 sub import {
    my $class       = shift;
-   my $global_opts = { $_[ 0 ] && ref $_[ 0 ] eq 'HASH' ? %{+ shift } : () };
+   my $global_opts = { $_[0] && ref $_[0] eq 'HASH' ? %{+ shift } : () };
    my @wanted      = @_;
-   my $class_usul  = {}; $class_usul->{ $_ } = 1 for (@wanted);
+   my $usul_const  = {}; $usul_const->{$_} = 1 for (@wanted);
    my @self        = ();
 
-   for (@EXPORT) { delete $class_usul->{ $_ } and push @self, $_ }
+   for (@EXPORT) { push @self, $_ if delete $usul_const->{$_} }
 
    $global_opts->{into} ||= caller;
-   Class::Usul::Constants->import( $global_opts, keys %{ $class_usul } );
-   $class->SUPER::import( $global_opts, @self );
+   Class::Usul::Cmd::Constants->import($global_opts, keys %{$usul_const});
+   $class->SUPER::import($global_opts, @self);
    return;
 }
 

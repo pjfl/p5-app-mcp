@@ -3,8 +3,6 @@ package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
-use Class::Usul::Functions qw( throw );
-
 sub create_dependents {
    my ($self, $depend) = @_;
 
@@ -50,7 +48,7 @@ App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of m
 
 =over 3
 
-=item L<Class::Usul>
+=item L<DBIx::Class::ResultSet>
 
 =back
 

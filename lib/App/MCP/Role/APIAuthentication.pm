@@ -1,14 +1,14 @@
 package App::MCP::Role::APIAuthentication;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
-use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
-                               HTTP_OK HTTP_UNAUTHORIZED );
-use App::MCP::Util         qw( get_hashed_pw get_salt );
-use Class::Usul::Crypt     qw( decrypt );
-use Class::Usul::Functions qw( base64_decode_ns base64_encode_ns
-                               bson64id bson64id_time throw );
-use Digest::MD5            qw( md5_hex );
-use Unexpected::Functions  qw( AccountInactive Unspecified );
+use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE TRUE );
+use HTTP::Status                 qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
+                                     HTTP_OK HTTP_UNAUTHORIZED );
+use App::MCP::Util               qw( get_hashed_pw get_salt );
+use Class::Usul::Cmd::Util       qw( decrypt );
+use Digest::MD5                  qw( md5_hex );
+use MIME::Base64                 qw( decode_base64 encode_base64 );
+use Unexpected::Functions        qw( throw AccountInactive Unspecified );
+use Web::ComposableRequest::Util qw( bson64id bson64id_time );
 use Crypt::SRP;
 use Try::Tiny;
 use Moo::Role;
@@ -34,10 +34,10 @@ sub authenticate : Auth('none') {
       or throw 'User [_1] no M1 token', [$username],
             rv => HTTP_EXPECTATION_FAILED;
    my $srp      = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
-   my $verifier = base64_decode_ns get_hashed_pw $user->password;
+   my $verifier = decode_base64 get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
 
-   $token = base64_decode_ns $token;
+   $token = decode_base64 $token;
    $self->log->debug('Auth M1 token ' . (md5_hex $token));
    $self->log->debug(
       'Server init - authenticate ' . (md5_hex "${username}${salt}")
@@ -47,9 +47,9 @@ sub authenticate : Auth('none') {
    throw 'User [_1] M1 token verification failed', [$username],
       rv => HTTP_UNAUTHORIZED unless $srp->server_verify_M1($token);
 
-   $token = base64_encode_ns $srp->server_compute_M2;
+   $token = encode_base64 $srp->server_compute_M2;
 
-   $session->{shared_secret} = base64_encode_ns $srp->get_secret_K;
+   $session->{shared_secret} = encode_base64 $srp->get_secret_K;
 
    my $content = { id => $session->{id}, M2_token => $token };
 
@@ -82,7 +82,7 @@ sub exchange_keys : Auth('none') {
    my $user           = $self->_find_user_from($context);
    my $session        = $self->_find_or_create_session($user);
    my $srp            = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
-   my $client_pub_key = base64_decode_ns $request->query_params->('public_key');
+   my $client_pub_key = decode_base64 $request->query_params->('public_key');
    my $username       = $user->user_name;
 
    $self->log->debug('Auth client pub key ' . (md5_hex $client_pub_key));
@@ -90,7 +90,7 @@ sub exchange_keys : Auth('none') {
    throw 'User [_1] client public key verification failed', [$username],
       rv => HTTP_UNAUTHORIZED if $srp->server_verify_A($client_pub_key);
 
-   my $verifier = base64_decode_ns get_hashed_pw $user->password;
+   my $verifier = decode_base64 get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
 
    $self->log->debug(
@@ -102,7 +102,7 @@ sub exchange_keys : Auth('none') {
 
    $session->{auth_keys} = [$client_pub_key, $server_pub_key, $server_priv_key];
 
-   my $pub_key = base64_encode_ns $server_pub_key;
+   my $pub_key = encode_base64 $server_pub_key;
    my $content = { public_key => $pub_key, salt => $salt };
 
    $context->stash(code => HTTP_OK, json => $content);

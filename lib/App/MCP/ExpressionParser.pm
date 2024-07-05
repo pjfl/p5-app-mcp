@@ -2,9 +2,10 @@ package App::MCP::ExpressionParser;
 
 use strictures;
 
-use App::MCP::Constants    qw( SEPARATOR );
-use Class::Usul::Functions qw( arg_list throw );
+use App::MCP::Constants    qw( EXCEPTION_CLASS SEPARATOR );
+use Class::Usul::Cmd::Util qw( arg_list );
 use Scalar::Util           qw( blessed );
+use Unexpected::Functions  qw( throw );
 use Marpa::R2;
 
 my $_grammar_cache;
@@ -229,7 +230,7 @@ App::MCP::ExpressionParser - Evaluate the condition field of the Job table
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Usul::Cmd>
 
 =back
 

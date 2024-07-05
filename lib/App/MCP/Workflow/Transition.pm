@@ -1,11 +1,9 @@
 package App::MCP::Workflow::Transition;
 
-use namespace::autoclean;
-
+use App::MCP::Constants qw( FALSE TRUE );
 use Moo;
-use App::MCP::Constants qw( TRUE );
 
-extends q(Class::Workflow::Transition::Simple);
+extends 'Class::Workflow::Transition::Simple';
 
 sub validate {
    my ($self, $instance, @args) = @_;
@@ -16,6 +14,8 @@ sub validate {
 
    return TRUE;
 }
+
+use namespace::autoclean;
 
 1;
 
@@ -44,7 +44,7 @@ App::MCP::Workflow::Transition - <One-line description of module's purpose>
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Moo>
 
 =back
 

@@ -4,7 +4,7 @@ use Archive::Tar::Constant      qw( COMPRESS_GZIP );
 use Class::Usul::Cmd::Constants qw( AS_PARA AS_PASSWORD COMMA OK QUOTED_RE );
 use HTML::Forms::Constants      qw( EXCEPTION_CLASS FALSE NUL SPC TRUE );
 use App::MCP::Util              qw( base64_decode base64_encode
-                                    trigger_input_handler );
+                                    distname trigger_input_handler );
 use Class::Usul::Cmd::Util      qw( ensure_class_loaded now_dt trim );
 use File::DataClass::IO         qw( io );
 use HTML::Forms::Util           qw( cipher );
@@ -335,10 +335,6 @@ sub _connect_attr () {
    };
 }
 
-sub _distname (;$) {
-   (my $v = $_[0] // NUL) =~ s{ :: }{-}gmx; return $v;
-}
-
 sub _unquote ($) {
    local $_ = $_[0]; s{ \A [\'\"] }{}mx; s{ [\'\"] \z }{}mx; return $_;
 }
@@ -522,7 +518,7 @@ sub _drop_user {
 sub _list_population_classes {
    my ($self, $schema_class, $dir) = @_;
 
-   my $dist = _distname $schema_class;
+   my $dist = distname $schema_class;
    my $extn = $self->config_extension;
    my $re   = qr{ \A $dist [-] \d+ [-] (.*) \Q$extn\E \z }mx;
    my $io   = io($dir)->filter(sub { $_->filename =~ $re });
@@ -645,7 +641,7 @@ App::MCP::Schema - <One-line description of module's purpose>
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Usul::Cmd>
 
 =back
 

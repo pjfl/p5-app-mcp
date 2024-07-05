@@ -84,8 +84,6 @@ App::MCP::DaemonControl - <One-line description of module's purpose>
 
 =over 3
 
-=item L<Class::Usul>
-
 =item L<Daemon::Control>
 
 =back

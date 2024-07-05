@@ -2,7 +2,7 @@ package App::MCP::Listener;
 
 use App::MCP::Constants    qw( FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_FOUND );
-use Class::Usul::Cmd::Util qw( ensure_class_loaded ns_environment );
+use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 
 use Plack::Builder;
 use Web::Simple;
@@ -47,7 +47,7 @@ sub BUILD {
    my $self   = shift;
    my $class  = $self->config->appclass;
    my $server = ucfirst($ENV{PLACK_ENV} // NUL);
-   my $port   = ns_environment($class, 'port') // 5_000;
+   my $port   = $class->env_var('port') // 5_000;
 
    ensure_class_loaded $class;
 

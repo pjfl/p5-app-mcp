@@ -3,11 +3,11 @@ package App::MCP::Schema::Schedule::ResultSet::JobState;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
+use App::MCP::Constants    qw( EXCEPTION_CLASS );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
-use Class::Usul::Functions qw( exception throw );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( Unknown );
-use App::MCP::Constants;
+use Web::Components::Util  qw( exception throw );
 use App::MCP::Workflow;
 use DateTime;
 use Try::Tiny;

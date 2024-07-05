@@ -6,9 +6,6 @@ use parent 'Exporter::Tiny';
 
 use App::MCP::Constants        qw( FALSE NUL SEPARATOR SQL_FALSE SQL_TRUE TRUE
                                    VARCHAR_MAX_SIZE );
-use Class::Usul::Functions     qw( class2appdir find_apphome
-                                   get_cfgfiles is_member );
-use Class::Usul::Time          qw( str2time time2str );
 use Crypt::Eksblowfish::Bcrypt qw( en_base64 );
 use Digest                     qw( );
 use English                    qw( -no_match_vars );
@@ -21,7 +18,7 @@ use URI::http;
 use URI::https;
 
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type create_token
-   encode_for_html enumerated_data_type foreign_key_data_type formpost
+   distname encode_for_html enumerated_data_type foreign_key_data_type formpost
    get_hashed_pw get_salt new_salt new_uri nullable_foreign_key_data_type
    nullable_varchar_data_type numerical_id_data_type random_digest redirect
    redirect2referer serial_data_type set_on_create_datetime_data_type
@@ -169,6 +166,10 @@ sub digest ($) {
    $digest->add($seed);
 
    return $digest;
+}
+
+sub distname (;$) {
+   (my $v = $_[0] // NUL) =~ s{ :: }{-}gmx; return $v;
 }
 
 sub encode_for_html ($) {

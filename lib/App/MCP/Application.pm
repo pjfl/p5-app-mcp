@@ -1,27 +1,31 @@
 package App::MCP::Application;
 
-use namespace::autoclean;
 use version;
 
-use App::MCP::Constants    qw( COMMA FALSE LOG_KEY_WIDTH NUL TRUE OK SPC );
-use App::MCP::Util         qw( trigger_output_handler );
-use Async::IPC::Functions  qw( log_debug log_error log_info log_warn );
-use Class::Usul::Functions qw( bson64id create_token distname elapsed );
-use Class::Usul::Types     qw( HashRef LoadableClass NonEmptySimpleStr
-                               NonZeroPositiveInt Object Plinth );
-use English                qw( -no_match_vars );
+use App::MCP::Constants          qw( COMMA FALSE LOG_KEY_WIDTH NUL TRUE OK
+                                     SPC );
+use Unexpected::Types            qw( HashRef LoadableClass NonEmptySimpleStr
+                                     NonZeroPositiveInt Object );
+use App::MCP::Util               qw( create_token distname
+                                     trigger_output_handler );
+use Async::IPC::Functions        qw( log_debug log_error log_info log_warn );
+use Class::Usul::Cmd::Util       qw( elapsed );
+use English                      qw( -no_match_vars );
+use List::Util                   qw( first );
+use Scalar::Util                 qw( weaken );
+use Web::ComposableRequest::Util qw( bson64id );
 use IPC::PerlSSH;
-use List::Util             qw( first );
-use Scalar::Util           qw( weaken );
 use Try::Tiny;
 use Moo;
+
+with 'App::MCP::Role::Schema';
 
 Async::IPC::Functions->log_key_width( LOG_KEY_WIDTH );
 
 # Public attributes
 has 'app'    =>
    is        => 'ro',
-   isa       => Plinth,
+   isa       => Object,
    handles   => ['config', 'debug', 'log'],
    init_arg  => 'builder',
    required  => TRUE;
@@ -38,25 +42,6 @@ has 'worker' =>
 
 # Private attributes
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
-
-has '_schema'       =>
-   is               => 'lazy',
-   isa              => Object,
-   reader           => 'schema',
-   builder          => sub {
-      my $self  = shift;
-      my $extra = $self->config->connect_params;
-
-      return $self->schema_class->connect(@{$self->get_connect_info}, $extra);
-   };
-
-has '_schema_class' =>
-   is               => 'lazy',
-   isa              => LoadableClass,
-   builder          => sub { $_[0]->config->schema_classes->{'mcp-model'} },
-   reader           => 'schema_class';
-
-with 'Class::Usul::TraitFor::ConnectInfo';
 
 # Public methods
 sub cron_job_handler {
@@ -380,6 +365,8 @@ sub _install_distribution {
    return shift->_install_remote('install_distribution', @_);
 }
 
+use namespace::autoclean;
+
 1;
 
 __END__
@@ -414,8 +401,6 @@ Defines the following attributes;
 =head1 Dependencies
 
 =over 3
-
-=item L<Class::Usul>
 
 =item L<IPC::PerlSSH>
 

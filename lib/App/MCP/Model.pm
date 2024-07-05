@@ -60,6 +60,7 @@ sub root : Auth('none') {
       $nav->item('page/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);
       $nav->item('user/totp', [$session->id]) if $session->enable_2fa;
+      $nav->item('user/bugreport', [$session->id]);
       $nav->item(formpost, 'page/logout');
    }
    else {
@@ -107,7 +108,7 @@ Defines the following attributes;
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Web::Components>
 
 =back
 

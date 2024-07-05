@@ -173,7 +173,7 @@ Perl 5.10
 
 =over 3
 
-=item L<Class::Usul>
+=item L<DBIx::Class::Helper::Row::OnColumnChange>
 
 =back
 

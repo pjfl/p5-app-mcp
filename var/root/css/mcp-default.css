@@ -577,17 +577,20 @@ form.classic .field-label .label-sep-after {
 }
 form.classic .field-label:has(+span.digit-input-wrapper)::after,
 form.classic .field-label:has(+input[required=required])::after,
-form.classic .field-label:has(+select[required=required])::after {
+form.classic .field-label:has(+select[required=required])::after,
+form.classic .field-label:has(+textarea[required=required])::after {
   color: red;
   content: '*';
   display: inline-block;
   float: right;
+  min-width: 2ch;
   padding-left: 0.25rem;
 }
 form.classic .field-label:has(+span.digit-input-wrapper > input:valid)::after,
 form.classic .field-label:has(+input:valid)::after,
-form.classic .field-label:has(+select:valid)::after {
-  content: '';
+form.classic .field-label:has(+select:valid)::after,
+form.classic .field-label:has(+textarea:valid)::after {
+  content: ' ';
 }
 form.classic span.field-label {
   border: 2px solid transparent;
