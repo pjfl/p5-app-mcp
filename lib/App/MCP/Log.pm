@@ -1,12 +1,11 @@
 package App::MCP::Log;
 
-use HTML::Forms::Constants  qw( DOT FALSE NUL TRUE USERNAME );
-use Class::Usul::Cmd::Types qw( ConfigProvider );
-use HTML::Forms::Types      qw( Bool );
-use Class::Usul::Cmd::Util  qw( now_dt trim );
-use HTML::StateTable::Util  qw( escape_formula );
-use Ref::Util               qw( is_arrayref is_coderef );
-use Type::Utils             qw( class_type );
+use Class::Usul::Cmd::Constants qw( DOT FALSE NUL TRUE USERNAME );
+use Class::Usul::Cmd::Types     qw( Bool ConfigProvider );
+use Class::Usul::Cmd::Util      qw( now_dt trim );
+use HTML::StateTable::Util      qw( escape_formula );
+use Ref::Util                   qw( is_arrayref is_coderef );
+use Type::Utils                 qw( class_type );
 use Text::CSV_XS;
 use Moo;
 
@@ -131,10 +130,12 @@ sub _log {
       escape_formula $now, $level, $username, $leader, $message
    );
 
-   if (my $file = $self->config->logfile) {
-      $file->appendln($self->_csv->string)->flush;
+   my $config = $self->config;
+
+   if ($config->can('logfile') && $config->logfile) {
+      $config->logfile->appendln($self->_csv->string)->flush;
    }
-   else { CORE::warn $message }
+   else { CORE::warn "${leader}: ${message}\n" }
 
    return TRUE;
 }

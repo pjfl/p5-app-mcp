@@ -6,7 +6,10 @@ use parent 'DBIx::Class::Schema';
 use App::MCP; our $VERSION = App::MCP->schema_version;
 use Scalar::Util qw( weaken );
 
-__PACKAGE__->load_namespaces;
+my $class = __PACKAGE__;
+
+$class->load_namespaces;
+$class->load_components('Schema::Versioned');
 
 my $config;
 

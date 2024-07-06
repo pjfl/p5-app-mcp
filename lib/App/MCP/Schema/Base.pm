@@ -6,7 +6,9 @@ use parent 'DBIx::Class::Core';
 use App::MCP::Constants qw( NUL );
 use Data::Validation;
 
-__PACKAGE__->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
+my $class = __PACKAGE__;
+
+$class->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
 
 sub validate {
    my $self = shift;

@@ -7,9 +7,9 @@ use App::MCP;
 use App::MCP::Exception;
 use Class::Usul::Cmd::Constants ( );
 
-our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
-                  JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_TRUE STATE_ENUM
-                  TRANSITION_ENUM VARCHAR_MAX_SIZE );
+our @EXPORT = qw( BUG_STATE_ENUM CRONTAB_FIELD_NAMES DOTS HASH_CHAR
+                  LOG_KEY_WIDTH JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_TRUE
+                  STATE_ENUM TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
 Class::Usul::Cmd::Constants->Exception_Class('App::MCP::Exception');
 
@@ -34,6 +34,7 @@ sub HASH_CHAR () { chr 35     }
 sub DOTS      () { "\x{2026}" }
 sub SEPARATOR () { '/'        }
 
+sub BUG_STATE_ENUM      () { [ qw( assigned fixed open wontfix ) ] }
 sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
 sub LOG_KEY_WIDTH       () { 13 }
 sub JOB_TYPE_ENUM       () { [ 'box', 'job' ] }

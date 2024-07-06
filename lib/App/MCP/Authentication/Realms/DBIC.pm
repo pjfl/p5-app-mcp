@@ -62,10 +62,10 @@ sub to_session {
       $session->$key($value) if defined $value && $session->can($key);
    }
 
-   $session->email($user->email)     if $session->can('email');
-   $session->id($user->id)           if $session->can('id');
-   $session->role($user->role->name) if $session->can('role');
-   $session->username($user->name)   if $session->can('username');
+   $session->email($user->email)          if $session->can('email');
+   $session->id($user->id)                if $session->can('id');
+   $session->role($user->role->role_name) if $session->can('role');
+   $session->username($user->user_name)   if $session->can('username');
    return;
 }
 
