@@ -1,6 +1,6 @@
 package App::MCP::Role::Authentication;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types      qw( HashRef Object Str );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 use Unexpected::Functions  qw( throw Unspecified );
@@ -34,9 +34,12 @@ sub find_user {
 }
 
 sub logout {
-   my $self = shift;
+   my $self    = shift;
+   my $session = $self->session;
 
-   $self->session->authenticated(FALSE);
+   $session->authenticated(FALSE);
+   $session->role(NUL) if $session->can('role');
+   $session->wanted(NUL) if $session->can('wanted');
    return;
 }
 

@@ -221,32 +221,6 @@ sub set_totp_secret {
    return $self->totp_secret;
 }
 
-sub to_session {
-   my ($self, $session) = @_;
-
-   return unless $session && blessed $session;
-
-   my $profile = $self->profile_value;
-
-   for my $key (grep { $_ ne 'authenticated' } keys %{$profile}) {
-      my $value       = $profile->{$key};
-      my $value_class = blessed $value;
-
-      if ($value_class && $value_class eq 'JSON::PP::Boolean') {
-         $value = "${value}" ? TRUE : FALSE;
-      }
-
-      $session->$key($value) if defined $value && $session->can($key);
-   }
-
-   $session->email($self->email)          if $session->can('email');
-   $session->id($self->id)                if $session->can('id');
-   $session->role($self->role->role_name) if $session->can('role');
-   $session->username($self->user_name)   if $session->can('username');
-
-   return;
-}
-
 sub totp_secret {
    my ($self, $value) = @_; return $self->_profile('totp_secret', $value);
 }

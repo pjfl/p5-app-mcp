@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Moves to_session from User to DBIC auth role
           - Uses encrypt/decrypt from Class::Usul::Cmd
           - Removes dependency on Class::Usul
           - Checkpoint

@@ -31,7 +31,7 @@ has_field 'name' =>
 has_field 'password' =>
    type         => 'Password',
    element_attr => {
-      javascript => 'onblur="' . sprintf($change_js, 'password') . '"'
+      javascript => 'oninput="' . sprintf($change_js, 'password') . '"'
    },
    tags         => { label_tag => 'span' },
    required     => TRUE;

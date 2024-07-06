@@ -108,9 +108,7 @@ sub logout : Auth('view') Nav('Logout') {
    my $message = 'User [_1] logged out';
    my $session = $context->session;
 
-   $session->authenticated(FALSE);
-   $session->role(NUL);
-   $session->wanted(NUL);
+   $context->logout;
    $context->stash(redirect $login, [$message, $session->username]);
    return;
 }

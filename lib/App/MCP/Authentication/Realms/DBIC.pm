@@ -2,6 +2,7 @@ package App::MCP::Authentication::Realms::DBIC;
 
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
 use Unexpected::Types     qw( Str );
+use Scalar::Util          qw( blessed );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw Unspecified );
 use Moo;
@@ -18,11 +19,6 @@ has 'schema' =>
    is       => 'ro',
    isa      => class_type('DBIx::Class::Schema'),
    required => TRUE;
-
-has 'to_session_method' =>
-   is      => 'ro',
-   isa     => Str,
-   default => 'to_session';
 
 sub authenticate {
    my ($self, $args) = @_;
@@ -46,15 +42,31 @@ sub find_user {
 sub to_session {
    my ($self, $args) = @_;
 
-   return unless $args->{user};
+   my $session = $args->{session};
 
-   my $session = $args->{session} or return;
+   return unless $session && blessed $session;
 
    $session->realm($self->realm) if $session->can('realm');
 
-   my $method = $self->to_session_method;
+   my $user    = $args->{user} or return;
+   my $profile = $user->profile_value;
 
-   return $args->{user}->$method($session);
+   for my $key (grep { $_ ne 'authenticated' } keys %{$profile}) {
+      my $value       = $profile->{$key};
+      my $value_class = blessed $value;
+
+      if ($value_class && $value_class eq 'JSON::PP::Boolean') {
+         $value = "${value}" ? TRUE : FALSE;
+      }
+
+      $session->$key($value) if defined $value && $session->can($key);
+   }
+
+   $session->email($user->email)     if $session->can('email');
+   $session->id($user->id)           if $session->can('id');
+   $session->role($user->role->name) if $session->can('role');
+   $session->username($user->name)   if $session->can('username');
+   return;
 }
 
 use namespace::autoclean;
