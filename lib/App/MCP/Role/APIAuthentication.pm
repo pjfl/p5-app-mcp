@@ -163,8 +163,6 @@ sub _get_session {
    return $session;
 }
 
-use namespace::autoclean;
-
 1;
 
 __END__
@@ -196,11 +194,13 @@ Defines the following attributes;
 
 =head1 Diagnostics
 
+None
+
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Crypt::SRP>
 
 =back
 

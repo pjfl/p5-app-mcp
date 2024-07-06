@@ -1,7 +1,5 @@
 package App::MCP::CLI;
 
-use App::MCP;
-use App::MCP::Exception;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL OK TRUE );
 use File::DataClass::Types qw( Directory );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );

@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Uses encrypt/decrypt from Class::Usul::Cmd
           - Removes dependency on Class::Usul
           - Checkpoint
           - Moved templates to var from var/root

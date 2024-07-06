@@ -1,13 +1,12 @@
 package App::MCP::Schema;
 
+use App::MCP::Constants         qw( EXCEPTION_CLASS FALSE NUL SPC TRUE );
 use Archive::Tar::Constant      qw( COMPRESS_GZIP );
 use Class::Usul::Cmd::Constants qw( AS_PARA AS_PASSWORD COMMA OK QUOTED_RE );
-use HTML::Forms::Constants      qw( EXCEPTION_CLASS FALSE NUL SPC TRUE );
-use App::MCP::Util              qw( base64_decode base64_encode
-                                    distname trigger_input_handler );
-use Class::Usul::Cmd::Util      qw( ensure_class_loaded now_dt trim );
+use App::MCP::Util              qw( distname trigger_input_handler );
+use Class::Usul::Cmd::Util      qw( decrypt encrypt ensure_class_loaded
+                                    now_dt trim );
 use File::DataClass::IO         qw( io );
-use HTML::Forms::Util           qw( cipher );
 use Unexpected::Functions       qw( throw PathNotFound Unspecified );
 use Archive::Tar;
 use Data::Record;
@@ -70,7 +69,7 @@ has 'user_password' =>
 
       throw 'No database user password in local config file' unless $password;
 
-      return cipher->decrypt(base64_decode $password);
+      return decrypt NUL, $password;
    };
 
 has '_file_schema' =>
@@ -315,12 +314,11 @@ sub store_password : method {
    my $password = $self->get_line('+Enter DB user password', AS_PASSWORD);
    my $data     = $self->_local_config;
 
-   $data->{db_password} = base64_encode cipher->encrypt($password);
+   $data->{db_password} = encrypt NUL, $password;
    $self->_local_config($data);
    $self->info('Updated user password', { name => 'Admin.store_password' });
    return OK;
 }
-
 
 # Private functions
 sub _connect_attr () {

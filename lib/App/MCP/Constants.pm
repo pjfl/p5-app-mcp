@@ -11,6 +11,8 @@ our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
                   JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_TRUE STATE_ENUM
                   TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
+Class::Usul::Cmd::Constants->Exception_Class('App::MCP::Exception');
+
 my $Code_Attr = {};
 
 sub import {

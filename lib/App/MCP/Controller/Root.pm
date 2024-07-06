@@ -39,7 +39,6 @@ return (
                                => sub {['page/root/base/configuration', @_]},
    'GET|POST + /login + ?*'    => sub {['page/root/base/login',         @_]},
    'POST     + /logout + ?*'   => sub {['page/root/logout',             @_]},
-   'GET      + /property + ?*' => sub {['page/root/object_property',    @_]},
    'GET|POST + /register/* | /register + ?*'
                                => sub {['page/root/base/register',      @_]},
 

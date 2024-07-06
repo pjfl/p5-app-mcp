@@ -2,19 +2,25 @@ package App::MCP::Config;
 
 use utf8; # -*- coding: utf-8; -*-
 
-use App::MCP::Constants    qw( FALSE NUL TRUE );
-use File::DataClass::Types qw( ArrayRef Bool CodeRef Directory File HashRef
-                               LoadableClass NonEmptySimpleStr
-                               NonZeroPositiveInt Object Path PositiveInt
-                               SimpleStr Str Undef );
-use App::MCP::Util         qw( base64_decode );
-use English                qw( -no_match_vars );
-use File::DataClass::IO    qw( io );
-use HTML::Forms::Util      qw( cipher );
-use Web::Components::Util  qw( fqdn );
+use Class::Usul::Cmd::Constants qw( FALSE NUL TRUE );
+use File::DataClass::Types      qw( ArrayRef Bool CodeRef Directory File HashRef
+                                    LoadableClass NonEmptySimpleStr
+                                    NonZeroPositiveInt Object Path PositiveInt
+                                    SimpleStr Str Undef );
+use Class::Usul::Cmd::Util      qw( decrypt );
+use English                     qw( -no_match_vars );
+use File::DataClass::IO         qw( io );
+use Web::Components::Util       qw( fqdn );
 use Moo;
 
 with 'Web::Components::Role::ConfigLoader';
+
+my $except = [
+   qw( BUILDARGS BUILD DOES connect_info has_config_file has_config_home
+       has_local_config_file new SSL_VERIFY_NONE )
+];
+
+Class::Usul::Cmd::Constants->Dump_Except($except);
 
 =pod
 
@@ -110,7 +116,7 @@ has 'connect_info' =>
    isa     => ArrayRef,
    default => sub {
       my $self     = shift;
-      my $password = cipher->decrypt(base64_decode $self->db_password);
+      my $password = decrypt NUL, $self->db_password;
 
       return [$self->dsn, $self->db_username, $password, $self->db_extra];
    };
@@ -563,8 +569,9 @@ has 'request' => is => 'lazy', isa => HashRef, default => sub {
    my $self = shift;
 
    return {
-      max_messages => $self->max_messages,
-      prefix => $self->prefix,
+      max_messages  => $self->max_messages,
+      max_sess_time => $self->max_web_session_time,
+      prefix        => $self->prefix,
       request_roles => [
          qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
       ],

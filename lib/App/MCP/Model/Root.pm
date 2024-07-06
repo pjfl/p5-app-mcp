@@ -7,7 +7,6 @@ use JSON::MaybeXS         qw( encode_json );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( PageNotFound UnknownToken UnknownUser );
 use App::MCP::Redis;
-use Try::Tiny;
 use Moo;
 use App::MCP::Attributes; # Will do cleaning
 
@@ -16,7 +15,7 @@ with    'Web::Components::Role';
 
 has '+moniker' => default => 'page';
 
-has 'redis' =>
+has '_redis' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Redis'),
    default => sub {
@@ -105,43 +104,21 @@ sub logout : Auth('view') Nav('Logout') {
 
    return unless $self->verify_form_post($context);
 
-   my $default = $context->uri_for_action('page/login');
+   my $login   = $context->uri_for_action('page/login');
    my $message = 'User [_1] logged out';
    my $session = $context->session;
 
    $session->authenticated(FALSE);
    $session->role(NUL);
    $session->wanted(NUL);
-   $context->stash(redirect $default, [$message, $session->username]);
+   $context->stash(redirect $login, [$message, $session->username]);
    return;
 }
 
 sub not_found : Auth('none') {
    my ($self, $context) = @_;
 
-   return $self->error($context, PageNotFound, [$context->request->path]);
-}
-
-# TODO: Move to api
-sub object_property : Auth('none') {
-   my ($self, $context) = @_;
-
-   my $req   = $context->request;
-   my $class = $req->query_params->('class');
-   my $prop  = $req->query_params->('property');
-   my $value = $req->query_params->('value', { raw => TRUE });
-   my $resp  = { found => \0 };
-
-   if ($value) {
-      try { # Defensively written
-         my $r = $context->model($class)->find_by_key($value);
-
-         $resp->{found} = \1 if $r && $r->execute($prop);
-      }
-      catch { $self->log->error($_, $context) };
-   }
-
-   $context->stash(json => $resp, code => HTTP_OK, view => 'json');
+   $self->error($context, PageNotFound, [$context->request->path]);
    return;
 }
 
@@ -170,7 +147,7 @@ sub password_reset : Auth('none') {
    my $changep = $context->uri_for_action('page/password', [$user->id]);
 
    if (!$context->posted && $token && $token ne 'reset') {
-      my $stash = $self->redis->get($token)
+      my $stash = $self->_redis->get($token)
          or return $self->error($context, UnknownToken, [$token]);
 
       $user->update({password => $stash->{password}, password_expired => TRUE});
@@ -178,7 +155,7 @@ sub password_reset : Auth('none') {
       my $message = 'User [_1] password reset';
 
       $context->stash(redirect $changep, [$message, "${user}"]);
-      $self->redis->remove($token);
+      $self->_redis->remove($token);
       return;
    }
 
@@ -217,7 +194,7 @@ sub password_reset : Auth('none') {
 sub _send_email {
    my ($self, $context, $token, $args) = @_;
 
-   $self->redis->set($token, encode_json($args));
+   $self->_redis->set($token, encode_json($args));
 
    my $program = $self->config->bin->catfile('mcat-cli');
    my $command = "${program} -o token=${token} send_message email";
