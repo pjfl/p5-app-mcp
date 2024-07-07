@@ -7,9 +7,9 @@ Message: [% exception.original | html %]<br/>
 [%    END -%]
 [% END -%]
 Thrown by: [% exception.leader %]<br/>
-Created: [% exception.created %]<br />
+Created: [% dt_local(exception.created) %]<br />
 Class: [% exception.class %]<br/>
 Version: [% exception.version %]<br/>
-Session updated: [% context.session.updated %]<br/>
+Session updated: [% ucfirst(dt_human(dt_from_epoch(session.updated))) %]<br/>
 Code: [% exception.rv %]<br/>
 </div>

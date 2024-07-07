@@ -59,8 +59,8 @@ sub root : Auth('none') {
       $nav->item('page/changes');
       $nav->item('page/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);
+      $nav->item('page/bugreport');
       $nav->item('user/totp', [$session->id]) if $session->enable_2fa;
-      $nav->item('user/bugreport', [$session->id]);
       $nav->item(formpost, 'page/logout');
    }
    else {

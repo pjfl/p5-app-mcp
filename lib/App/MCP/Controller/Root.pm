@@ -26,21 +26,22 @@ return (
                                  => sub {['page/root/base/password_reset', @_]},
    'GET|POST + /user/*/password + ?*'  => sub {['page/root/base/password', @_]},
    'GET|POST + /user/*/profile + ?*'   => sub {['user/root/base/profile',  @_]},
-   'GET|POST + /user/*/bugreport + ?*' => sub {['user/root/base/bugreport',@_]},
    'GET|POST + /user/*/totp/* + ?*'  => sub {['page/root/base/totp_reset', @_]},
    'GET      + /user/*/totp + ?*'      => sub {['user/root/base/totp',     @_]},
    'GET      + /user/* + ?*'           => sub {['user/root/base/view',     @_]},
    'GET      + /user + ?*'             => sub {['user/root/base/list',     @_]},
 
    'GET      + /access_denied + ?*'
-                               => sub {['page/root/base/access_denied', @_]},
-   'GET      + /changes + ?*'  => sub {['page/root/base/changes',       @_]},
+                                  => sub {['page/root/base/access_denied', @_]},
+   'GET      + /buglist + ?*'     => sub {['page/root/base/buglist',       @_]},
+   'GET|POST + /bugreport + ?*'   => sub {['page/root/base/bugreport',     @_]},
+   'GET      + /changes + ?*'     => sub {['page/root/base/changes',       @_]},
    'GET      + /configuration + ?*'
-                               => sub {['page/root/base/configuration', @_]},
-   'GET|POST + /login + ?*'    => sub {['page/root/base/login',         @_]},
-   'POST     + /logout + ?*'   => sub {['page/root/logout',             @_]},
+                                  => sub {['page/root/base/configuration', @_]},
+   'GET|POST + /login + ?*'       => sub {['page/root/base/login',         @_]},
+   'POST     + /logout + ?*'      => sub {['page/root/logout',             @_]},
    'GET|POST + /register/* | /register + ?*'
-                               => sub {['page/root/base/register',      @_]},
+                                  => sub {['page/root/base/register',      @_]},
 
    'GET    + /** + ?*' => sub {['page/root/not_found', @_]},
    'GET    + ?*'       => sub {['page/root/default',   @_]},

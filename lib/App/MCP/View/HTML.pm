@@ -1,6 +1,7 @@
 package App::MCP::View::HTML;
 
 use HTML::Forms::Constants qw( TRUE );
+use App::MCP::Util         qw( dt_from_epoch dt_human encode_for_html );
 use Encode                 qw( encode );
 use HTML::Entities         qw( encode_entities );
 use HTML::Forms::Util      qw( get_token process_attrs );
@@ -46,12 +47,18 @@ sub _build__templater {
 sub _add_tt_defaults {
    my ($self, $context) = @_; weaken $context;
 
+   my $session = $context->session; weaken $session;
+   my $tz      = $session->timezone;
+
    return {
-      context         => $context,
+      dt_from_epoch   => sub { dt_from_epoch shift, $tz },
+      dt_human        => \&dt_human,
+      dt_local        => sub { my $dt = shift; $dt->set_time_zone($tz); $dt },
       encode_entities => \&encode_entities,
-      encode_for_html => sub { encode_entities(encode_json(shift)) },
+      encode_for_html => \&encode_for_html,
       encode_json     => \&encode_json,
       process_attrs   => \&process_attrs,
+      session         => $session,
       token           => sub { $context->verification_token },
       uri_for         => sub { $context->request->uri_for(@_) },
       uri_for_action  => sub { $context->uri_for_action(@_) },

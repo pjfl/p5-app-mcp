@@ -16,14 +16,17 @@ use Scalar::Util               qw( weaken );
 use URI::Escape                qw( );
 use URI::http;
 use URI::https;
+use DateTime;
+use DateTime::Format::Human;
 
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type create_token
-   distname encode_for_html enumerated_data_type foreign_key_data_type formpost
-   get_hashed_pw get_salt new_salt new_uri nullable_foreign_key_data_type
-   nullable_varchar_data_type numerical_id_data_type random_digest redirect
-   redirect2referer serial_data_type set_on_create_datetime_data_type
-   strip_parent_name terminate text_data_type trigger_input_handler
-   trigger_output_handler truncate varchar_data_type );
+   distname dt_from_epoch dt_human encode_for_html enumerated_data_type
+   foreign_key_data_type formpost get_hashed_pw get_salt new_salt new_uri
+   nullable_foreign_key_data_type nullable_varchar_data_type
+   numerical_id_data_type random_digest redirect redirect2referer
+   serial_data_type set_on_create_datetime_data_type strip_parent_name
+   terminate text_data_type trigger_input_handler trigger_output_handler
+   truncate varchar_data_type );
 
 my $digest_cache;
 my $reserved   = q(;/?:@&=+$,[]);
@@ -170,6 +173,22 @@ sub digest ($) {
 
 sub distname (;$) {
    (my $v = $_[0] // NUL) =~ s{ :: }{-}gmx; return $v;
+}
+
+sub dt_from_epoch ($;$) {
+   my ($epoch, $tz) = @_;
+
+   return DateTime->from_epoch(
+      epoch => $epoch, locale => 'en_GB', time_zone => $tz // 'UTC'
+   );
+}
+
+sub dt_human ($) {
+   my $dt  = shift;
+   my $fmt = DateTime::Format::Human->new(evening => 19, night => 23);
+
+   $dt->set_formatter($fmt);
+   return $dt;
 }
 
 sub encode_for_html ($) {

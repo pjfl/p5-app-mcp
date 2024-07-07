@@ -6,6 +6,7 @@ use Unexpected::Types     qw( Int Object );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( has_exception );
 use DateTime;
+use DateTime::Format::Strptime;
 use App::MCP;
 use Moo;
 
@@ -18,7 +19,12 @@ has 'created' =>
    is      => 'ro',
    isa     => class_type('DateTime'),
    default => sub {
-      return DateTime->now( locale => 'en_GB', time_zone => 'UTC' );
+      my $dt  = DateTime->now(locale => 'en_GB', time_zone => 'UTC');
+      my $fmt = DateTime::Format::Strptime->new(pattern => '%F %T');
+
+      $dt->set_formatter($fmt);
+
+      return $dt;
    };
 
 has 'rv' => is => 'ro', isa => Int, default => 0;

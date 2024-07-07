@@ -38,6 +38,32 @@ sub base : Auth('none') {
 
 sub access_denied : Auth('none') {}
 
+sub buglist : Auth('admin') Nav('Bug List') {
+   my ($self, $context) = @_;
+
+   my $table = $self->new_table('Bugs', { context => $context });
+
+   $context->stash(table => $table);
+   return;
+}
+
+sub bugreport : Auth('view') Nav('Report Bug') {
+   my ($self, $context) = @_;
+
+   my $form = $self->new_form('BugReport', { context => $context });
+
+   if ($form->process(posted => $context->posted)) {
+      my $username = $context->session->username;
+      my $default  = $context->uri_for_action($self->config->redirect);
+      my $message  = ['User [_1] bug report created', $username];
+
+      $context->stash(redirect $default, $message);
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
 sub changes : Auth('none') Nav('Changes') {
    my ($self, $context) = @_;
 
@@ -106,10 +132,9 @@ sub logout : Auth('view') Nav('Logout') {
 
    my $login   = $context->uri_for_action('page/login');
    my $message = 'User [_1] logged out';
-   my $session = $context->session;
 
    $context->logout;
-   $context->stash(redirect $login, [$message, $session->username]);
+   $context->stash(redirect $login, [$message, $context->session->username]);
    return;
 }
 
@@ -198,6 +223,7 @@ sub _send_email {
    my $command = "${program} -o token=${token} send_message email";
    my $options = { command => $command, name => 'send_message' };
 
+   # TODO: Still not implemented
    return $context->model('BackgroundJob')->create($options);
 }
 

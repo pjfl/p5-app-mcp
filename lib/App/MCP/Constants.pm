@@ -3,15 +3,20 @@ package App::MCP::Constants;
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP;
 use App::MCP::Exception;
-use Class::Usul::Cmd::Constants ( );
+use Class::Usul::Cmd::Constants       ( );
+use HTML::StateTable::Constants       ( );
+use HTML::Forms::Constants            ( );
+use Web::ComposableRequest::Constants ( );
 
 our @EXPORT = qw( BUG_STATE_ENUM CRONTAB_FIELD_NAMES DOTS HASH_CHAR
                   LOG_KEY_WIDTH JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_TRUE
                   STATE_ENUM TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
 Class::Usul::Cmd::Constants->Exception_Class('App::MCP::Exception');
+HTML::StateTable::Constants->Exception_Class('App::MCP::Exception');
+HTML::Forms::Constants->Exception_Class('App::MCP::Exception');
+Web::ComposableRequest::Constants->Exception_Class('App::MCP::Exception');
 
 my $Code_Attr = {};
 

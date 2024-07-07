@@ -245,6 +245,14 @@ has 'loader_attr' =>
       return { should_log_errors => FALSE, should_log_messages => TRUE };
    };
 
+=item C<local_tz>
+
+The applications local time zone
+
+=cut
+
+has 'local_tz' => is => 'ro', isa => Str, default => 'Europe/London';
+
 =item C<logdir>
 
 Directory containing logfiles
@@ -371,7 +379,7 @@ has 'navigation' =>
          title_abbrev => 'MCP',
          %{$self->_navigation},
          global => [
-            qw( job/list state/view )
+            qw( admin/menu job/list state/view )
          ],
       };
    };
@@ -449,6 +457,67 @@ it is unavailable
 =cut
 
 has 'registration' => is => 'ro', isa => Bool, coerce => TRUE, default => FALSE;
+
+=item C<request>
+
+Hash reference passed to the request object factory constructor by the
+component loader. Includes;
+
+=over 3
+
+=item max_messages
+
+The maximum number of response to post messages to buffer both in the session
+object where they are stored and the JS object where they are displayed
+
+=item prefix
+
+See 'prefix'
+
+=item request_roles
+
+List of roles to be applied to the request class base
+
+=item serialise_session_attr
+
+List of session attributes that are included for serialisation to the CSRF
+token
+
+=item session_attr
+
+A list of names, types, and default values. These are composed into the
+session object
+
+=back
+
+=cut
+
+has 'request' => is => 'lazy', isa => HashRef, default => sub {
+   my $self = shift;
+
+   return {
+      max_messages  => $self->max_messages,
+      max_sess_time => $self->max_web_session_time,
+      prefix        => $self->prefix,
+      request_roles => [
+         qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
+      ],
+      serialise_session_attr => [ qw( id ) ],
+      session_attr => {
+         email         => [ Str, NUL ],
+         enable_2fa    => [ Bool, FALSE ],
+         id            => [ PositiveInt, 0 ],
+         link_display  => [ Str, 'both' ],
+         menu_location => [ Str, 'header' ],
+         realm         => [ Str, NUL ],
+         role          => [ Str, NUL ],
+         skin          => [ Str, $self->skin ],
+         theme         => [ Str, 'light' ],
+         timezone      => [ Str, $self->local_tz ],
+         wanted        => [ Str, NUL ],
+      },
+   };
+};
 
 =item C<root>
 
@@ -530,67 +599,6 @@ has 'servers' =>
    is      => 'ro',
    isa     => ArrayRef[NonEmptySimpleStr],
    default => sub { [ fqdn ] };
-
-=item C<request>
-
-Hash reference passed to the request object factory constructor by the
-component loader. Includes;
-
-=over 3
-
-=item max_messages
-
-The maximum number of response to post messages to buffer both in the session
-object where they are stored and the JS object where they are displayed
-
-=item prefix
-
-See 'prefix'
-
-=item request_roles
-
-List of roles to be applied to the request class base
-
-=item serialise_session_attr
-
-List of session attributes that are included for serialisation to the CSRF
-token
-
-=item session_attr
-
-A list of names, types, and default values. These are composed into the
-session object
-
-=back
-
-=cut
-
-has 'request' => is => 'lazy', isa => HashRef, default => sub {
-   my $self = shift;
-
-   return {
-      max_messages  => $self->max_messages,
-      max_sess_time => $self->max_web_session_time,
-      prefix        => $self->prefix,
-      request_roles => [
-         qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
-      ],
-      serialise_session_attr => [ qw( id ) ],
-      session_attr => {
-         email         => [ Str, NUL ],
-         enable_2fa    => [ Bool, FALSE ],
-         id            => [ PositiveInt, 0 ],
-         link_display  => [ Str, 'both' ],
-         menu_location => [ Str, 'header' ],
-         realm         => [ Str, NUL ],
-         role          => [ Str, NUL ],
-         skin          => [ Str, $self->skin ],
-         theme         => [ Str, 'light' ],
-         timezone      => [ Str, 'Europe/London' ],
-         wanted        => [ Str, NUL ],
-      },
-   };
-};
 
 =item C<skin>
 
