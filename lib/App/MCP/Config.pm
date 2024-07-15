@@ -206,7 +206,6 @@ A hash reference of parameters used to configure the documentation viewer
 
 =cut
 
-
 has 'documentation' =>
    is      => 'lazy',
    isa     => HashRef,

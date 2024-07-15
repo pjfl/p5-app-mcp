@@ -90,16 +90,16 @@ has_exception 'AuthenticationRequired' => parents => ['Authentication'],
    error   => 'Resource [_1] authentication required';
 
 has_exception 'IncorrectAuthCode' => parents => ['Authentication'],
-   error   => 'User [_1] authentication failed';
+   error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
 
 has_exception 'IncorrectPassword' => parents => ['Authentication'],
    error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
 
 has_exception 'PasswordDisabled' => parents => ['Authentication'],
-   error   => 'User [_1] password disabled';
+   error   => 'User [_1] password disabled', rv => HTTP_UNAUTHORIZED;
 
 has_exception 'PasswordExpired' => parents => ['Authentication'],
-   error   => 'User [_1] password expired';
+   error   => 'User [_1] password expired', rv => HTTP_UNAUTHORIZED;
 
 has_exception 'Workflow'  => parents => [$class];
 

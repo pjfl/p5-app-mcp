@@ -12,8 +12,7 @@
 # the <APPNAME>_LOCAL_LIB enviromnent variable to true or false.
 
 use lib;
-use strict;
-use warnings;
+use strictures;
 
 use Config;
 use Cwd                   qw( abs_path );
@@ -21,14 +20,16 @@ use English               qw( -no_match_vars );
 use File::Basename        qw( basename dirname );
 use File::Spec::Functions qw( catdir catfile );
 
-my $LOCAL_LIB  = 'local'; # This is the only configurable
+my $LOCAL_LIB = 'local'; # This is the only configurable
 
-my $extend     = sub {
-   my ($k, $v, $sep) = @_; $sep //= $Config::Config{path_sep};
+my $extend = sub {
+   my ($k, $v, $sep) = @_;
 
-   return $ENV{ $k } = $v.($ENV{ $k } ? $sep.$ENV{ $k } : q());
+   $sep //= $Config::Config{path_sep};
+
+   return $ENV{$k} = $v.($ENV{$k} ? $sep.$ENV{$k} : q());
 };
-my $untaint    = sub {
+my $untaint = sub {
    my $v = shift;
 
    $v = $v =~ m{ \A ([^\$%&\*;<>\`|]+) \z }mx ? $1 : die "Path ${v} tainted";
@@ -36,38 +37,37 @@ my $untaint    = sub {
    return $v;
 };
 my $was_called = caller() ? 1 : 0;
-my $our_path   = $was_called ? (caller())[ 1 ] : $PROGRAM_NAME;
-my $bindir     = $untaint->( abs_path( dirname( $our_path ) ) );
-my $basedir    = -f catfile( $bindir, 'Build.PL' )
-              || -f catfile( $bindir, 'Makefile.PL' )
-               ? $bindir : dirname( $bindir );
-my $libdir     = catdir( $basedir, 'lib' );
-my $local_lib  = catdir( $basedir, $LOCAL_LIB );
-my $appname    = (split m{ [\-_] }mx, basename( $our_path, '.pl' ))[ 0 ];
-my $active_key = (uc $appname).'_LOCAL_LIB';
-my $active     = -d $local_lib;
+my $our_path   = $was_called ? (caller())[1] : $PROGRAM_NAME;
+my $bindir     = $untaint->(abs_path(dirname($our_path)));
+my $basedir    = -f catfile($bindir, 'Build.PL')
+              || -f catfile($bindir, 'Makefile.PL')
+               ? $bindir : dirname($bindir);
+my $libdir     = catdir($basedir, 'lib');
+my $local_lib  = catdir($basedir, $LOCAL_LIB);
+my $appname    = (split m{ [\-_] }mx, basename($our_path, '.pl'))[0];
+my $ll_env_key = (uc $appname).'_LOCAL_LIB';
 
-exists $ENV{ $active_key } and defined $ENV{ $active_key }
-   and $active = !! $ENV{ $active_key };
+$local_lib = $ENV{$ll_env_key}
+   if exists $ENV{$ll_env_key} and defined $ENV{$ll_env_key};
 
-if ($active) {
-   not -d $local_lib and warn "Path ${local_lib} not found from ${our_path}\n";
+if (-d $local_lib) {
    # So we can find local::lib when fully self contained
-   lib->import( catdir( $local_lib, 'lib', 'perl5' ) );
-
-   require local::lib; local::lib->import( $local_lib );
-
-   $extend->( 'PATH', catdir( $local_lib, 'bin' ) );
-   $extend->( 'PERL5_MB_OPT', 'INSTALLMAN1DIR=none INSTALLMAN3DIR=none', q( ) );
+   lib->import(catdir($local_lib, 'lib', 'perl5'));
+   require local::lib;
+   local::lib->import($local_lib);
+   $extend->('PATH', catdir($local_lib, 'bin'));
+   $extend->('PERL5_MB_OPT', 'INSTALLMAN1DIR=none INSTALLMAN3DIR=none', q( ));
 }
 
-$extend->( 'PATH', $bindir );
-$extend->( 'PERL5LIB', $libdir );
-$ENV{ (uc $appname).'_LIBDIR' } = $libdir;
+$extend->('PATH', $bindir);
 
-lib->import( $libdir );
+if (-d $libdir) {
+   $ENV{(uc $appname).'_LIBDIR'} = $libdir;
+   lib->import($libdir);
+   $extend->('PERL5LIB', $libdir);
+}
 
-not $was_called and @ARGV and exec @ARGV;
+exec @ARGV if !$was_called && @ARGV;
 
 1;
 

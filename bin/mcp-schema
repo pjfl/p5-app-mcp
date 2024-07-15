@@ -5,18 +5,14 @@ use FindBin qw( $Bin );
 use File::Spec;
 
 BEGIN {
-   my $bind = $Bin; $bind =~ m{ \A ([^\$%&\*;<>\`|]+) \z }mx and $bind = $1;
-   my $path = File::Spec->catfile( $bind, 'mcp-localenv' );
-
-   -f $path and (do $path or die $EVAL_ERROR || "Path ${path} not done\n");
+   my $bind = $Bin; $bind = $1 if $bind =~ m{ \A ([^\$%&\*;<>\`|]+) \z }mx;
+   my $path = File::Spec->catfile($bind, 'mcp-localenv');
+   (do $path or die $EVAL_ERROR || "Path ${path} not done\n") if -f $path;
 }
-
-use strictures::defanged; # Make strictures the same as use strict warnings
 
 use App::MCP::Schema;
 
-exit App::MCP::Schema->new_with_options
-   ( appclass => 'App::MCP', noask => 1 )->run;
+exit App::MCP::Schema->new_with_options->run;
 
 __END__
 

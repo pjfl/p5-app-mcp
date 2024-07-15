@@ -91,7 +91,6 @@ lib/App/MCP/View/JSON.pm
 lib/App/MCP/View/Table.pm
 lib/App/MCP/Workflow.pm
 lib/App/MCP/Workflow/Transition.pm
-lib/strictures/defanged.pm
 share/js/wcom-0-lib.js
 share/js/wcom-10-diagram.js
 t/02pod.t

@@ -2,14 +2,15 @@ package App::MCP::Context;
 
 use attributes ();
 
-use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL TRUE );
-use Unexpected::Types     qw( ArrayRef Bool HashRef Maybe Str );
-use HTML::Forms::Util     qw( get_token verify_token );
-use List::Util            qw( pairs );
-use Ref::Util             qw( is_arrayref is_coderef is_hashref );
-use Scalar::Util          qw( blessed );
-use Type::Utils           qw( class_type );
-use Unexpected::Functions qw( throw NoMethod UnknownModel );
+use App::MCP::Constants     qw( EXCEPTION_CLASS FALSE NUL TRUE );
+use Unexpected::Types       qw( ArrayRef Bool HashRef Maybe Str );
+use Class::Usul::Cmd::Types qw( ConfigProvider );
+use HTML::Forms::Util       qw( get_token verify_token );
+use List::Util              qw( pairs );
+use Ref::Util               qw( is_arrayref is_coderef is_hashref );
+use Scalar::Util            qw( blessed );
+use Type::Utils             qw( class_type );
+use Unexpected::Functions   qw( throw NoMethod UnknownModel );
 use App::MCP::Response;
 use Moo;
 
@@ -17,10 +18,7 @@ with 'App::MCP::Role::Schema';
 
 has 'action' => is => 'ro', isa => Str, predicate => 'has_action';
 
-has 'config' =>
-   is       => 'ro',
-   isa      => class_type('App::MCP::Config'),
-   required => TRUE;
+has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 
 has 'controllers' => is => 'ro', isa => HashRef, default => sub { {} };
 
@@ -42,7 +40,10 @@ has 'response' =>
    isa     => class_type('App::MCP::Response'),
    default => sub { App::MCP::Response->new };
 
-has 'session' => is => 'lazy', default => sub { shift->request->session };
+has 'session' =>
+   is      => 'lazy',
+   isa     => class_type('Web::ComposableRequest::Session'),
+   default => sub { shift->request->session };
 
 has 'time_zone' =>
    is      => 'lazy',
