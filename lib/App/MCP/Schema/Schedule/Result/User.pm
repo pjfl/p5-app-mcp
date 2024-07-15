@@ -32,15 +32,15 @@ $class->add_columns(
    role_id   => {
       %{foreign_key_data_type()},
       cell_traits => ['Capitalise'],
-      display     => 'role.name',
+      display     => 'role.role_name',
       label       => 'Role',
    },
    active    => { %{boolean_data_type()}, label => 'Still Active', },
-   password_expired => { %{boolean_data_type()}, label => 'Password Expired', },
    password  => {
       %{text_data_type()},
       display => sub { truncate shift->result->password, 20 },
    },
+   password_expired => { %{boolean_data_type()}, label => 'Password Expired' },
 );
 
 $class->set_primary_key('id');
@@ -340,7 +340,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

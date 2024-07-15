@@ -1,6 +1,6 @@
 package App::MCP::Daemon;
 
-use App::MCP::Constants    qw( LANG NUL OK TRUE );
+use App::MCP::Constants    qw( NUL OK TRUE );
 use Unexpected::Types      qw( NonEmptySimpleStr NonZeroPositiveInt Object );
 use App::MCP::Util         qw( distname terminate );
 use Async::IPC::Functions  qw( log_info );
@@ -222,11 +222,8 @@ sub _reload {
    return OK;
 }
 
-sub _set_program_name { # Localisation triggers cache file creation
-   my $self = shift;
-   my $name = $self->l10n->localizer(LANG, 'master');
-
-   return $PROGRAM_NAME = $self->config->pathname." - ${name}";
+sub _set_program_name {
+   my $self = shift; return $PROGRAM_NAME = $self->config->name;
 }
 
 sub _stdio_file {
@@ -234,7 +231,7 @@ sub _stdio_file {
 
    $name //= $self->config->name;
 
-   return $self->file->tempdir->catfile("${name}.${extn}");
+   return $self->config->tempdir->catfile("${name}.${extn}");
 }
 
 sub _build_listener {
@@ -270,7 +267,7 @@ sub _daemon {
    $self->ip_ev_hndlr;
    $self->clock_tick;
 
-   $loop->watch_signal( HUP  => sub { $self->_hangup_handler   } );
+   $loop->watch_signal( HUP  => sub { $self->_hangup_handler    } );
    $loop->watch_signal( QUIT => sub { terminate $loop           } );
    $loop->watch_signal( TERM => sub { terminate $loop           } );
    $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->raise } );
@@ -314,7 +311,11 @@ App::MCP::Daemon - <One-line description of module's purpose>
 
 =head1 Subroutines/Methods
 
-=head2 daemon
+=over 3
+
+=item C<daemon>
+
+=back
 
 =head1 Diagnostics
 
@@ -324,9 +325,9 @@ None
 
 =over 3
 
-=item L<App::MCP::Async>
-
 =item L<App::MCP::DaemonControl>
+
+=item L<Async::IPC>
 
 =item L<Plack::Runner>
 
@@ -352,7 +353,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

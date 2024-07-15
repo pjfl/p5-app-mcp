@@ -1,10 +1,8 @@
 package App::MCP::Model::Job;
 
-use App::MCP::Constants    qw( CRONTAB_FIELD_NAMES EXCEPTION_CLASS
-                               NUL SEPARATOR SPC TRUE );
-use HTTP::Status           qw( HTTP_EXPECTATION_FAILED );
-use App::MCP::Util         qw( redirect redirect2referer strip_parent_name );
-use Unexpected::Functions  qw( throw UnknownJob Unspecified );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Util         qw( redirect redirect2referer );
+use Unexpected::Functions  qw( UnknownJob );
 use Web::Simple;
 use App::MCP::Attributes;  # Will do cleaning
 
@@ -50,7 +48,7 @@ sub create : Nav('Create Job') {
 }
 
 sub delete : Nav('Delete Job') {
-   my ($self, $context, $jobid) = @_;
+   my ($self, $context) = @_;
 
    return unless $self->verify_form_post($context);
 
@@ -182,7 +180,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

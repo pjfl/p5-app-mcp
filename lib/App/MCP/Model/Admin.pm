@@ -14,7 +14,7 @@ sub menu : Auth('admin') Nav('Admin|img/admin.svg') {
    my $nav = $context->stash('nav')->list('admin');
 
    $nav->menu('page')->item('page/configuration');
-   $nav->menu('page')->item('page/buglist');
+   $nav->menu('doc')->item('doc/list');
 #   $nav->menu('job')->item('backgroundjob/status');
 #   $nav->menu('logfile')->item('logfile/list');
    $nav->menu('user')->item('user/list');

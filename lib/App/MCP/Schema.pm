@@ -20,6 +20,29 @@ extends 'Class::Usul::Cmd';
 with    'App::MCP::Role::Config';
 with    'App::MCP::Role::Log';
 
+=pod
+
+=encoding utf-8
+
+=head1 Name
+
+App::MCP::Schema - <One-line description of module's purpose>
+
+=head1 Synopsis
+
+   use App::MCP::Schema;
+   # Brief but working code examples
+
+=head1 Description
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=cut
+
 has 'admin_password' =>
    is      => 'lazy',
    default => sub {
@@ -137,6 +160,16 @@ has '_type' =>
       return $self->producers->{$self->_driver};
    };
 
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=cut
+
 sub BUILD {}
 
 =item backup - Backs up the database
@@ -181,7 +214,7 @@ sub backup : method {
    return OK;
 }
 
-=item dump_jobs - Dump jobs
+=item dump_jobs - Dump selected job definitions to a file
 
 =cut
 
@@ -222,7 +255,7 @@ sub install : method {
    return OK;
 }
 
-=item load_job - Load jobs
+=item load_job - Load job table dump file
 
 =cut
 
@@ -277,7 +310,7 @@ sub restore : method {
    return OK;
 }
 
-=item send_event - Send event
+=item send_event - Create a job state transition event
 
 =cut
 
@@ -604,36 +637,11 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=encoding utf-8
-
-=head1 Name
-
-App::MCP::Schema - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::Schema;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
-
-=head2 display_connect_info - Print the database connection information
-
-=head2 dump_jobs - Dump selected job definitions to a file
-
-=head2 load_jobs - Load job table dump file
-
-=head2 send_event - Create a job state transition event
-
-=head2 set_client_password - Set the MCP user client side password
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
@@ -663,7 +671,7 @@ Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

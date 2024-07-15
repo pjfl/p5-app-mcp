@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds documentation pages
           - Adds created and title columns to Bug result
           - Adds Bug result
           - Moves to_session from User to DBIC auth role

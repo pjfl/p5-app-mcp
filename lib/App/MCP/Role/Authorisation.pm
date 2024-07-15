@@ -20,9 +20,11 @@ sub is_authorised {
 
    my $user_role = $session->role or throw NoUserRole, [$session->username];
 
-   return TRUE if $role eq 'edit' and $user_role eq 'manager';
+   return TRUE if $user_role eq 'admin';
 
-   return TRUE if $role eq $user_role or $user_role eq 'admin';
+   return TRUE if $user_role eq 'manager' and $role eq 'edit';
+
+   return TRUE if $user_role eq $role;
 
    $context->stash(redirect $context->uri_for_action('page/access_denied'), []);
 
@@ -53,6 +55,8 @@ sub _redirect2login {
 # Private functions
 sub _get_action_auth {
    my ($context, $action) = @_;
+
+   return unless $action;
 
    my $attr = eval { $context->get_attributes($action) };
 

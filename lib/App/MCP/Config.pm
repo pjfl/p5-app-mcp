@@ -143,7 +143,7 @@ has 'db_extra' =>
 =item C<db_password>
 
 Password used to connect to the database. This has no default. It should be
-set using the command 'bin/mcp-schema --set-db-password' before the application
+set using the command C<bin/mcp-schema --store-password> before the application
 is started
 
 =cut
@@ -157,6 +157,14 @@ The username used to connect to the database
 =cut
 
 has 'db_username' => is => 'ro', isa => Str, default => 'mcp';
+
+=item C<default_password>
+
+Password used when creating new users
+
+=cut
+
+has 'default_password' => is => 'ro', isa => Str, default => 'welcome';
 
 =item C<default_route>
 
@@ -190,6 +198,26 @@ has 'deflate_types' =>
          qw( application/javascript image/svg+xml text/css text/html
          text/javascript )
       ];
+   };
+
+=item C<documentation>
+
+A hash reference of parameters used to configure the documentation viewer
+
+=cut
+
+
+has 'documentation' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      my $self = shift;
+
+      return {
+         directory  => $self->bin->parent->catdir('lib'),
+         extensions => 'pm',
+         sharedir   => $self->root->catdir('file')
+      };
    };
 
 =item C<dsn>
@@ -361,8 +389,8 @@ has 'name' => is => 'ro', isa => Str, default => 'Master Control Program';
 
 =item C<navigation>
 
-Hash reference of configuration attributes applied the the L<MCat::Navigation>
-object
+Hash reference of configuration attributes applied the the
+L<Web::Components::Navigation> object
 
 =cut
 
@@ -763,7 +791,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

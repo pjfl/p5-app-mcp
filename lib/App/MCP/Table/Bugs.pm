@@ -33,24 +33,24 @@ setup_resultset sub {
 has_column 'id' =>
    cell_traits => ['Numeric'],
    label       => 'ID',
+   link        => sub {
+      my $self    = shift;
+      my $context = $self->table->context;
+
+      return $context->uri_for_action('bug/view', [$self->result->id]);
+   },
    width       => '3rem';
 
-has_column 'state';
+has_column 'title' =>
+   label    => 'Title',
+   sortable => TRUE,
+   title    => 'Sort by title';
 
 has_column 'user_id' => label => 'Owner', value => 'owner.user_name';
 
-# has_column 'title' =>
-#    label    => 'Title',
-#    sortable => TRUE,
-#    title    => 'Sort by title',
-#    link     => sub {
-#       my $self    = shift;
-#       my $context = $self->table->context;
+has_column 'created' => cell_traits => ['DateTime'];
 
-#       return $context->uri_for_action('bug/view', [$self->result->id]);
-#    };
-
-#has_column 'created' => cell_traits => ['DateTime'];
+has_column 'state';
 
 has_column 'check' =>
    cell_traits => ['Checkbox'],

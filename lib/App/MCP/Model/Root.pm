@@ -38,32 +38,6 @@ sub base : Auth('none') {
 
 sub access_denied : Auth('none') {}
 
-sub buglist : Auth('admin') Nav('Bug List') {
-   my ($self, $context) = @_;
-
-   my $table = $self->new_table('Bugs', { context => $context });
-
-   $context->stash(table => $table);
-   return;
-}
-
-sub bugreport : Auth('view') Nav('Report Bug') {
-   my ($self, $context) = @_;
-
-   my $form = $self->new_form('BugReport', { context => $context });
-
-   if ($form->process(posted => $context->posted)) {
-      my $username = $context->session->username;
-      my $default  = $context->uri_for_action($self->config->redirect);
-      my $message  = ['User [_1] bug report created', $username];
-
-      $context->stash(redirect $default, $message);
-   }
-
-   $context->stash(form => $form);
-   return;
-}
-
 sub changes : Auth('none') Nav('Changes') {
    my ($self, $context) = @_;
 
@@ -111,13 +85,13 @@ sub login : Auth('none') Nav('Login') {
    my $form    = $self->new_form('Login', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $default  = $context->uri_for_action($self->config->redirect);
+      my $message  = 'User [_1] logged in';
       my $username = $context->session->username;
       my $wanted   = $context->session->wanted;
-      my $location = new_uri $context->request->scheme, $wanted if $wanted;
-      my $message  = 'User [_1] logged in';
+      my $location = $wanted ? new_uri $context->request->scheme, $wanted
+                   : $context->uri_for_action($self->config->redirect);
 
-      $context->stash(redirect $location || $default, [$message, $username]);
+      $context->stash(redirect $location, [$message, $username]);
       $context->session->wanted(NUL);
    }
 
@@ -141,7 +115,14 @@ sub logout : Auth('view') Nav('Logout') {
 sub not_found : Auth('none') {
    my ($self, $context) = @_;
 
-   $self->error($context, PageNotFound, [$context->request->path]);
+   my $request = $context->request;
+
+   if ($request->query_parameters->{navigation} eq 'true') {
+      $context->stash(json => {}, view => 'json');
+      return;
+   }
+
+   $self->error($context, PageNotFound, [$request->path]);
    return;
 }
 
@@ -299,7 +280,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

@@ -1,6 +1,5 @@
 package App::MCP::Table::Object::View;
 
-
 use HTML::StateTable::Constants qw( FALSE SPC TABLE_META TRUE );
 use HTML::StateTable::Types     qw( ArrayRef DBIxClass Str );
 use App::MCP::Object::View;
@@ -29,8 +28,7 @@ has 'result' => is => 'ro', isa => DBIxClass, required => TRUE;
 has 'table_class' => is => 'ro', isa => Str, default => 'object-view';
 
 setup_resultset sub {
-   my $self   = shift;
-   my $config = $self->context->config;
+   my $self = shift;
 
    return App::MCP::Object::View->new(table => $self);
 };

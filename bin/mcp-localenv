@@ -61,7 +61,9 @@ if ($active) {
    $extend->( 'PERL5_MB_OPT', 'INSTALLMAN1DIR=none INSTALLMAN3DIR=none', q( ) );
 }
 
-$extend->( 'PATH', $bindir ); $extend->( 'PERL5LIB', $libdir );
+$extend->( 'PATH', $bindir );
+$extend->( 'PERL5LIB', $libdir );
+$ENV{ (uc $appname).'_LIBDIR' } = $libdir;
 
 lib->import( $libdir );
 
@@ -135,7 +137,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and copyright
 
-Copyright (c) 2015 Peter Flanigan
+Copyright (c) 2024 Peter Flanigan
 
 This is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

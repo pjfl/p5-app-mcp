@@ -1649,19 +1649,6 @@ header {
   top: 3rem;
   z-index: 2;
 }
-.frame .exception {
-  background: lightpink;
-  border: 1px solid gray;
-  border-radius: 5px;
-  box-shadow: 3px 3px 3px gray;
-  max-width: 50rem;
-  padding: 0.5rem;
-}
-.frame .exception h1,
-.frame .exception h2,
-.frame .exception h3 {
-  margin: 0.5rem 0;
-}
 .frame.link-display-both {
   left: 7.75rem;
 }
@@ -1670,6 +1657,47 @@ header {
 }
 .frame.link-display-text {
   left: 6.75rem;
+}
+.frame .exception,
+.modal .exception {
+  background: lightpink;
+  border: 1px solid gray;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  margin: 0.5rem 0;
+  max-width: 50rem;
+  padding: 0.5rem;
+}
+.frame .exception h1,
+.modal .exception h1,
+.frame .exception h2,
+.modal .exception h2,
+.frame .exception h3,
+.modal .exception h3 {
+  margin: 0.5rem 0;
+}
+.frame .exception h1 span.content,
+.modal .exception h1 span.content,
+.frame .exception h2 span.content,
+.modal .exception h2 span.content,
+.frame .exception h3 span.content,
+.modal .exception h3 span.content {
+  font-family: Roboto, system-ui, sans-serif;
+}
+.frame .exception svg.error,
+.modal .exception svg.error {
+  height: 40px;
+  width: 40px;
+  vertical-align: middle;
+}
+.frame .exception .line,
+.modal .exception .line {
+  display: flex;
+}
+.frame .exception .line label,
+.modal .exception .line label {
+  font-family: Roboto, system-ui, sans-serif;
+  min-width: 10rem;
 }
 .standard {
   display: inline-block;
@@ -1859,8 +1887,12 @@ header {
   position: absolute;
   right: -1rem;
   text-align: left;
-  top: 3rem;
-  transition: max-height ease-in-out 500ms;
+  top: 2.5rem;
+  transition: all ease-in-out 500ms;
+}
+.sidebar .nav-control .nav-panel:hover,
+.navigation .nav-control .nav-panel:hover {
+  overflow: visible;
 }
 .sidebar .nav-control:hover .nav-panel,
 .navigation .nav-control:hover .nav-panel {
@@ -1981,14 +2013,10 @@ header {
   text-decoration: none;
   width: 100%;
 }
+.sidebar .nav-list.context,
+.navigation .nav-list.context,
 .sidebar .nav-list.control,
 .navigation .nav-list.control {
-  width: 10rem;
-}
-.sidebar .nav-list.control,
-.navigation .nav-list.control,
-.sidebar .nav-list.context,
-.navigation .nav-list.context {
   border: 1px solid gray;
   border-radius: 3px;
 }
@@ -1998,6 +2026,15 @@ header {
 }
 .sidebar .nav-list.context li.context:has(> a:hover, > form:hover) > .slide-out,
 .navigation .nav-list.context li.context:has(> a:hover, > form:hover) > .slide-out {
+  overflow-x: hidden;
+  width: 8rem;
+}
+.sidebar .nav-list.control,
+.navigation .nav-list.control {
+  width: 10rem;
+}
+.sidebar .nav-list.control li.control:has(> a:hover, > form:hover) > .slide-out,
+.navigation .nav-list.control li.control:has(> a:hover, > form:hover) > .slide-out {
   overflow-x: hidden;
   width: 8rem;
 }
@@ -2192,12 +2229,23 @@ header {
 .sidebar.link-display-text::after {
   width: 6rem;
 }
+.documentation {
+  padding-top: 0.5rem;
+}
+.documentation h1 {
+  font-size: 1rem;
+  margin: 0 0 0.25rem 0;
+}
+.documentation p,
+.documentation ul {
+  font-size: 0.8rem;
+  margin: 0 0 0.5rem 0;
+}
+.documentation pre {
+  margin: 0 0 0.5rem 2rem;
+}
 .file-preview pre {
   line-height: 0.5rem;
-}
-.modal .filemanager {
-  margin: 0;
-  min-width: 10rem;
 }
 .messages-panel {
   bottom: 1rem;
@@ -2225,12 +2273,13 @@ header {
 .messages-panel .message-item.hide {
   display: none;
 }
+.modal .filemanager {
+  margin: 0;
+  min-width: 10rem;
+}
 .modal-outer-wrapper {
-  align-items: center;
   background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   bottom: 0;
-  display: flex;
-  justify-content: center;
   left: 0;
   position: absolute;
   right: 0;
@@ -2238,6 +2287,10 @@ header {
   z-index: 4;
 }
 .modal-outer-wrapper .modal-container {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
   transition: opacity 500ms;
 }
 .modal-outer-wrapper .modal-container.in {
@@ -2250,13 +2303,11 @@ header {
   background: ivory;
   border: 1px solid;
   border-radius: 5px;
-  box-shadow: 3px 3px 3px;
-  color: gray;
-}
-.modal-outer-wrapper .modal .modal-content-wrapper,
-.modal-outer-wrapper .modal .modal-footer,
-.modal-outer-wrapper .modal .modal-header {
+  box-shadow: 3px 3px 3px gray;
   color: black;
+  max-height: 90%;
+  max-width: 80%;
+  overflow: auto;
 }
 .modal-outer-wrapper .modal .modal-header {
   align-items: center;
@@ -2267,6 +2318,9 @@ header {
   display: flex;
   justify-content: space-between;
   padding: 0.25rem 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .modal-outer-wrapper .modal .modal-header .modal-title {
   flex-grow: 2;

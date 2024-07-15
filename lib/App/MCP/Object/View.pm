@@ -1,11 +1,11 @@
 package App::MCP::Object::View;
 
 use HTML::StateTable::Constants qw( FALSE NUL TRUE );
-use HTML::StateTable::Types     qw( ArrayRef Int ResultRole Table Undef );
+use HTML::StateTable::Types     qw( ArrayRef Int ResultRole Str Table Undef );
+use Class::Usul::Cmd::Util      qw( ensure_class_loaded );
 use JSON::MaybeXS               qw( encode_json );
 use List::Util                  qw( pairs );
 use Ref::Util                   qw( is_arrayref is_coderef is_plain_hashref );
-use App::MCP::Object::Result;
 use Data::Page;
 use Moo;
 use MooX::HandlesVia;
@@ -19,7 +19,7 @@ Synonym for C<total_results>
 has 'count' => is => 'lazy', isa => Int, default => sub { shift->total_results};
 
 # This is the current index into the results list for the iterator
-has '_index' => is => 'rw', isa => Int, lazy => TRUE, default  => 0;
+has '_index' => is => 'rw', isa => Int, lazy => TRUE, default => 0;
 
 # The list of results which will be displayed in response to this request
 has '_results' =>
@@ -29,6 +29,15 @@ has '_results' =>
    handles_via => 'Array',
    handles     => { result_count => 'count' },
    clearer     => '_clear_results';
+
+=item result_class
+
+=cut
+
+has 'result_class' =>
+   is      => 'ro',
+   isa     => Str,
+   default => 'App::MCP::Object::Result';
 
 =item table
 
@@ -57,10 +66,13 @@ Returns a reference to an array of L<MCat::Object::Result> objects
 =cut
 
 sub build_results {
-   my $self    = shift;
-   my $results = [];
-   my $table   = $self->table;
-   my $source  = $table->result->result_source;
+   my $self         = shift;
+   my $results      = [];
+   my $table        = $self->table;
+   my $source       = $table->result->result_source;
+   my $result_class = $self->result_class;
+
+   ensure_class_loaded $result_class;
 
    for my $colname ($source->columns) {
       my $info = $source->columns_info->{$colname};
@@ -94,12 +106,12 @@ sub build_results {
       my $traits = $info->{cell_traits} // [];
       my $name   = $info->{label} // ucfirst $colname;
 
-      push @{$results}, App::MCP::Object::Result->new(
+      push @{$results}, $result_class->new(
          cell_traits => $traits, name => $name, value => $value
       );
    }
 
-   if ($table->has_add_columns) {
+   if ($table->can('has_add_columns') && $table->has_add_columns) {
       for my $pair (pairs @{$table->add_columns}) {
          my $value = $pair->value;
 
@@ -107,7 +119,7 @@ sub build_results {
             $value = encode_json($value);
          }
 
-         push @{$results}, App::MCP::Object::Result->new(
+         push @{$results}, $result_class->new(
             name => $pair->key, value => $value
          );
       }

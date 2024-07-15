@@ -1,15 +1,31 @@
 <div class="exception">
-[% header("", "Exception Awarded") -%]
-Message: [% exception.original | html %]<br/>
+[% icon = svg_icon('standalone-error', 'error') -%]
+[% header(icon, 'Exception Awarded', '', ' ') -%]
+  <div class="line">
+    <label>Thrown by</label><span>[% exception.leader %]</span>
+  </div>
+  <div class="line">
+    <label>Message</label><span>[% exception.original | html %]</span>
+  </div>
 [% IF exception.class == 'ValidationErrors' -%]
 [%    FOR error IN exception.args -%]
-<span>[% error %]<span><br />
+  <div class="line">
+    <label></label><span>[% error | html %]</span>
+  </div>
 [%    END -%]
 [% END -%]
-Thrown by: [% exception.leader %]<br/>
-Created: [% dt_local(exception.created) %]<br />
-Class: [% exception.class %]<br/>
-Version: [% exception.version %]<br/>
-Session updated: [% ucfirst(dt_human(dt_from_epoch(session.updated))) %]<br/>
-Code: [% exception.rv %]<br/>
+  <div class="line">
+    <label>Class</label>
+      <span>[% exception.class %] v[% exception.version %]</span>
+  </div>
+  <div class="line">
+    <label>Created</label><span>[% dt_user(exception.created) %]</span>
+  </div>
+  <div class="line">
+    <label>Status</label><span>[% status_message(exception.rv) %]</span>
+  </div>
+  <div class="line">
+    <label>Session updated</label>
+    <span>[% ucfirst(dt_human(dt_from_epoch(session.updated))) %]</span>
+  </div>
 </div>

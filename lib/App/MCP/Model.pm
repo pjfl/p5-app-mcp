@@ -48,18 +48,17 @@ has 'table' =>
 sub root : Auth('none') {
    my ($self, $context) = @_;
 
-   my $args = { context => $context, model => $self };
-   my $nav  = Web::Components::Navigation->new($args);
-
-   $nav->list('_control');
-
+   my $args    = { context => $context, model => $self };
+   my $nav     = Web::Components::Navigation->new($args);
    my $session = $context->session;
+
+   $nav->list('bugs')->item('bug/create');
+   $nav->list('_control');
 
    if ($session->authenticated) {
       $nav->item('page/changes');
       $nav->item('page/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);
-      $nav->item('page/bugreport');
       $nav->item('user/totp', [$session->id]) if $session->enable_2fa;
       $nav->item(formpost, 'page/logout');
    }
@@ -69,6 +68,7 @@ sub root : Auth('none') {
       $nav->item('page/register', []) if $self->config->registration;
    }
 
+   $nav->menu('bugs')->item('bug/list');
    $context->stash($self->navigation_key => $nav);
    return;
 }
@@ -132,7 +132,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2015 Peter Flanigan. All rights reserved
+Copyright (c) 2024 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

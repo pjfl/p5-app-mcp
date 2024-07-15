@@ -15,26 +15,26 @@ $class->table('bugs');
 
 $class->add_columns(
    id          => { %{serial_data_type()}, label => 'Bug ID' },
+   title       => text_data_type,
+   description => text_data_type,
+   user_id     => {
+      %{foreign_key_data_type()},
+      display  => 'owner.user_name',
+      label    => 'Owner',
+   },
    created     => {
       cell_traits   => ['DateTime'],
       data_type     => 'timestamp',
       set_on_create => TRUE,
       timezone      => 'UTC',
    },
-   updated => {
+   updated     => {
       cell_traits => ['DateTime'],
       data_type   => 'timestamp',
       is_nullable => TRUE,
       timezone    => 'UTC',
    },
-   user_id     => {
-      %{foreign_key_data_type()},
-      display  => 'owner.user_name',
-      label    => 'Owner',
-   },
    state       => enumerated_data_type( BUG_STATE_ENUM, 'open' ),
-   title       => text_data_type,
-   description => text_data_type,
 );
 
 $class->set_primary_key('id');

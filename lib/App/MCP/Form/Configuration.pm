@@ -14,6 +14,8 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
+has '+info_message' => default => 'Current runtime configuration parameters';
+
 has '_formatter' =>
    is      => 'lazy',
    isa     => class_type('Text::MultiMarkdown'),
@@ -28,7 +30,9 @@ has '_json' =>
 
 has '+title' => default => 'Configuration';
 
-has_field 'configuration' => type => 'NonEditable';
+has_field 'configuration' =>
+   type          => 'NonEditable',
+   wrapper_class => 'input-immutable documentation';
 
 after 'after_build_fields' => sub {
    my $self    = shift;

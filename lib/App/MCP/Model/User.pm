@@ -40,7 +40,7 @@ sub create : Auth('admin') Nav('Create User') {
    my $options = { context => $context, title => 'Create User' };
    my $form    = $self->new_form('User', $options);
 
-   if ($form->process( posted => $context->posted )) {
+   if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('user/view', [$form->item->id]);
       my $message = ['User [_1] created', $form->item->user_name];
 
@@ -140,11 +140,33 @@ sub totp : Auth('view') Nav('View TOTP') {
 }
 
 sub view : Auth('admin') Nav('View User') {
-   my ($self, $context, $userid) = @_;
+   my ($self, $context) = @_;
 
-   my $options = { context => $context, result => $context->stash('user') };
+   my $user    = $context->stash('user');
+   my $buttons = [{
+      action    => $context->uri_for_action('user/edit', [$user->id]),
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Edit',
+   },{
+      action    => $context->uri_for_action('user/profile', [$user->id]),
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Profile',
+   },{
+      action    => $context->uri_for_action('user/delete', [$user->id]),
+      classes   => 'right',
+      selection => 'disable_on_select',
+      value     => 'Delete',
+   }];
+   my $options = {
+      caption      => 'View User',
+      context      => $context,
+      form_buttons => $buttons,
+      result       => $user
+   };
 
-   $context->stash(table => $self->new_table('User::View', $options));
+   $context->stash(table => $self->new_table('Object::View', $options));
    return;
 }
 
