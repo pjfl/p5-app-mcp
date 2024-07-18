@@ -543,7 +543,7 @@ form.classic .ds-form .ds-reorderable .knob {
 }
 form.classic .form-wrapper {
   border-collapse: separate;
-  border-spacing: 0 0.5rem;
+  border-spacing: 0 0.25rem;
   border-radius: 5px;
   padding: 0 1rem;
   position: relative;
@@ -2230,10 +2230,17 @@ header {
   width: 6rem;
 }
 .documentation {
+  font-family: Roboto, system-ui, sans-serif;
   padding-top: 0.5rem;
 }
 .documentation h1 {
   font-size: 1rem;
+}
+.documentation h2 {
+  font-size: 0.8rem;
+}
+.documentation h1,
+.documentation h2 {
   margin: 0 0 0.25rem 0;
 }
 .documentation p,

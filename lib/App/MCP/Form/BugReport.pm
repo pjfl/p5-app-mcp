@@ -18,6 +18,10 @@ has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
 
 has_field 'user_id' => type => 'Hidden';
 
+has_field 'id' =>
+   type     => 'Display',
+   noupdate => TRUE;
+
 has_field 'owner' =>
    type     => 'Display',
    noupdate => TRUE,

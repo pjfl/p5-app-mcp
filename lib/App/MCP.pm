@@ -2,7 +2,7 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 39 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 40 $ =~ /\d+/gmx );
 
 use Class::Usul::Cmd::Util qw( ns_environment );
 
@@ -13,7 +13,7 @@ sub env_var {
 }
 
 sub schema_version {
-   return '0.5.37';
+   return '0.5.40';
 }
 
 1;
@@ -32,7 +32,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.5.$Rev: 39 $ of L<App::MCP>
+Describes version v0.5.$Rev: 40 $ of L<App::MCP>
 
 =head1 Synopsis
 
@@ -184,6 +184,8 @@ a socket to C<nginx>. There is an example
 [configuration recipe](https://www.roxsoft.co.uk/doh/static/en/posts/Blog/Debian-Nginx-Letsencrypt.sh-Configuration-Recipe.html)
 for this method of deployment
 
+=head1 Diagnostics
+
 Running one of the command line programs like F<bin/mcp-cli> calling
 the C<dump-config> method will output a list of configuration options,
 their defining class, documentation, and current value
@@ -195,8 +197,6 @@ Help for command line options can be found be running:
 
 The C<list-methods> command is available to all of the application programs
 (except C<mcp-listener>)
-
-=head1 Diagnostics
 
 =head1 Dependencies
 

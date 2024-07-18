@@ -9,7 +9,7 @@ sub _DoCodeBlocks { # Add support for triple graves
    $text =~ s{
          (?:```(.*)[ \n])
          ([^`]+)
-         (?:```(.*))
+         (?:[ \n]?```([^ \n]*)?)
       }{
       my $class = $1 || $3 || q();
       my $codeblock = $2;

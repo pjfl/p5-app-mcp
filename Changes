@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Better doc display
           - Updates MCP pod
           - Adds documentation pages
           - Adds created and title columns to Bug result

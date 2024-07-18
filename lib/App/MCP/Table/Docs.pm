@@ -8,10 +8,8 @@ use Moo;
 use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
-with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::HighlightRow';
-with    'HTML::StateTable::Role::Reorderable';
 with    'HTML::StateTable::Role::Tag';
 with    'App::MCP::Role::FileMeta';
 
@@ -34,8 +32,6 @@ has 'selected' => is => 'ro', isa => Str, predicate => 'has_selected';
 has 'selectonly' => is => 'ro', isa => Bool, default => FALSE;
 
 has '+caption' => default => 'Documentation';
-
-has '+configurable_action' => default => 'api/table_preference';
 
 has '+form_buttons' => default => sub { shift->_build_form_buttons };
 
@@ -107,15 +103,6 @@ has_column 'size' =>
    };
 
 has_column 'modified' => cell_traits => ['DateTime'], sortable => TRUE;
-
-has_column 'check' =>
-   cell_traits => ['Checkbox'],
-   label       => 'Select',
-   value       => sub {
-      my $cell = shift;
-
-      return $cell->table->_qualified_directory($cell->result);
-   };
 
 after 'BUILD' => sub {
    my $self = shift;

@@ -2,7 +2,8 @@ package App::MCP::Schema::Schedule::Result::Bug;
 
 use App::MCP::Constants    qw( BUG_STATE_ENUM );
 use App::MCP::Util         qw( enumerated_data_type foreign_key_data_type
-                               serial_data_type text_data_type );
+                               nullable_foreign_key_data_type serial_data_type
+                               text_data_type );
 use Class::Usul::Cmd::Util qw( now_dt );
 use DBIx::Class::Moo::ResultClass;
 
@@ -35,11 +36,18 @@ $class->add_columns(
       timezone    => 'UTC',
    },
    state       => enumerated_data_type( BUG_STATE_ENUM, 'open' ),
+   assigned_id => {
+      %{nullable_foreign_key_data_type()},
+      display  => 'assigned.user_name',
+      label    => 'Assigned',
+   },
 );
 
 $class->set_primary_key('id');
 
 $class->belongs_to('owner' => "${result}::User", 'user_id');
+
+$class->might_have('assigned' => "${result}::User", 'assigned_id');
 
 sub insert {
    my $self    = shift;

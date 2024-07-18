@@ -107,10 +107,23 @@ sub list : Auth('view') Nav('Bugs') {
 sub view : Auth('view') Nav('View Bug') {
    my ($self, $context) = @_;
 
+   my $bug = $context->stash('bug');
+   my $buttons = [{
+      action    => $context->uri_for_action('bug/edit', [$bug->id]),
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Edit',
+   },{
+      action    => $context->uri_for_action('bug/delete', [$bug->id]),
+      classes   => 'right',
+      selection => 'disable_on_select',
+      value     => 'Delete',
+   }];
    my $options = {
-      caption => 'View Bug',
-      context => $context,
-      result  => $context->stash('bug')
+      caption      => 'View Bug',
+      context      => $context,
+      form_buttons => $buttons,
+      result       => $context->stash('bug')
    };
 
    $context->stash(table => $self->new_table('Object::View', $options));
