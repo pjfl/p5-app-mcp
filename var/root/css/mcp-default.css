@@ -700,6 +700,9 @@ form.classic .input-field.inline {
 form.classic .input-field.hide {
   display: none;
 }
+form.classic .input-field.data-structure {
+  top: -1rem;
+}
 form.classic .input-boolean .checkbox-wrapper {
   display: inline-block;
   isolation: isolate;

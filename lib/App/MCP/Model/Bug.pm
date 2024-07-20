@@ -35,9 +35,10 @@ sub create : Auth('view') Nav('Report Bug') {
    my $form = $self->new_form('BugReport', { context => $context });
 
    if ($form->process(posted => $context->posted)) {
+      my $bugid    = $form->item->id;
       my $username = $context->session->username;
-      my $view     = $context->uri_for_action('bug/view', [$form->item->id]);
-      my $message  = ['User [_1] bug report created', $username];
+      my $view     = $context->uri_for_action('bug/view', [$bugid]);
+      my $message  = ['User [_1] bug report [_2] created', $username, $bugid];
 
       $context->stash(redirect $view, $message);
    }
@@ -58,7 +59,7 @@ sub delete : Auth('admin') Nav('Delete Bug') {
 
    my $list = $context->uri_for_action('bug/list');
 
-   $context->stash(redirect $list, ['Bug [_1] deleted', $bugid]);
+   $context->stash(redirect $list, ['Bug report [_1] deleted', $bugid]);
    return;
 }
 
@@ -86,7 +87,7 @@ sub edit : Nav('Update Bug') {
    if ($form->process(posted => $context->posted)) {
       my $username = $context->session->username;
       my $view     = $context->uri_for_action('bug/view', [$form->item->id]);
-      my $message  = ['User [_1] bug report created', $username];
+      my $message  = ['Bug report [_1] updated', $form->item->id];
 
       $context->stash(redirect $view, $message);
    }
@@ -112,7 +113,7 @@ sub view : Auth('view') Nav('View Bug') {
       action    => $context->uri_for_action('bug/edit', [$bug->id]),
       method    => 'get',
       selection => 'disable_on_select',
-      value     => 'Edit',
+      value     => 'Update',
    },{
       action    => $context->uri_for_action('bug/delete', [$bug->id]),
       classes   => 'right',

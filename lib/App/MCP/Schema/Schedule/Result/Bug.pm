@@ -1,9 +1,10 @@
 package App::MCP::Schema::Schedule::Result::Bug;
 
-use App::MCP::Constants    qw( BUG_STATE_ENUM );
-use App::MCP::Util         qw( enumerated_data_type foreign_key_data_type
+use App::MCP::Constants    qw( BUG_STATE_ENUM FALSE TRUE );
+use App::MCP::Util         qw( created_timestamp_data_type enumerated_data_type
+                               foreign_key_data_type
                                nullable_foreign_key_data_type serial_data_type
-                               text_data_type );
+                               text_data_type updated_timestamp_data_type );
 use Class::Usul::Cmd::Util qw( now_dt );
 use DBIx::Class::Moo::ResultClass;
 
@@ -23,18 +24,8 @@ $class->add_columns(
       display  => 'owner.user_name',
       label    => 'Owner',
    },
-   created     => {
-      cell_traits   => ['DateTime'],
-      data_type     => 'timestamp',
-      set_on_create => TRUE,
-      timezone      => 'UTC',
-   },
-   updated     => {
-      cell_traits => ['DateTime'],
-      data_type   => 'timestamp',
-      is_nullable => TRUE,
-      timezone    => 'UTC',
-   },
+   created     => created_timestamp_data_type,
+   updated     => updated_timestamp_data_type,
    state       => enumerated_data_type( BUG_STATE_ENUM, 'open' ),
    assigned_id => {
       %{nullable_foreign_key_data_type()},
@@ -47,7 +38,9 @@ $class->set_primary_key('id');
 
 $class->belongs_to('owner' => "${result}::User", 'user_id');
 
-$class->might_have('assigned' => "${result}::User", 'assigned_id');
+$class->belongs_to('assigned' => "${result}::User", 'assigned_id');
+
+$class->has_many('comments' => "${result}::BugComment", 'bug_id');
 
 sub insert {
    my $self    = shift;
