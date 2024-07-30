@@ -56,6 +56,7 @@ sub root : Auth('none') {
    $nav->list('_control');
 
    if ($session->authenticated) {
+      $nav->menu('bugs')->item('bug/list');
       $nav->item('page/changes');
       $nav->item('page/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);
@@ -68,7 +69,6 @@ sub root : Auth('none') {
       $nav->item('page/register', []) if $self->config->registration;
    }
 
-   $nav->menu('bugs')->item('bug/list');
    $context->stash($self->navigation_key => $nav);
    return;
 }

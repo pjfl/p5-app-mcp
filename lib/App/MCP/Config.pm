@@ -158,6 +158,17 @@ The username used to connect to the database
 
 has 'db_username' => is => 'ro', isa => Str, default => 'mcp';
 
+=item C<deployment>
+
+Defaults to C<development>. Should be overridden in the local configuration
+file. Used to modify the server output depending on deployment environment.
+For example, any value not C<development> will prevent the rendering of an
+exception to the end user
+
+=cut
+
+has 'deployment' => is => 'ro', isa => Str, default => 'development';
+
 =item C<default_password>
 
 Password used when creating new users

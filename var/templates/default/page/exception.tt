@@ -1,19 +1,20 @@
 <div class="exception">
 [% icon = svg_icon('standalone-error', 'error') -%]
 [% header(icon, 'Exception Awarded', '', ' ') -%]
+[% IF deployment == 'development' -%]
   <div class="line">
     <label>Thrown by</label><span>[% exception.leader %]</span>
   </div>
   <div class="line">
     <label>Message</label><span>[% exception.original | html %]</span>
   </div>
-[% IF exception.class == 'ValidationErrors' -%]
-[%    FOR error IN exception.args -%]
+[%    IF exception.class == 'ValidationErrors' -%]
+[%       FOR error IN exception.args -%]
   <div class="line">
     <label></label><span>[% error | html %]</span>
   </div>
+[%       END -%]
 [%    END -%]
-[% END -%]
   <div class="line">
     <label>Class</label>
       <span>[% exception.class %] v[% exception.version %]</span>
@@ -28,4 +29,10 @@
     <label>Session updated</label>
     <span>[% ucfirst(dt_human(dt_from_epoch(session.updated))) %]</span>
   </div>
+[% ELSE -%]
+  <div class="line">
+    <label>Error</label>
+    <span>Something went wrong</span>
+  </div>
+[% END -%]
 </div>

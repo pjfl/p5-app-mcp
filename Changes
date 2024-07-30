@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds config deployment attribute
           - Adds BugComment
           - Better doc display
           - Updates MCP pod

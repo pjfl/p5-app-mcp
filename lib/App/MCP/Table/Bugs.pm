@@ -27,18 +27,23 @@ has '+page_size_control_location' => default => 'BottomLeft';
 set_table_name 'bugs';
 
 setup_resultset sub {
-   return shift->context->model('Bug');
+   my $self = shift;
+   my $rs   = $self->context->model('Bug');
+
+   return $rs->search({}, { order_by => 'id' });
 };
 
 has_column 'id' =>
    cell_traits => ['Numeric'],
-   label       => 'ID',
+   label       => 'Bug ID',
    link        => sub {
       my $self    = shift;
       my $context = $self->table->context;
 
       return $context->uri_for_action('bug/view', [$self->result->id]);
    },
+   sortable    => TRUE,
+   title       => 'Sort by bug id',
    width       => '3rem';
 
 has_column 'title' =>
@@ -50,7 +55,7 @@ has_column 'user_id' => label => 'Owner', value => 'owner.user_name';
 
 has_column 'created' => cell_traits => ['DateTime'];
 
-has_column 'state';
+has_column 'state' => sortable => TRUE, title => 'Sort by state';
 
 has_column 'check' =>
    cell_traits => ['Checkbox'],

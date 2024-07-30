@@ -10,8 +10,8 @@ use HTML::Forms::Constants            ( );
 use Web::ComposableRequest::Constants ( );
 
 our @EXPORT = qw( BUG_STATE_ENUM CRONTAB_FIELD_NAMES DOTS HASH_CHAR
-                  LOG_KEY_WIDTH JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_TRUE
-                  STATE_ENUM TRANSITION_ENUM VARCHAR_MAX_SIZE );
+                  LOG_KEY_WIDTH JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_NOW
+                  SQL_TRUE STATE_ENUM TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
 Class::Usul::Cmd::Constants->Exception_Class('App::MCP::Exception');
 HTML::StateTable::Constants->Exception_Class('App::MCP::Exception');
@@ -43,8 +43,9 @@ sub BUG_STATE_ENUM      () { [ qw( assigned fixed open wontfix ) ] }
 sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
 sub LOG_KEY_WIDTH       () { 13 }
 sub JOB_TYPE_ENUM       () { [ 'box', 'job' ] }
-sub SQL_FALSE           () { \'false' } #' emacs
-sub SQL_TRUE            () { \'true' } #' emacs
+sub SQL_FALSE           () { \q{false} }
+sub SQL_NOW             () { \q{NOW()} }
+sub SQL_TRUE            () { \q{true} }
 sub STATE_ENUM          () { [ qw( active hold failed finished
                                    inactive running starting terminated ) ] }
 sub TRANSITION_ENUM     () { [ qw( activate fail finish off_hold

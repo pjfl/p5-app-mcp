@@ -39,7 +39,6 @@ sub logout {
 
    $session->authenticated(FALSE);
    $session->role(NUL) if $session->can('role');
-   $session->wanted(NUL) if $session->can('wanted');
    return;
 }
 

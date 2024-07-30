@@ -523,15 +523,21 @@ form.classic .alert-info {
   padding: 0.5rem 0 0;
 }
 form.classic .ds-form {
+  border-spacing: 0;
   position: relative;
 }
 form.classic .ds-form th {
   font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: normal;
 }
 form.classic .ds-form .ds-field.hide,
 form.classic .ds-form .ds-reorderable.hide,
 form.classic .ds-form .ds-remove.hide {
   display: none;
+}
+form.classic .ds-form .ds-output {
+  font-size: 0.8rem;
 }
 form.classic .ds-form .ds-reorderable-drag {
   position: absolute;
@@ -647,7 +653,7 @@ form.classic .input-field select,
 form.classic .input-field textarea {
   display: table-cell;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
-  max-width: 12rem;
+  max-width: 20rem;
 }
 form.classic .input-field input,
 form.classic .input-field select.select-multiple,
@@ -665,6 +671,14 @@ form.classic .input-field input[type=password],
 form.classic .input-field input[type=text],
 form.classic .input-field select.select-multiple option {
   padding: 0 0.25rem;
+}
+form.classic .input-field input[readonly=readonly] {
+  color: gray;
+}
+form.classic .input-field input[readonly=readonly][type=datetime-local] {
+  background: ivory;
+  border: 0;
+  color: black;
 }
 form.classic .input-field select.select-multiple option {
   min-width: 8rem;
@@ -699,9 +713,6 @@ form.classic .input-field.inline {
 }
 form.classic .input-field.hide {
   display: none;
-}
-form.classic .input-field.data-structure {
-  top: -1rem;
 }
 form.classic .input-boolean .checkbox-wrapper {
   display: inline-block;

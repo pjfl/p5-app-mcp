@@ -1,11 +1,10 @@
 package App::MCP::Schema::Schedule::Result::Bug;
 
-use App::MCP::Constants    qw( BUG_STATE_ENUM FALSE TRUE );
-use App::MCP::Util         qw( created_timestamp_data_type enumerated_data_type
-                               foreign_key_data_type
-                               nullable_foreign_key_data_type serial_data_type
-                               text_data_type updated_timestamp_data_type );
-use Class::Usul::Cmd::Util qw( now_dt );
+use App::MCP::Constants qw( BUG_STATE_ENUM FALSE SQL_NOW TRUE );
+use App::MCP::Util      qw( created_timestamp_data_type enumerated_data_type
+                            foreign_key_data_type
+                            nullable_foreign_key_data_type serial_data_type
+                            text_data_type updated_timestamp_data_type );
 use DBIx::Class::Moo::ResultClass;
 
 extends 'App::MCP::Schema::Base';
@@ -46,7 +45,7 @@ sub insert {
    my $self    = shift;
    my $columns = { $self->get_inflated_columns };
 
-   $columns->{created} = now_dt;
+   $columns->{created} = SQL_NOW;
    $self->set_inflated_columns($columns);
 
    return $self->next::method;
@@ -58,7 +57,7 @@ sub update {
    $self->set_inflated_columns($columns) if $columns;
 
    $columns = { $self->get_inflated_columns };
-   $columns->{updated} = now_dt;
+   $columns->{updated} = SQL_NOW;
    $self->set_inflated_columns($columns);
    return $self->next::method;
 }

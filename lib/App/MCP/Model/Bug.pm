@@ -17,7 +17,8 @@ sub base : Auth('none') {
    my $nav = $context->stash('nav')->list('bugs');
 
    if ($bugid) {
-      my $bug = $context->model('Bug')->find($bugid);
+      my $rs  = $context->model('Bug');
+      my $bug = $rs->find($bugid, { prefetch => [qw(comments)]});
 
       return $self->error($context, UnknownBug, [$bugid]) unless $bug;
 

@@ -12,7 +12,7 @@ has '+title'        => default => 'Change Password';
 has '+info_message' => default => 'Authenticate using your old password';
 has '+no_update'    => default => TRUE;
 
-has_field 'name' => type => 'Display', label => 'User Name';
+has_field 'user_name' => type => 'Display', label => 'User Name';
 
 has_field 'old_password' =>
    type     => 'Password',

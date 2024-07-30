@@ -5,7 +5,8 @@ use HTTP::Status          qw( HTTP_OK );
 use App::MCP::Util        qw( create_token new_uri redirect );
 use JSON::MaybeXS         qw( encode_json );
 use Type::Utils           qw( class_type );
-use Unexpected::Functions qw( PageNotFound UnknownToken UnknownUser );
+use Unexpected::Functions qw( PageNotFound UnauthorisedAccess
+                              UnknownToken UnknownUser );
 use App::MCP::Redis;
 use Moo;
 use App::MCP::Attributes; # Will do cleaning
@@ -194,7 +195,89 @@ sub password_reset : Auth('none') {
    return;
 }
 
+sub register : Auth('none') Nav('Register') {
+   my ($self, $context, $token) = @_;
+
+   return $self->error($context, UnauthorisedAccess)
+      unless $self->config->registration;
+
+   return $self->_create_user($context, $token)
+      if !$context->posted && $token;
+
+   my $form = $self->new_form('Register', {
+      context => $context, log => $self->log, redis => $self->_redis
+   });
+
+   if ($form->process(posted => $context->posted)) {
+      my $job     = $context->stash->{job};
+      my $login   = $context->uri_for_action('page/login');
+      my $message = 'Registration request [_1] dispatched';
+
+      $context->stash(redirect $login, [$message, $job->label]);
+      return;
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
+sub totp_reset : Auth('none') {
+   my ($self, $context, $userid, $token) = @_;
+
+   my $user = $context->stash('user') or return;
+
+   if (!$context->posted && $token && $token ne 'reset') {
+      my $stash = $self->_redis->get($token)
+         or return $self->error($context, UnknownToken, [$token]);
+      my $options = { context => $context, user => $user };
+
+      $context->stash(form => $self->new_form('TOTP::Secret', $options));
+      $self->_redis->remove($token);
+      return;
+   }
+
+   my $form = $self->new_form('TOTP::Reset', {
+      context => $context,
+      log     => $self->log,
+      redis   => $self->_redis,
+      user    => $user
+   });
+
+   if ($form->process(posted => $context->posted)) {
+      my $job     = $context->stash->{job};
+      my $message = 'User [_1] TOTP reset request [_2] dispatched';
+      my $login   = $context->uri_for_action('page/login');
+
+      $context->stash(redirect $login, [$message, "${user}", $job->label]);
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
 # Private methods
+sub _create_user {
+   my ($self, $context, $token) = @_;
+
+   my $stash = $self->_redis->get($token)
+      or return $self->error($context, UnknownToken, [$token]);
+   my $role  = $context->model('Role')->find({ name => 'view' });
+   my $args  = {
+      email            => $stash->{email},
+      name             => $stash->{username},
+      password         => $stash->{password},
+      password_expired => TRUE,
+      role_id          => $role->id,
+   };
+   my $user    = $context->model('User')->create($args);
+   my $changep = $context->uri_for_action('page/password', [$user->id]);
+   my $message = 'User [_1] created';
+
+   $context->stash(redirect $changep, [$message, $user->name]);
+   $self->_redis->remove($token);
+   return;
+}
+
 sub _send_email {
    my ($self, $context, $token, $args) = @_;
 
