@@ -33,8 +33,8 @@ has_field 'password' =>
    element_attr => {
       javascript => 'oninput="' . sprintf($change_js, 'password') . '"'
    },
-   tags         => { label_tag => 'span' },
-   required     => TRUE;
+   required     => TRUE,
+   tags         => { label_tag => 'span' };
 
 has_field 'auth_code' =>
    type          => 'Digits',

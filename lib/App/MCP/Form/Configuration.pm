@@ -5,7 +5,6 @@ use HTML::Forms::Constants      qw( FALSE META TRUE );
 use HTML::Forms::Types          qw( Str );
 use HTML::Entities              qw( encode_entities );
 use Class::Usul::Cmd::Util      qw( list_attr_of list_methods_of );
-use JSON::MaybeXS               qw( );
 use Ref::Util                   qw( is_arrayref is_plain_hashref );
 use Type::Utils                 qw( class_type );
 use App::MCP::Markdown;
@@ -15,22 +14,15 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
+with    'App::MCP::Role::JSONParser';
 
 has '+info_message' => default => 'Current runtime configuration parameters';
+has '+title'        => default => 'Configuration';
 
 has '_formatter' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Markdown'),
    default => sub { App::MCP::Markdown->new };
-
-has '_json' =>
-   is      => 'ro',
-   isa     => class_type(JSON::MaybeXS::JSON),
-   default => sub {
-      return JSON::MaybeXS->new( convert_blessed => TRUE );
-   };
-
-has '+title' => default => 'Configuration';
 
 has_field 'configuration' =>
    type          => 'NonEditable',
@@ -68,7 +60,7 @@ after 'after_build_fields' => sub {
 sub _encode_ref {
    my ($self, $v) = @_;
 
-   (my $string = $self->_json->encode($v)) =~ s{ \n }{ }gmx;
+   (my $string = $self->json_parser->encode($v)) =~ s{ \n }{ }gmx;
 
    $string =~ s{ \{ }{\{ }gmx;
    $string =~ s{ \} }{ \}}gmx;

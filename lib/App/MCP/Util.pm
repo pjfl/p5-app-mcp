@@ -30,7 +30,7 @@ our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type create_token
 
 my $digest_cache;
 my $reserved   = q(;/?:@&=+$,[]);
-my $mark       = q(-_.!~*'());                                   #'; emacs
+my $mark       = q(-_.!~*'());
 my $unreserved = "A-Za-z0-9\Q${mark}\E%\#";
 my $uric       = quotemeta($reserved) . '\p{isAlpha}' . $unreserved;
 
@@ -182,7 +182,9 @@ sub digest ($) {
 }
 
 sub distname (;$) {
-   (my $v = $_[0] // NUL) =~ s{ :: }{-}gmx; return $v;
+   (my $v = $_[0] // NUL) =~ s{ :: }{-}gmx;
+
+   return $v;
 }
 
 sub dt_from_epoch ($;$) {
@@ -253,7 +255,9 @@ sub new_salt ($$) {
 }
 
 sub new_uri ($$) {
-   my $v = uri_escape($_[1]); return bless \$v, 'URI::'.$_[0];
+   my $v = uri_escape($_[1]);
+
+   return bless \$v, 'URI::'.$_[0];
 }
 
 sub nullable_foreign_key_data_type () {
@@ -310,21 +314,25 @@ sub serial_data_type () {
 }
 
 sub set_on_create_datetime_data_type () {
-   return { data_type         => 'datetime',
-            set_on_create     => TRUE, };
+   return {
+      data_type     => 'datetime',
+      set_on_create => TRUE,
+   };
 }
 
 sub strip_parent_name ($) {
-   my $v = shift; my $sep = SEPARATOR; my @values;
+   my $v   = shift;
+   my $sep = SEPARATOR;
 
-   $v =~ m{ $sep }mx and @values = split m{ $sep }mx, $v and $v = pop @values;
+   $v = (split m{ $sep }mx, $v)[-1] if $v =~ m{ $sep }mx;
 
    return $v;
 }
 
 sub terminate ($) {
-   $_[ 0 ]->unwatch_signal( 'QUIT' ); $_[ 0 ]->unwatch_signal( 'TERM' );
-   $_[ 0 ]->stop;
+   $_[0]->unwatch_signal('QUIT');
+   $_[0]->unwatch_signal('TERM');
+   $_[0]->stop;
    return TRUE;
 }
 
@@ -380,8 +388,9 @@ sub urandom (;$$) {
 }
 
 sub uri_escape ($;$) {
-   my ($v, $pattern) = @_; $pattern //= $uric;
+   my ($v, $pattern) = @_;
 
+   $pattern //= $uric;
    $v =~ s{([^$pattern])}{ URI::Escape::uri_escape_utf8($1) }ego;
    utf8::downgrade( $v );
    return $v;

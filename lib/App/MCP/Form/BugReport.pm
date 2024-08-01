@@ -3,12 +3,12 @@ package App::MCP::Form::BugReport;
 use App::MCP::Constants    qw( BUG_STATE_ENUM FALSE NUL SPC TRUE );
 use HTML::Forms::Constants qw( META );
 use HTML::Forms::Types     qw( Bool );
-use JSON::MaybeXS          qw( decode_json encode_json );
 use Moo;
 use HTML::Forms::Moo;
 
 extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
+with    'App::MCP::Role::JSONParser';
 
 has '+name'         => default => 'BugReport';
 has '+title'        => default => 'Report Bug';
@@ -104,7 +104,7 @@ sub _deflate_comments {
    my $session  = $self->form->context->session;
    my $comments = [];
 
-   for my $item (@{decode_json($value)}) {
+   for my $item (@{$self->json_parser->decode($value)}) {
       next unless defined $item->{comment} and length $item->{comment};
 
       my $comment = {
@@ -139,7 +139,7 @@ sub _inflate_comments {
       };
    }
 
-   return encode_json($values);
+   return $self->json_parser->encode($values);
 }
 
 use namespace::autoclean -except => META;

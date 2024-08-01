@@ -3,11 +3,12 @@ package App::MCP::Session;
 use App::MCP::Constants     qw( FALSE TRUE );
 use Class::Usul::Cmd::Types qw( ConfigProvider );
 use Type::Utils             qw( class_type );
-use JSON::MaybeXS           qw( );
 use App::MCP::Redis;
 use Plack::Session::State::Cookie;
 use Plack::Session::Store::Cache;
 use Moo;
+
+with 'App::MCP::Role::JSONParser';
 
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 
@@ -22,11 +23,6 @@ has 'redis' =>
          config => $self->config->redis
       );
    };
-
-has '_json' =>
-   is      => 'ro',
-   isa     => class_type(JSON::MaybeXS::JSON),
-   default => sub { JSON::MaybeXS->new( convert_blessed => TRUE ) };
 
 sub middleware_config {
    my $self = shift;
@@ -45,17 +41,21 @@ sub middleware_config {
 }
 
 sub get {
-   my ($self, $key) = @_; return $self->_json->decode($self->redis->get($key));
+   my ($self, $key) = @_;
+
+   return $self->json_parser->decode($self->redis->get($key));
 }
 
 sub remove {
-   my ($self, $key) = @_; return $self->redis->del($key);
+   my ($self, $key) = @_;
+
+   return $self->redis->del($key);
 }
 
 sub set {
    my ($self, $key, $value) = @_;
 
-   return $self->redis->set($key, $self->_json->encode($value));
+   return $self->redis->set($key, $self->json_parser->encode($value));
 }
 
 use namespace::autoclean;

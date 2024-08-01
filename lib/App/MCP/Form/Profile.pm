@@ -39,17 +39,21 @@ has_field 'timezone' => type => 'Timezone';
 
 has_field 'enable_2fa' => type => 'Boolean', label => 'Enable 2FA';
 
-has_field 'mobile_phone' => type => 'PosInteger', label => 'Mobile #',
-   size => 12, title => 'Additional security question used by 2FA token reset';
+has_field 'mobile_phone' =>
+   type  => 'PosInteger',
+   label => 'Mobile #',
+   size  => 12,
+   title => 'Additional security question used by 2FA token reset';
 
 has_field 'postcode' =>
-   size => 8, title => 'Additional security question used by 2FA token reset';
+   size  => 8,
+   title => 'Additional security question used by 2FA token reset';
 
 has_field 'skin' =>
    type    => 'Select',
    options => [
       { label => 'Default', value => 'default' },
-      { label => 'None', value => 'none' },
+      { label => 'None',    value => 'none' },
    ];
 
 sub default_skin {
@@ -61,7 +65,7 @@ has_field 'menu_location' =>
    default => 'header',
    label   => 'Menu Location',
    options => [
-      { label => 'Header', value => 'header' },
+      { label => 'Header',  value => 'header' },
       { label => 'Sidebar', value => 'sidebar' },
    ];
 
@@ -75,9 +79,12 @@ has_field 'link_display' =>
       { label => 'Text', value => 'text' },
    ];
 
-has_field 'theme' => type => 'Select', default => 'light', options => [
-   { label => 'Dark', value => 'dark' },
-   { label => 'Light', value => 'light' },
+has_field 'theme' =>
+   type    => 'Select',
+   default => 'light',
+   options => [
+      { label => 'Dark',  value => 'dark' },
+      { label => 'Light', value => 'light' },
 ];
 
 has_field 'submit' => type => 'Button';

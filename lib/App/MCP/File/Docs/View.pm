@@ -21,4 +21,6 @@ sub get {
    return $self->_html->div({ class => 'documentation' }, $doc);
 }
 
+use namespace::autoclean;
+
 1;

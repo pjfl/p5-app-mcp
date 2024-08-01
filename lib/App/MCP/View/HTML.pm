@@ -6,7 +6,6 @@ use Encode                 qw( encode );
 use HTML::Entities         qw( encode_entities );
 use HTML::Forms::Util      qw( get_token process_attrs );
 use HTTP::Status           qw( status_message );
-use JSON::MaybeXS          qw( encode_json );
 use Scalar::Util           qw( weaken );
 use Moo;
 
@@ -57,7 +56,6 @@ sub _add_tt_defaults {
       dt_user         => sub { my $dt = shift; $dt->set_time_zone($tz); $dt },
       encode_entities => \&encode_entities,
       encode_for_html => \&encode_for_html,
-      encode_json     => \&encode_json,
       process_attrs   => \&process_attrs,
       session         => $session,
       status_message  => \&status_message,

@@ -67,22 +67,28 @@ $class->might_have('profile' => "${result}::Preference", sub {
 # TODO: Derive default role_id from self
 has 'default_role_id' => is => 'ro', isa => Int, default => 3;
 
-has 'profile_value' => is => 'lazy', isa => HashRef, default => sub {
-   my $self    = shift;
-   my $profile = $self->profile;
+has 'profile_value' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      my $self    = shift;
+      my $profile = $self->profile;
 
-   return $profile ? $profile->value : {};
-};
+      return $profile ? $profile->value : {};
+   };
 
-has 'totp_authenticator' => is => 'lazy', isa => Object, default => sub {
-   my $self = shift;
+has 'totp_authenticator' =>
+   is      => 'lazy',
+   isa     => Object,
+   default => sub {
+      my $self = shift;
 
-   return Auth::GoogleAuth->new({
-      issuer => $self->result_source->schema->config->prefix,
-      key_id => $self->user_name,
-      secret => $self->totp_secret,
-   });
-};
+      return Auth::GoogleAuth->new({
+         issuer => $self->result_source->schema->config->prefix,
+         key_id => $self->user_name,
+         secret => $self->totp_secret,
+      });
+   };
 
 # Private functions
 sub _is_disabled ($) {
@@ -211,12 +217,11 @@ sub set_password {
 sub set_totp_secret {
    my ($self, $enabled) = @_;
 
-   my $current = $self->totp_secret ? TRUE : FALSE;
-
-   return $self->totp_secret(substr random_digest->b64digest, 0, 16)
-      if $enabled && !$current;
-
-   return $self->totp_secret(NUL) if $current && !$enabled;
+   if ($enabled) {
+      $self->totp_secret(substr random_digest->b64digest, 0, 16)
+         unless $self->totp_secret;
+   }
+   else { $self->totp_secret(NUL) }
 
    return $self->totp_secret;
 }

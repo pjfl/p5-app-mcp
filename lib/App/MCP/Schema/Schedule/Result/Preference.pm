@@ -12,14 +12,14 @@ my $result = 'App::MCP::Schema::Schedule::Result';
 $class->table('preferences');
 
 $class->add_columns(
-   id => { %{serial_data_type()}, label => 'Preference ID' },
+   id      => { %{serial_data_type()}, label => 'Preference ID' },
    user_id => {
       %{foreign_key_data_type()},
-      display     => 'user.user_name',
-      label       => 'User',
+      display => 'user.user_name',
+      label   => 'User',
    },
-   name => text_data_type(),
-   value => { %{text_data_type()}, is_nullable => TRUE },
+   name    => text_data_type(),
+   value   => { %{text_data_type()}, is_nullable => TRUE },
 );
 
 $class->set_primary_key('id');

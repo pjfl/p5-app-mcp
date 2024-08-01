@@ -53,7 +53,7 @@ sub BUILD {
 
    my $info   = 'v' . $class->VERSION . " started on port ${port}";
 
-   $self->log->info("HTTPServer: ${class} ${server} ${info}");
+   $self->log->info("Listener: ${class} ${server} ${info}");
    return;
 }
 

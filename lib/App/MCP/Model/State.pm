@@ -70,11 +70,10 @@ sub _get_job_tree {
    # TODO: Use level to restrict rows in result
    my $level = $params->{level} // 1;
    my $jobs  = $self->schema->resultset('Job')->search({}, {
-      'columns'  => [ qw( id condition job_name parent_id state.name type ) ],
-      'order_by' => [\'parent_id NULLS FIRST', 'id'], #'emacs
+      'columns'  => [qw( id condition job_name parent_id state.name type )],
+      'order_by' => [\q{parent_id NULLS FIRST}, 'id'],
       'prefetch' => 'state',
    });
-
    my $nodes = [[]];
    my $count = 0;
 

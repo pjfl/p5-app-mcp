@@ -117,7 +117,7 @@ func 'install_distribution' => q{
    chdir $config->{home};
 
    my $path  = $file !~ m{ \A [a-zA-Z0-9_]+ : }mx
-            ? catfile( $config->{tempdir}, $file ) : $file;
+             ? catfile( $config->{tempdir}, $file ) : $file;
    my $base  = catfile( $config->{home}, 'perl5' );
    my $cpanm = catfile( $base, 'bin', 'cpanm' );
    my $cmd   = "${cpanm} -l ${base} --notest ${path}"; qx( $cmd );

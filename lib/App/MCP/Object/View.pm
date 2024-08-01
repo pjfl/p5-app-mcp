@@ -3,12 +3,13 @@ package App::MCP::Object::View;
 use HTML::StateTable::Constants qw( FALSE NUL TRUE );
 use HTML::StateTable::Types     qw( ArrayRef Int ResultRole Str Table Undef );
 use Class::Usul::Cmd::Util      qw( ensure_class_loaded );
-use JSON::MaybeXS               qw( encode_json );
 use List::Util                  qw( pairs );
 use Ref::Util                   qw( is_arrayref is_coderef is_plain_hashref );
 use Data::Page;
 use Moo;
 use MooX::HandlesVia;
+
+with 'App::MCP::Role::JSONParser';
 
 =item count
 
@@ -66,13 +67,12 @@ Returns a reference to an array of L<MCat::Object::Result> objects
 =cut
 
 sub build_results {
-   my $self         = shift;
-   my $results      = [];
-   my $table        = $self->table;
-   my $source       = $table->result->result_source;
-   my $result_class = $self->result_class;
+   my $self    = shift;
+   my $table   = $self->table;
+   my $source  = $table->result->result_source;
+   my $results = [];
 
-   ensure_class_loaded $result_class;
+   ensure_class_loaded $self->result_class;
 
    for my $colname ($source->columns) {
       my $info = $source->columns_info->{$colname};
@@ -100,13 +100,13 @@ sub build_results {
       else { $value = $table->result->$accessor }
 
       if (is_arrayref $value or is_plain_hashref $value) {
-         $value = encode_json($value);
+         $value = $self->json_parser->encode($value);
       }
 
       my $traits = $info->{cell_traits} // [];
       my $name   = $info->{label} // ucfirst $colname;
 
-      push @{$results}, $result_class->new(
+      push @{$results}, $self->result_class->new(
          cell_traits => $traits, name => $name, value => $value
       );
    }
@@ -116,10 +116,10 @@ sub build_results {
          my $value = $pair->value;
 
          if (is_arrayref $value or is_plain_hashref $value) {
-            $value = encode_json($value);
+            $value = $self->json_parser->encode($value);
          }
 
-         push @{$results}, $result_class->new(
+         push @{$results}, $self->result_class->new(
             name => $pair->key, value => $value
          );
       }

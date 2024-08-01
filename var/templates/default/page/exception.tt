@@ -1,7 +1,7 @@
 <div class="exception">
 [% icon = svg_icon('standalone-error', 'error') -%]
 [% header(icon, 'Exception Awarded', '', ' ') -%]
-[% IF deployment == 'development' -%]
+[% IF config.deployment == 'development' -%]
   <div class="line">
     <label>Thrown by</label><span>[% exception.leader %]</span>
   </div>

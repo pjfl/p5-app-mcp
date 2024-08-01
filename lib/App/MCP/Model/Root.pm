@@ -3,7 +3,6 @@ package App::MCP::Model::Root;
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use HTTP::Status          qw( HTTP_OK );
 use App::MCP::Util        qw( create_token new_uri redirect );
-use JSON::MaybeXS         qw( encode_json );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( PageNotFound UnauthorisedAccess
                               UnknownToken UnknownUser );
@@ -13,6 +12,7 @@ use App::MCP::Attributes; # Will do cleaning
 
 extends 'App::MCP::Model';
 with    'Web::Components::Role';
+with    'App::MCP::Role::JSONParser';
 
 has '+moniker' => default => 'page';
 
@@ -281,7 +281,7 @@ sub _create_user {
 sub _send_email {
    my ($self, $context, $token, $args) = @_;
 
-   $self->_redis->set($token, encode_json($args));
+   $self->_redis->set($token, $self->json_parser->encode($args));
 
    my $program = $self->config->bin->catfile('mcat-cli');
    my $command = "${program} -o token=${token} send_message email";

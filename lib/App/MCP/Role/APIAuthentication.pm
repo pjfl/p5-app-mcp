@@ -16,6 +16,8 @@ use App::MCP::Attributes; # Will do namespace cleaning
 
 requires qw( config log );
 
+with 'App::MCP::Role::JSONParser';
+
 my $Sessions = {};
 my $Users = [];
 
@@ -62,7 +64,7 @@ sub authenticate_params {
 
    my $params;
 
-   try   { $params = $self->transcoder->decode(decrypt $key, $encrypted) }
+   try   { $params = $self->json_parser->decode(decrypt $key, $encrypted) }
    catch {
       $self->log->error($_);
       throw 'Request [_1] authentication failed with key [_2]', [$id, $key],

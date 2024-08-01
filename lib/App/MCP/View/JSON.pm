@@ -1,18 +1,11 @@
 package App::MCP::View::JSON;
 
-use HTML::Forms::Constants qw( FALSE TRUE );
-use JSON::MaybeXS          qw( );
-use Type::Utils            qw( class_type );
 use Moo;
 
 with 'Web::Components::Role';
+with 'App::MCP::Role::JSONParser';
 
 has '+moniker' => default => 'json';
-
-has '_json' =>
-   is      => 'ro',
-   isa     => class_type(JSON::MaybeXS::JSON),
-   default => sub { JSON::MaybeXS->new( convert_blessed => TRUE ) };
 
 sub serialize {
    my ($self, $context) = @_;
@@ -20,7 +13,7 @@ sub serialize {
    my $stash = $context->stash;
    my $json; $json = $stash->{body} if $stash->{body};
 
-   $json = $self->_json->encode($stash->{json}) unless $json;
+   $json = $self->json_parser->encode($stash->{json}) unless $json;
 
    return [ $stash->{code}, _header($stash->{http_headers}), [$json] ];
 }

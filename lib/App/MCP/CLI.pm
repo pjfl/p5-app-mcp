@@ -5,7 +5,6 @@ use File::DataClass::Types qw( Directory );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
-use JSON::MaybeXS          qw( decode_json );
 use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( throw Unspecified );
 use Text::MultiMarkdown;
@@ -17,6 +16,7 @@ extends 'Class::Usul::Cmd';
 with    'App::MCP::Role::Config';
 with    'App::MCP::Role::Log';
 with    'App::MCP::Role::Schema';
+with    'App::MCP::Role::JSONParser';
 with    'Web::Components::Role::Email';
 
 has 'assetdir' =>
@@ -262,7 +262,7 @@ sub _load_stash {
    my $token    = $self->options->{token} or throw Unspecified, ['token'];
    my $encoded  = $self->redis->get($token)
       or throw 'Token [_1] not found', [$token];
-   my $stash    = decode_json($encoded);
+   my $stash    = $self->json_parser->decode($encoded);
    my $template = delete $stash->{template};
    my $path     = $self->templatedir->catfile($template);
 

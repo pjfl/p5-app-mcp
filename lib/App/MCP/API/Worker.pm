@@ -1,13 +1,10 @@
 package App::MCP::API::Worker;
 
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL TRUE );
-use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_CREATED
-                              HTTP_NOT_FOUND HTTP_OK );
+use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND );
 use Unexpected::Types     qw( Str );
 use App::MCP::Util        qw( trigger_input_handler );
-use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw );
-use JSON::MaybeXS         qw( );
 use Try::Tiny;
 use Moo;
 use App::MCP::Attributes; # Will do namespace cleaning
@@ -17,13 +14,6 @@ with 'App::MCP::Role::Log';
 with 'App::MCP::Role::APIAuthentication';
 
 has 'name' => is => 'ro', isa => Str; # username or runid
-
-# Private attributes
-has '_transcoder' =>
-   is      => 'lazy',
-   isa     => class_type(JSON::MaybeXS::JSON),
-   default => sub { JSON::MaybeXS->new( convert_blessed => TRUE ) },
-   reader  => 'transcoder';
 
 # Public methods
 sub create_event : Auth('none') {

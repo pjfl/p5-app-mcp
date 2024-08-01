@@ -260,11 +260,11 @@ sub install : method {
 =cut
 
 sub load_jobs : method {
-   my $self     = shift;
-   my $path     = $self->next_argv // 'jobs.json';
-   my $data     = $self->_file_schema->load($path);
-   my $rs       = $self->schedule->resultset( 'Job' );
-   my $count    = $rs->load( $self->_authenticated_user_info, $data->{jobs} );
+   my $self  = shift;
+   my $path  = $self->next_argv // 'jobs.json';
+   my $data  = $self->_file_schema->load($path);
+   my $rs    = $self->schedule->resultset( 'Job' );
+   my $count = $rs->load( $self->_authenticated_user_info, $data->{jobs} );
 
    $self->info( "Loaded [_1] jobs from '[_2]'", { args => [ $count, $path ] } );
    return OK;
