@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Better config attribute names
           - Moves JSON parser to own role
           - Adds config deployment attribute
           - Adds BugComment

@@ -11,14 +11,17 @@ has 'name' => is => 'ro', isa => Str; # collect
 sub messages : Auth('none') {
    my ($self, $context, @args) = @_;
 
+   my $result;
+
    if ($self->name eq 'collect') {
       my $session  = $context->session;
       my $messages = $session->collect_status_messages($context->request);
 
-      $context->stash(json => [ reverse @{$messages} ]);
+      $result = [ reverse @{$messages} ];
    }
    else { throw 'Object [_1] unknown api attribute name', [$self->name] }
 
+   $context->stash(json => $result);
    return;
 }
 

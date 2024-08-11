@@ -104,7 +104,7 @@ sub _deflate_comments {
    my $session  = $self->form->context->session;
    my $comments = [];
 
-   for my $item (@{$self->json_parser->decode($value)}) {
+   for my $item (@{$self->form->json_parser->decode($value)}) {
       next unless defined $item->{comment} and length $item->{comment};
 
       my $comment = {
@@ -139,7 +139,7 @@ sub _inflate_comments {
       };
    }
 
-   return $self->json_parser->encode($values);
+   return $self->form->json_parser->encode($values);
 }
 
 use namespace::autoclean -except => META;

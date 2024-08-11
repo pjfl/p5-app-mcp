@@ -878,11 +878,17 @@ form.classic .input-hidden.input-error {
 form.classic .input-hidden.input-error .alert-error {
   max-width: 13rem;
 }
-form.classic .input-immutable h1 {
+form.classic .input-immutable h1,
+form.classic .input-immutable h2,
+form.classic .input-immutable h3,
+form.classic .input-immutable h4,
+form.classic .input-immutable h5 {
   margin: 1rem 0;
 }
 form.classic .input-immutable p,
 form.classic .input-immutable pre code {
+  font-size: 0.8rem;
+  line-height: 1rem;
   max-width: 50rem;
 }
 form.classic .input-immutable pre code {
@@ -2265,7 +2271,9 @@ header {
 .documentation pre {
   margin: 0 0 0.5rem 2rem;
 }
+.file-preview p,
 .file-preview pre {
+  font-size: 0.8rem;
   line-height: 0.5rem;
 }
 .messages-panel {

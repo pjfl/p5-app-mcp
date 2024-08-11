@@ -125,7 +125,7 @@ sub view : Auth('view') Nav('View Bug') {
       caption      => 'View Bug',
       context      => $context,
       form_buttons => $buttons,
-      result       => $context->stash('bug')
+      result       => $bug,
    };
 
    $context->stash(table => $self->new_table('Object::View', $options));

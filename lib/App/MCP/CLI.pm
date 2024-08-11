@@ -6,7 +6,7 @@ use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
-use Unexpected::Functions  qw( throw Unspecified );
+use Unexpected::Functions  qw( throw UnknownToken Unspecified );
 use Text::MultiMarkdown;
 use App::MCP::Redis;
 use Moo;
@@ -45,11 +45,10 @@ has 'templatedir' =>
    is      => 'lazy',
    isa     => Directory,
    default => sub {
-      my $self = shift;
+      my $self   = shift;
+      my $vardir = $self->config->vardir;
 
-      return $self->config->vardir->catdir(
-         'templates', $self->config->skin, 'site', 'email'
-      );
+      return $vardir->catdir('templates', $self->config->skin, 'site');
    };
 
 =head1 Subroutines/Methods
@@ -184,8 +183,9 @@ sub send_message : method {
       my $rs = $self->schema->resultset('User');
 
       for my $id_or_email (@{$recipients // []}) {
-         if ($id_or_email =~ m{ \A \d+ \z }mx) {
-            my $user = $rs->find($id_or_email);
+         if ($id_or_email =~ m{ @ }mx) { $stash->{email} = $id_or_email }
+         else {
+            my $user = $rs->find_by_key($id_or_email);
 
             unless ($user) {
                $self->error("User ${id_or_email} unknown", $log_opts);
@@ -200,7 +200,6 @@ sub send_message : method {
             $stash->{email} = $user->email;
             $stash->{username} = "${user}";
          }
-         else { $stash->{email} = $id_or_email }
 
          $self->_send_email($stash, $attaches);
       }
@@ -260,11 +259,10 @@ sub _load_stash {
    my ($self, $quote) = @_;
 
    my $token    = $self->options->{token} or throw Unspecified, ['token'];
-   my $encoded  = $self->redis->get($token)
-      or throw 'Token [_1] not found', [$token];
+   my $encoded  = $self->redis->get($token) or throw UnknownToken, [$token];
    my $stash    = $self->json_parser->decode($encoded);
    my $template = delete $stash->{template};
-   my $path     = $self->templatedir->catfile($template);
+   my $path     = $self->templatedir->catdir('email')->catfile($template);
 
    $path = io $template unless $path->exists;
 

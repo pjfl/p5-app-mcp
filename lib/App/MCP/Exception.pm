@@ -20,7 +20,7 @@ has 'created' =>
    isa     => class_type('DateTime'),
    default => sub {
       my $dt  = DateTime->now(locale => 'en_GB', time_zone => 'UTC');
-      my $fmt = DateTime::Format::Strptime->new(pattern => '%F %T');
+      my $fmt = DateTime::Format::Strptime->new(pattern => '%F %R');
 
       $dt->set_formatter($fmt);
 

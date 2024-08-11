@@ -428,18 +428,6 @@ has '_navigation' =>
    init_arg => 'navigation',
    default  => sub { {} };
 
-=item C<page>
-
-Defines the names of the C<site/html> and C<site/wrapper> templates used to
-produce all the pages
-
-=cut
-
-has 'page' =>
-   is      => 'ro',
-   isa     => HashRef,
-   default => sub { { html => 'base', wrapper => 'standard' } };
-
 =item C<pathname>
 
 File object for absolute pathname to the running program
@@ -702,6 +690,18 @@ has 'tempdir' =>
    is      => 'lazy',
    isa     => Directory,
    default => sub { shift->vardir->catdir('tmp') };
+
+=item C<template_wrappers>
+
+Defines the names of the C<site/html> and C<site/wrapper> templates used to
+produce all the pages
+
+=cut
+
+has 'template_wrappers' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub { { html => 'base', wrapper => 'standard' } };
 
 =item C<token_lifetime>
 

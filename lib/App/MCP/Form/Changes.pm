@@ -26,7 +26,9 @@ after 'after_build_fields' => sub {
 
    $path = $config->config_home->catfile('Changes') unless $path->exists;
 
-   my $content = join "\n", map { "    ${_}" } $path->getlines;
+   my $content = join "\n", map {
+      $_ =~ m{ \A \S+ }mx ? $_ !~ m{ \A \d }mx ? "### ${_}" : "#### ${_}" : $_
+   } $path->getlines;
 
    $self->field('changes')->html($self->formatter->markdown($content));
    return;
