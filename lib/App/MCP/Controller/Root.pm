@@ -41,6 +41,10 @@ return (
    'GET      + /doc/*.* + ?*'    => sub {['doc/root/base/view',   @_]},
    'GET      + /doc + ?*'        => sub {['doc/root/base/list',   @_]},
 
+   'POST     + /logfile/*/clear + ?*' => sub {['logfile/root/clear_cache', @_]},
+   'GET      + /logfile/*.* + ?*'     => sub {['logfile/root/base/view',   @_]},
+   'GET      + /logfile + ?*'         => sub {['logfile/root/base/list',   @_]},
+
    'GET      + /access_denied + ?*'
                                   => sub {['page/root/base/access_denied', @_]},
    'GET      + /changes + ?*'     => sub {['page/root/base/changes',       @_]},
