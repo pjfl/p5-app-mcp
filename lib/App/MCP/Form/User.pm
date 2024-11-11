@@ -33,15 +33,35 @@ has_field 'active' => type => 'Boolean', default => TRUE;
 has_field 'password';
 
 sub default_password {
-   my $self = shift;
-   my $user = $self->context->model($self->item_class)->new_result({});
+   my $self   = shift;
+   my $config = $self->context->config;
+   my $user   = $self->context->model($self->item_class)->new_result({});
 
-   return $user->encrypt_password($self->context->config->default_password);
+   return $user->encrypt_password($config->user->{default_password});
 }
 
 has_field 'password_expired' => type => 'Boolean', default => TRUE;
 
 has_field 'submit' => type => 'Button';
+
+after 'after_build_fields' => sub {
+   my $self = shift;
+   my $attr = $self->field('user_name')->element_attr;
+
+   $attr->{minlength} = $self->context->config->user->{min_name_len};
+   return;
+};
+
+sub validate {
+   my $self   = shift;
+   my $name   = $self->field('user_name');
+   my $config = $self->context->config;
+
+   $name->add_error('User name [_1] too short', $name->value)
+      if length $name->value < $config->user->{min_name_len};
+
+   return;
+}
 
 use namespace::autoclean -except => META;
 

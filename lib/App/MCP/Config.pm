@@ -169,14 +169,6 @@ exception to the end user
 
 has 'deployment' => is => 'ro', isa => Str, default => 'development';
 
-=item C<default_password>
-
-Password used when creating new users
-
-=cut
-
-has 'default_password' => is => 'ro', isa => Str, default => 'welcome';
-
 =item C<default_route>
 
 The applications default route used as a target for redirects when the
@@ -713,15 +705,24 @@ has 'token_lifetime' => is => 'ro', isa => PositiveInt, default => 3_600;
 
 =item C<user>
 
-Configuration options for the 'User' result class. Includes 'load_factor'
-used in the encrypting of passwords
+Configuration options for the C<User> result class. Includes C<load_factor>
+used in the encrypting of passwords, C<default_password> used when creating new
+users, C<min_name_len> minimum user name length, and C<min_password_len>
+minumum password length
 
 =cut
 
 has 'user' =>
    is      => 'ro',
    isa     => HashRef,
-   default => sub { { load_factor => 14 } };
+   default => sub {
+      return {
+         default_password => 'welcome',
+         load_factor      => 14,
+         min_name_len     => 3,
+         min_password_len => 3,
+      };
+   };
 
 =item C<vardir>
 

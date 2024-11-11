@@ -150,6 +150,8 @@ sub _get_job_state {
 
    my $job = $self->find_by_key($job_key, { prefetch => 'state' });
 
+   return 'unknown' unless $job;
+
    return $job->state ? $job->state->name : 'inactive';
 }
 

@@ -46,8 +46,8 @@ sub JOB_TYPE_ENUM       () { [ 'box', 'job' ] }
 sub SQL_FALSE           () { \q{false} }
 sub SQL_NOW             () { \q{NOW()} }
 sub SQL_TRUE            () { \q{true} }
-sub STATE_ENUM          () { [ qw( active hold failed finished
-                                   inactive running starting terminated ) ] }
+sub STATE_ENUM          () { [ qw( active hold failed finished inactive running
+                                   starting terminated unknown ) ] }
 sub TRANSITION_ENUM     () { [ qw( activate fail finish off_hold
                                    on_hold start started terminate ) ] }
 sub VARCHAR_MAX_SIZE    () { 255 }

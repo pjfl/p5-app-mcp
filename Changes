@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Bug comments display as tiles not rows now
           - Adds logfile list and view
           - Better config attribute names
           - Moves JSON parser to own role

@@ -31,7 +31,7 @@ has_field 'name' =>
 has_field 'password' =>
    type         => 'Password',
    element_attr => {
-      javascript => 'oninput="' . sprintf($change_js, 'password') . '"'
+      javascript => { oninput => sprintf $change_js, 'password' }
    },
    required     => TRUE,
    tags         => { label_tag => 'span' };
@@ -39,7 +39,7 @@ has_field 'password' =>
 has_field 'auth_code' =>
    type          => 'Digits',
    element_attr  => {
-      javascript => 'onblur="' . sprintf($change_js, 'auth_code') . '"'
+      javascript => { onblur => sprintf $change_js, 'auth_code' }
    },
    label         => 'Auth. Code',
    size          => 6,
@@ -61,7 +61,7 @@ has_field 'password_reset' =>
    disabled      => TRUE,
    element_attr  => {
       'data-field-depends' => ['user_name'],
-      'javascript'         => qq{onclick="${unrequire_js}"}
+      'javascript'         => { onclick => $unrequire_js }
    },
    html_name     => 'submit',
    label         => 'Forgot Password?',
@@ -74,7 +74,7 @@ has_field 'totp_reset' =>
    disabled      => TRUE,
    element_attr  => {
       'data-field-depends' => ['user_name'],
-      'javascript'         => qq{onclick="${unrequire_js}"}
+      'javascript'         => { onclick => $unrequire_js }
    },
    html_name     => 'submit',
    label         => 'Reset Auth.',
@@ -103,8 +103,13 @@ after 'after_build_fields' => sub {
    );
    my $showif = "${method}('user_name', ['auth_code', 'totp_reset'], '${uri}')";
    my $js     = "${showif}; " . sprintf $change_js, 'user_name';
+   my $attr   = $self->field('name')->element_attr;
+   my $u_conf = $context->config->user;
 
-   $self->field('name')->element_attr->{javascript} = qq{onblur="${js}"};
+   $attr->{javascript} = { onblur => $js };
+   $attr->{minlength}  = $u_conf->{min_name_len};
+   $attr = $self->field('password')->element_attr;
+   $attr->{minlength}  = $u_conf->{min_password_len};
    return;
 };
 

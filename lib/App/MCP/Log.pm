@@ -5,18 +5,11 @@ use Class::Usul::Cmd::Types     qw( Bool ConfigProvider );
 use Class::Usul::Cmd::Util      qw( now_dt trim );
 use HTML::StateTable::Util      qw( escape_formula );
 use Ref::Util                   qw( is_arrayref is_coderef );
-use Type::Utils                 qw( class_type );
-use Text::CSV_XS;
 use Moo;
 
-has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
+with 'App::MCP::Role::CSVParser';
 
-has '_csv' =>
-   is      => 'ro',
-   isa     => class_type('Text::CSV_XS'),
-   default => sub {
-      return Text::CSV_XS->new({ always_quote => TRUE, binary => TRUE });
-   };
+has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 
 has '_debug' =>
    is       => 'lazy',
@@ -126,14 +119,14 @@ sub _log {
    my $username = $context && $context->can('session')
       ? $context->session->username : USERNAME;
 
-   $self->_csv->combine(
+   $self->csv_parser->combine(
       escape_formula $now, $level, $username, $leader, $message
    );
 
    my $config = $self->config;
 
    if ($config->can('logfile') && $config->logfile) {
-      $config->logfile->appendln($self->_csv->string)->flush;
+      $config->logfile->appendln($self->csv_parser->string)->flush;
    }
    else { CORE::warn "${leader}: ${message}\n" }
 

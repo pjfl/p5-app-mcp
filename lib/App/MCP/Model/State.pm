@@ -70,9 +70,9 @@ sub _get_job_tree {
    # TODO: Use level to restrict rows in result
    my $level = $params->{level} // 1;
    my $jobs  = $self->schema->resultset('Job')->search({}, {
-      'columns'  => [qw( id condition job_name parent_id state.name type )],
+      'columns'  => [qw( id condition job_name parent_id type )],
       'order_by' => [\q{parent_id NULLS FIRST}, 'id'],
-      'prefetch' => 'state',
+      'prefetch' => ['dependents', 'state'],
    });
    my $nodes = [[]];
    my $count = 0;
@@ -81,7 +81,7 @@ sub _get_job_tree {
       for my $job ($jobs->all) {
          my $uri  = $context->uri_for_action('job/view', [$job->job_name]);
          my $item = {
-            'depends'    => $job->condition_dependencies,
+            'depends'    => [ map { $_->reverse_id } $job->dependents->all ],
             'job-name'   => $job->job_name,
             'job-uri'    => $uri->as_string,
             'state-name' => $job->state->name,

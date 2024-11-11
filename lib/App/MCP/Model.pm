@@ -24,7 +24,9 @@ has 'form' =>
       my $appclass = $self->config->appclass;
 
       return HTML::Forms::Manager->new({
-         namespace => "${appclass}::Form", schema => $self->schema
+         namespace      => "${appclass}::Form",
+         renderer_class => 'HTML::Forms::Render::EmptyDiv',
+         schema         => $self->schema
       });
    };
 

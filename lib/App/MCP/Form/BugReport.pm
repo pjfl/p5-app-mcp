@@ -19,15 +19,15 @@ has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
 
 has_field 'id' => type => 'Display';
 
-has_field 'created' => type => 'DateTime', readonly => TRUE;
+has_field 'title' => required => TRUE;
+
+has_field 'description' => type => 'TextArea', required => TRUE;
 
 has_field 'user_id' => type => 'Hidden', disabled => TRUE;
 
 has_field 'owner' => type => 'Display', value => 'owner.user_name';
 
-has_field 'title' => required => TRUE;
-
-has_field 'description' => type => 'TextArea', required => TRUE;
+has_field 'created' => type => 'DateTime', readonly => TRUE;
 
 has_field 'updated' => type => 'DateTime', readonly => TRUE;
 
@@ -52,10 +52,22 @@ has_field 'comments' =>
    do_label               => FALSE,
    deflate_value_method   => \&_deflate_comments,
    inflate_default_method => \&_inflate_comments,
+   is_row_readonly        => sub {
+      my ($field, $row) = @_;
+
+      my $username = $field->form->context->session->username;
+
+      return $row->{owner} eq $username ? FALSE : TRUE;
+   },
    structure              => [
       { name => 'comment', type => 'textarea', label => 'Comments' },
-      { name => 'updated', type => 'datetime', readonly => TRUE },
-      { name => 'owner',   type => 'display' },
+      { name => 'owner',   type => 'display', tag => 'comment' },
+      {
+         name     => 'updated',
+         type     => 'datetime',
+         readonly => TRUE,
+         tag      => 'comment'
+      },
       { name => 'id',      type => 'hidden' },
       { name => 'user_id', type => 'hidden' },
    ],

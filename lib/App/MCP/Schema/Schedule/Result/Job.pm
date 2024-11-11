@@ -29,6 +29,7 @@ $class->load_components('+App::MCP::MaterialisedPath');
 
 $class->add_columns(
    id           => serial_data_type,
+   job_name     => { %{varchar_data_type()}, label => 'Job Name' },
    created      => {
       %{set_on_create_datetime_data_type()},
       cell_traits => ['DateTime'],
@@ -48,7 +49,6 @@ $class->add_columns(
    parent_path  => nullable_varchar_data_type,
    host         => varchar_data_type( 64, 'localhost' ),
    user_name    => { %{varchar_data_type( 32, 'mcp' )}, label => 'User Name' },
-   job_name     => { %{varchar_data_type()}, label => 'Job Name' },
    command      => varchar_data_type,
    crontab      => nullable_varchar_data_type( 127 ),
    condition    => nullable_varchar_data_type,
