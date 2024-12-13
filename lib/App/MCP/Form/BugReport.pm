@@ -2,7 +2,7 @@ package App::MCP::Form::BugReport;
 
 use App::MCP::Constants    qw( BUG_STATE_ENUM FALSE NUL SPC TRUE );
 use HTML::Forms::Constants qw( META );
-use HTML::Forms::Types     qw( Bool );
+use HTML::Forms::Types     qw( Bool Str );
 use Moo;
 use HTML::Forms::Moo;
 
@@ -10,12 +10,22 @@ extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
 with    'App::MCP::Role::JSONParser';
 
-has '+name'         => default => 'BugReport';
-has '+title'        => default => 'Report Bug';
-has '+info_message' => default => 'Enter the bug report details';
-has '+item_class'   => default => 'Bug';
+has '+name'          => default => 'BugReport';
+has '+title'         => default => 'Report Bug';
+has '+info_message'  => default => 'Enter the bug report details';
+has '+item_class'    => default => 'Bug';
+has '+renderer_args' => default => sub {
+   return { page_names => [qw(Details Comments)] };
+};
 
 has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
+
+has '_icons' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub {
+      return shift->context->request->uri_for('img/icons.svg')->as_string;
+   };
 
 has_field 'id' => type => 'Display';
 
@@ -47,33 +57,39 @@ sub options_assigned {
    return [ NUL, NUL, @{$self->lookup_options($field, $accessor)} ];
 }
 
+has_field 'submit' => type => 'Button';
+
 has_field 'comments' =>
    type                   => 'DataStructure',
    do_label               => FALSE,
    deflate_value_method   => \&_deflate_comments,
    inflate_default_method => \&_inflate_comments,
-   is_row_readonly        => sub {
-      my ($field, $row) = @_;
-
-      my $username = $field->form->context->session->username;
-
-      return $row->{owner} eq $username ? FALSE : TRUE;
-   },
+   is_row_readonly        => \&_is_row_readonly,
+   tags                   => { page_break => TRUE },
+   row_class              => 'ds-row separate',
    structure              => [
-      { name => 'comment', type => 'textarea', label => 'Comments' },
-      { name => 'owner',   type => 'display', tag => 'comment' },
+      { name => 'comment', type => 'textarea' },
       {
-         name     => 'updated',
-         type     => 'datetime',
-         readonly => TRUE,
-         tag      => 'comment'
+         name         => 'updated',
+         type         => 'datetime',
+         readonly     => TRUE,
+         tag          => 'comment',
+         tagLabelLeft => 'On',
       },
-      { name => 'id',      type => 'hidden' },
-      { name => 'user_id', type => 'hidden' },
+      {
+         name          => 'owner',
+         type          => 'display',
+         readonly      => TRUE,
+         tag           => 'comment',
+         tagLabelLeft  => 'user',
+         tagLabelRight => 'wrote',
+      },
+      { name => 'id',      type => 'hidden', classes => 'hide' },
+      { name => 'user_id', type => 'hidden', classes => 'hide' },
    ],
    wrapper_class => ['compound'];
 
-has_field 'submit' => type => 'Button';
+has_field 'submit2' => type => 'Button';
 
 after 'after_build_fields' => sub {
    my $self = shift;
@@ -83,6 +99,7 @@ after 'after_build_fields' => sub {
       $self->field('state')->inactive(TRUE) unless $self->is_editor;
    }
    else {
+      $self->field('id')->inactive(TRUE);
       $self->field('assigned')->inactive(TRUE);
       $self->field('created')->inactive(TRUE);
       $self->field('owner')->inactive(TRUE);
@@ -94,6 +111,8 @@ after 'after_build_fields' => sub {
 
    $self->field('created')->time_zone($tz);
    $self->field('updated')->time_zone($tz);
+
+   $self->field('comments')->icons($self->_icons);
    return;
 };
 
@@ -109,7 +128,7 @@ sub validate {
    return;
 }
 
-# Private methods
+# Private field methods
 sub _deflate_comments {
    my ($self, $value) = @_;
 
@@ -152,6 +171,14 @@ sub _inflate_comments {
    }
 
    return $self->form->json_parser->encode($values);
+}
+
+sub _is_row_readonly {
+   my ($self, $row) = @_;
+
+   my $username = $self->form->context->session->username;
+
+   return $row->{owner} eq $username ? FALSE : TRUE;
 }
 
 use namespace::autoclean -except => META;

@@ -41,6 +41,8 @@ $class->belongs_to('assigned' => "${result}::User", 'assigned_id');
 
 $class->has_many('comments' => "${result}::BugComment", 'bug_id');
 
+$class->has_many('attachments' => "${result}::BugAttachment", 'bug_id');
+
 sub insert {
    my $self    = shift;
    my $columns = { $self->get_inflated_columns };

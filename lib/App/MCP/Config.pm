@@ -13,7 +13,7 @@ use File::DataClass::IO         qw( io );
 use Web::Components::Util       qw( fqdn );
 use Moo;
 
-with 'Web::Components::Role::ConfigLoader';
+with 'Web::Components::ConfigLoader';
 
 my $except = [
    qw( BUILDARGS BUILD DOES connect_info has_config_file has_config_home
@@ -102,6 +102,19 @@ has 'clock_tick_interval' =>
    is      => 'ro',
    isa     => NonZeroPositiveInt,
    default => 3;
+
+=item C<component_loader>
+
+Configuration parameters used by the component loader
+
+=cut
+
+has 'component_loader' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return { should_log_errors => FALSE, should_log_messages => TRUE };
+   };
 
 =item C<connect_info>
 
@@ -261,19 +274,6 @@ has 'library_class' =>
    is      => 'ro',
    isa     => NonEmptySimpleStr,
    default => 'App::MCP::SSHLibrary';
-
-=item C<loader_attr>
-
-Configuration parameters used by the component loader
-
-=cut
-
-has 'loader_attr' =>
-   is      => 'ro',
-   isa     => HashRef,
-   default => sub {
-      return { should_log_errors => FALSE, should_log_messages => TRUE };
-   };
 
 =item C<local_tz>
 

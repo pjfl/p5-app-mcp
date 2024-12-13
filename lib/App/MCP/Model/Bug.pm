@@ -87,7 +87,7 @@ sub edit : Nav('Update Bug') {
 
    if ($form->process(posted => $context->posted)) {
       my $username = $context->session->username;
-      my $view     = $context->uri_for_action('bug/view', [$form->item->id]);
+      my $view     = $context->uri_for_action('bug/edit', [$form->item->id]);
       my $message  = ['Bug report [_1] updated', $form->item->id];
 
       $context->stash(redirect $view, $message);

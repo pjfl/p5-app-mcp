@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Pages on bug form
           - Bug comments display as tiles not rows now
           - Adds logfile list and view
           - Better config attribute names
