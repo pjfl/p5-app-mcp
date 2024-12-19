@@ -8,6 +8,8 @@ WCom.StateDiagram = (function() {
       constructor(diagram, result, index) {
          this.diagram   = diagram;
          this.index     = index;
+         this.dependsOn = result['depends-on'];
+         this.id        = result['id'];
          this.jobName   = result['job-name'];
          this.jobURI    = result['job-uri'];
          this.nodes     = result['nodes'] || [];
@@ -20,17 +22,30 @@ WCom.StateDiagram = (function() {
          let tileClass = 'job-tile';
          if (this.type == 'box') {
             tileClass = 'box-tile';
-            const body = this.h.div({ className: 'box' });
+            const body = this.h.div({ className: 'box-table' });
+            this._renderNodes(body);
             content.push(body);
-            let index = 0;
-            for (const result of this.nodes) {
-               const job = new Job(this.diagram, result, index++);
-               job.render(body);
-            }
          }
          tileClass += ' ' + this.stateName;
          const attr = { className: tileClass, id: this.jobName };
          this.display(container, 'jobTile', this.h.div(attr, content));
+      }
+      _renderNodes(container) {
+         let jobIndex = 0;
+         let rowIndex = 0;
+         const job2row = {};
+         const rows = [];
+         for (const result of this.nodes) {
+            const job = new Job(this.diagram, result, jobIndex++);
+            if (job.dependsOn[0]) rowIndex = job2row[job.dependsOn[0]] + 1;
+            else rowIndex = 0;
+            job2row[job.id] = rowIndex;
+            if (!rows[rowIndex]) {
+               rows[rowIndex] = this.h.div({ className: 'box-row' });
+               container.appendChild(rows[rowIndex]);
+            }
+            job.render(rows[rowIndex]);
+         }
       }
    }
    Object.assign(Job.prototype, Utils.Markup);
@@ -76,20 +91,18 @@ WCom.StateDiagram = (function() {
       }
       async renderJobs() {
          await this.readJobs();
-         if (!this.jobs.length) return this.renderNoData();
+         if (!this.jobs.length) return this.renderNoData(this.container);
          for (const job of this.jobs) job.render(this.container);
          if (this.pageManager) this.pageManager.onContentLoad();
       }
-      renderNoData() {
+      renderNoData(container) {
       }
    }
    class Manager {
       constructor() {
          this.diagrams = {};
-         Utils.Event.onReady(function() { this.scan() }.bind(this));
-         Utils.Event.register(function(content, options) {
-            this.scan(content, options)
-         }.bind(this));
+         const scanner = function(c, o) { this.scan(c, o) }.bind(this);
+         Utils.Event.register(scanner);
       }
       isConstructing() {
          return new Promise(function(resolve) {

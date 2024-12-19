@@ -6,9 +6,9 @@ use parent 'App::MCP::Schema::Base';
 use App::MCP::Util qw( foreign_key_data_type );
 
 my $class  = __PACKAGE__;
-my $schema = 'App::MCP::Schema::Schedule';
+my $result = 'App::MCP::Schema::Schedule::Result';
 
-$class->table('job_conditions');
+$class->table('job_condition');
 
 $class->add_columns(
    job_id     => foreign_key_data_type,
@@ -17,14 +17,14 @@ $class->add_columns(
 
 $class->set_primary_key('job_id', 'reverse_id');
 
-$class->belongs_to('job' => "${schema}::Result::Job", 'job_id');
+$class->belongs_to(job => "${result}::Job", 'job_id');
 
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
   $sqlt_table->add_index(
-     name   => 'job_conditions_reverse_id_idx',
-     fields => ['reverse_id'],
+     name   => 'job_condition_idx_reverse_id',
+     fields => ['reverse_id']
   );
 
   return;
@@ -57,7 +57,7 @@ App::MCP::Schema::Schedule::Result::JobCondition - <One-line description of modu
 
 =over 3
 
-=item L<Class::Usul>
+=item L<DBIx::Class>
 
 =back
 
@@ -77,11 +77,11 @@ Larry Wall - For the Perl programming language
 
 =head1 Author
 
-Peter Flanigan, C<< <pjfl@cpan.org> >>
+Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2024 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

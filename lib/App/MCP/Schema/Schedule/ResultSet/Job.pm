@@ -114,7 +114,9 @@ sub writable_box_id_by_name {
 sub job_id_by_name {
    my ($self, $job_key) = @_;
 
-   return $self->find_by_key($job_key, { columns => ['id'] })->id;
+   my $job = $self->find_by_key($job_key, { columns => ['id'] });
+
+   return $job ? $job->id : undef;
 }
 
 sub load {

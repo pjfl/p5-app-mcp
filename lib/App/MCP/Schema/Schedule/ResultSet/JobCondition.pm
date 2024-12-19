@@ -3,22 +3,26 @@ package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
-sub create_dependents {
-   my ($self, $depend) = @_;
+sub create_condition {
+   my ($self, $job) = @_;
 
-   my $job_rs = $depend->result_source->resultset;
+   my $job_rs = $job->result_source->resultset;
 
-   for my $fqjn (@{$depend->condition_dependencies}) {
-      my $job_id = $job_rs->job_id_by_name($fqjn);
+   for my $job_name (@{$job->condition_dependencies}) {
+      my $job_id = $job_rs->job_id_by_name($job_name);
 
-      $self->create({ job_id => $job_id, reverse_id => $depend->id });
+      $self->create({ job_id => $job_id, reverse_id => $job->id });
    }
 
    return;
 }
 
-sub delete_dependents {
-   $_[0]->search({ reverse_id => $_[1]->id })->delete; return;
+sub delete_condition {
+   my ($self, $job) = @_;
+
+   $self->search({ reverse_id => $job->id })->delete;
+
+   return;
 }
 
 1;
@@ -48,7 +52,7 @@ App::MCP::Schema::Schedule::ResultSet::JobCondition - <One-line description of m
 
 =over 3
 
-=item L<DBIx::Class::ResultSet>
+=item L<DBIx::Class>
 
 =back
 
@@ -68,11 +72,11 @@ Larry Wall - For the Perl programming language
 
 =head1 Author
 
-Peter Flanigan, C<< <pjfl@cpan.org> >>
+Peter Flanigan, C<< <Support at RoxSoft dot co dot uk> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2024 Peter Flanigan. All rights reserved
+Copyright (c) 2014 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

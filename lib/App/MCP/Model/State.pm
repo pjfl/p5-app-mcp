@@ -70,18 +70,21 @@ sub _get_job_tree {
    # TODO: Use level to restrict rows in result
    my $level = $params->{level} // 1;
    my $jobs  = $self->schema->resultset('Job')->search({}, {
-      'columns'  => [qw( id condition job_name parent_id type )],
-      'order_by' => [\q{parent_id NULLS FIRST}, 'id'],
-      'prefetch' => ['dependents', 'state'],
+      'columns'  => [
+         qw( condition dependencies id job_name parent_id row_index type )
+      ],
+      'order_by' => [\q{parent_id NULLS FIRST}, 'row_index', 'id'],
+      'prefetch' => ['state'],
    });
    my $nodes = [[]];
    my $count = 0;
 
    try {
       for my $job ($jobs->all) {
-         my $uri  = $context->uri_for_action('job/view', [$job->job_name]);
-         my $item = {
-            'depends'    => [ map { $_->reverse_id } $job->dependents->all ],
+         my $uri     = $context->uri_for_action('job/view', [$job->id]);
+         my $item    = {
+            'depends-on' => [split m{ / }mx, $job->dependencies],
+            'id'         => $job->id,
             'job-name'   => $job->job_name,
             'job-uri'    => $uri->as_string,
             'state-name' => $job->state->name,
@@ -97,6 +100,9 @@ sub _get_job_tree {
       }
    }
    catch { $self->error($context, $_) };
+use Data::Dumper; $Data::Dumper::Terse = 1; $Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = sub { [ sort keys %{ $_[ 0 ] } ] };
+warn Dumper( $nodes->[0] );
 
    return { 'job-count' => $count, jobs => $nodes->[0] };
 }

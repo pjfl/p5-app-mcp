@@ -4,7 +4,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-Describes version v0.5.$Rev: 38 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
+Describes version v0.5.$Rev: 47 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
 
 # Synopsis
 
@@ -147,6 +147,8 @@ a socket to `nginx`. There is an example
 \[configuration recipe\](https://www.roxsoft.co.uk/doh/static/en/posts/Blog/Debian-Nginx-Letsencrypt.sh-Configuration-Recipe.html)
 for this method of deployment
 
+# Diagnostics
+
 Running one of the command line programs like `bin/mcp-cli` calling
 the `dump-config` method will output a list of configuration options,
 their defining class, documentation, and current value
@@ -158,8 +160,6 @@ Help for command line options can be found be running:
 
 The `list-methods` command is available to all of the application programs
 (except `mcp-listener`)
-
-# Diagnostics
 
 # Dependencies
 
