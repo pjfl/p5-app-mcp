@@ -3,21 +3,17 @@ package App::MCP::Schema::Schedule::ResultSet::JobCondition;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
-sub create_condition {
+sub create_conditions {
    my ($self, $job) = @_;
 
-   my $job_rs = $job->result_source->resultset;
-
-   for my $job_name (@{$job->condition_dependencies}) {
-      my $job_id = $job_rs->job_id_by_name($job_name);
-
+   for my $job_id (split m{ / }mx, $job->dependencies // q()) {
       $self->create({ job_id => $job_id, reverse_id => $job->id });
    }
 
    return;
 }
 
-sub delete_condition {
+sub delete_conditions {
    my ($self, $job) = @_;
 
    $self->search({ reverse_id => $job->id })->delete;

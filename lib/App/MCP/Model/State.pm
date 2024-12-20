@@ -70,41 +70,66 @@ sub _get_job_tree {
    # TODO: Use level to restrict rows in result
    my $level = $params->{level} // 1;
    my $jobs  = $self->schema->resultset('Job')->search({}, {
-      'columns'  => [
-         qw( condition dependencies id job_name parent_id row_index type )
-      ],
-      'order_by' => [\q{parent_id NULLS FIRST}, 'row_index', 'id'],
+      'columns'  => [qw( condition dependencies id job_name parent_id type )],
+      'order_by' => [\q{parent_id NULLS FIRST}, 'id'],
       'prefetch' => ['state'],
    });
-   my $nodes = [[]];
-   my $count = 0;
+   my @all_jobs = $jobs->all;
+   my $nodes    = [[]];
+   my $seen     = {};
+   my $count    = 0;
 
    try {
-      for my $job ($jobs->all) {
-         my $uri     = $context->uri_for_action('job/view', [$job->id]);
-         my $item    = {
-            'depends-on' => [split m{ / }mx, $job->dependencies],
-            'id'         => $job->id,
-            'job-name'   => $job->job_name,
-            'job-uri'    => $uri->as_string,
-            'state-name' => $job->state->name,
-            'type'       => $job->type,
-         };
+      while (my $job = shift @all_jobs) {
+         my $item = $self->_get_job_item($context, $job);
 
-         $nodes->[$job->id] = $item->{'nodes'} = [] if $job->type eq 'box';
-
-         my $list = $job->parent_id ? $nodes->[$job->parent_id] : $nodes->[0];
-
-         push @{$list}, $item;
-         $count++;
+         if ($self->_have_seen_dependencies($seen, $item)) {
+            $self->_add_job_item($nodes, $job, $item);
+            $seen->{$job->id} = TRUE;
+            $count++;
+         }
+         else { push @all_jobs, $job }
       }
    }
    catch { $self->error($context, $_) };
-use Data::Dumper; $Data::Dumper::Terse = 1; $Data::Dumper::Indent = 1;
-$Data::Dumper::Sortkeys = sub { [ sort keys %{ $_[ 0 ] } ] };
-warn Dumper( $nodes->[0] );
 
    return { 'job-count' => $count, jobs => $nodes->[0] };
+}
+
+sub _add_job_item {
+   my ($self, $nodes, $job, $item) = @_;
+
+   $nodes->[$job->id] = $item->{'nodes'} = [] if $job->type eq 'box';
+
+   my $list = $job->parent_id ? $nodes->[$job->parent_id] : $nodes->[0];
+
+   push @{$list}, $item;
+   return;
+}
+
+sub _get_job_item {
+   my ($self, $context, $job) = @_;
+
+   my $uri = $context->uri_for_action('job/view', [$job->id]);
+
+   return {
+      'depends-on' => [split m{ / }mx, $job->dependencies // NUL],
+      'id'         => $job->id,
+      'job-name'   => $job->job_name,
+      'job-uri'    => $uri->as_string,
+      'state-name' => $job->state->name,
+      'type'       => $job->type,
+   };
+}
+
+sub _have_seen_dependencies {
+   my ($self, $seen, $item) = @_;
+
+   for my $job_id (@{$item->{'depends-on'}}) {
+      return FALSE unless $seen->{$job_id};
+   }
+
+   return TRUE;
 }
 
 1;

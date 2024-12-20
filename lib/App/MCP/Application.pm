@@ -65,7 +65,7 @@ sub cron_job_handler {
    });
 
    for my $job (grep { $_->should_start_now } $jobs->all) {
-      if (!$job->condition || $job->eval_condition) {
+      if (!$job->condition || $job->current_condition) {
          $ev_rs->create({ job_id => $job->id, transition => 'start' });
          $trigger = TRUE;
       }

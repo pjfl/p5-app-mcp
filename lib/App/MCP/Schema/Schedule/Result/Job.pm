@@ -19,7 +19,6 @@ use Unexpected::Functions  qw( throw );
 use Algorithm::Cron;
 use App::MCP::ExpressionParser;
 use DBIx::Class::Moo::ResultClass;
-use MooX::HandlesVia;
 
 my $class  = __PACKAGE__;
 my $result = 'App::MCP::Schema::Schedule::Result';
@@ -57,7 +56,6 @@ $class->add_columns(
       accessor  => '_condition',
    },
    directory    => nullable_varchar_data_type,
-   row_index    => numerical_id_data_type(0),
    dependencies => nullable_varchar_data_type,
 );
 
@@ -76,13 +74,6 @@ $class->belongs_to( owner_rel        => "${result}::User",         'owner_id' );
 $class->belongs_to( group_rel        => "${result}::Role",         'group_id' );
 
 has '_condition_changed' => is => 'rw', default => FALSE;
-
-has '_depenedencies' =>
-   is          => 'ro',
-   isa         => ArrayRef,
-   default     => sub { [] },
-   handles_via => 'Array',
-   handles     => { _add_dependency => 'push', _clear_dependencies => 'clear' };
 
 has '_parser' =>
    is      => 'lazy',
@@ -106,10 +97,6 @@ sub condition {
    return $self->_condition($value);
 }
 
-sub condition_dependencies {
-   return shift->_eval_condition->[1];
-}
-
 sub crontab_hour {
    my ($self, $value) = @_; return $self->_crontab('hour', $value);
 }
@@ -130,29 +117,28 @@ sub crontab_wday {
    my ($self, $value) = @_; return $self->_crontab('wday', $value);
 }
 
+sub current_condition {
+   return shift->_eval_condition->[0];
+}
+
 sub delete {
    my $self = shift;
 
-   $self->_delete_condition if $self->condition;
+   $self->_delete_conditions if $self->condition;
 
    return $self->next::method;
-}
-
-sub eval_condition {
-   return shift->_eval_condition->[0];
 }
 
 sub insert {
    my $self = shift;
 
-   $self->_set_row_index;
-   $self->_set_dependencies;
+   $self->_update_dependent_fields;
 
    $self->validate unless App::MCP->env_var('bulk_insert');
 
    my $job = $self->next::method;
 
-   $self->_create_condition($job) if $self->condition;
+   $self->_create_conditions($job) if $self->condition;
 
    $self->_create_job_state($job);
 
@@ -228,17 +214,13 @@ sub update {
 
    $self->set_inflated_columns($columns) if $columns;
 
-   $self->_set_row_index;
-   $self->_set_dependencies;
+   $self->_update_dependent_fields;
 
    $self->validate unless App::MCP->env_var('bulk_insert');
 
    my $job = $self->next::method;
 
-   if ($self->_condition_changed) {
-      $self->_delete_condition;
-      $job->_create_condition;
-   }
+   $self->_update_conditions($job) if $self->_condition_changed;
 
    return $job;
 }
@@ -264,6 +246,15 @@ sub validation_attributes {
 }
 
 # Private methods
+sub _create_conditions {
+   my ($self, $job) = @_;
+
+   my $schema = $self->result_source->schema;
+
+   $schema->resultset('JobCondition')->create_conditions($job);
+   return;
+}
+
 sub _create_job_state {
    my $self   = shift;
    my $schema = $self->result_source->schema;
@@ -292,11 +283,12 @@ sub _crontab {
    return $self->{_crontab}->{$k};
 }
 
-sub _delete_condition {
+sub _delete_conditions {
    my $self   = shift;
    my $schema = $self->result_source->schema;
 
-   return $schema->resultset('JobCondition')->delete_condition($self);
+   $schema->resultset('JobCondition')->delete_conditions($self);
+   return;
 }
 
 sub _eval_condition {
@@ -307,23 +299,15 @@ sub _eval_condition {
    return $self->_parser->parse($self->condition, $self->namespace);
 }
 
-sub _create_condition {
-   my $self   = shift;
-   my $schema = $self->result_source->schema;
-
-   $schema->resultset('JobCondition')->create_condition($self);
-   $self->_condition_changed(FALSE);
-   return;
-}
-
 sub _is_permitted {
    my ($self, $user_id, $mask) = @_;
 
-   my $perms   = $self->_permissions;
-   my $user_rs = $self->result_source->schema->resultset('User');
-   my $user    = $user_rs->find($user_id);
+   my $perms = $self->_permissions;
 
    return TRUE if $perms & $mask->[2];
+
+   my $user_rs = $self->result_source->schema->resultset('User');
+   my $user    = $user_rs->find($user_id);
 
    return TRUE if $perms & $mask->[1]
       and is_member($self->group, map { $_->id } $user->roles);
@@ -333,28 +317,29 @@ sub _is_permitted {
    return FALSE;
 }
 
-sub _set_row_index {
-   my $self   = shift;
-   my $job_rs = $self->result_source->resultset;
-   my $index  = 0;
+sub _update_conditions {
+   my ($self, $job) = @_;
 
-   $self->_clear_dependencies;
+   $self->_delete_conditions;
+   $self->_create_conditions($job);
+   $self->_condition_changed(FALSE);
+   return;
+}
+
+sub _update_dependent_fields {
+   my $self         = shift;
+   my $job_rs       = $self->result_source->resultset;
+   my $dependencies = [];
 
    for my $job_name (@{$self->_eval_condition->[1]}) {
       my $job = $job_rs->find_by_key($job_name) or next;
 
-      $index = $job->row_index if $job->row_index > $index;
-      $self->_add_dependency($job->id);
+      push @{$dependencies}, $job->id;
    }
 
-   return $self->row_index($index + 1);
-}
+   $self->dependencies(join '/', sort { $a <=> $b } @{$dependencies});
 
-sub _set_dependencies {
-   my $self    = shift;
-   my $depends = join '/', sort { $a <=> $b } @{$self->_dependencies};
-
-   return $self->dependencies($depends);
+   return;
 }
 
 1;

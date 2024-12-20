@@ -68,7 +68,7 @@ sub BUILD {
          my $job = $event->job;
 
          throw Crontab   unless $job->should_start_now;
-         throw Condition unless $job->eval_condition;
+         throw Condition unless $job->current_condition;
 
          return;
       }, ] );

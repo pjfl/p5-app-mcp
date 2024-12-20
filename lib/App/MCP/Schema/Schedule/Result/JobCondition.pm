@@ -8,7 +8,7 @@ use App::MCP::Util qw( foreign_key_data_type );
 my $class  = __PACKAGE__;
 my $result = 'App::MCP::Schema::Schedule::Result';
 
-$class->table('job_condition');
+$class->table('job_conditions');
 
 $class->add_columns(
    job_id     => foreign_key_data_type,
@@ -23,7 +23,7 @@ sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
   $sqlt_table->add_index(
-     name   => 'job_condition_idx_reverse_id',
+     name   => 'job_conditions_idx_reverse_id',
      fields => ['reverse_id']
   );
 
