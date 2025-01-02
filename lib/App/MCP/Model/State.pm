@@ -1,6 +1,8 @@
 package App::MCP::Model::State;
 
 use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE NUL TRUE );
+use Unexpected::Types            qw( Int );
+use App::MCP::Util               qw( redirect );
 use Web::ComposableRequest::Util qw( bson64id bson64id_time );
 use Unexpected::Functions        qw( throw );
 use Try::Tiny;
@@ -12,11 +14,20 @@ with    'Web::Components::Role';
 
 has '+moniker' => default => 'state';
 
+# Hard limit on the number of jobs to fetch from the database
+has 'max_jobs' => is => 'ro', isa => Int, default => 10_000;
+
 # Public methods
 sub base : Auth('view') {
-   my ($self, $context) = @_;
+   my ($self, $context, $jobid) = @_;
 
    my $nav = $context->stash('nav')->list('job')->item('job/create');
+
+   if ($jobid) {
+      my $job = $context->model('Job')->find($jobid, { prefetch => 'state' });
+
+      $context->stash(job => $job) if $job;
+   }
 
    $nav->container_layout('left') if $context->endpoint eq 'view';
 
@@ -27,11 +38,12 @@ sub base : Auth('view') {
 sub edit  {
    my ($self, $context) = @_;
 
-   my $form = $self->new_form('State', { context => $context });
+   my $job  = $context->stash->{job};
+   my $form = $self->new_form('State', { context => $context, item => $job });
 
    if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('state/view');
-      my $message = [''];
+      my $message = ['State updated'];
 
       $context->stash(redirect $view, $message);
    }
@@ -57,46 +69,20 @@ sub view : Auth('view') Nav('State|info') {
    $params = { 'state-data' => 'true' };
 
    my $uri    = $context->uri_for_action('state/view', [], $params);
-   my $config = { 'data-uri' => $uri->as_string };
+   my $wcom   = $self->config->wcom_resources->{navigation};
+   my $config = {
+      'data-uri'  => $uri->as_string,
+      'icons'     => $context->request->uri_for('img/icons.svg')->as_string,
+      'max-jobs'  => $self->max_jobs,
+      'on-render' => "${wcom}.onContentLoad()",
+   };
 
    $context->stash(state_config => $config);
    return;
 }
 
 # Private methods
-sub _get_job_tree {
-   my ($self, $context, $params) = @_;
-
-   # TODO: Use level to restrict rows in result
-   my $level = $params->{level} // 1;
-   my $jobs  = $self->schema->resultset('Job')->search({}, {
-      'columns'  => [qw( condition dependencies id job_name parent_id type )],
-      'order_by' => [\q{parent_id NULLS FIRST}, 'id'],
-      'prefetch' => ['state'],
-   });
-   my @all_jobs = $jobs->all;
-   my $nodes    = [[]];
-   my $seen     = {};
-   my $count    = 0;
-
-   try {
-      while (my $job = shift @all_jobs) {
-         my $item = $self->_get_job_item($context, $job);
-
-         if ($self->_have_seen_dependencies($seen, $item)) {
-            $self->_add_job_item($nodes, $job, $item);
-            $seen->{$job->id} = TRUE;
-            $count++;
-         }
-         else { push @all_jobs, $job }
-      }
-   }
-   catch { $self->error($context, $_) };
-
-   return { 'job-count' => $count, jobs => $nodes->[0] };
-}
-
-sub _add_job_item {
+sub _add_node {
    my ($self, $nodes, $job, $item) = @_;
 
    $nodes->[$job->id] = $item->{'nodes'} = [] if $job->type eq 'box';
@@ -107,10 +93,25 @@ sub _add_job_item {
    return;
 }
 
+sub _fetch_jobs {
+   my ($self, $params) = @_;
+
+   # TODO: Use level to restrict rows in result
+   my $level = $params->{level} // 1;
+   my $jobs  = $self->schema->resultset('Job')->search({}, {
+      columns  => [qw( condition dependencies id job_name parent_id type )],
+      order_by => [\q{parent_id NULLS FIRST}, 'id'],
+      prefetch => ['state'],
+      rows     => $self->max_jobs,
+   });
+
+   return [$jobs->all];
+}
+
 sub _get_job_item {
    my ($self, $context, $job) = @_;
 
-   my $uri = $context->uri_for_action('job/view', [$job->id]);
+   my $uri = $context->uri_for_action('state/edit', [$job->id]);
 
    return {
       'depends-on' => [split m{ / }mx, $job->dependencies // NUL],
@@ -120,6 +121,41 @@ sub _get_job_item {
       'state-name' => $job->state->name,
       'type'       => $job->type,
    };
+}
+
+sub _get_job_tree {
+   my ($self, $context, $params) = @_;
+
+   my $all_jobs   = $self->_fetch_jobs($params);
+   my $jobs2go    = scalar @{$all_jobs};
+   my $nodes      = [[]];
+   my $seen       = {};
+   my $job_count  = 0;
+   my $loop_count = 0;
+
+   try {
+      while (my $job = shift @{$all_jobs}) {
+         my $item = $self->_get_job_item($context, $job);
+
+         if ($self->_have_seen_dependencies($seen, $item)) {
+            $self->_add_node($nodes, $job, $item);
+            $seen->{$job->id} = TRUE;
+            $job_count++;
+         }
+         else { push @{$all_jobs}, $job }
+
+         if (++$loop_count >= $jobs2go) { # Prevent infinite looping
+            if ($jobs2go == scalar @{$all_jobs}) { $all_jobs = [] }
+            else {
+               $jobs2go = scalar @{$all_jobs};
+               $loop_count = 0;
+            }
+         }
+      }
+   }
+   catch { $self->error($context, $_) };
+
+   return { 'job-count' => $job_count, jobs => $nodes->[0] };
 }
 
 sub _have_seen_dependencies {

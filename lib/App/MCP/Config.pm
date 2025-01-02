@@ -757,6 +757,21 @@ has 'wcom_resources' =>
       };
    };
 
+=item web_components
+
+Configuration hash reference for web components
+
+=cut
+
+has 'web_components' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      return {
+         'Model::State' => { max_jobs => 10_000 }
+      };
+   };
+
 use namespace::autoclean;
 
 1;

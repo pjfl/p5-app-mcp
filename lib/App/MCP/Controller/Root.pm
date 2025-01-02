@@ -17,7 +17,8 @@ return (
    'GET      + /job/* + ?*'        => sub {['job/root/base/view',   @_]},
    'GET      + /job + ?*'          => sub {['job/root/base/list',   @_]},
 
-   'GET      + /state + ?*' => sub {['state/root/base/view', @_]},
+   'GET      + /state        + ?*' => sub {['state/root/base/view', @_]},
+   'GET|POST + /state/*/edit + ?*' => sub {['state/root/base/edit', @_]},
 
    'GET|POST + /user/create + ?*'     => sub {['user/root/base/create',    @_]},
    'POST     + /user/*/delete + ?*'   => sub {['user/root/base/delete',    @_]},

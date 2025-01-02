@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - State diagram layout working
           - Removes row_index
           - Adds row_index and dependencies to job result
           - Pages on bug form

@@ -2396,13 +2396,11 @@ header {
   min-width: 10rem;
 }
 .modal-outer-wrapper {
-  background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   bottom: 0;
   left: 0;
   position: absolute;
   right: 0;
   top: 0;
-  z-index: 4;
 }
 .modal-outer-wrapper .modal-container {
   align-items: center;
@@ -2426,6 +2424,7 @@ header {
   max-height: 90%;
   max-width: 80%;
   overflow: auto;
+  z-index: 5;
 }
 .modal-outer-wrapper .modal .modal-header {
   align-items: center;
@@ -2438,7 +2437,7 @@ header {
   padding: 0.25rem 0.5rem;
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 6;
 }
 .modal-outer-wrapper .modal .modal-header .modal-title {
   flex-grow: 2;
@@ -2544,14 +2543,26 @@ header {
   gap: 1rem;
   justify-content: space-between;
 }
+.modal-outer-wrapper .modal .modal-loader {
+  display: flex;
+  justify-content: center;
+}
+.modal-outer-wrapper .modal .modal-loader .loading {
+  margin: 1rem;
+}
+.modal-outer-wrapper.mask {
+  background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
+  z-index: 4;
+}
 .state-container {
   align-items: flex-start;
   display: flex;
 }
 .state-container .box-table {
-  display: flex;
+  display: none;
   flex-direction: column;
 }
+.state-container .box-table.open,
 .state-container .box-row {
   display: flex;
 }
@@ -2563,6 +2574,20 @@ header {
   color: black;
   margin: 0.25rem;
   padding: 0.25rem;
+}
+.state-container .box-tile .title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.state-container .box-tile .title .box-toggle {
+  color: whitesmoke;
+  height: 20px;
+  margin-left: 1rem;
+  width: 20px;
+}
+.state-container .box-tile .title .box-toggle.reversed {
+  transform: rotate(180deg);
 }
 .state-container .box-tile.active,
 .state-container .job-tile.active {
