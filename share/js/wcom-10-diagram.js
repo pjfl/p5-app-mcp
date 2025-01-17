@@ -164,7 +164,8 @@ WCom.StateDiagram = (function() {
    class Manager {
       constructor() {
          this.diagrams = {};
-         Utils.Event.register(function(c, o) { this.scan(c, o) }.bind(this));
+         const scan = function(c, o) { this.scan(c, o) }.bind(this);
+         Utils.Event.registerOnload(scan);
       }
       isConstructing() {
          return new Promise(function(resolve) {
@@ -185,9 +186,8 @@ WCom.StateDiagram = (function() {
          this._isConstructing = false;
       }
    }
-   const manager = new Manager();
    return {
-      manager
+      manager: new Manager()
    };
 })();
 

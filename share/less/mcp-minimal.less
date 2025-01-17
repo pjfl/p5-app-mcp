@@ -1,0 +1,36 @@
+#colours() {
+    contrast: whitesmoke;
+    line-border: gray;
+    panel-shadow: gray;
+    text: black;
+}
+.state-container {
+    align-items: flex-start; display: flex;
+    .box-table {
+        display: none; flex-direction: column;
+    }
+    .box-table.open, .box-row {
+        display: flex;
+    }
+    .box-tile, .job-tile {
+        border: 1px solid #colours[line-border]; border-radius: 5px;
+        box-shadow: 3px 3px 3px #colours[panel-shadow];
+        color: #colours[text]; margin: 0.25rem; padding: 0.25rem;
+    }
+    .box-tile .title {
+        align-items: center; display: flex; justify-content: space-between;
+        .box-toggle {
+            color: #colours[contrast]; height: 20px; margin-left: 1rem;
+            width: 20px;
+        }
+        .box-toggle.reversed {
+            transform: rotate(180deg);
+        }
+    }
+    .box-tile.active, .job-tile.active {
+        background: lightgreen;
+    }
+    .title a {
+        text-decoration: none;
+    }
+}

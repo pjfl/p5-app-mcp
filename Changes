@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Changed event register method name in JS utils
           - State diagram layout working
           - Removes row_index
           - Adds row_index and dependencies to job result

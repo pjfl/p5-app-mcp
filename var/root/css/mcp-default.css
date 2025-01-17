@@ -1719,6 +1719,48 @@ body {
   background: lightpink;
   margin: 0 16%;
 }
+.state-container {
+  align-items: flex-start;
+  display: flex;
+}
+.state-container .box-table {
+  display: none;
+  flex-direction: column;
+}
+.state-container .box-table.open,
+.state-container .box-row {
+  display: flex;
+}
+.state-container .box-tile,
+.state-container .job-tile {
+  border: 1px solid gray;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  color: black;
+  margin: 0.25rem;
+  padding: 0.25rem;
+}
+.state-container .box-tile .title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.state-container .box-tile .title .box-toggle {
+  color: whitesmoke;
+  height: 20px;
+  margin-left: 1rem;
+  width: 20px;
+}
+.state-container .box-tile .title .box-toggle.reversed {
+  transform: rotate(180deg);
+}
+.state-container .box-tile.active,
+.state-container .job-tile.active {
+  background: lightgreen;
+}
+.state-container .title a {
+  text-decoration: none;
+}
 *,
 *::before,
 *::after {
@@ -2553,46 +2595,4 @@ header {
 .modal-outer-wrapper.mask {
   background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   z-index: 4;
-}
-.state-container {
-  align-items: flex-start;
-  display: flex;
-}
-.state-container .box-table {
-  display: none;
-  flex-direction: column;
-}
-.state-container .box-table.open,
-.state-container .box-row {
-  display: flex;
-}
-.state-container .box-tile,
-.state-container .job-tile {
-  border: 1px solid gray;
-  border-radius: 5px;
-  box-shadow: 3px 3px 3px gray;
-  color: black;
-  margin: 0.25rem;
-  padding: 0.25rem;
-}
-.state-container .box-tile .title {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-}
-.state-container .box-tile .title .box-toggle {
-  color: whitesmoke;
-  height: 20px;
-  margin-left: 1rem;
-  width: 20px;
-}
-.state-container .box-tile .title .box-toggle.reversed {
-  transform: rotate(180deg);
-}
-.state-container .box-tile.active,
-.state-container .job-tile.active {
-  background: lightgreen;
-}
-.state-container .title a {
-  text-decoration: none;
 }

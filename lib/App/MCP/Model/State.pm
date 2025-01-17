@@ -68,16 +68,15 @@ sub view : Auth('view') Nav('State|info') {
 
    $params = { 'state-data' => 'true' };
 
-   my $uri    = $context->uri_for_action('state/view', [], $params);
-   my $wcom   = $self->config->wcom_resources->{navigation};
-   my $config = {
+   my $uri  = $context->uri_for_action('state/view', [], $params);
+   my $wcom = $self->config->wcom_resources->{navigation};
+
+   $context->stash(state_config => {
       'data-uri'  => $uri->as_string,
       'icons'     => $context->request->uri_for('img/icons.svg')->as_string,
       'max-jobs'  => $self->max_jobs,
       'on-render' => "${wcom}.onContentLoad()",
-   };
-
-   $context->stash(state_config => $config);
+   });
    return;
 }
 
