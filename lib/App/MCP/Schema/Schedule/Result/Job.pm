@@ -15,7 +15,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                truncate varchar_data_type );
 use Class::Usul::Cmd::Util qw( is_member );
 use Ref::Util              qw( is_arrayref );
-use Unexpected::Functions  qw( throw );
+use Unexpected::Functions  qw( throw UnknownJob );
 use Algorithm::Cron;
 use App::MCP::ExpressionParser;
 use DBIx::Class::Moo::ResultClass;
@@ -332,7 +332,8 @@ sub _update_dependent_fields {
    my $dependencies = [];
 
    for my $job_name (@{$self->_eval_condition->[1]}) {
-      my $job = $job_rs->find_by_key($job_name) or next;
+      my $job = $job_rs->find_by_key($job_name)
+         or throw UnknownJob, [$job_name];
 
       push @{$dependencies}, $job->id;
    }

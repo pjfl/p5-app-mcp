@@ -17,7 +17,8 @@ has_field 'job_name' => required => TRUE;
 has_field 'type' =>
    type    => 'Select',
    options => [
-      { label => 'Box', value => 'box' }, { label => 'Job', value => 'job' }
+      { label => 'Box', value => 'box' },
+      { label => 'Job', value => 'job' }
    ];
 
 has_field 'parent_box' => type => 'Select';
@@ -47,7 +48,15 @@ has_field 'user_name' => default => 'mcp', required => TRUE;
 
 has_field 'command' => required => TRUE;
 
-has_field 'crontab';
+has_field 'crontab_min' => label => 'Minute';
+
+has_field 'crontab_hour' => label => 'Hour';
+
+has_field 'crontab_mday' => label => 'Day of Month';
+
+has_field 'crontab_mon' => label => 'Month';
+
+has_field 'crontab_wday' => label => 'Day of Week';
 
 has_field 'condition';
 
@@ -61,8 +70,6 @@ has_field 'submit' => type => 'Button';
 #                   data_type     => 'smallint',
 #                   default_value => 488,
 #                   is_nullable   => FALSE, },
-
-# parent_id    => nullable_foreign_key_data_type,
 
 
 use namespace::autoclean -except => META;

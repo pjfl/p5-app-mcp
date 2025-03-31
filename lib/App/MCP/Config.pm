@@ -73,14 +73,6 @@ has 'authentication' =>
    isa     => HashRef,
    default => sub { { default_realm => 'DBIC' } };
 
-=item C<author>
-
-A non empty simple string which defaults to B<Dave>.
-
-=cut
-
-has 'author' => is => 'ro', isa => NonEmptySimpleStr, default => 'Dave';
-
 =item C<bin>
 
 A directory object which locates the applications executable files
@@ -91,6 +83,25 @@ has 'bin' =>
    is      => 'lazy',
    isa     => Directory,
    default => sub { shift->pathname->parent };
+
+=item bug_attachments
+
+A hash reference of parameters used to configure the bug attachment uploads
+
+=cut
+
+has 'bug_attachments' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      my $self = shift;
+
+      return {
+         directory  => $self->vardir->catdir('bugs'),
+         extensions => 'csv|doc|txt',
+         sharedir   => $self->root->catdir('bugs')
+      };
+   };
 
 =item C<clock_tick_interval>
 
@@ -251,6 +262,15 @@ The output encoding used by the application
 
 has 'encoding' => is => 'ro', isa => Str, default => 'utf-8';
 
+=item C<icons>
+
+A partial string path from the document root to the file containing SVG
+symbols used when generating HTML
+
+=cut
+
+has 'icons' => is => 'ro', isa => Str, default => 'img/icons.svg';
+
 =item C<identity_file>
 
 A file object reference that defaults to the F<id_rsa> file in the L</ssh_dir>
@@ -391,7 +411,7 @@ has 'name' => is => 'ro', isa => Str, default => 'Master Control Program';
 
 =item C<navigation>
 
-Hash reference of configuration attributes applied the the
+Hash reference of configuration attributes applied the
 L<Web::Components::Navigation> object
 
 =cut
@@ -759,7 +779,9 @@ has 'wcom_resources' =>
 
 =item web_components
 
-Configuration hash reference for web components
+Configuration hash reference for L<Web::Components> loaded from the
+F<Contoller>, F<Model>, and F<View> subdirectories of the application
+namespace
 
 =cut
 

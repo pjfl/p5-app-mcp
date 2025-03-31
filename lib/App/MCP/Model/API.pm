@@ -1,7 +1,7 @@
 package App::MCP::Model::API;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
-use Unexpected::Types      qw( HashRef );
+use Unexpected::Types      qw( HashRef Str );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 use Unexpected::Functions  qw( catch_class throw APIMethodFailed
                                UnauthorisedAPICall UnknownAPIClass
@@ -15,16 +15,23 @@ with    'Web::Components::Role';
 
 has '+moniker' => default => 'api';
 
-has 'routes' => is => 'ro', isa => HashRef, default => sub {
-   return {
-      'api/form/field/validate' => 'api/form/*/field/*/validate',
-      'api/navigation_messages' => 'api/navigation/collect/messages',
-      'api/object_fetch'        => 'api/object/*/fetch',
-      'api/object_get'          => 'api/object/*/get',
-      'api/table_action'        => 'api/table/*/action',
-      'api/table_preference'    => 'api/table/*/preference',
+has 'namespace' => is => 'ro', isa => Str, default => 'App::MCP::API';
+
+has 'routes' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return {
+         'api/diagram_preference'  => 'api/diagram/*/preference',
+         'api/form_validate_field' => 'api/form/*/field/*/validate',
+         'api/form_thumbnail'      => 'api/form/*/thumbnail/*',
+         'api/navigation_messages' => 'api/navigation/collect/messages',
+         'api/object_fetch'        => 'api/object/*/fetch',
+         'api/object_get'          => 'api/object/*/get',
+         'api/table_action'        => 'api/table/*/action',
+         'api/table_preference'    => 'api/table/*/preference',
+      };
    };
-};
 
 sub dispatch : Auth('none') {
    my ($self, $context, @args) = @_;
@@ -33,7 +40,7 @@ sub dispatch : Auth('none') {
 
    my ($ns, $name, $method) = splice @args, 0, 3;
    my $class = ('+' eq substr $ns, 0, 1)
-      ? substr $ns, 1 : 'App::MCP::API::' . ucfirst lc $ns;
+      ? substr $ns, 1 : $self->namespace . '::' . ucfirst lc $ns;
 
    try   { ensure_class_loaded($class) }
    catch { $self->error($context, UnknownAPIClass, [$class, $_]) };

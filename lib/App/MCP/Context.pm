@@ -50,6 +50,15 @@ has 'time_zone' =>
    isa     => Str,
    default => sub { shift->session->timezone };
 
+has 'uri_for_icons' =>
+   is      => 'lazy',
+   isa     => class_type('URI'),
+   default => sub {
+      my $self = shift;
+
+      return $self->request->uri_for($self->config->icons);
+   };
+
 has 'views' => is => 'ro', isa => HashRef, default => sub { {} };
 
 has '_api_routes' =>

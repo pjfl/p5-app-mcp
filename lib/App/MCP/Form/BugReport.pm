@@ -3,6 +3,7 @@ package App::MCP::Form::BugReport;
 use App::MCP::Constants    qw( BUG_STATE_ENUM FALSE NUL SPC TRUE );
 use HTML::Forms::Constants qw( META );
 use HTML::Forms::Types     qw( Bool Str );
+use HTML::Forms::Util      qw( json_bool );
 use Moo;
 use HTML::Forms::Moo;
 
@@ -10,22 +11,19 @@ extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
 with    'App::MCP::Role::JSONParser';
 
-has '+name'          => default => 'BugReport';
-has '+title'         => default => 'Report Bug';
-has '+info_message'  => default => 'Enter the bug report details';
 has '+item_class'    => default => 'Bug';
+has '+name'          => default => 'BugReport';
 has '+renderer_args' => default => sub {
-   return { page_names => [qw(Details Comments)] };
+   return { page_names => [qw(Details Attachments Comments)] };
 };
+has '+title' => default => 'Report Bug';
 
 has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
 
 has '_icons' =>
    is      => 'lazy',
    isa     => Str,
-   default => sub {
-      return shift->context->request->uri_for('img/icons.svg')->as_string;
-   };
+   default => sub { shift->context->uri_for_icons->as_string };
 
 has_field 'id' => type => 'Display';
 
@@ -57,7 +55,37 @@ sub options_assigned {
    return [ NUL, NUL, @{$self->lookup_options($field, $accessor)} ];
 }
 
-has_field 'submit' => type => 'Button';
+has_field 'submit1' => type => 'Button';
+
+has_field 'attachments' =>
+   type                   => 'DataStructure',
+   do_label               => FALSE,
+   inflate_default_method => \&_inflate_attachments,
+   tags                   => { page_break => TRUE },
+   row_class              => 'ds-row separate',
+   structure              => [
+      {  name => 'path', type => 'image', readonly => TRUE },
+      {
+         name          => 'owner',
+         type          => 'display',
+         readonly      => TRUE,
+         tag           => 'path',
+         tagLabelLeft  => 'Attached by',
+      },
+      {
+         name         => 'updated',
+         type         => 'datetime',
+         readonly     => TRUE,
+         tag          => 'path',
+         tagLabelLeft => 'on',
+      },
+   ],
+   wrapper_class => ['compound'];
+
+has_field 'attach' =>
+   type  => 'Button',
+   label => 'attach',
+   title => 'Add attachment';
 
 has_field 'comments' =>
    type                   => 'DataStructure',
@@ -92,11 +120,17 @@ has_field 'comments' =>
 has_field 'submit2' => type => 'Button';
 
 after 'after_build_fields' => sub {
-   my $self = shift;
+   my $self    = shift;
+   my $context = $self->context;
 
    if ($self->item) {
       $self->field('updated')->inactive(TRUE) unless $self->item->updated;
       $self->field('state')->inactive(TRUE) unless $self->is_editor;
+      $self->info_message([
+         'Update the bug report details',
+         'Files attached to the bug report',
+         'Update the bug report comments'
+      ]);
    }
    else {
       $self->field('id')->inactive(TRUE);
@@ -105,13 +139,38 @@ after 'after_build_fields' => sub {
       $self->field('owner')->inactive(TRUE);
       $self->field('state')->inactive(TRUE);
       $self->field('updated')->inactive(TRUE);
+      $self->info_message([
+         'Enter the bug report details',
+         'Files attached to the bug report',
+         'Enter the bug report comments'
+      ]);
    }
 
-   my $tz = $self->context->session->timezone;
+   my $tz = $context->session->timezone;
 
    $self->field('created')->time_zone($tz);
    $self->field('updated')->time_zone($tz);
 
+   my $attach = $self->field('attach');
+
+   if ($self->item) {
+      my $modal   = $context->config->wcom_resources->{modal};
+      my $url     = $context->uri_for_action('bug/attach', [$self->item->id]);
+      my $args    = $self->json_parser->encode({
+         icons     => $self->_icons,
+         noButtons => json_bool TRUE,
+         title     => 'Add Attachment',
+         url       => $url->as_string
+      });
+      my $handler = "event.preventDefault(); ${modal}.create(${args})";
+
+      $attach->element_attr->{javascript}->{onclick} = $handler;
+   }
+   else { $attach->inactive(TRUE) }
+
+   $attach->icons($self->_icons);
+
+   $self->field('attachments')->icons($self->_icons);
    $self->field('comments')->icons($self->_icons);
    return;
 };
@@ -149,6 +208,31 @@ sub _deflate_comments {
    }
 
    return $comments;
+}
+
+sub _inflate_attachments {
+   my ($self, @attachments) = @_;
+
+   my $context = $self->form->context;
+   my $values  = [];
+
+   for my $item (@attachments) {
+      my $args    = [$self->form->name, $item->path];
+      my $thumb   = $context->uri_for_action('api/form_thumbnail', $args);
+      my $updated = $item->updated ? $item->updated : $item->created;
+
+      $updated->set_time_zone($context->session->timezone);
+
+      push @{$values}, {
+         path    => $thumb->as_string,
+         id      => $item->id,
+         owner   => $item->owner->user_name,
+         updated => $updated->strftime('%FT%R'),
+         user_id => $item->user_id,
+      };
+   }
+
+   return $self->form->json_parser->encode($values);
 }
 
 sub _inflate_comments {

@@ -17,25 +17,48 @@ has_field 'job_name' => type => 'Display';
 
 has_field 'state_name' => type => 'Display', label => 'Current State';
 
+has_field 'condition' => type => 'Display';
+
+has_field 'crontab' => type => 'Display';
+
+has_field 'command' => type => 'Display';
+
+has_field 'host' => type => 'Display';
+
 has_field 'signal' =>
    type => 'Select',
    options => [[qw(start stop hold)]];
 
-has_field 'submit' => type => 'Button';
+has_field 'edit' =>
+   type          => 'Button',
+   label         => 'Edit',
+   value         => 'edit',
+   wrapper_class => ['input-button', 'inline'];
+
+has_field 'submit' =>
+   type          => 'Button',
+   wrapper_class => ['input-button', 'inline', 'right'];
 
 after 'after_build_fields' => sub {
-   my $self = shift;
+   my $self  = shift;
+   my $job   = $self->item;
+   my $label = $job->type eq 'job' ? 'Job Name' : 'Box Name';
 
-   $self->field('state_name')->value($self->item->state->name);
+   $self->field('job_name')->label($label);
+   $self->field('state_name')->value($job->state->name);
 
+   $self->field('command')->inactive(TRUE) if $job->type eq 'box';
+   $self->field('condition')->inactive(TRUE) unless $job->condition;
+   $self->field('crontab')->inactive(TRUE) unless $job->crontab;
+   $self->field('host')->inactive(TRUE) if $job->type eq 'box';
    return;
 };
 
 sub validate {
    my $self = shift;
+   my $context = $self->context;
 
    return if $self->result->has_errors;
-
 
    return;
 }

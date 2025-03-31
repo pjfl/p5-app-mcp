@@ -16,6 +16,7 @@ WCom.StateDiagram = (function() {
          this.stateName = result['state-name'];
          this.type      = result['type'];
          this.index     = index;
+         this.diagram.depGraph.jobs.push(this);
       }
       render(container) {
          const title = [this._renderLink()];
@@ -44,32 +45,27 @@ WCom.StateDiagram = (function() {
       _renderLink() {
          const onclick = function(event) {
             event.preventDefault();
-            const callback = function(ok, popup, data) {
-               if (ok) console.log(data);
-            }.bind(this);
-            const cancelCallback = function() {}.bind(this);
-            const closeCallback = function() {}.bind(this);
-            const positionAbsolute = { x: 0, y: 0 };
-            const modal = this.diagram.modal;
-            if (modal) {
-               const { left, top } = modal.position();
-               positionAbsolute.x = Math.trunc(left);
-               positionAbsolute.y = Math.trunc(top);
-               modal.close();
-            }
-            this.diagram.modal = Modal.create({
+            let modal = this.diagram.modal;
+            const prefs = this.diagram.prefs;
+            const positionAbsolute = prefs.positionAbsolute;
+            if (modal && modal.open) modal.close();
+            modal = Modal.create({
                backdrop: { noMask: true },
-               callback,
-               cancelCallback,
-               closeCallback,
+               dropCallback: function() {
+                  const { left, top } = modal.position();
+                  positionAbsolute.x = Math.trunc(left);
+                  positionAbsolute.y = Math.trunc(top);
+                  prefs.set({ positionAbsolute });
+               }.bind(modal),
                icons: this.diagram.icons,
                id: 'job_state_modal',
                initValue: null,
                noButtons: true,
                positionAbsolute,
-               title: 'Job State',
+               title: this.type == 'box' ? 'Box State' : 'Job State',
                url: this.jobURI
             });
+            this.diagram.modal = modal;
          }.bind(this);
          const link = this.h.a({ onclick }, this.jobName);
          link.setAttribute('clicklistener', true);
@@ -130,13 +126,60 @@ WCom.StateDiagram = (function() {
       }
    }
    Object.assign(ResultSet.prototype, Utils.Bitch);
+   class DependencyGraph {
+      constructor(container) {
+         this.container = container;
+         const { left, top } = this.h.getOffset(container);
+         this.left = left + 4;
+         this.top = top - 3;
+         this.jobs = [];
+      }
+      render() {
+         const attr = { className: 'dependencies' };
+         this.container.appendChild(this.h.canvas(attr));
+         for (const job of this.jobs) {
+//            console.log(job.jobName);
+            let { left, top } = this.h.getOffset(job.jobTile);
+            left -= this.left;
+            top -= this.top;
+//            console.log(left + ' ' + top);
+         }
+      }
+   }
+   Object.assign(DependencyGraph.prototype, Utils.Markup);
+   class Preferences {
+      constructor(diagram, uri) {
+         this.diagram = diagram;
+         if (uri) this.prefsURI = uri;
+         this.get();
+      }
+      async get() {
+         if (!this.prefsURI) return;
+         const { object } = await this.bitch.sucks(this.prefsURI);
+         if (object['position-absolute'])
+            this.positionAbsolute = object['position-absolute'];
+      }
+      set(values) {
+         this.positionAbsolute = values.positionAbsolute;
+         if (!this.prefsURI) return;
+         const data = { 'position-absolute': this.positionAbsolute };
+         const json = JSON.stringify({ data, '_verify': this.diagram.token });
+         this.bitch.blows(this.prefsURI, { json: json });
+      }
+   }
+   Object.assign(Preferences.prototype, Utils.Bitch);
    class Diagram {
       constructor(container, config) {
-         this.container = container;
          this.icons     = config['icons'];
          this.maxJobs   = config['max-jobs'];
-         this.onRender  = config['on-render'];
+         this.name      = config['name'];
+         this.onload    = config['onload'];
+         this.token     = config['verify-token'];
+         this.container = this.h.div({ className: 'diagram-container' });
          this.resultSet = new ResultSet(config['data-uri']);
+         this.depGraph  = new DependencyGraph(container);
+         this.prefs     = new Preferences(this, config['prefs-uri']);
+         container.appendChild(this.container);
       }
       async nextJob(index) {
          const result = await this.resultSet.next();
@@ -147,25 +190,24 @@ WCom.StateDiagram = (function() {
          this.jobs = [];
          let index = 0;
          let job;
-         while (job = await this.nextJob(++index)) { this.jobs.push(job) }
+         while (job = await this.nextJob(++index)) this.jobs.push(job);
       }
       async render() {
-         await this.renderJobs();
-         if (this.onRender) eval(this.onRender);
-      }
-      async renderJobs() {
          await this.readJobs();
-         if (!this.jobs.length) return this.renderNoData(this.container);
-         for (const job of this.jobs) job.render(this.container);
+         if (this.jobs.length)
+            for (const job of this.jobs) job.render(this.container);
+         else { this.renderNoData(this.container) }
+         this.depGraph.render();
+         if (this.onload) eval(this.onload);
       }
       renderNoData(container) {
       }
    }
+   Object.assign(Diagram.prototype, Utils.Markup);
    class Manager {
       constructor() {
          this.diagrams = {};
-         const scan = function(c, o) { this.scan(c, o) }.bind(this);
-         Utils.Event.registerOnload(scan);
+         Utils.Event.registerOnload(this.scan.bind(this));
       }
       isConstructing() {
          return new Promise(function(resolve) {

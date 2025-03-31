@@ -12,9 +12,7 @@ with    'HTML::StateTable::Role::Form';
 
 has '+caption' => default => 'Logfile List';
 
-has '+icons' => default => sub {
-   return shift->context->request->uri_for('img/icons.svg')->as_string;
-};
+has '+icons' => default => sub { shift->context->uri_for_icons->as_string };
 
 has '+paging' => default => FALSE;
 

@@ -24,6 +24,7 @@ share/less/h*
 share/less/wcom*
 share/js/wcom-0-lib.js
 t/ipc_srlock*
+var/bugs
 var/etc/app-mcp-local.json
 var/log
 var/root/js

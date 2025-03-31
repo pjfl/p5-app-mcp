@@ -16,9 +16,7 @@ has '+configurable_control_location' => default => 'BottomRight';
 
 has '+form_control_location' => default => 'BottomRight';
 
-has '+icons' => default => sub {
-   return shift->context->request->uri_for('img/icons.svg')->as_string;
-};
+has '+icons' => default => sub { shift->context->uri_for_icons->as_string };
 
 has '+page_size_control_location' => default => 'BottomLeft';
 

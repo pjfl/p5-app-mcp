@@ -30,6 +30,24 @@ sub base : Auth('none') {
    return;
 }
 
+sub attach {
+   my ($self, $context) = @_;
+
+   my $bug     = $context->stash('bug');
+   my $options = { bug => $bug, context => $context };
+   my $form    = $self->new_form('BugAttachment', $options);
+
+   if ($form->process(posted => $context->posted)) {
+      my $view = $context->uri_for_action('bug/edit', [$bug->id]);
+
+      $context->stash(redirect $view, ['File uploaded']);
+      return;
+   }
+
+   $context->stash(form => $form);
+   return;
+}
+
 sub create : Auth('view') Nav('Report Bug') {
    my ($self, $context) = @_;
 

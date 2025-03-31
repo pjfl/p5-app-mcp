@@ -9,7 +9,7 @@ has '+moniker' => default => 'z_root';
 
 sub dispatch_request {
 return (
-   'GET|POST + /api/** + ?*' => sub {['api/root/dispatch', @_]},
+   'GET|POST + /api/**.* + ?*' => sub {['api/root/dispatch', @_]},
 
    'GET|POST + /job/create + ?*'   => sub {['job/root/base/create', @_]},
    'POST     + /job/*/delete + ?*' => sub {['job/root/base/delete', @_]},
@@ -33,6 +33,9 @@ return (
    'GET      + /user + ?*'            => sub {['user/root/base/list',      @_]},
 
    'GET|POST + /bug/create + ?*'   => sub {['bug/root/base/create', @_]},
+   'GET      + /bug/*/attach + ?*' => sub {['bug/root/base/attach', @_]},
+   'POST     + /bug/*/attach + *file~ + ?*'
+                                   => sub {['bug/root/base/attach', @_]},
    'POST     + /bug/*/delete + ?*' => sub {['bug/root/base/delete', @_]},
    'GET|POST + /bug/*/edit + ?*'   => sub {['bug/root/base/edit',   @_]},
    'GET|POST + /bug/* + ?*'        => sub {['bug/root/base/view',   @_]},

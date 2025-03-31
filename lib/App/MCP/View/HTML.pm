@@ -73,7 +73,7 @@ sub _header {
 sub _maybe_render_partial {
    my ($self, $context) = @_;
 
-   my $header = $context->request->header('prefer') // q();
+   my $header = $context->request->header('Prefer') // q();
 
    return unless $header eq 'render=partial';
 

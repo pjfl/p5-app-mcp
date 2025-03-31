@@ -38,7 +38,15 @@ sub base : Auth('view') {
 sub edit  {
    my ($self, $context) = @_;
 
-   my $job  = $context->stash->{job};
+   my $job = $context->stash->{job};
+
+   if (($context->request->body_parameters->{_submit} // NUL) eq 'edit') {
+      my $edit = $context->uri_for_action('job/edit', [$job->id]);
+
+      $context->stash(redirect $edit, []);
+      return;
+   }
+
    my $form = $self->new_form('State', { context => $context, item => $job });
 
    if ($form->process(posted => $context->posted)) {
@@ -68,14 +76,20 @@ sub view : Auth('view') Nav('State|info') {
 
    $params = { 'state-data' => 'true' };
 
-   my $uri  = $context->uri_for_action('state/view', [], $params);
-   my $wcom = $self->config->wcom_resources->{navigation};
+   my $data_uri  = $context->uri_for_action('state/view', [], $params);
+   my $wcom      = $self->config->wcom_resources->{navigation};
+   my $name      = 'state-diagram';
+   my $action    = 'api/diagram_preference';
+   my $prefs_uri = $context->uri_for_action($action, [$name]);
 
    $context->stash(state_config => {
-      'data-uri'  => $uri->as_string,
-      'icons'     => $context->request->uri_for('img/icons.svg')->as_string,
-      'max-jobs'  => $self->max_jobs,
-      'on-render' => "${wcom}.onContentLoad()",
+      'data-uri'     => $data_uri->as_string,
+      'icons'        => $context->uri_for_icons->as_string,
+      'max-jobs'     => $self->max_jobs,
+      'name'         => $name,
+      'onload'       => "${wcom}.onContentLoad()",
+      'prefs-uri'    => $prefs_uri->as_string,
+      'verify-token' => $context->verification_token
    });
    return;
 }
