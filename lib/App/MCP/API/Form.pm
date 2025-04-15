@@ -34,11 +34,4 @@ sub field : Auth('none') {
    return;
 }
 
-sub thumbnail : Auth('view') {
-   my ($self, $context, @args) = @_;
-   my $path = join '/', @args;
-   warn $path;
-   return;
-}
-
 1;

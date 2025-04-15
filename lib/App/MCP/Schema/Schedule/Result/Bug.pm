@@ -8,6 +8,7 @@ use App::MCP::Util      qw( created_timestamp_data_type enumerated_data_type
 use DBIx::Class::Moo::ResultClass;
 
 extends 'App::MCP::Schema::Base';
+with    'App::MCP::Role::FileMeta';
 
 my $class  = __PACKAGE__;
 my $result = 'App::MCP::Schema::Schedule::Result';
@@ -43,6 +44,16 @@ $class->has_many('comments' => "${result}::BugComment", 'bug_id');
 
 $class->has_many('attachments' => "${result}::BugAttachment", 'bug_id');
 
+has '+meta_config_attr' => default => 'bug_attachments';
+
+sub delete {
+   my $self = shift;
+
+   $self->purge_attachments(TRUE);
+
+   return $self->next::method;
+}
+
 sub insert {
    my $self    = shift;
    my $columns = { $self->get_inflated_columns };
@@ -53,6 +64,31 @@ sub insert {
    return $self->next::method;
 }
 
+sub purge_attachments {
+   my ($self, $for_delete) = @_;
+
+   my $config = $self->result_source->schema->config;
+   my $purged = FALSE;
+   my $map    = {};
+
+   unless ($for_delete) {
+      my @attachments = $self->attachments->all;
+
+      for my $attachment (@attachments) {
+         $map->{$attachment->path} = TRUE;
+      }
+   }
+
+   for my $file ($self->meta_directory($config, $self->id)->all) {
+      next if exists $map->{$file->basename};
+
+      $file->unlink;
+      $purged = TRUE;
+   }
+
+   return $purged;
+}
+
 sub update {
    my ($self, $columns) = @_;
 
@@ -61,6 +97,7 @@ sub update {
    $columns = { $self->get_inflated_columns };
    $columns->{updated} = SQL_NOW;
    $self->set_inflated_columns($columns);
+
    return $self->next::method;
 }
 

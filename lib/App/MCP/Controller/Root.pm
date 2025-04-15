@@ -32,14 +32,15 @@ return (
    'GET      + /user/* + ?*'          => sub {['user/root/base/view',      @_]},
    'GET      + /user + ?*'            => sub {['user/root/base/list',      @_]},
 
-   'GET|POST + /bug/create + ?*'   => sub {['bug/root/base/create', @_]},
-   'GET      + /bug/*/attach + ?*' => sub {['bug/root/base/attach', @_]},
+   'GET      + /bug/attachment/* + ?*' => sub {['bug/root/attachment',  @_]},
+   'GET|POST + /bug/create + ?*'       => sub {['bug/root/base/create', @_]},
+   'GET      + /bug/*/attach + ?*'     => sub {['bug/root/base/attach', @_]},
    'POST     + /bug/*/attach + *file~ + ?*'
-                                   => sub {['bug/root/base/attach', @_]},
-   'POST     + /bug/*/delete + ?*' => sub {['bug/root/base/delete', @_]},
-   'GET|POST + /bug/*/edit + ?*'   => sub {['bug/root/base/edit',   @_]},
-   'GET|POST + /bug/* + ?*'        => sub {['bug/root/base/view',   @_]},
-   'GET      + /bug + ?*'          => sub {['bug/root/base/list',   @_]},
+                                       => sub {['bug/root/base/attach', @_]},
+   'POST     + /bug/*/delete + ?*'     => sub {['bug/root/base/delete', @_]},
+   'GET|POST + /bug/*/edit + ?*'       => sub {['bug/root/base/edit',   @_]},
+   'GET|POST + /bug/* + ?*'            => sub {['bug/root/base/view',   @_]},
+   'GET      + /bug + ?*'              => sub {['bug/root/base/list',   @_]},
 
    'GET      + /doc/select + ?*' => sub {['doc/root/base/select', @_]},
    'GET      + /doc/*.* + ?*'    => sub {['doc/root/base/view',   @_]},

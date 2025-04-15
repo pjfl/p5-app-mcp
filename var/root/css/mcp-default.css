@@ -526,21 +526,12 @@ form.classic .alert-info {
   padding: 0.5rem 0 0;
 }
 form.classic .ds-add-icon {
-  background: linear-gradient(0deg, bisque, whitesmoke);
-  border-radius: 3px;
-  box-shadow: 2px 2px 2px gray;
-  color: seagreen;
-  cursor: pointer;
   font-family: Roboto, system-ui, sans-serif;
   font-size: smaller;
   font-weight: bold;
-  padding: 0.25rem;
 }
 form.classic .ds-add-icon svg {
   vertical-align: middle;
-}
-form.classic .ds-add-icon:hover {
-  box-shadow: inset 0 0 3px gray;
 }
 form.classic .ds-form {
   border-spacing: 0 0.5rem;
@@ -571,6 +562,12 @@ form.classic .ds-form .ds-field.hide,
 form.classic .ds-form .ds-reorderable.hide,
 form.classic .ds-form .ds-remove.hide {
   display: none;
+}
+form.classic .ds-form .ds-input.input-text[readonly=readonly] {
+  background: ivory;
+  border: 0;
+  border-radius: 0;
+  color: black;
 }
 form.classic .ds-form .ds-output {
   font-size: 0.8rem;

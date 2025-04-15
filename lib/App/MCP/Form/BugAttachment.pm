@@ -92,7 +92,7 @@ sub validate {
 
       $context->model('BugAttachment')->create({
          bug_id  => $bug_id,
-         path    => $self->destination,
+         path    => $filename,
          user_id => $context->session->id
       });
    }

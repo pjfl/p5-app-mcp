@@ -32,7 +32,7 @@ around 'to_psgi_app' => sub {
       mount $config->mount_point => builder {
          enable 'Static',
             path => qr{ \A / (?: $static) / }mx,
-            root => $config->root;
+            root => $config->rootdir;
          enable 'Session', $self->session->middleware_config;
          enable 'LogDispatch', logger => $self->log;
          $psgi_app;

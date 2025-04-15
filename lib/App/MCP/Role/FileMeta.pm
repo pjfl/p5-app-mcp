@@ -8,7 +8,7 @@ use Moo::Role;
 
 with 'App::MCP::Role::CSVParser';
 
-has 'meta_config_attr' => is => 'ro', isa => Str, default => 'filemanager';
+has 'meta_config_attr' => is => 'lazy', isa => Str, default => 'filemanager';
 
 sub meta_add {
    my ($self, $context, $basedir, $filename, $args) = @_;

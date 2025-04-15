@@ -2,7 +2,7 @@ package App::MCP::Form::BugReport;
 
 use App::MCP::Constants    qw( BUG_STATE_ENUM FALSE NUL SPC TRUE );
 use HTML::Forms::Constants qw( META );
-use HTML::Forms::Types     qw( Bool Str );
+use HTML::Forms::Types     qw( Bool Int Str );
 use HTML::Forms::Util      qw( json_bool );
 use Moo;
 use HTML::Forms::Moo;
@@ -17,6 +17,15 @@ has '+renderer_args' => default => sub {
    return { page_names => [qw(Details Attachments Comments)] };
 };
 has '+title' => default => 'Report Bug';
+
+has 'current_page' =>
+   is      => 'lazy',
+   isa     => Int,
+   default => sub {
+      my $self = shift;
+
+      return$self->context->request->query_parameters->{'current-page'} // 0;
+   };
 
 has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
 
@@ -59,33 +68,46 @@ has_field 'submit1' => type => 'Button';
 
 has_field 'attachments' =>
    type                   => 'DataStructure',
+   add_icon               => 'attach',
+   add_title              => 'Add attachment',
    do_label               => FALSE,
+   deflate_value_method   => \&_deflate_attachments,
    inflate_default_method => \&_inflate_attachments,
-   tags                   => { page_break => TRUE },
+   is_row_readonly        => \&_is_row_readonly,
+   remove_callback        => "document.getElementById('submit1').click()",
    row_class              => 'ds-row separate',
-   structure              => [
-      {  name => 'path', type => 'image', readonly => TRUE },
-      {
-         name          => 'owner',
-         type          => 'display',
-         readonly      => TRUE,
-         tag           => 'path',
-         tagLabelLeft  => 'Attached by',
-      },
-      {
-         name         => 'updated',
-         type         => 'datetime',
-         readonly     => TRUE,
-         tag          => 'path',
-         tagLabelLeft => 'on',
-      },
-   ],
-   wrapper_class => ['compound'];
-
-has_field 'attach' =>
-   type  => 'Button',
-   label => 'attach',
-   title => 'Add attachment';
+   tags                   => { page_break => TRUE },
+   wrapper_class          => ['compound'],
+   structure              => [{
+      name   => 'thumb',
+      type   => 'image',
+      height => '100px',
+      width  => '280px'
+   }, {
+      name     => 'path',
+      type     => 'text',
+      readonly => TRUE,
+   }, {
+      name         => 'owner',
+      type         => 'display',
+      readonly     => TRUE,
+      tag          => 'thumb',
+      tagLabelLeft => 'Attached by',
+   }, {
+      name         => 'updated',
+      type         => 'datetime',
+      readonly     => TRUE,
+      tag          => 'thumb',
+      tagLabelLeft => 'on',
+   }, {
+      name    => 'id',
+      type    => 'hidden',
+      classes => 'hide'
+   }, {
+      name    => 'user_id',
+      type    => 'hidden',
+      classes => 'hide'
+   }];
 
 has_field 'comments' =>
    type                   => 'DataStructure',
@@ -95,33 +117,40 @@ has_field 'comments' =>
    is_row_readonly        => \&_is_row_readonly,
    tags                   => { page_break => TRUE },
    row_class              => 'ds-row separate',
-   structure              => [
-      { name => 'comment', type => 'textarea' },
-      {
-         name         => 'updated',
-         type         => 'datetime',
-         readonly     => TRUE,
-         tag          => 'comment',
-         tagLabelLeft => 'On',
-      },
-      {
-         name          => 'owner',
-         type          => 'display',
-         readonly      => TRUE,
-         tag           => 'comment',
-         tagLabelLeft  => 'user',
-         tagLabelRight => 'wrote',
-      },
-      { name => 'id',      type => 'hidden', classes => 'hide' },
-      { name => 'user_id', type => 'hidden', classes => 'hide' },
-   ],
-   wrapper_class => ['compound'];
+   wrapper_class          => ['compound'],
+   structure              => [{
+      name => 'comment',
+      type => 'textarea'
+   }, {
+      name         => 'updated',
+      type         => 'datetime',
+      readonly     => TRUE,
+      tag          => 'comment',
+      tagLabelLeft => 'On',
+   }, {
+      name          => 'owner',
+      type          => 'display',
+      readonly      => TRUE,
+      tag           => 'comment',
+      tagLabelLeft  => 'user',
+      tagLabelRight => 'wrote',
+   }, {
+      name    => 'id',
+      type    => 'hidden',
+      classes => 'hide'
+   }, {
+      name    => 'user_id',
+      type    => 'hidden',
+      classes => 'hide'
+   }];
 
 has_field 'submit2' => type => 'Button';
 
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
+
+   $self->renderer_args->{current_page} = $self->current_page;
 
    if ($self->item) {
       $self->field('updated')->inactive(TRUE) unless $self->item->updated;
@@ -151,32 +180,20 @@ after 'after_build_fields' => sub {
    $self->field('created')->time_zone($tz);
    $self->field('updated')->time_zone($tz);
 
-   my $attach = $self->field('attach');
+   my $attachments = $self->field('attachments');
 
-   if ($self->item) {
-      my $modal   = $context->config->wcom_resources->{modal};
-      my $url     = $context->uri_for_action('bug/attach', [$self->item->id]);
-      my $args    = $self->json_parser->encode({
-         icons     => $self->_icons,
-         noButtons => json_bool TRUE,
-         title     => 'Add Attachment',
-         url       => $url->as_string
-      });
-      my $handler = "event.preventDefault(); ${modal}.create(${args})";
+   $attachments->add_handler($self->_attach_handler) if $self->item;
+   $attachments->icons($self->_icons);
+   $attachments->structure->[0]->{select} = $self->_select_handler;
 
-      $attach->element_attr->{javascript}->{onclick} = $handler;
-   }
-   else { $attach->inactive(TRUE) }
-
-   $attach->icons($self->_icons);
-
-   $self->field('attachments')->icons($self->_icons);
    $self->field('comments')->icons($self->_icons);
    return;
 };
 
 sub validate {
    my $self = shift;
+
+   return if $self->result->has_errors;
 
    $self->field('user_id')->value($self->context->session->id)
       unless $self->item;
@@ -188,6 +205,45 @@ sub validate {
 }
 
 # Private field methods
+sub _attach_handler {
+   my $self    = shift;
+   my $context = $self->context;
+   my $modal   = $context->config->wcom_resources->{modal};
+   my $url     = $context->uri_for_action('bug/attach', [$self->item->id]);
+   my $args    = $self->json_parser->encode({
+      icons     => $self->_icons,
+      noButtons => json_bool TRUE,
+      title     => 'Add Attachment',
+      url       => $url->as_string
+   });
+
+   return "event.preventDefault(); ${modal}.create(${args})";
+}
+
+sub _deflate_attachments {
+   my ($self, $value) = @_;
+
+   my $bug_id      = $self->form->item ? $self->form->item->id : undef;
+   my $session     = $self->form->context->session;
+   my $attachments = [];
+
+   for my $item (@{$self->form->json_parser->decode($value)}) {
+      next unless defined $item->{path} and length $item->{path};
+
+      my $attachment = {
+         path    => $item->{path},
+         user_id => $item->{user_id} || $session->id,
+      };
+
+      $attachment->{bug_id} = $bug_id     if $bug_id;
+      $attachment->{id}     = $item->{id} if $item->{id};
+
+      push @{$attachments}, $attachment;
+   }
+
+   return $attachments;
+}
+
 sub _deflate_comments {
    my ($self, $value) = @_;
 
@@ -217,16 +273,18 @@ sub _inflate_attachments {
    my $values  = [];
 
    for my $item (@attachments) {
-      my $args    = [$self->form->name, $item->path];
-      my $thumb   = $context->uri_for_action('api/form_thumbnail', $args);
+      my $action  = 'bug/attachment';
+      my $params  = { thumbnail => 'true' };
+      my $uri     = $context->uri_for_action($action, [$item->id], $params);
       my $updated = $item->updated ? $item->updated : $item->created;
 
       $updated->set_time_zone($context->session->timezone);
 
       push @{$values}, {
-         path    => $thumb->as_string,
          id      => $item->id,
          owner   => $item->owner->user_name,
+         path    => $item->path,
+         thumb   => $uri->as_string,
          updated => $updated->strftime('%FT%R'),
          user_id => $item->user_id,
       };
@@ -263,6 +321,21 @@ sub _is_row_readonly {
    my $username = $self->form->context->session->username;
 
    return $row->{owner} eq $username ? FALSE : TRUE;
+}
+
+sub _select_handler {
+   my $self    = shift;
+   my $context = $self->context;
+   my $modal   = $context->config->wcom_resources->{modal};
+   my $url     = $context->uri_for_action('bug/attachment', ['%value']);
+   my $args    = $self->json_parser->encode({
+      icons     => $self->_icons,
+      noButtons => json_bool TRUE,
+      title     => 'View Attachment',
+      url       => $url->as_string
+   });
+
+   return "event.preventDefault(); ${modal}.current = ${modal}.create(${args})";
 }
 
 use namespace::autoclean -except => META;

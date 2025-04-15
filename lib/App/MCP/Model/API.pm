@@ -24,7 +24,6 @@ has 'routes' =>
       return {
          'api/diagram_preference'  => 'api/diagram/*/preference',
          'api/form_validate_field' => 'api/form/*/field/*/validate',
-         'api/form_thumbnail'      => 'api/form/*/thumbnail/*',
          'api/navigation_messages' => 'api/navigation/collect/messages',
          'api/object_fetch'        => 'api/object/*/fetch',
          'api/object_get'          => 'api/object/*/get',

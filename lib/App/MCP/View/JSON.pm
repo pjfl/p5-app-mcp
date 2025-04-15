@@ -11,11 +11,11 @@ sub serialize {
    my ($self, $context) = @_;
 
    my $stash = $context->stash;
-   my $json; $json = $stash->{body} if $stash->{body};
+   my $body; $body = $stash->{body} if $stash->{body};
 
-   $json = $self->json_parser->encode($stash->{json}) unless $json;
+   $body = $self->json_parser->encode($stash->{json}) unless $body;
 
-   return [ $stash->{code}, _header($stash->{http_headers}), [$json] ];
+   return [ $stash->{code}, _header($stash->{http_headers}), [$body] ];
 }
 
 sub _header {

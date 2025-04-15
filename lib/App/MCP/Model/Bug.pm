@@ -1,8 +1,8 @@
 package App::MCP::Model::Bug;
 
-use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use App::MCP::Util        qw( redirect );
-use Unexpected::Functions qw( UnauthorisedAccess UnknownBug );
+use Unexpected::Functions qw( UnauthorisedAccess UnknownAttachment UnknownBug );
 use Moo;
 use App::MCP::Attributes; # Will do cleaning
 
@@ -17,8 +17,9 @@ sub base : Auth('none') {
    my $nav = $context->stash('nav')->list('bugs');
 
    if ($bugid) {
-      my $rs  = $context->model('Bug');
-      my $bug = $rs->find($bugid, { prefetch => [qw(comments)]});
+      my $bug = $context->model('Bug')->find($bugid, {
+         prefetch => { attachments => 'owner', comments => 'owner' }
+      });
 
       return $self->error($context, UnknownBug, [$bugid]) unless $bug;
 
@@ -38,13 +39,52 @@ sub attach {
    my $form    = $self->new_form('BugAttachment', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $view = $context->uri_for_action('bug/edit', [$bug->id]);
+      my $params = { 'current-page' => 1 };
+      my $view   = $context->uri_for_action('bug/edit', [$bug->id], $params);
 
       $context->stash(redirect $view, ['File uploaded']);
       return;
    }
 
    $context->stash(form => $form);
+   return;
+}
+
+sub attachment : Auth('view') {
+   my ($self, $context, $attachment_id) = @_;
+
+   my $attachment = $context->model('BugAttachment')->find($attachment_id);
+
+   return $self->error($context, UnknownAttachment, [$attachment_id])
+      unless $attachment;
+
+   my $params = $context->request->query_parameters;
+
+   if (exists $params->{download} and $params->{download} eq 'true') {
+      my $content = $attachment->get_content;
+
+      $context->stash(
+         body         => $content->{body},
+         http_headers => ['Content-Disposition', $attachment->path],
+         mime_type    => $content->{mime_type},
+         view         => 'image'
+      );
+   }
+   elsif (exists $params->{thumbnail} and $params->{thumbnail} eq 'true') {
+      my $content = $attachment->get_content({ thumbnail => TRUE });
+
+      $context->stash(
+         body      => $content->{body},
+         mime_type => $content->{mime_type},
+         view      => 'image'
+      );
+   }
+   else {
+      my $options = { attachment => $attachment, context => $context };
+
+      $context->stash(form => $self->new_form('AttachmentView', $options));
+   }
+
    return;
 }
 
@@ -92,7 +132,7 @@ sub edit : Nav('Update Bug') {
                  ? TRUE : FALSE;
 
    return $self->error($context, UnauthorisedAccess, [])
-      unless $is_editor || $is_owner;
+      if $context->posted && !($is_editor || $is_owner);
 
    my $options = {
       context      => $context,
@@ -104,11 +144,10 @@ sub edit : Nav('Update Bug') {
    my $form = $self->new_form('BugReport', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $username = $context->session->username;
-      my $view     = $context->uri_for_action('bug/edit', [$form->item->id]);
-      my $message  = ['Bug report [_1] updated', $form->item->id];
+      my $params = $bug->purge_attachments ? { 'current-page' => 1 } : {};
+      my $edit   = $context->uri_for_action('bug/edit', [$bug->id], $params);
 
-      $context->stash(redirect $view, $message);
+      $context->stash(redirect $edit, ['Bug report [_1] updated', $bug->id]);
    }
 
    $context->stash(form => $form);

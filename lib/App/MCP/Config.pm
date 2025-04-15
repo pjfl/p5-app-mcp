@@ -84,7 +84,7 @@ has 'bin' =>
    isa     => Directory,
    default => sub { shift->pathname->parent };
 
-=item bug_attachments
+=item C<bug_attachments>
 
 A hash reference of parameters used to configure the bug attachment uploads
 
@@ -98,8 +98,8 @@ has 'bug_attachments' =>
 
       return {
          directory  => $self->vardir->catdir('bugs'),
-         extensions => 'csv|doc|txt',
-         sharedir   => $self->root->catdir('bugs')
+         extensions => 'csv|doc|png|txt',
+         sharedir   => $self->rootdir->catdir('bugs')
       };
    };
 
@@ -242,7 +242,7 @@ has 'documentation' =>
       return {
          directory  => $self->bin->parent->catdir('lib'),
          extensions => 'pm',
-         sharedir   => $self->root->catdir('file')
+         sharedir   => $self->rootdir->catdir('file')
       };
    };
 
@@ -557,13 +557,13 @@ has 'request' => is => 'lazy', isa => HashRef, default => sub {
    };
 };
 
-=item C<root>
+=item C<rootdir>
 
 Directory which is the document root for assets being served by the application
 
 =cut
 
-has 'root' =>
+has 'rootdir' =>
    is      => 'lazy',
    isa     => Directory,
    default => sub { shift->vardir->catdir('root') };

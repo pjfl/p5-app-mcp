@@ -106,7 +106,7 @@ sub not_found : Auth('none') {
 
    my $request = $context->request;
 
-   if ($request->query_parameters->{navigation} eq 'true') {
+   if (($request->query_parameters->{navigation} // NUL) eq 'true') {
       $context->stash(json => {}, view => 'json');
       return;
    }

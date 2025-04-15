@@ -22,7 +22,7 @@ with    'Web::Components::Role::Email';
 has 'assetdir' =>
    is      => 'lazy',
    isa     => Directory,
-   default => sub { $_[0]->config->root->catdir('img') };
+   default => sub { $_[0]->config->rootdir->catdir('img') };
 
 has 'formatter' =>
    is      => 'lazy',
@@ -77,7 +77,13 @@ sub install : method {
       $path->mkpath(oct '0770') unless $path->exists;
    }
 
-   my $path = $config->root->catdir('file');
+   # Share directory for bug attachments
+   my $path = $config->rootdir->catdir('bugs');
+
+   $path->mkpath(oct '0770') unless $path->exists;
+
+   # Share directory for documentation
+   $path = $config->rootdir->catdir('file');
 
    $path->mkpath(oct '0770') unless $path->exists;
 
