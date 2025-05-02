@@ -7,7 +7,7 @@ use Unexpected::Functions  qw( catch_class throw APIMethodFailed
                                UnauthorisedAPICall UnknownAPIClass
                                UnknownAPIMethod UnknownView );
 use Try::Tiny;
-use Web::Simple;
+use Moo;
 use App::MCP::Attributes; # Will do namespace cleaning
 
 extends 'App::MCP::Model';
@@ -41,7 +41,7 @@ sub dispatch : Auth('none') {
    my $class = ('+' eq substr $ns, 0, 1)
       ? substr $ns, 1 : $self->namespace . '::' . ucfirst lc $ns;
 
-   try   { ensure_class_loaded($class) }
+   try   { ensure_class_loaded $class }
    catch { $self->error($context, UnknownAPIClass, [$class, $_]) };
 
    return if $context->stash->{finalised};
@@ -54,7 +54,7 @@ sub dispatch : Auth('none') {
       unless $action;
 
    return $self->error($context, UnauthorisedAPICall, [$class, $method])
-      unless $self->_api_allowed($context, $action);
+      unless $self->_api_call_allowed($context, $action);
 
    return if $context->posted && !$self->verify_form_post($context);
 
@@ -73,7 +73,7 @@ sub dispatch : Auth('none') {
    return;
 }
 
-sub _api_allowed {
+sub _api_call_allowed {
    my ($self, $context, $action) = @_;
 
    return TRUE if $self->is_authorised($context, $action);

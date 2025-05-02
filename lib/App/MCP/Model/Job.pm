@@ -3,7 +3,7 @@ package App::MCP::Model::Job;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
 use App::MCP::Util         qw( redirect redirect2referer );
 use Unexpected::Functions  qw( UnknownJob );
-use Web::Simple;
+use Moo;
 use App::MCP::Attributes;  # Will do cleaning
 
 extends 'App::MCP::Model';

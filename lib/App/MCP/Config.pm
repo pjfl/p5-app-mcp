@@ -11,6 +11,7 @@ use Class::Usul::Cmd::Util      qw( decrypt );
 use English                     qw( -no_match_vars );
 use File::DataClass::IO         qw( io );
 use Web::Components::Util       qw( fqdn );
+use App::MCP;
 use Moo;
 
 with 'Web::Components::ConfigLoader';
@@ -317,7 +318,7 @@ has 'logdir' =>
 =item C<logfile>
 
 Set in the configuration file, the name of the logfile used by the logging
-class
+class. By default it is derived from the C<appclass>
 
 =cut
 
@@ -332,10 +333,14 @@ has 'logfile' =>
    };
 
 has '_logfile' =>
-   is       => 'ro',
+   is       => 'lazy',
    isa      => Str,
-   default  => 'app-mcp.log',
-   init_arg => 'logfile';
+   init_arg => 'logfile',
+   default  => sub {
+      (my $name = lc (shift->appclass)) =~ s{ :: }{-}gmx;
+
+      return "${name}.log"
+   };
 
 =item C<max_asset_size>
 
@@ -446,13 +451,16 @@ File object for absolute pathname to the running program
 
 =cut
 
-has 'pathname' => is => 'ro', isa => File, default => sub {
-   my $name = $PROGRAM_NAME;
+has 'pathname' =>
+   is      => 'ro',
+   isa     => File,
+   default => sub {
+      my $name = $PROGRAM_NAME;
 
-   $name = '-' eq substr($name, 0, 1) ? $EXECUTABLE_NAME : $name;
+      $name = '-' eq substr($name, 0, 1) ? $EXECUTABLE_NAME : $name;
 
-   return io((split m{ [ ][\-][ ] }mx, $name)[0])->absolute;
-};
+      return io((split m{ [ ][\-][ ] }mx, $name)[0])->absolute;
+   };
 
 =item C<port>
 
@@ -530,32 +538,36 @@ session object
 
 =cut
 
-has 'request' => is => 'lazy', isa => HashRef, default => sub {
-   my $self = shift;
+has 'request' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      my $self = shift;
 
-   return {
-      max_messages  => $self->max_messages,
-      max_sess_time => $self->max_web_session_time,
-      prefix        => $self->prefix,
-      request_roles => [
-         qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
-      ],
-      serialise_session_attr => [ qw( id ) ],
-      session_attr => {
-         email         => [ Str, NUL ],
-         enable_2fa    => [ Bool, FALSE ],
-         id            => [ PositiveInt, 0 ],
-         link_display  => [ Str, 'both' ],
-         menu_location => [ Str, 'header' ],
-         realm         => [ Str, NUL ],
-         role          => [ Str, NUL ],
-         skin          => [ Str, $self->skin ],
-         theme         => [ Str, 'light' ],
-         timezone      => [ Str, $self->local_tz ],
-         wanted        => [ Str, NUL ],
-      },
+      return {
+         max_messages  => $self->max_messages,
+         max_sess_time => $self->max_web_session_time,
+         prefix        => $self->prefix,
+         request_roles => [
+            qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
+         ],
+         scrubber => $self->scrubber,
+         serialise_session_attr => [ qw( id ) ],
+         session_attr => {
+            email         => [ Str, NUL ],
+            enable_2fa    => [ Bool, FALSE ],
+            id            => [ PositiveInt, 0 ],
+            link_display  => [ Str, 'both' ],
+            menu_location => [ Str, 'header' ],
+            realm         => [ Str, NUL ],
+            role          => [ Str, NUL ],
+            skin          => [ Str, $self->skin ],
+            theme         => [ Str, 'light' ],
+            timezone      => [ Str, $self->local_tz ],
+            wanted        => [ Str, NUL ],
+         },
+      };
    };
-};
 
 =item C<rootdir>
 
@@ -570,7 +582,7 @@ has 'rootdir' =>
 
 =item C<rundir>
 
-Used to store runtime files
+Directory used to store runtime files
 
 =cut
 
@@ -604,7 +616,8 @@ has 'script' =>
 
 =item C<scrubber>
 
-A string which defaults to B<[^ +\,\-\./0-9@A-Z\\_a-z]>.
+A string which defaults to B<[^ +\,\-\./0-9@A-Z\\_a-z]>. The request object
+will use this to remove characters from user input
 
 =cut
 
@@ -654,7 +667,9 @@ and upgrade the database
 
 =cut
 
-has 'sqldir' => is => 'lazy', isa => Directory,
+has 'sqldir' =>
+   is      => 'lazy',
+   isa     => Directory,
    default => sub { shift->vardir->catdir('sql') };
 
 =item C<ssh_dir>
@@ -726,9 +741,9 @@ has 'token_lifetime' => is => 'ro', isa => PositiveInt, default => 3_600;
 =item C<user>
 
 Configuration options for the C<User> result class. Includes C<load_factor>
-used in the encrypting of passwords, C<default_password> used when creating new
-users, C<min_name_len> minimum user name length, and C<min_password_len>
-minumum password length
+used in the encrypting of passwords, C<default_password> and C<default_role>
+used when creating new users, C<min_name_len> minimum user name length, and
+C<min_password_len> minumum password length
 
 =cut
 
@@ -738,6 +753,7 @@ has 'user' =>
    default => sub {
       return {
          default_password => 'welcome',
+         default_role     => 'view',
          load_factor      => 14,
          min_name_len     => 3,
          min_password_len => 3,

@@ -5,7 +5,6 @@ use App::MCP::Util      qw( created_timestamp_data_type
                             foreign_key_data_type nullable_foreign_key_data_type
                             serial_data_type text_data_type
                             updated_timestamp_data_type );
-use MIME::Types;
 use DBIx::Class::Moo::ResultClass;
 
 extends 'App::MCP::Schema::Base';
@@ -38,33 +37,15 @@ $class->belongs_to('owner' => "${result}::User", 'user_id');
 
 $class->belongs_to('comment' => "${result}::BugComment", 'comment_id');
 
-has 'default_image_file' => is => 'lazy', default => 'default.svg';
-
-has 'default_mime_type' => is => 'lazy', default => 'image/svg+xml';
-
 has '+meta_config_attr' => default => 'bug_attachments';
 
-has 'mime_types' => is => 'lazy', default => sub { MIME::Types->new };
-
-sub get_content {
+sub content_path {
    my ($self, $options) = @_;
 
-   my $config    = $self->result_source->schema->config;
-   my $base      = $self->meta_directory($config, $self->bug_id);
-   my $path      = $base->catfile($self->path);
-   my $mime_type = $self->mime_types->mimeTypeOf($path->suffix);
+   my $config = $self->result_source->schema->config;
+   my $base   = $self->meta_directory($config, $self->bug_id);
 
-   if ($options && $options->{thumbnail}) {
-      unless ($mime_type && $mime_type =~ m{ \A image/ }mx) {
-         $base      = $self->meta_directory($config);
-         $path      = $base->catfile($self->default_image_file);
-         $mime_type = $self->default_mime_type;
-      }
-   }
-
-   my $body = $path->slurp;
-
-   return { body => $body, mime_type => $mime_type };
+   return $base->catfile($self->path);
 }
 
 sub insert {

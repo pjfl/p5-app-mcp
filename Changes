@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added SendMessage role
           - Bug attachments upload, thumbnail and download complete
           - Adding bug attachments
           - Changed event register method name in JS utils

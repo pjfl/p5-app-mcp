@@ -111,7 +111,7 @@ sub validate {
    });
 
 
-   $user->set_totp_secret($enable_2fa);
+   $user->totp_enable($enable_2fa);
 
    my $session = $self->context->session;
 

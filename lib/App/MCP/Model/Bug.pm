@@ -40,9 +40,9 @@ sub attach {
 
    if ($form->process(posted => $context->posted)) {
       my $params = { 'current-page' => 1 };
-      my $view   = $context->uri_for_action('bug/edit', [$bug->id], $params);
+      my $edit   = $context->uri_for_action('bug/edit', [$bug->id], $params);
 
-      $context->stash(redirect $view, ['File uploaded']);
+      $context->stash(redirect $edit, ['File uploaded']);
       return;
    }
 
@@ -61,22 +61,17 @@ sub attachment : Auth('view') {
    my $params = $context->request->query_parameters;
 
    if (exists $params->{download} and $params->{download} eq 'true') {
-      my $content = $attachment->get_content;
-
       $context->stash(
-         body         => $content->{body},
          http_headers => ['Content-Disposition', $attachment->path],
-         mime_type    => $content->{mime_type},
+         content_path => $attachment->content_path,
          view         => 'image'
       );
    }
    elsif (exists $params->{thumbnail} and $params->{thumbnail} eq 'true') {
-      my $content = $attachment->get_content({ thumbnail => TRUE });
-
       $context->stash(
-         body      => $content->{body},
-         mime_type => $content->{mime_type},
-         view      => 'image'
+         content_path => $attachment->content_path,
+         thumbnail    => TRUE,
+         view         => 'image'
       );
    }
    else {

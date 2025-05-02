@@ -8,7 +8,6 @@ use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( throw UnknownToken Unspecified );
 use Text::MultiMarkdown;
-use App::MCP::Redis;
 use Moo;
 use Class::Usul::Cmd::Options;
 
@@ -17,29 +16,60 @@ with    'App::MCP::Role::Config';
 with    'App::MCP::Role::Log';
 with    'App::MCP::Role::Schema';
 with    'App::MCP::Role::JSONParser';
+with    'App::MCP::Role::Redis';
 with    'Web::Components::Role::Email';
+
+=pod
+
+=encoding utf-8
+
+=head1 Name
+
+App::MCP::CLI - Command line interface to utility methods
+
+=head1 Synopsis
+
+   use App::MCP::CLI;
+
+   exit App::MCP::CLI->new_with_options->run;
+
+=head1 Description
+
+Command line interface to utility methods
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<redis_client_name>
+
+=cut
+
+has '+redis_client_name' => default => 'job_stash';
+
+=item C<assetdir>
+
+=cut
 
 has 'assetdir' =>
    is      => 'lazy',
    isa     => Directory,
-   default => sub { $_[0]->config->rootdir->catdir('img') };
+   default => sub { shift->config->rootdir->catdir('img') };
+
+=item C<formatter>
+
+=cut
 
 has 'formatter' =>
    is      => 'lazy',
    isa     => class_type('Text::MultiMarkdown'),
    default => sub { Text::MultiMarkdown->new( tab_width => 3 ) };
 
-has 'redis' =>
-   is      => 'lazy',
-   isa     => class_type('App::MCP::Redis'),
-   default => sub {
-      my $self = shift;
+=item C<templatedir>
 
-      return App::MCP::Redis->new(
-         client_name => $self->config->prefix . '_job_stash',
-         config => $self->config->redis
-      );
-   };
+=cut
 
 has 'templatedir' =>
    is      => 'lazy',
@@ -51,7 +81,11 @@ has 'templatedir' =>
       return $vardir->catdir('templates', $self->config->skin, 'site');
    };
 
+=back
+
 =head1 Subroutines/Methods
+
+Defines the following methods;
 
 =over 3
 
@@ -150,6 +184,9 @@ sub make_js : method {
 
 =item make_less - Convert LESS files to CSS
 
+Run automatically if L<App::Burp> is running. Compiles LESS files down to CSS
+files
+
 =cut
 
 sub make_less : method {
@@ -171,7 +208,10 @@ sub make_less : method {
    return OK;
 }
 
-=item send_message - Send a message
+=item send_message - Send an email or SMS message
+
+Send either email or SMS messages to a list of recipients. The SMS client is
+unimplemented
 
 =cut
 
@@ -226,17 +266,19 @@ sub _create_profile {
    $self->yorn('+Is this correct', FALSE, TRUE, 0) or return;
 
    my $localdir = $self->config->home->catdir('local');
+   my $prefix   = $self->config->prefix;
+   my $filename = "${prefix}-profile";
    my $profile;
 
    if ($localdir->exists) {
-      $profile = $localdir->catfile(qw( var etc mcp-profile ));
+      $profile = $localdir->catfile('var', 'etc', $filename);
    }
    elsif ($localdir = io['~', 'local'] and $localdir->exists) {
-      $profile = $self->config->vardir->catfile('etc', 'mcp-profile');
+      $profile = $self->config->vardir->catfile('etc', $filename);
    }
    elsif ($localdir = io($ENV{PERL_LOCAL_LIB_ROOT} // NUL)
           and $localdir->exists) {
-      $profile = $self->config->vardir->catfile('etc', 'mcp-profile');
+      $profile = $self->config->vardir->catfile('etc', $filename);
    }
 
    return if !$profile || $profile->exists;
@@ -340,3 +382,58 @@ use namespace::autoclean;
 __END__
 
 =back
+
+=head1 Diagnostics
+
+None
+
+=head1 Dependencies
+
+=over 3
+
+=item L<Class::Usul::Cmd>
+
+=item L<File::DataClass>
+
+=item L<Moo>
+
+=item L<Text::MultiMarkdown>
+
+=item L<Web::Components::Role::Email>
+
+=back
+
+=head1 Incompatibilities
+
+There are no known incompatibilities in this module
+
+=head1 Bugs and Limitations
+
+There are no known bugs in this module.  Please report problems to the address
+below.  Patches are welcome
+
+=head1 Acknowledgements
+
+Larry Wall - For the Perl programming language
+
+=head1 Author
+
+Peter Flanigan, C<< <pjfl@cpan.org> >>
+
+=head1 License and Copyright
+
+Copyright (c) 2024 Peter Flanigan. All rights reserved
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself. See L<perlartistic>
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
+
+=cut
+
+# Local Variables:
+# mode: perl
+# tab-width: 3
+# End:

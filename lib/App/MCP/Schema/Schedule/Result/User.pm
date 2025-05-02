@@ -13,7 +13,7 @@ use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
 use Scalar::Util               qw( blessed );
 use Unexpected::Functions      qw( throw AccountInactive IncorrectAuthCode
                                    IncorrectPassword PasswordDisabled
-                                   PasswordExpired Unspecified );
+                                   PasswordExpired UnknownRole Unspecified );
 use Auth::GoogleAuth;
 use Crypt::SRP;
 use DBIx::Class::Moo::ResultClass;
@@ -64,8 +64,26 @@ $class->might_have('profile' => "${result}::Preference", sub {
    };
 });
 
-# TODO: Derive default role_id from self
-has 'default_role_id' => is => 'ro', isa => Int, default => 3;
+has 'api_execution_allowed' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return { enable_2fa => TRUE };
+   };
+
+has 'default_role_id' =>
+   is      => 'lazy',
+   isa     => Int,
+   default => sub {
+      my $self      = shift;
+      my $schema    = $self->result_source->schema;
+      my $role_name = $schema->config->user->{default_role};
+      my $role      = $schema->resultset('Role')->find({ name => $role_name });
+
+      throw UnknownRole, [$role_name] unless $role;
+
+      return $role->id;
+   };
 
 has 'profile_value' =>
    is      => 'lazy',
@@ -180,7 +198,7 @@ sub enable_2fa {
 sub execute {
    my ($self, $method) = @_;
 
-   return FALSE unless exists { enable_2fa => TRUE }->{$method};
+   return FALSE unless $self->api_execution_allowed->{$method};
 
    return $self->$method();
 }
@@ -193,6 +211,8 @@ sub insert {
 
    $columns->{role_id} //= $self->default_role_id;
    $self->set_inflated_columns($columns);
+
+   $self->validate unless App::MCP->env_var('bulk_insert');
 
    return $self->next::method;
 }
@@ -214,7 +234,7 @@ sub set_password {
    return $self->update;
 }
 
-sub set_totp_secret {
+sub totp_enable {
    my ($self, $enabled) = @_;
 
    if ($enabled) {
@@ -237,6 +257,8 @@ sub update {
 
    $columns = { $self->get_inflated_columns };
    $self->_encrypt_password_column($columns);
+
+   $self->validate unless App::MCP->env_var('bulk_insert');
 
    return $self->next::method;
 }

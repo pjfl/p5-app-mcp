@@ -2,7 +2,6 @@ package App::MCP::Form::Register;
 
 use HTML::Forms::Constants qw( EXCEPTION_CLASS FALSE META TRUE );
 use App::MCP::Util         qw( create_token redirect );
-use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( catch_class );
 use Try::Tiny;
 use Moo;
@@ -10,18 +9,13 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
-with    'App::MCP::Role::JSONParser';
+with    'App::MCP::Role::SendMessage';
 
 has '+name'         => default => 'Register';
 has '+title'        => default => 'Registration Request';
 has '+info_message' => default => 'Answer the registration questions';
 has '+item_class'   => default => 'User';
 has '+no_update'    => default => TRUE;
-
-has 'redis' =>
-   is       => 'ro',
-   isa      => class_type('App::MCP::Redis'),
-   required => TRUE;
 
 has_field 'user_name' => label => 'User Name', required => TRUE;
 
@@ -90,14 +84,7 @@ sub _create_email {
       username    => $name->value,
    };
 
-   $self->redis->set($token, $self->json_parser->encode($options));
-
-   my $program = $context->config->bin->catfile('mcp-cli');
-   my $command = "${program} -o token=${token} send_message email";
-
-   $options = { command => $command, name => 'send_message' };
-
-   return $context->model('BackgroundJob')->create($options);
+   return $self->send_message($context, $token, $options);
 }
 
 use namespace::autoclean -except => META;

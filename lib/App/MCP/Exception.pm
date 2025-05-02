@@ -78,6 +78,9 @@ has_exception 'UnknownJob' => parents => [$class],
 has_exception 'UnknownModel' => parents => [$class],
    error   => 'Model [_1] (moniker) not found', rv => HTTP_NOT_FOUND;
 
+has_exception 'UnknownRole' => parents => [$class],
+   error   => 'Role [_1] not found', rv => HTTP_NOT_FOUND;
+
 has_exception 'UnknownToken' => parents => [$class],
    error   => 'Token [_1] not found', rv => HTTP_NOT_FOUND;
 

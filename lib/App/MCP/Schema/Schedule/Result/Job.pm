@@ -256,10 +256,11 @@ sub _create_conditions {
 }
 
 sub _create_job_state {
-   my $self   = shift;
+   my ($self, $job) = @_;
+
    my $schema = $self->result_source->schema;
 
-   return $schema->resultset('JobState')->find_or_create(@_);
+   return $schema->resultset('JobState')->find_or_create($job);
 }
 
 sub _crontab {
