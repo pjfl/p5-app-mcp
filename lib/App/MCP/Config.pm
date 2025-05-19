@@ -549,10 +549,10 @@ has 'request' =>
          max_sess_time => $self->max_web_session_time,
          prefix        => $self->prefix,
          request_roles => [
-            qw( L10N Session JSON Cookie Headers Compat Authen::HTTP)
+            qw(L10N Session JSON Cookie Headers Compat Authen::HTTP)
          ],
          scrubber => $self->scrubber,
-         serialise_session_attr => [ qw( id ) ],
+         serialise_session_attr => [ qw( id realm role ) ],
          session_attr => {
             email         => [ Str, NUL ],
             enable_2fa    => [ Bool, FALSE ],
@@ -654,7 +654,8 @@ has 'servers' =>
 =item C<skin>
 
 A non empty simple string which defaults to B<default>. The name of the default
-CSS skin
+CSS skin. Non default skins need not specify every action path template, only
+the ones that are required to be overridden
 
 =cut
 
@@ -671,6 +672,29 @@ has 'sqldir' =>
    is      => 'lazy',
    isa     => Directory,
    default => sub { shift->vardir->catdir('sql') };
+
+=item C<state_cookie>
+
+Array reference used to instantiate the session state cookie. See
+L<Plack::Session::State::Cookie>
+
+=cut
+
+has 'state_cookie' =>
+   is      => 'lazy',
+   isa     => ArrayRef,
+   default => sub {
+      my $self = shift;
+
+      return [
+         expires     => 7_776_000,
+         httponly    => TRUE,
+         path        => $self->mount_point,
+         samesite    => 'None',
+         secure      => TRUE,
+         session_key => $self->prefix.'_session',
+      ];
+   };
 
 =item C<ssh_dir>
 
@@ -728,7 +752,9 @@ produce all the pages
 has 'template_wrappers' =>
    is      => 'ro',
    isa     => HashRef,
-   default => sub { { html => 'base', wrapper => 'standard' } };
+   default => sub {
+      return { html => 'standard', wrapper => 'standard' };
+   };
 
 =item C<token_lifetime>
 

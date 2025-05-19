@@ -255,7 +255,7 @@ sub install : method {
    return OK;
 }
 
-=item load_job - Load job table dump file
+=item load_jobs - Load job table dump file
 
 =cut
 

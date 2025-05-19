@@ -29,9 +29,17 @@ App::MCP::CLI - Command line interface to utility methods
 
 =head1 Synopsis
 
+   #!/usr/bin/env perl
    use App::MCP::CLI;
 
    exit App::MCP::CLI->new_with_options->run;
+
+   # With the above in an excutable script
+   mcp-cli -o token=<random_redis_key> send-message email
+
+   mcp-cli list-methods
+
+   mcp-cli help <method>
 
 =head1 Description
 

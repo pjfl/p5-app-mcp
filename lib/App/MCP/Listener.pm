@@ -38,7 +38,7 @@ around 'to_psgi_app' => sub {
          $psgi_app;
       };
       mount '/' => builder {
-         sub { [ HTTP_FOUND, [ 'Location', $config->default_route ], [] ] }
+         sub { [ HTTP_FOUND, [ 'Location' => $config->default_route ], [] ] }
       };
    };
 };
