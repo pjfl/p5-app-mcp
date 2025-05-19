@@ -1,3 +1,5 @@
+'var/bugs/13/Screenshot from 2025-04-01 00-15-55.png'
+'var/bugs/9/Screenshot from 2025-04-01 00-15-55.png'
 Build.PL
 Changes
 MANIFEST
@@ -8,6 +10,7 @@ bin/mcp-listener
 bin/mcp-localenv
 bin/mcp-schema
 lib/App/MCP.pm
+lib/App/MCP/API/Diagram.pm
 lib/App/MCP/API/Form.pm
 lib/App/MCP/API/Navigation.pm
 lib/App/MCP/API/Object.pm
@@ -26,6 +29,8 @@ lib/App/MCP/Exception.pm
 lib/App/MCP/ExpressionParser.pm
 lib/App/MCP/File/Docs/View.pm
 lib/App/MCP/File/Result/List.pm
+lib/App/MCP/Form/AttachmentView.pm
+lib/App/MCP/Form/BugAttachment.pm
 lib/App/MCP/Form/BugReport.pm
 lib/App/MCP/Form/ChangePassword.pm
 lib/App/MCP/Form/Changes.pm
@@ -35,6 +40,7 @@ lib/App/MCP/Form/Login.pm
 lib/App/MCP/Form/Profile.pm
 lib/App/MCP/Form/Register.pm
 lib/App/MCP/Form/State.pm
+lib/App/MCP/Form/TOTP/Reset.pm
 lib/App/MCP/Form/User.pm
 lib/App/MCP/JobServer.pm
 lib/App/MCP/Listener.pm
@@ -67,6 +73,7 @@ lib/App/MCP/Role/JSONParser.pm
 lib/App/MCP/Role/Log.pm
 lib/App/MCP/Role/Redis.pm
 lib/App/MCP/Role/Schema.pm
+lib/App/MCP/Role/SendMessage.pm
 lib/App/MCP/Role/Session.pm
 lib/App/MCP/SSHLibrary.pm
 lib/App/MCP/Schema.pm
@@ -99,12 +106,19 @@ lib/App/MCP/Table/Object/View.pm
 lib/App/MCP/Table/User.pm
 lib/App/MCP/Util.pm
 lib/App/MCP/View/HTML.pm
+lib/App/MCP/View/Image.pm
 lib/App/MCP/View/JSON.pm
 lib/App/MCP/View/Table.pm
 lib/App/MCP/Workflow.pm
 lib/App/MCP/Workflow/Transition.pm
+share/css/mcp.css
 share/js/wcom-0-lib.js
 share/js/wcom-10-diagram.js
+share/less/hfilter-minimal.less
+share/less/hforms-minimal.less
+share/less/hstatetable-minimal.less
+share/less/mcp-minimal.less
+share/less/wcom-minimal.less
 t/02pod.t
 t/03podcoverage.t
 t/05kwalitee.t
@@ -114,6 +128,7 @@ t/10compile.t
 t/13job.t
 t/20expression_parser.t
 t/boilerplate.pm
+var/bugs/13/log.txt
 var/etc/app-mcp-local.json
 var/etc/app-mcp.json
 var/etc/mcp-schema.conf
@@ -122,6 +137,7 @@ var/locale/en/forms.po
 var/locale/en/job.po
 var/locale/en/root.po
 var/locale/en/state.po
+var/log/app-mcp-worker.log
 var/log/app-mcp.log
 var/root/css/mcp-default.css
 var/root/img/admin.svg
@@ -130,14 +146,17 @@ var/root/img/icons.svg
 var/root/img/job.svg
 var/root/img/logo.svg
 var/root/img/manager.svg
+var/root/img/thumb.svg
 var/root/js/mcp.js
 var/run/burp.pid
 var/share/App-MCP-Worker-0.2.25.tar.gz
 var/share/App-cpanminus.tar.gz
-var/sql/App-MCP-Schema-Schedule-0.5.41-PostgreSQL.sql
+var/sql/App-MCP-Schema-Schedule-0.5.49-PostgreSQL.sql
 var/sql/App-MCP-Schema-Schedule-001-Role.json
 var/sql/App-MCP-Schema-Schedule-002-User.json
 var/sql/App-MCP-Schema-Schedule-003-Job.json
+var/templates/default/bug/attach.tt
+var/templates/default/bug/attachment.tt
 var/templates/default/bug/create.tt
 var/templates/default/bug/edit.tt
 var/templates/default/bug/list.tt
@@ -161,8 +180,8 @@ var/templates/default/page/totp_reset.tt
 var/templates/default/site/email/password_reset.md
 var/templates/default/site/email/register_user.md
 var/templates/default/site/email/totp_reset.md
-var/templates/default/site/html/base.tt
 var/templates/default/site/html/none.tt
+var/templates/default/site/html/standard.tt
 var/templates/default/site/preprocess.tt
 var/templates/default/site/wrapper.tt
 var/templates/default/site/wrapper/email.tt

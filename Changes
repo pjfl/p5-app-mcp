@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Updated dependencies in dist.ini
           - Session configuration now in Config object
           - Added SendMessage role
           - Bug attachments upload, thumbnail and download complete
