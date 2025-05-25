@@ -1781,7 +1781,7 @@ body {
   justify-content: space-between;
 }
 .state-container .diagram-container .box-tile .title .box-toggle {
-  color: whitesmoke;
+  color: gray;
   cursor: pointer;
   height: 20px;
   margin-left: 1rem;
@@ -1789,14 +1789,6 @@ body {
 }
 .state-container .diagram-container .box-tile .title .box-toggle.reversed {
   transform: rotate(180deg);
-}
-.state-container .diagram-container .box-tile.active,
-.state-container .diagram-container .job-tile.active {
-  background: lightgreen;
-}
-.state-container .diagram-container .box-tile.inactive,
-.state-container .diagram-container .job-tile.inactive {
-  background: lightgray;
 }
 .state-container .diagram-container .title a {
   cursor: pointer;
@@ -1809,6 +1801,36 @@ body {
   position: absolute;
   top: 0;
   width: 100%;
+}
+.box-tile.active,
+.job-tile.active,
+.input-field .active {
+  background: bisque;
+}
+.box-tile.failed,
+.job-tile.failed,
+.input-field .failed {
+  background: red;
+}
+.box-tile.hold,
+.job-tile.hold,
+.input-field .hold {
+  background: blue;
+}
+.box-tile.inactive,
+.job-tile.inactive,
+.input-field .inactive {
+  background: lightgray;
+}
+.box-tile.running,
+.job-tile.running,
+.input-field .running {
+  background: lightgreen;
+}
+.box-tile.starting,
+.job-tile.starting,
+.input-field .starting {
+  background: cyan;
 }
 *,
 *::before,

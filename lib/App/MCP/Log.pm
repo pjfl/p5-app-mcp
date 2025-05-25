@@ -95,13 +95,13 @@ sub _get_leader {
    }
 
    unless ($leader) {
-      if ($message =~ m{ \A \S+ : }mx) {
+      if ($message =~ m{ \A [^:]+ : }mx) {
          ($leader, $message) = split m{ : }mx, $message, 2;
       }
       else { $leader = 'Unknown' }
    }
 
-   return ($leader, trim $message);
+   return (trim($leader), trim($message));
 }
 
 sub _log {

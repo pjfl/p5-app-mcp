@@ -51,7 +51,11 @@ sub edit  {
 
    if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('state/view');
-      my $message = ['State updated'];
+      my $message = [
+         'Job [_1] event transition [_2] created',
+         $job->job_name,
+         $form->field('signal')->value
+      ];
 
       $context->stash(redirect $view, $message);
    }

@@ -7,9 +7,11 @@ use Async::IPC::Functions  qw( log_info );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( blessed );
+use Type::Utils            qw( class_type );
 use App::MCP::Application;
 use App::MCP::DaemonControl;
 use Async::IPC;
+use IPC::SRLock;
 use Plack::Runner;
 use Moo;
 use Class::Usul::Cmd::Options;
@@ -19,7 +21,7 @@ with    'App::MCP::Role::Config';
 with    'App::MCP::Role::Log';
 
 # Object attributes (public)
-#   Visible to the command line
+# Visible to the command line
 option 'port' =>
    is            => 'lazy',
    isa           => NonZeroPositiveInt,
@@ -28,19 +30,19 @@ option 'port' =>
    default       => sub { $_[0]->config->port },
    short         => 'p';
 
-#   Ingnored by the command line
+# Ignored by the command line
 has 'app' =>
    is      => 'lazy',
-   isa     => Object,
+   isa     => class_type('App::MCP::Application'),
    default => sub {
       my $self = shift;
 
-      App::MCP::Application->new(builder => $self, port => $self->port);
+      return App::MCP::Application->new(builder => $self, port => $self->port);
    };
 
 has 'async_factory' =>
    is      => 'lazy',
-   isa     => Object,
+   isa     => class_type('Async::IPC'),
    default => sub { Async::IPC->new(builder => $_[0]) },
    handles => ['loop'];
 
@@ -54,25 +56,20 @@ has 'ipc_ssh' => is => 'lazy', isa => Object;
 
 has 'listener' => is => 'lazy', isa => Object;
 
+# Required by Async::IPC
+has 'lock' =>
+   is      => 'lazy',
+   isa     => class_type('IPC::SRLock'),
+   default => sub { IPC::SRLock->new(builder => $_[0]) };
+
 has 'name' =>
    is      => 'lazy',
    isa     => NonEmptySimpleStr,
-   default => sub { $_[0]->config->log_key };
+   default => 'DAEMON';
 
 has 'op_ev_hndlr' => is => 'lazy', isa => Object;
 
 # Construction
-around 'BUILDARGS' => sub {
-   my ($orig, $self, @args) = @_;
-
-   my $attr = $orig->( $self, @args );
-   my $conf = $attr->{config};
-
-   $conf->{name} //= lc distname $conf->{appclass};
-
-   return $attr;
-};
-
 before 'run' => sub {
    my $self = shift; $self->quiet(TRUE); return;
 };
@@ -80,30 +77,27 @@ before 'run' => sub {
 around 'run_chain' => sub {
    my ($orig, $self, @args) = @_;
 
-   @ARGV = @{$self->extra_argv};
-
-   my $conf = $self->config;
-   my $name = $conf->name;
-
-   my $rv   = App::MCP::DaemonControl->new({
+   my $config = $self->config;
+   my $name   = lc distname $config->appclass;
+   my $rv     = App::MCP::DaemonControl->new({
       name         => blessed $self || $self,
       lsb_start    => '$syslog $remote_fs',
       lsb_stop     => '$syslog',
       lsb_sdesc    => 'Master Control Program',
       lsb_desc     => 'Manages the Master Control Program daemon',
-      path         => $conf->pathname,
+      path         => $config->pathname,
 
-      directory    => $conf->appldir,
+      directory    => $config->appldir,
       program      => sub { shift; $self->_daemon(@_) },
       program_args => [],
 
-      pid_file     => $conf->rundir->catfile("${name}.pid"),
-      stderr_file  => $self->_stdio_file('err'),
-      stdout_file  => $self->_stdio_file('out'),
+      pid_file     => $config->rundir->catfile("${name}.pid"),
+      stderr_file  => $self->_stdio_file('err', $name),
+      stdout_file  => $self->_stdio_file('out', $name),
 
       fork         => 2,
-      stop_signals => $conf->stop_signals,
-   })->run;
+      stop_signals => $config->stop_signals,
+   })->run_command(@{$self->extra_argv});
 
    exit defined $rv ? $rv : OK;
 };
@@ -172,9 +166,10 @@ sub _build_ipc_ssh {
 }
 
 sub _build_op_ev_hndlr {
-   my $self = shift;
-   my $app  = $self->app;
-   my $name = 'output';
+   my $self       = shift;
+   my $app        = $self->app;
+   my $daemon_pid = $self->pid;
+   my $name       = 'output';
    my $ipc_ssh;
 
    return $self->async_factory->new_notifier(
@@ -182,31 +177,33 @@ sub _build_op_ev_hndlr {
       desc         => 'output event handler',
       name         => $name,
       call_ch_mode => 'async',
-      before       =>   sub { $ipc_ssh = $self->ipc_ssh },
-      on_recv      => [ sub { $app->output_handler($name, $ipc_ssh) }, ],
-      after        =>   sub { $ipc_ssh->close },
+      before       => sub { $ipc_ssh = $self->ipc_ssh },
+      on_recv      => [
+         sub { $app->output_handler($name, $daemon_pid, $ipc_ssh) }
+      ],
+      after        => sub { $ipc_ssh->close },
    );
 }
 
 sub _get_listener_sub {
-   my $self = shift;
-   my $conf = $self->config;
-   my $port = $self->port;
-   my $args = {
+   my $self   = shift;
+   my $config = $self->config;
+   my $port   = $self->port;
+   my $args   = {
       '--port'       => $port,
-      '--server'     => $conf->server,
-      '--access-log' => $conf->logsdir->catfile("access-${port}.log"),
-      '--app'        => $conf->binsdir->catfile('mcp-listener'),
+      '--server'     => $config->server,
+      '--access-log' => $config->logsdir->catfile("access-${port}.log"),
+      '--app'        => $config->bin->catfile('mcp-listener'),
    };
-   my $appclass   = $conf->appclass;
+   my $appclass   = $config->appclass;
    my $daemon_pid = $self->pid;
    my $debug      = $self->debug;
 
    return sub {
       ensure_class_loaded $appclass;
-      $appclass->env_var('DAEMON_PID',    $daemon_pid);
-      $appclass->env_var('DEBUG',         $debug);
-      $appclass->env_var('LISTENER_PORT', $port);
+      $appclass->env_var('daemon_pid', $daemon_pid);
+      $appclass->env_var('debug', $debug);
+      $appclass->env_var('listener_port', $port);
       Plack::Runner->run(%{$args});
       return OK;
    };
@@ -223,13 +220,16 @@ sub _reload {
 }
 
 sub _set_program_name {
-   my $self = shift; return $PROGRAM_NAME = $self->config->name;
+   my $self   = shift;
+   my $config = $self->config;
+
+   return $PROGRAM_NAME = $config->script . ' - ' . $config->name;
 }
 
 sub _stdio_file {
    my ($self, $extn, $name) = @_;
 
-   $name //= $self->config->name;
+   $name //= lc distname $self->config->appclass;
 
    return $self->config->tempdir->catfile("${name}.${extn}");
 }
@@ -240,7 +240,7 @@ sub _build_listener {
    return $self->async_factory->new_notifier(
       type => 'process',
       desc => 'web application server',
-      name => 'listen',
+      name => 'listener',
       code => $self->_get_listener_sub,
    );
 }

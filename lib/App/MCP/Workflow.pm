@@ -25,7 +25,9 @@ sub BUILD {
 
    $self->initial_state( 'inactive' );
 
-   $self->state( 'active',     transitions => [ qw(on_hold start) ] );
+   $self->state( 'active',
+                 transitions => [qw(deactivate fail on_hold start)]
+   );
 
    $self->state( 'hold',       transitions => [ qw(off_hold) ] );
 
@@ -37,16 +39,18 @@ sub BUILD {
 
    $self->state( 'running',    transitions => [ qw(fail finish terminate) ] );
 
-   $self->state( 'starting',   transitions => [ qw(started)  ] );
+   $self->state( 'starting',   transitions => [ qw(fail started)  ] );
 
    $self->state( 'terminated', transitions => [ qw(activate) ] );
 
 
-   $self->transition( 'activate',  to_state => 'active' );
+   $self->transition( 'activate',   to_state => 'active' );
 
-   $self->transition( 'fail',      to_state => 'failed' );
+   $self->transition( 'deactivate', to_state => 'inactive' );
 
-   $self->transition( 'finish',    to_state => 'finished', validators => [
+   $self->transition( 'fail',       to_state => 'failed' );
+
+   $self->transition( 'finish',     to_state => 'finished', validators => [
       sub {
          my ($self, $instance, $event) = @_;
 
@@ -57,11 +61,11 @@ sub BUILD {
          throw Retry, [ $event->rv, $job->expected_rv ];
       }, ] );
 
-   $self->transition( 'off_hold',  to_state => 'active' );
+   $self->transition( 'off_hold',   to_state => 'active' );
 
-   $self->transition( 'on_hold',   to_state => 'hold' );
+   $self->transition( 'on_hold',    to_state => 'hold' );
 
-   $self->transition( 'start',     to_state => 'starting', validators => [
+   $self->transition( 'start',      to_state => 'starting', validators => [
       sub {
          my ($self, $instance, $event) = @_;
 
@@ -73,9 +77,9 @@ sub BUILD {
          return;
       }, ] );
 
-   $self->transition( 'started',   to_state => 'running' );
+   $self->transition( 'started',    to_state => 'running' );
 
-   $self->transition( 'terminate', to_state => 'terminated' );
+   $self->transition( 'terminate',  to_state => 'terminated' );
    return;
 }
 

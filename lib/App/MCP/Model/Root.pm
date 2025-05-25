@@ -58,7 +58,7 @@ sub login : Auth('none') Nav('Login') {
 
    my $params    = $context->get_body_parameters;
    my $username  = $params->{user_name};
-   my $submitter = $params->{_submit};
+   my $submitter = $params->{_submit} // NUL;
 
    if ($submitter eq 'password_reset') {
       $self->_stash_user($context, $username) if $username;

@@ -2,11 +2,11 @@ package App::MCP::Application;
 
 use version;
 
-use App::MCP::Constants          qw( COMMA FALSE LOG_KEY_WIDTH NUL TRUE OK
-                                     SPC );
+use App::MCP::Constants          qw( COMMA FALSE LOG_KEY_WIDTH
+                                     NUL TRUE OK SPC TRANSITION_ENUM );
 use Unexpected::Types            qw( HashRef LoadableClass NonEmptySimpleStr
                                      NonZeroPositiveInt Object );
-use App::MCP::Util               qw( create_token distname
+use App::MCP::Util               qw( create_token distname trigger_input_handler
                                      trigger_output_handler );
 use Async::IPC::Functions        qw( log_debug log_error log_info log_warn );
 use Class::Usul::Cmd::Util       qw( elapsed );
@@ -59,9 +59,9 @@ sub cron_job_handler {
       'me.crontab'        => { '!=' => NUL },
       'events.transition' => [ undef, { '!=' => 'start' } ],
    }, {
-      'columns'           => [qw( condition crontab events.transition
-                                  id state.name state.updated )],
-      'join'              => ['state', 'events'],
+      'columns' => [qw( condition crontab events.transition
+                        id state.name state.updated )],
+      'join'    => ['state', 'events'],
    });
 
    for my $job (grep { $_->should_start_now } $jobs->all) {
@@ -78,25 +78,20 @@ sub cron_job_handler {
 sub input_handler {
    my ($self, $name, $sig_hndlr_pid) = @_;
 
+   my $schema  = $self->schema;
+   my $pev_rs  = $schema->resultset('ProcessedEvent');
+   my $events  = $schema->resultset('Event')->search(
+      { transition => [ grep { $_ ne 'start' } @{TRANSITION_ENUM()} ] },
+      { order_by   => { -asc => 'me.id' }, prefetch => 'job' }
+   );
    my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
 
-      my $schema = $self->schema;
-      my $ev_rs  = $schema->resultset('Event');
-      my $js_rs  = $schema->resultset('JobState');
-      my $pev_rs = $schema->resultset('ProcessedEvent');
-      my $events = $ev_rs->search({
-         transition => [qw( activate finish started terminate )]
-      }, {
-         order_by   => { -asc => 'me.id' },
-         prefetch   => 'job'
-      });
-
       for my $event ($events->all) {
          $schema->txn_do(sub {
-            my $p_ev = $self->_process_event($name, $js_rs, $event);
+            my $p_ev = $self->_process_event($name, $event);
 
             $trigger = TRUE unless $p_ev->{rejected};
 
@@ -106,6 +101,7 @@ sub input_handler {
       }
 
       trigger_output_handler $sig_hndlr_pid if $trigger;
+      $events->reset;
    }
 
    trigger_output_handler $sig_hndlr_pid;
@@ -142,7 +138,7 @@ sub ipc_ssh_caller {
    my $logger = sub { $log, $name, $runid };
 
    try   { $ips->use_library($self->config->library_class) }
-   catch { log_error $logger, "Store failed - ${_}"; $failed = TRUE };
+   catch { log_error $logger, "Use library - ${_}"; $failed = TRUE };
 
    return FALSE if $failed;
 
@@ -218,37 +214,35 @@ sub ipc_ssh_install_worker {
 }
 
 sub output_handler {
-   my ($self, $name, $ipc_ssh) = @_;
+   my ($self, $name, $sig_hndlr_pid, $ipc_ssh) = @_;
 
+   my $schema  = $self->schema;
+   my $where   = { transition => 'start' };
+   my $ev_rs   = $schema->resultset('Event');
+   my $events  = $ev_rs->search($where, { prefetch => 'job' });
    my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
 
-      my $schema = $self->schema;
-      my $ev_rs  = $schema->resultset('Event');
-      my $js_rs  = $schema->resultset('JobState');
-      my $pev_rs = $schema->resultset('ProcessedEvent');
-      my $events = $ev_rs->search(
-         { transition => 'start' }, { prefetch => 'job' }
-      );
-
       for my $event ($events->all) {
-         $schema->txn_do(sub {
-            my $p_ev = $self->_process_event($name, $js_rs, $event);
-
-            unless ($p_ev->{rejected}) {
-               my ($runid, $token) = $self->_start_job($ipc_ssh, $event->job);
-
-               $p_ev->{runid} = $runid;
-               $p_ev->{token} = $token;
-               $trigger = TRUE;
-            }
-
-            $pev_rs->create($p_ev);
-            $event->delete;
+         my $job_id  = $event->job->id;
+         my $success = $schema->txn_do(sub {
+            return $self->_process_start_event($name, $event, $ipc_ssh);
          });
+
+         if ($success && $event->job->type eq 'box') {
+            $ev_rs->create({ job_id => $job_id, transition => 'started' });
+            trigger_input_handler $sig_hndlr_pid;
+         }
+         elsif ($success) { $trigger = TRUE }
+         else {
+            $ev_rs->create({ job_id => $job_id, transition => 'fail' });
+            trigger_input_handler $sig_hndlr_pid;
+         }
       }
+
+      $events->reset;
    }
 
    return OK;
@@ -280,44 +274,63 @@ sub _get_identity_file {
 
    return $identity_file_cache->{$key} if exists $identity_file_cache->{$key};
 
-   my $conf   = $self->config;
-   my $dir    = $conf->ssh_dir;
-   my $prefix = distname $conf->appclass;
+   my $config = $self->config;
+   my $dir    = $config->ssh_dir;
+   my $prefix = lc distname $config->appclass;
    my @files  = ("${host}-${user}", $user, $host);
 
    for my $path (map { $dir->catfile("${prefix}_${_}.priv") } @files) {
       return $identity_file_cache->{$key} = $path if $path->exists;
    }
 
-   return $identity_file_cache->{$key} = $conf->identity_file;
+   return $identity_file_cache->{$key} = $config->identity_file;
 }
 
 sub _install_remote {
    my ($self, $method, $calls, $file) = @_;
 
-   my $conf     = $self->config;
-   my $appclass = $conf->appclass;
+   my $config   = $self->config;
+   my $appclass = $config->appclass;
 
    unshift @{$calls}, [$method, [$appclass, $file]];
 
    return if $file =~ m{ \A [a-zA-Z0-9_]+ : }mx;
 
-   my $path = $conf->sharedir->catfile($file);
+   my $path = $config->sharedir->catfile($file);
 
    unshift @{$calls}, ['writefile', [$appclass, $file, $path->all]];
    return;
 }
 
 sub _process_event {
-   my ($self, $name, $js_rs, $event) = @_;
+   my ($self, $name, $event) = @_;
 
-   my $cols = { $event->get_inflated_columns };
-   my $r    = $js_rs->create_and_or_update($event) or return $cols;
-   my $mesg = 'Job '.$r->[1].SPC.$r->[0].' event rejected';
+   my $cols  = { $event->get_inflated_columns };
+   my $js_rs = $self->schema->resultset('JobState');
+   my $r     = $js_rs->create_and_or_update($event) or return $cols;
+   my $mesg  = 'Job ' . $r->[1] . ' event ' . $r->[0]
+             . ' rejected - ' . $r->[2]->class;
 
-   log_debug $self->log, $name, $PID, $mesg;
+   log_warn $self->log, $name, $PID, $mesg;
    $cols->{rejected} = $r->[2]->class;
    return $cols;
+}
+
+sub _process_start_event {
+   my ($self, $name, $event, $ipc_ssh) = @_;
+
+   my $p_ev = $self->_process_event($name, $event);
+
+   if (!$p_ev->{rejected} && $event->job->type eq 'job') {
+      my ($runid, $token) = $self->_start_job($ipc_ssh, $event->job);
+
+      $p_ev->{runid} = $runid;
+      $p_ev->{token} = $token;
+   }
+
+   $self->schema->resultset('ProcessedEvent')->create($p_ev);
+   $event->delete;
+   return $p_ev->{rejected} ? FALSE : TRUE;
 }
 
 sub _remote_provisioned {
@@ -333,7 +346,7 @@ sub _start_job {
 
    my $runid = bson64id;
    my $host  = $job->host;
-   my $user  = $job->user;
+   my $user  = $job->user_name;
    my $cmd   = $job->command;
    my $class = $self->config->appclass;
    my $token = substr create_token, 0, 32;
@@ -349,9 +362,9 @@ sub _start_job {
       token     => $token,
       worker    => $self->worker,
    };
-   my $calls = [['dispatch', [%{$args}]], ];
+   my $calls = [['dispatch', [%{$args}]]];
 
-   log_info $self->log, $job->name, $runid, "Start ${user}\@${host} ${cmd}";
+   log_info $self->log, $job->job_name, $runid, "Start ${user}\@${host} ${cmd}";
    $args = { calls => $calls, host => $host, user => $user, };
    $self->ipc_ssh_add_provisioning($args);
    $ipc_ssh->call($runid, $args); # Calls ipc_ssh_caller

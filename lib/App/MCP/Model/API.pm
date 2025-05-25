@@ -15,6 +15,8 @@ with    'Web::Components::Role';
 
 has '+moniker' => default => 'api';
 
+has 'json_view' => is => 'ro', isa => Str, default => 'json';
+
 has 'namespace' => is => 'ro', isa => Str, default => 'App::MCP::API';
 
 has 'routes' =>
@@ -35,7 +37,8 @@ has 'routes' =>
 sub dispatch : Auth('none') {
    my ($self, $context, @args) = @_;
 
-   throw UnknownView, ['json'] unless exists $context->views->{'json'};
+   throw UnknownView, [$self->json_view]
+      unless exists $context->views->{$self->json_view};
 
    my ($ns, $name, $method) = splice @args, 0, 3;
    my $class = ('+' eq substr $ns, 0, 1)
@@ -69,7 +72,7 @@ sub dispatch : Auth('none') {
 
    return if $context->stash->{finalised};
 
-   $context->stash(view => 'json') unless $context->stash->{view};
+   $context->stash(view => $self->json_view) unless $context->stash->{view};
    return;
 }
 

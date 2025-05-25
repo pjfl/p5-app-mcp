@@ -1,6 +1,11 @@
 package App::MCP::Form::State;
 
-use HTML::Forms::Constants qw( FALSE META NUL TRUE );
+use App::MCP::Constants    qw( TRANSITION_ENUM );
+use HTML::Forms::Constants qw( FALSE META NUL SPC TRUE );
+use App::MCP::Util         qw( trigger_input_handler trigger_output_handler );
+use English                qw( -no_match_vars );
+use Type::Utils            qw( class_type );
+use App::MCP::Workflow;
 use Moo;
 use HTML::Forms::Moo;
 
@@ -12,6 +17,11 @@ has '+title'           => default => 'State';
 has '+do_form_wrapper' => default => FALSE;
 has '+info_message'    => default => 'Change the current job state';
 has '+is_html5'        => default => TRUE;
+
+has '_workflow' =>
+   is      => 'lazy',
+   isa     => class_type('Class::Workflow'),
+   default => sub { App::MCP::Workflow->new };
 
 has_field 'job_name' => type => 'Display';
 
@@ -25,9 +35,15 @@ has_field 'command' => type => 'Display';
 
 has_field 'host' => type => 'Display';
 
-has_field 'signal' =>
-   type => 'Select',
-   options => [[qw(start stop hold)]];
+has_field 'signal' => type => 'Select';
+
+sub options_signal {
+   my $self        = shift;
+   my $name        = $self->form->item->state->name;
+   my @transitions = $self->form->_workflow->get_state($name)->transitions;
+
+   return [ map { $_, _to_label($_) } sort map { $_->name } @transitions ];
+}
 
 has_field 'edit' =>
    type          => 'Button',
@@ -40,12 +56,14 @@ has_field 'submit' =>
    wrapper_class => ['input-button', 'inline', 'right'];
 
 after 'after_build_fields' => sub {
-   my $self  = shift;
-   my $job   = $self->item;
-   my $label = $job->type eq 'job' ? 'Job Name' : 'Box Name';
+   my $self       = shift;
+   my $job        = $self->item;
+   my $label      = $job->type eq 'job' ? 'Job Name' : 'Box Name';
+   my $state_name = $job->state->name;
 
    $self->field('job_name')->label($label);
-   $self->field('state_name')->value($job->state->name);
+   $self->field('state_name')->value($state_name);
+   $self->field('state_name')->add_element_class($state_name);
 
    $self->field('command')->inactive(TRUE) if $job->type eq 'box';
    $self->field('condition')->inactive(TRUE) unless $job->condition;
@@ -56,11 +74,24 @@ after 'after_build_fields' => sub {
 
 sub validate {
    my $self = shift;
-   my $context = $self->context;
 
    return if $self->result->has_errors;
 
+   my $context    = $self->context;
+   my $daemon_pid = $context->config->appclass->env_var('daemon_pid');
+   my $signal     = $self->field('signal')->value;
+   my $ev_rs      = $context->schema->resultset('Event');
+
+   $ev_rs->create({ job_id => $self->item->id, transition => $signal });
+
+   if ($signal eq 'start') { trigger_output_handler $daemon_pid }
+   else { trigger_input_handler $daemon_pid }
+
    return;
+}
+
+sub _to_label {
+   return join SPC, map { ucfirst } split m{ [_] }mx, shift;
 }
 
 use namespace::autoclean -except => META;

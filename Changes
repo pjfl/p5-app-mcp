@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Sending signals from state modal
           - Updated dependencies in dist.ini
           - Session configuration now in Config object
           - Added SendMessage role

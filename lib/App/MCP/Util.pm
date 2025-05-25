@@ -23,10 +23,11 @@ our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type create_token
    created_timestamp_data_type distname dt_from_epoch dt_human encode_for_html
    enumerated_data_type foreign_key_data_type formpost get_hashed_pw get_salt
    new_salt new_uri nullable_foreign_key_data_type nullable_varchar_data_type
-   numerical_id_data_type random_digest redirect redirect2referer
-   serial_data_type set_on_create_datetime_data_type strip_parent_name
-   terminate text_data_type trigger_input_handler trigger_output_handler
-   truncate updated_timestamp_data_type varchar_data_type );
+   numerical_data_type numerical_id_data_type random_digest redirect
+   redirect2referer serial_data_type set_on_create_datetime_data_type
+   strip_parent_name terminate text_data_type trigger_input_handler
+   trigger_output_handler truncate updated_timestamp_data_type
+   varchar_data_type );
 
 my $digest_cache;
 my $reserved   = q(;/?:@&=+$,[]);
@@ -275,6 +276,15 @@ sub nullable_varchar_data_type (;$$) {
       default_value => $_[1],
       is_nullable   => TRUE,
       size          => $_[0] || VARCHAR_MAX_SIZE,
+   };
+}
+
+sub numerical_data_type (;$) {
+   return {
+      data_type     => 'integer',
+      default_value => $_[0],
+      is_nullable   => FALSE,
+      is_numeric    => TRUE,
    };
 }
 

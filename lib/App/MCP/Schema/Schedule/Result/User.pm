@@ -65,7 +65,7 @@ $class->might_have('profile' => "${result}::Preference", sub {
 });
 
 has 'api_execution_allowed' =>
-   is      => 'ro',
+   is      => 'lazy',
    isa     => HashRef,
    default => sub {
       return { enable_2fa => TRUE };

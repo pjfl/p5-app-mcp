@@ -3,7 +3,7 @@ package App::MCP::Listener;
 use App::MCP::Constants    qw( FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_FOUND );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
-
+use English                qw( -no_match_vars );
 use Plack::Builder;
 use Web::Simple;
 
@@ -47,13 +47,13 @@ sub BUILD {
    my $self   = shift;
    my $class  = $self->config->appclass;
    my $server = ucfirst($ENV{PLACK_ENV} // NUL);
-   my $port   = $class->env_var('port') // 5_000;
+   my $port   = $class->env_var('listener_port') // 5_000;
 
    ensure_class_loaded $class;
 
    my $info   = 'v' . $class->VERSION . " started on port ${port}";
 
-   $self->log->info("Listener: ${class} ${server} ${info}");
+   $self->log->info("LISTENER[${PID}]: ${class} ${server} ${info}");
    return;
 }
 

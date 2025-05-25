@@ -3,13 +3,13 @@ package App::MCP::Schema::Schedule::ResultSet::JobState;
 use strictures;
 use parent 'DBIx::Class::ResultSet';
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS );
+use App::MCP::Constants    qw( EXCEPTION_CLASS NUL SQL_NOW );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
+use English                qw( -no_match_vars );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( Unknown );
 use Web::Components::Util  qw( exception throw );
 use App::MCP::Workflow;
-use DateTime;
 use Try::Tiny;
 
 # Public methods
@@ -28,13 +28,13 @@ sub create_and_or_update {
       $e = exception class => Unknown, error => $e
          unless blessed $e and $e->can('class');
 
-      $res = [$event->transition->value, $job->name, $e];
+      $res = [$event->transition->value, $job->job_name, $e];
    };
 
    return $res if $res;
 
    $job_state->name($state_name);
-   $job_state->updated(DateTime->now);
+   $job_state->updated(SQL_NOW);
    $job_state->update;
    $self->_trigger_update_cascade($event);
    return;
@@ -76,7 +76,7 @@ sub find_or_create {
    return $self->create({
       job_id  => $job->id,
       name    => $initial_state,
-      updated => DateTime->now
+      updated => SQL_NOW
    });
 }
 
@@ -88,8 +88,8 @@ sub _trigger_update_cascade {
    my $ev_rs  = $schema->resultset('Event');
    my $jc_rs  = $schema->resultset('JobCondition');
 
-   for ($jc_rs->search({ job_id => $event->job->id })->all) {
-      $ev_rs->create({ job_id => $_->reverse_id, transition => 'start' });
+   for my $jc ($jc_rs->search({ job_id => $event->job->id })->all) {
+      $ev_rs->create({ job_id => $jc->reverse_id, transition => 'start' });
    }
 
    return;

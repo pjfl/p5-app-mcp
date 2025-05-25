@@ -2,9 +2,14 @@
     contrast: whitesmoke;
     line-border: gray;
     panel-shadow: gray;
-    tile-active: lightgreen;
+    tile-active: bisque;
+    tile-failed: red;
+    tile-hold: blue;
     tile-inactive: lightgray;
+    tile-running: lightgreen;
+    tile-starting: cyan;
     text: black;
+    toggle: gray;
 }
 .state-container {
     position: relative;
@@ -24,18 +29,12 @@
         .box-tile .title {
             align-items: center; display: flex; justify-content: space-between;
             .box-toggle {
-                color: #colours[contrast]; cursor: pointer; height: 20px;
+                color: #colours[toggle]; cursor: pointer; height: 20px;
                 margin-left: 1rem; width: 20px;
             }
             .box-toggle.reversed {
                 transform: rotate(180deg);
             }
-        }
-        .box-tile.active, .job-tile.active {
-            background: #colours[tile-active];
-        }
-        .box-tile.inactive, .job-tile.inactive {
-            background: #colours[tile-inactive];
         }
         .title a {
             cursor: pointer; text-decoration: none;
@@ -45,4 +44,22 @@
         height: 100%; left: 0; pointer-events: none; position: absolute;
         top: 0; width: 100%;
     }
+}
+.box-tile.active, .job-tile.active, .input-field .active {
+    background: #colours[tile-active];
+}
+.box-tile.failed, .job-tile.failed, .input-field .failed {
+    background: #colours[tile-failed];
+}
+.box-tile.hold, .job-tile.hold, .input-field .hold {
+    background: #colours[tile-hold];
+}
+.box-tile.inactive, .job-tile.inactive, .input-field .inactive {
+    background: #colours[tile-inactive];
+}
+.box-tile.running, .job-tile.running, .input-field .running {
+    background: #colours[tile-running];
+}
+.box-tile.starting, .job-tile.starting, .input-field .starting {
+    background: #colours[tile-starting];
 }

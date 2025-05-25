@@ -7,6 +7,7 @@ use File::DataClass::Types      qw( ArrayRef Bool CodeRef Directory File HashRef
                                     LoadableClass NonEmptySimpleStr
                                     NonZeroPositiveInt Object Path PositiveInt
                                     SimpleStr Str Undef );
+use App::MCP::Util              qw( distname );
 use Class::Usul::Cmd::Util      qw( decrypt );
 use English                     qw( -no_match_vars );
 use File::DataClass::IO         qw( io );
@@ -283,7 +284,11 @@ has 'identity_file' =>
    is      => 'lazy',
    isa     => File|Path,
    coerce  => TRUE,
-   default => sub { shift->ssh_dir->catfile('id_rsa') };
+   default => sub {
+      my $self = shift;
+
+      return $self->ssh_dir->catfile(lc distname $self->appclass . '.priv');
+   };
 
 =item C<library_class>
 
@@ -304,13 +309,24 @@ The applications local time zone
 
 has 'local_tz' => is => 'ro', isa => Str, default => 'Europe/London';
 
-=item C<logdir>
+=item C<lock_attributes>
+
+Configuration options for L<IPC::SRLock>
+
+=cut
+
+has 'lock_attributes' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub { { redis => $_[0]->redis, type => 'redis' } };
+
+=item C<logsdir>
 
 Directory containing logfiles
 
 =cut
 
-has 'logdir' =>
+has 'logsdir' =>
    is      => 'lazy',
    isa     => Directory,
    default => sub { shift->vardir->catdir('log') };
@@ -329,7 +345,7 @@ has 'logfile' =>
    default  => sub {
       my $self = shift;
 
-      return $self->logdir->catfile($self->_logfile);
+      return $self->logsdir->catfile($self->_logfile);
    };
 
 has '_logfile' =>
@@ -589,7 +605,12 @@ Directory used to store runtime files
 has 'rundir' =>
    is      => 'lazy',
    isa     => Directory,
-   default => sub { shift->tempdir };
+   default => sub {
+      my $self = shift;
+      my $dir  = $self->vardir->catdir('run');
+
+      return $dir->exists ? $dir : $self->tempdir;
+   };
 
 =item C<schema_class>
 
