@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - View CSV and Apache format logs
           - Sending signals from state modal
           - Updated dependencies in dist.ini
           - Session configuration now in Config object

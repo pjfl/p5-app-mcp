@@ -1,4 +1,4 @@
-package App::MCP::Table::Logfile::View;
+package App::MCP::Table::Logfile::ViewApache;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TABLE_META TRUE );
 use HTML::StateTable::Types     qw( Str );
@@ -31,7 +31,13 @@ has '+form_control_location' => default => 'BottomLeft';
 
 has '+icons' => default => sub { shift->context->uri_for_icons->as_string };
 
-has '+name' => default => sub { shift->logfile };
+has '+name' => default => sub {
+   my $file = shift->logfile;
+
+   $file =~ s{ \. log \z }{}mx;
+
+   return $file
+};
 
 has '+page_control_location' => default => 'TopRight';
 
@@ -45,7 +51,7 @@ setup_resultset sub {
       directory    => $config->logfile->parent,
       file         => $self->logfile,
       redis        => $self->redis,
-      result_class => 'App::MCP::Log::Result::View',
+      result_class => 'App::MCP::Log::Result::ViewApache',
       table        => $self,
    );
 };
@@ -56,23 +62,19 @@ has_column 'timestamp' =>
    searchable  => TRUE,
    sortable    => TRUE,
    title       => 'Sort by date and time',
-   width       => '18ch';
+   width       => '16ch';
 
-has_column 'status' => filterable => TRUE, sortable => TRUE, width => '10ch';
+has_column 'ip_address' => label => 'IP Address';
 
-has_column 'username' =>
-   filterable => TRUE,
-   searchable => TRUE,
-   sortable   => TRUE,
-   width      => '14ch';
+has_column 'method';
 
-has_column 'source' =>
-   filterable => TRUE,
-   searchable => TRUE,
-   sortable   => TRUE,
-   width      => '15rem';
+has_column 'path';
 
-has_column 'remainder' => label => 'Line', searchable => TRUE;
+has_column 'status' => cell_traits => ['Numeric'];
+
+has_column 'size' => cell_traits => ['Numeric'];
+
+has_column 'referer';
 
 use namespace::autoclean -except => TABLE_META;
 

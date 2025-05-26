@@ -58,13 +58,16 @@ sub view : Auth('admin') Nav('View Logfile') {
 
    return $self->error($context, Unspecified, ['logfile']) unless $logfile;
 
-   my $options = {
+   my $table_class = $logfile =~ m{ \. log \z }mx
+      ? 'Logfile::ViewApache' : 'Logfile::ViewCSV';
+   my $options     = {
       caption => "${logfile} File View",
       context => $context,
       logfile => $logfile,
       redis   => $self->redis_client
    };
-   $context->stash(table => $self->new_table('Logfile::View', $options));
+
+   $context->stash(table => $self->new_table($table_class, $options));
    return;
 }
 

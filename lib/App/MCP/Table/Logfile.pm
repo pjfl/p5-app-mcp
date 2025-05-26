@@ -33,9 +33,9 @@ set_table_name 'logfile_list';
 has_column 'name' =>
    label => 'Name',
    link  => sub {
-      my $self    = shift;
-      my $context = $self->table->context;
-      my $name    = $self->result->uri_arg;
+      my $cell    = shift;
+      my $context = $cell->table->context;
+      my $name    = $cell->result->uri_arg;
 
       return $context->uri_for_action('logfile/view', [$name]);
    },

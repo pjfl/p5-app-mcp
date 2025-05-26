@@ -1,4 +1,4 @@
-package App::MCP::Log::Result::View;
+package App::MCP::Log::Result::ViewCSV;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TRUE );
 use HTML::StateTable::Types     qw( ArrayRef Date HashRef Int Str );
@@ -15,17 +15,16 @@ with 'App::MCP::Role::CSVParser';
 
 =head1 Name
 
-App::MCP::Logfile::Result::View - Result class for the logfile
+App::MCP::Logfile::Result::ViewCSV - Result class for the logfile
 
 =head1 Synopsis
 
-   use App::MCP::Log::Result::View;
+   use App::MCP::Log::Result::ViewCSV;
 
 =head1 Description
 
 This class represents a line from a logfile. It parses each line as a comma
-separated list of fields. After some initial positional parameters the rest of
-the line should contain colon separated key/value pairs.
+separated list of fields
 
 =head1 Configuration and Environment
 
@@ -133,31 +132,6 @@ has 'timestamp' =>
 # The expected format of the timestamp on the logfile line
 has '_timestamp_pattern' => is => 'ro', isa => Str, default => '%Y/%m/%d %T';
 
-=item pid
-
-The operating system id (integer) of the process that created this logfile line.
-Unused
-
-=cut
-
-has 'pid' =>
-   is      => 'lazy',
-   isa     => Int,
-   default => sub {
-      my $self = shift;
-
-      return 0 unless $self->remainder_start;
-
-      return _field_value($self->fields->[0], 'p', 0);
-   };
-
-has 'pid_filter' =>
-   is      => 'ro',
-   isa     => ArrayRef[Str],
-   default => sub {
-      return [ qw(cut -f 0 -d), q(,), qw(| cut -f 2 -d : | sort -n | uniq) ];
-   };
-
 =item status
 
 An enumerated field (string) that represents status of the logfile line
@@ -227,14 +201,40 @@ has 'source' =>
 
       return NUL unless $self->remainder_start;
 
-      return $self->fields->[3] // NUL;
+      my $source = $self->fields->[3] // NUL;
+
+      $source =~ s{ \[ \d+ \] \z }{}mx;
+
+      return $source;
    };
 
 has 'source_filter' =>
    is      => 'ro',
    isa     => ArrayRef[Str],
    default => sub {
-      return [ qw(cut -f 4 -d), q(,), qw(| tr -d \" | sort | uniq) ];
+      return [ qw(cut -f 4 -d), q(,), qw(| tr -d \" | cut -f 1 -d), q([),
+               qw(| sort | uniq) ];
+   };
+
+=item pid
+
+The operating system id (integer) of the process that created this logfile line
+
+=cut
+
+has 'pid' =>
+   is      => 'lazy',
+   isa     => Int,
+   default => sub {
+      my $self = shift;
+
+      return 0 unless $self->remainder_start;
+
+      my $source = $self->fields->[3] // NUL;
+
+      my ($pid) = $source =~ m{ \[ (\d+) \] \z }mx;
+
+      return $pid || 0;
    };
 
 =item remainder

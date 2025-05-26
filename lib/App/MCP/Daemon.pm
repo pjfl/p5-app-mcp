@@ -186,16 +186,18 @@ sub _build_op_ev_hndlr {
 }
 
 sub _get_listener_sub {
-   my $self   = shift;
-   my $config = $self->config;
-   my $port   = $self->port;
-   my $args   = {
+   my $self     = shift;
+   my $config   = $self->config;
+   my $port     = $self->port;
+   my $appclass = $config->appclass;
+   my $prefix   = lc distname $appclass;
+   my $logfile  = "${prefix}-listener-${port}.log";
+   my $args     = {
       '--port'       => $port,
       '--server'     => $config->server,
-      '--access-log' => $config->logsdir->catfile("access-${port}.log"),
+      '--access-log' => $config->logsdir->catfile($logfile),
       '--app'        => $config->bin->catfile('mcp-listener'),
    };
-   my $appclass   = $config->appclass;
    my $daemon_pid = $self->pid;
    my $debug      = $self->debug;
 

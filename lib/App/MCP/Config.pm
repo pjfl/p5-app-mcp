@@ -353,9 +353,9 @@ has '_logfile' =>
    isa      => Str,
    init_arg => 'logfile',
    default  => sub {
-      (my $name = lc (shift->appclass)) =~ s{ :: }{-}gmx;
+      my $name = lc distname shift->appclass;
 
-      return "${name}.log"
+      return "${name}.csv"
    };
 
 =item C<max_asset_size>
@@ -561,6 +561,7 @@ has 'request' =>
       my $self = shift;
 
       return {
+         appclass      => $self->appclass,
          max_messages  => $self->max_messages,
          max_sess_time => $self->max_web_session_time,
          prefix        => $self->prefix,
