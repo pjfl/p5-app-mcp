@@ -44,13 +44,13 @@ around 'to_psgi_app' => sub {
 };
 
 sub BUILD {
-   my $self   = shift;
-   my $class  = $self->config->appclass;
-   my $server = ucfirst($ENV{PLACK_ENV} // NUL);
-   my $port   = $class->env_var('listener_port') // 5_000;
+   my $self  = shift;
+   my $class = $self->config->appclass;
 
    ensure_class_loaded $class;
 
+   my $server = ucfirst($ENV{PLACK_ENV} // NUL);
+   my $port   = $class->env_var('listener_port') // 5_000;
    my $info   = 'v' . $class->VERSION . " started on port ${port}";
 
    $self->log->info("LISTENER[${PID}]: ${class} ${server} ${info}");

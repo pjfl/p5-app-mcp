@@ -4,6 +4,7 @@
     panel-shadow: gray;
     tile-active: bisque;
     tile-failed: red;
+    tile-finished: darkgreen;
     tile-hold: blue;
     tile-inactive: lightgray;
     tile-running: lightgreen;
@@ -50,6 +51,9 @@
 }
 .box-tile.failed, .job-tile.failed, .input-field .failed {
     background: #colours[tile-failed];
+}
+.box-tile.finished, .job-tile.finished, .input-field .finished {
+    background: #colours[tile-finished];
 }
 .box-tile.hold, .job-tile.hold, .input-field .hold {
     background: #colours[tile-hold];

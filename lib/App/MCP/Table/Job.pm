@@ -12,11 +12,22 @@ has '+caption' => default => 'Jobs List';
 
 has '+configurable_action' => default => 'api/table_preference';
 
-has '+configurable_control_location' => default => 'BottomRight';
+has '+configurable_control_location' => default => 'TopRight';
+
+has '+form_buttons' => default => sub {
+   return [{
+      action    => 'job/remove',
+      class     => 'remove-item',
+      selection => 'select_one',
+      value     => 'Remove Job',
+   }];
+};
 
 has '+form_control_location' => default => 'BottomRight';
 
 has '+icons' => default => sub { shift->context->uri_for_icons->as_string };
+
+has '+page_control_location' => default => 'TopLeft';
 
 has '+page_size_control_location' => default => 'BottomLeft';
 

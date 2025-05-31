@@ -450,7 +450,7 @@ has 'navigation' =>
          title_abbrev => 'MCP',
          %{$self->_navigation},
          global => [
-            qw( admin/menu job/list state/view )
+            qw( admin/menu job/list state/view history/list )
          ],
       };
    };

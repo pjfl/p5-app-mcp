@@ -51,6 +51,12 @@ has_field 'edit' =>
    value         => 'edit',
    wrapper_class => ['input-button', 'inline'];
 
+has_field 'history' =>
+   type          => 'Button',
+   label         => 'History',
+   value         => 'history',
+   wrapper_class => ['input-button', 'inline'];
+
 has_field 'submit' =>
    type          => 'Button',
    wrapper_class => ['input-button', 'inline', 'right'];
@@ -77,15 +83,25 @@ sub validate {
 
    return if $self->result->has_errors;
 
-   my $context    = $self->context;
+   my $context = $self->context;
+   my $signal  = $self->field('signal')->value;
+   my $args    = { job_id => $self->item->id, transition => $signal };
+
+   if ($signal ne 'start') {
+      my $last_pev = $context->schema->resultset('ProcessedEvent')->search(
+         { job_id  => $self->item->id, transition => 'start' },
+         { columns => ['runid'], order_by => { -desc => 'created' } }
+      )->single;
+
+      $args->{runid} = $last_pev->runid if $last_pev;
+   }
+
+   $context->schema->resultset('Event')->create($args);
+
    my $daemon_pid = $context->config->appclass->env_var('daemon_pid');
-   my $signal     = $self->field('signal')->value;
-   my $ev_rs      = $context->schema->resultset('Event');
 
-   $ev_rs->create({ job_id => $self->item->id, transition => $signal });
-
-   if ($signal eq 'start') { trigger_output_handler $daemon_pid }
-   else { trigger_input_handler $daemon_pid }
+   if ($signal ne 'start') { trigger_input_handler $daemon_pid }
+   else { trigger_output_handler $daemon_pid }
 
    return;
 }

@@ -428,8 +428,11 @@ sub _create_database {
    my $cmd;
 
    if ($driver eq 'pg') {
-      $cmd = "psql -h ${host} -q -t -U postgres -w -c "
-           . "\"create database ${dbname} owner ${user} encoding 'UTF8'; alter database ${dbname} set TIMEZONE = 'UTC'\"";
+      my $sql = "create database ${dbname} owner ${user} encoding 'UTF8'; "
+         . "alter database ${dbname} set TIMEZONE = 'UTC'; "
+         . "create extension if not exists tablefunc";
+
+      $cmd = qq{psql -h ${host} -q -t -U postgres -w -c "${sql}"};
    }
 
    throw 'No create database command for driver [_1]', [$driver] unless $cmd;

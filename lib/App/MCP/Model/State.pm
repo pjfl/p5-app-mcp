@@ -47,6 +47,13 @@ sub edit  {
       return;
    }
 
+   if (($context->request->body_parameters->{_submit} // NUL) eq 'history') {
+      my $list = $context->uri_for_action('history/list', [$job->id]);
+
+      $context->stash(redirect $list, []);
+      return;
+   }
+
    my $form = $self->new_form('State', { context => $context, item => $job });
 
    if ($form->process(posted => $context->posted)) {

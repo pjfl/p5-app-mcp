@@ -1812,6 +1812,11 @@ body {
 .input-field .failed {
   background: red;
 }
+.box-tile.finished,
+.job-tile.finished,
+.input-field .finished {
+  background: darkgreen;
+}
 .box-tile.hold,
 .job-tile.hold,
 .input-field .hold {

@@ -23,7 +23,7 @@ setup_resultset sub {
 
    return HTML::StateTable::ResultSet::File::List->new(
       directory    => $self->context->config->logsdir,
-      result_class => 'App::MCP::Log::Result::List',
+      result_class => 'App::MCP::File::Result::List',
       table        => $self
    );
 };

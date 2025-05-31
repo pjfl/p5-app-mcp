@@ -11,7 +11,7 @@ use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
                             varchar_data_type );
 
 my $class  = __PACKAGE__;
-my $schema = 'App::MCP::Schema::Schedule';
+my $result = 'App::MCP::Schema::Schedule::Result';
 
 $class->table('processed_events');
 
@@ -30,7 +30,7 @@ $class->add_columns(
 
 $class->set_primary_key('id');
 
-$class->belongs_to('job' => "${schema}::Result::Job", 'job_id');
+$class->belongs_to(job => "${result}::Job", 'job_id');
 
 sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;

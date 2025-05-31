@@ -4,7 +4,6 @@ use strictures;
 use parent 'DBIx::Class::Schema';
 
 use App::MCP; our $VERSION = App::MCP->schema_version;
-use Scalar::Util qw( weaken );
 
 my $class = __PACKAGE__;
 
@@ -22,16 +21,6 @@ sub config {
       if $self->can('upgrade_directory');
 
    return $config;
-}
-
-sub jobdaemon {
-   my ($self, $value) = @_;
-
-   if (defined $value) {
-      weaken $value; $self->{_jobdaemon} = $value;
-   }
-
-   return $self->{_jobdaemon};
 }
 
 sub create_ddl_dir {

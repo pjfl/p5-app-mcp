@@ -24,22 +24,22 @@ with 'App::MCP::Role::Schema';
 Async::IPC::Constants->Log_Key_Width( LOG_KEY_WIDTH );
 
 # Public attributes
-has 'app'    =>
-   is        => 'ro',
-   isa       => Object,
-   handles   => ['config', 'debug', 'log'],
-   init_arg  => 'builder',
-   required  => TRUE;
+has 'app' =>
+   is       => 'ro',
+   isa      => Object,
+   handles  => ['config', 'debug', 'log'],
+   init_arg => 'builder',
+   required => TRUE;
 
-has 'port'   =>
-   is        => 'lazy',
-   isa       => NonZeroPositiveInt,
-   builder   => sub { $_[0]->config->port };
+has 'port' =>
+   is      => 'lazy',
+   isa     => NonZeroPositiveInt,
+   default => sub { $_[0]->config->port };
 
 has 'worker' =>
-   is        => 'lazy',
-   isa       => NonEmptySimpleStr,
-   builder   => sub { $_[0]->config->appclass.'::Worker' };
+   is      => 'lazy',
+   isa     => NonEmptySimpleStr,
+   default => sub { $_[0]->config->appclass.'::Worker' };
 
 # Private attributes
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };

@@ -344,6 +344,8 @@ sub _update_dependent_fields {
    return;
 }
 
+use namespace::autoclean;
+
 1;
 
 __END__

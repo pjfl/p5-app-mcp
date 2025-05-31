@@ -1,20 +1,7 @@
 package App::MCP::Role::Schema;
 
 use Type::Utils qw( class_type );
-use App::MCP::JobServer;
 use Moo::Role;
-
-has 'jobdaemon' =>
-   is      => 'lazy',
-   isa     => class_type('App::MCP::JobServer'),
-   default => sub {
-      my $self = shift;
-
-      return App::MCP::JobServer->new(config => {
-         appclass => $self->config->appclass,
-         pathname => $self->config->bin->catfile('mcp-jobserver'),
-      });
-   };
 
 has 'schema' =>
    is      => 'lazy',
@@ -25,8 +12,6 @@ has 'schema' =>
       my $schema = $class->connect(@{$self->config->connect_info});
 
       $class->config($self->config) if $class->can('config');
-
-      $schema->jobdaemon($self->jobdaemon) if $schema->can('jobdaemon');
 
       return $schema;
    };

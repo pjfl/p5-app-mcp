@@ -11,14 +11,17 @@ has '+moniker' => default => 'z_root';
 sub dispatch_request { build_routes
    'GET|POST + /api/**.* + ?*' => 'api/root/dispatch',
 
-   'GET|POST + /job/create + ?*'   => 'job/root/base/create',
-   'POST     + /job/*/delete + ?*' => 'job/root/base/delete',
-   'GET|POST + /job/*/edit + ?*'   => 'job/root/base/edit',
-   'GET      + /job/* + ?*'        => 'job/root/base/view',
-   'GET      + /job + ?*'          => 'job/root/base/list',
+   'GET      + /job/*/history/run/* + ?*'          => 'history/root/base/view',
+   'GET      + /job/*/history | /job/history + ?*' => 'history/root/base/list',
 
-   'GET      + /state        + ?*' => 'state/root/base/view',
+   'GET|POST + /job/create + ?*'    => 'job/root/base/create',
+   'POST     + /job/*/delete + ?*'  => 'job/root/base/delete',
+   'GET|POST + /job/*/edit + ?*'    => 'job/root/base/edit',
+   'GET      + /job/* + ?*'         => 'job/root/base/view',
+   'GET      + /job + ?*'           => 'job/root/base/list',
+
    'GET|POST + /state/*/edit + ?*' => 'state/root/base/edit',
+   'GET      + /state        + ?*' => 'state/root/base/view',
 
    'GET|POST + /user/create + ?*'       => 'user/root/base/create',
    'POST     + /user/*/delete + ?*'     => 'user/root/base/delete',
