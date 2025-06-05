@@ -42,10 +42,19 @@ sub deploy {
    $self->throw_exception("Can't deploy without storage") unless $self->storage;
 
    eval {
-      $self->storage->_get_dbh->do('DROP TABLE dbix_class_schema_versions');
+      $self->storage->dbh_do(sub {
+         my ($storage, $dbh) = @_; $dbh->do('drop dbix_class_schema_versions');
+      });
    };
 
    $self->storage->deploy($self, undef, $sqltargs, $dir);
+
+   $self->storage->dbh_do(sub {
+      my ($storage, $dbh) = @_;
+
+      $dbh->do('alter table processed_events alter column runid type varchar(20) collate "C"');
+   });
+
    return;
 }
 

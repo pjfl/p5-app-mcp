@@ -13,7 +13,7 @@ $class->table('job_states');
 
 $class->add_columns(
    job_id    => foreign_key_data_type,
-   updated   => { data_type => 'datetime', },
+   updated   => { data_type => 'datetime', timezone => 'UTC' },
    name      => enumerated_data_type( STATE_ENUM ),
 );
 

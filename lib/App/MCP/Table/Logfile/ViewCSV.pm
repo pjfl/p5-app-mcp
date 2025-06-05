@@ -8,16 +8,14 @@ use Moo;
 use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
+with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Filterable';
 with    'HTML::StateTable::Role::Searchable';
 with    'HTML::StateTable::Role::Form';
 
-has 'logfile' => is => 'ro', isa => Str, required => TRUE;
+has '+configurable_action' => default => 'api/table_preference';
 
-has 'redis' =>
-   is       => 'ro',
-   isa      => class_type('App::MCP::Redis'),
-   required => TRUE;
+has '+configurable_control_location' => default => 'TopRight';
 
 has '+form_buttons' => default => sub {
    return [{
@@ -27,15 +25,26 @@ has '+form_buttons' => default => sub {
    }];
 };
 
-has '+form_control_location' => default => 'BottomLeft';
+has '+form_control_location' => default => 'BottomRight';
 
 has '+icons' => default => sub { shift->context->uri_for_icons->as_string };
 
 has '+name' => default => sub { shift->logfile };
 
-has '+page_control_location' => default => 'TopRight';
+has '+page_control_location' => default => 'TopLeft';
+
+has '+page_size_control_location' => default => 'BottomLeft';
+
+has '+searchable_control_location' => default => 'TopRight';
 
 has '+title_location' => default => 'inner';
+
+has 'logfile' => is => 'ro', isa => Str, required => TRUE;
+
+has 'redis' =>
+   is       => 'ro',
+   isa      => class_type('App::MCP::Redis'),
+   required => TRUE;
 
 setup_resultset sub {
    my $self   = shift;
@@ -56,7 +65,7 @@ has_column 'timestamp' =>
    searchable  => TRUE,
    sortable    => TRUE,
    title       => 'Sort by date and time',
-   width       => '16ch';
+   width       => '18ch';
 
 has_column 'status' => filterable => TRUE, sortable => TRUE, width => '10ch';
 

@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Job form hides/unrequires command field for boxes
           - Added run history list
           - View CSV and Apache format logs
           - Sending signals from state modal

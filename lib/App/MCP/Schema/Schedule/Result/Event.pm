@@ -16,7 +16,7 @@ $class->table('events');
 
 $class->add_columns(
    id         => serial_data_type,
-   created    => set_on_create_datetime_data_type,
+   created    => { %{set_on_create_datetime_data_type()}, timezone => 'UTC' },
    job_id     => foreign_key_data_type,
    transition => enumerated_data_type( TRANSITION_ENUM ),
    runid      => varchar_data_type( 20, NUL ),

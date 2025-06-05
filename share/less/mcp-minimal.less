@@ -9,6 +9,7 @@
     tile-inactive: lightgray;
     tile-running: lightgreen;
     tile-starting: cyan;
+    tile-terminated: darkred;
     text: black;
     toggle: gray;
 }
@@ -25,7 +26,7 @@
         .box-tile, .job-tile {
             border: 1px solid #colours[line-border]; border-radius: 5px;
             box-shadow: 3px 3px 3px #colours[panel-shadow];
-            color: #colours[text]; margin: 0.25rem; padding: 0.25rem;
+            margin: 0.25rem; padding: 0.25rem;
         }
         .box-tile .title {
             align-items: center; display: flex; justify-content: space-between;
@@ -53,7 +54,7 @@
     background: #colours[tile-failed];
 }
 .box-tile.finished, .job-tile.finished, .input-field .finished {
-    background: #colours[tile-finished];
+    background: #colours[tile-finished]; color: #colours[contrast];
 }
 .box-tile.hold, .job-tile.hold, .input-field .hold {
     background: #colours[tile-hold];
@@ -66,4 +67,7 @@
 }
 .box-tile.starting, .job-tile.starting, .input-field .starting {
     background: #colours[tile-starting];
+}
+.box-tile.terminated, .job-tile.terminated, .input-field .terminated {
+    background: #colours[tile-terminated]; color: #colours[contrast];
 }

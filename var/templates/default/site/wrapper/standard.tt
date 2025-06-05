@@ -9,3 +9,6 @@
       </div>
    </div>
 </div>
+<footer id="footer">
+<span class="version-number">v[% version %]</span>
+</footer>

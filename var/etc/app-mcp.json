@@ -1,5 +1,5 @@
 {
-   "cron_log_interval": "60",
+   "cron_log_interval": "600",
    "local_config_file": "app-mcp-local.json",
    "navigation": {
       "control_label": "img/settings.svg",

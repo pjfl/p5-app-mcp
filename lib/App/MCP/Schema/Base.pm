@@ -19,7 +19,7 @@ sub validate {
    my $columns = { $self->get_inflated_columns };
 
    for my $field (keys %{$attr->{fields}}) {
-      my $valids =  $attr->{fields}->{$field}->{validate} or next;
+      my $valids = $attr->{fields}->{$field}->{validate} or next;
 
       $columns->{$field} //= undef if $valids =~ m{ isMandatory }msx;
    }

@@ -17,13 +17,13 @@ $class->table('processed_events');
 
 $class->add_columns(
    id         => serial_data_type,
-   created    => { data_type => 'datetime' },
-   processed  => set_on_create_datetime_data_type,
+   created    => { data_type => 'datetime', timezone => 'UTC' },
+   processed  => { %{set_on_create_datetime_data_type()}, timezone => 'UTC' },
    job_id     => foreign_key_data_type,
-   transition => enumerated_data_type( TRANSITION_ENUM ),
-   rejected   => nullable_varchar_data_type( 16 ),
-   runid      => varchar_data_type( 20 ),
-   token      => varchar_data_type( 32, NUL ),
+   transition => enumerated_data_type(TRANSITION_ENUM),
+   rejected   => nullable_varchar_data_type(16),
+   runid      => varchar_data_type(20),
+   token      => varchar_data_type(32, NUL),
    pid        => numerical_data_type,
    rv         => numerical_id_data_type,
 );

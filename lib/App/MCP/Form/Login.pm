@@ -178,7 +178,7 @@ sub _handlers {
       'Unspecified'    => sub { $self->add_form_error($_->original) },
       '*' => sub {
          $self->add_form_error(blessed $_ ? $_->original : "${_}");
-         $self->log->alert($_, $context) if $self->has_log;
+         $self->log->alert("${_}", $context) if $self->has_log;
       }
    ];
 }

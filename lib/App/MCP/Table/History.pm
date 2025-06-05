@@ -35,7 +35,13 @@ has_column 'job_name' =>
    label    => 'Job Name',
    sortable => TRUE,
    title    => 'Sort by job',
-   value    => 'job.job_name';
+   value    => 'job.job_name',
+   link     => sub {
+      my $self    = shift;
+      my $context = $self->table->context;
+
+      return $context->uri_for_action('history/view', [$self->result->job_id]);
+   };
 
 has_column 'runid' =>
    label    => 'Run ID',
@@ -48,9 +54,13 @@ has_column 'runid' =>
       return $context->uri_for_action('history/view', $args);
    };
 
-has_column 'start' => cell_traits => ['DateTime'], label => 'Started';
+has_column 'started' => cell_traits => ['DateTime'];
 
-has_column 'finish' => cell_traits => ['DateTime'], label => 'Finished';
+has_column 'finished' => cell_traits => ['DateTime'];
+
+has_column 'duration';
+
+has_column 'success' => cell_traits => ['Bool'];
 
 use namespace::autoclean -except => TABLE_META;
 

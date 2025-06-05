@@ -31,7 +31,7 @@ sub fetch : Auth('none') {
 
             $object->{found} = \1 if $r && $r->execute($prop);
          }
-         catch { $self->log->error($_, $context) };
+         catch { $self->log->error("${_}", $context) };
       }
    }
    else { throw 'Object [_1] unknown api attribute name', [$self->name] }

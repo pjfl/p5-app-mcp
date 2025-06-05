@@ -69,7 +69,7 @@ sub validate {
       'Authentication' => sub { $passwd->add_error($_->original) },
       '*' => sub {
          $self->add_form_error(["${_}"]);
-         $self->log->alert($_, $self->context) if $self->has_log;
+         $self->log->alert("${_}", $self->context) if $self->has_log;
       }
    ];
 

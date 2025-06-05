@@ -935,8 +935,9 @@ form.classic .input-button.inline {
   display: inline-flex;
 }
 form.classic .input-button.right {
+  margin-right: 0;
   position: absolute;
-  right: 0.5rem;
+  right: 0;
 }
 form.classic .input-captcha input,
 form.classic .input-captcha .field-label,
@@ -1623,6 +1624,7 @@ body {
 .state-table .table-form .table-button span,
 .state-table .table-form button span,
 .state-table .dialog-form button span {
+  font-family: Roboto, system-ui, sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
   position: relative;
@@ -1771,7 +1773,6 @@ body {
   border: 1px solid gray;
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
-  color: black;
   margin: 0.25rem;
   padding: 0.25rem;
 }
@@ -1816,6 +1817,7 @@ body {
 .job-tile.finished,
 .input-field .finished {
   background: darkgreen;
+  color: whitesmoke;
 }
 .box-tile.hold,
 .job-tile.hold,
@@ -1837,6 +1839,12 @@ body {
 .input-field .starting {
   background: cyan;
 }
+.box-tile.terminated,
+.job-tile.terminated,
+.input-field .terminated {
+  background: darkred;
+  color: whitesmoke;
+}
 *,
 *::before,
 *::after {
@@ -1856,16 +1864,23 @@ body {
   margin: 0;
   padding: 0;
 }
-header {
+header,
+footer {
   margin: 0 0.5rem;
-  position: sticky;
-  top: 0;
   z-index: 3;
 }
 @media (max-width: 680px) {
-  header {
+  header,
+  footer {
     margin: 0;
   }
+}
+header {
+  position: sticky;
+}
+footer {
+  position: absolute;
+  bottom: 0;
 }
 .frame {
   bottom: 0;
@@ -2382,7 +2397,7 @@ header {
 .sidebar .nav-list.global li.global a,
 .sidebar .nav-list.global li.global .drop-menu {
   display: inline-block;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1rem;
   position: relative;
   width: 100%;
 }
@@ -2462,6 +2477,38 @@ header {
 .sidebar.link-display-text::after {
   width: 6rem;
 }
+.messages-panel {
+  bottom: 1rem;
+  position: absolute;
+  right: 1rem;
+}
+.messages-panel .message-item {
+  background: linen;
+  border: 2px solid firebrick;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  color: black;
+  font-family: 'Segoe Print', 'Bradley Hand', Chilanka, casual, cursive;
+  opacity: 1;
+  position: relative;
+  margin-top: 1rem;
+  max-width: 16rem;
+  padding: 0.5rem;
+  transition: opacity 1s;
+  z-index: 3;
+}
+.messages-panel .message-item.fade {
+  opacity: 0;
+}
+.messages-panel .message-item.hide {
+  display: none;
+}
+.version-number {
+  color: gray;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
 .documentation {
   font-family: Roboto, system-ui, sans-serif;
   padding-top: 0.5rem;
@@ -2488,32 +2535,6 @@ header {
 .file-preview pre {
   font-size: 0.8rem;
   line-height: 0.5rem;
-}
-.messages-panel {
-  bottom: 1rem;
-  position: absolute;
-  right: 1rem;
-}
-.messages-panel .message-item {
-  background: linen;
-  border: 2px solid firebrick;
-  border-radius: 5px;
-  box-shadow: 3px 3px 3px gray;
-  color: black;
-  font-family: 'Segoe Print', 'Bradley Hand', Chilanka, casual, cursive;
-  opacity: 1;
-  position: relative;
-  margin-top: 1rem;
-  max-width: 16rem;
-  padding: 0.5rem;
-  transition: opacity 1s;
-  z-index: 3;
-}
-.messages-panel .message-item.fade {
-  opacity: 0;
-}
-.messages-panel .message-item.hide {
-  display: none;
 }
 .modal .filemanager {
   margin: 0;

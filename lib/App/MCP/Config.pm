@@ -149,7 +149,8 @@ has 'connect_info' =>
 
 =item C<cron_log_interval>
 
-A positive integer that defaults to B<0>.
+A positive integer that defaults to B<0>. If non zero the time in seconds
+between logging messages from the C<cron> process showing it is still active
 
 =cut
 
@@ -272,23 +273,6 @@ symbols used when generating HTML
 =cut
 
 has 'icons' => is => 'ro', isa => Str, default => 'img/icons.svg';
-
-=item C<identity_file>
-
-A file object reference that defaults to the F<id_rsa> file in the L</ssh_dir>
-directory
-
-=cut
-
-has 'identity_file' =>
-   is      => 'lazy',
-   isa     => File|Path,
-   coerce  => TRUE,
-   default => sub {
-      my $self = shift;
-
-      return $self->ssh_dir->catfile(lc distname $self->appclass . '.priv');
-   };
 
 =item C<library_class>
 
@@ -446,7 +430,7 @@ has 'navigation' =>
 
       return {
          messages => { 'buffer-limit' => $self->max_messages },
-         title => $self->name . ' v' . App::MCP->VERSION,
+         title => $self->name,
          title_abbrev => 'MCP',
          %{$self->_navigation},
          global => [
@@ -729,7 +713,7 @@ has 'ssh_dir' =>
    is      => 'lazy',
    isa     => Directory,
    coerce  => TRUE,
-   default => sub { shift->home->catdir('.ssh') };
+   default => sub { shift->appldir->catdir('.ssh') };
 
 =item C<static>
 

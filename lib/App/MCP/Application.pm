@@ -128,14 +128,15 @@ sub ipc_ssh_add_provisioning {
 sub ipc_ssh_caller {
    my ($self, $name, $notifier, $runid, $args) = @_;
 
-   my $failed = FALSE;
+   my @options = (Host => $args->{host}, User => $args->{user});
+   my $file    = $self->_get_identity_file($args);
+
+   push @options, 'SshOptions', ['-i', $file] if $file;
+
+   my $ips    = IPC::PerlSSH->new(@options);
    my $log    = $self->log;
-   my $ips    = IPC::PerlSSH->new(
-      Host       => $args->{host},
-      User       => $args->{user},
-      SshOptions => ['-i', $self->_get_identity_file($args)],
-   );
    my $logger = sub { $log, $name, $runid };
+   my $failed = FALSE;
 
    try   { $ips->use_library($self->config->library_class) }
    catch { log_error $logger, "Use library - ${_}"; $failed = TRUE };
@@ -154,9 +155,9 @@ sub ipc_ssh_caller {
 
       log_debug $logger, "Call succeeded - ${resp}";
 
-      my $method = $call->[2];
+      my $cb = $call->[2];
 
-      $self->$method($logger, $results, $call, $resp, $args) if defined $method;
+      $self->$cb($logger, $results, $call, $resp, $args) if defined $cb;
    }
 
    return $results;
@@ -277,13 +278,18 @@ sub _get_identity_file {
    my $config = $self->config;
    my $dir    = $config->ssh_dir;
    my $prefix = lc distname $config->appclass;
-   my @files  = ("${host}-${user}", $user, $host);
+   my @files  = (
+      "${prefix}-${host}-${user}",
+      "${prefix}-${host}",
+      "${prefix}-${user}",
+      $prefix
+   );
 
-   for my $path (map { $dir->catfile("${prefix}_${_}.priv") } @files) {
+   for my $path (map { $dir->catfile("${_}.priv") } @files) {
       return $identity_file_cache->{$key} = $path if $path->exists;
    }
 
-   return $identity_file_cache->{$key} = $config->identity_file;
+   return;
 }
 
 sub _install_remote {

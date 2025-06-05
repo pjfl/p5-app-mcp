@@ -2,7 +2,7 @@ package App::MCP::Model::History;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
 use App::MCP::Util         qw( redirect redirect2referer );
-use Unexpected::Functions  qw( UnknownJob );
+use Unexpected::Functions  qw( UnknownJob Unspecified );
 use Moo;
 use App::MCP::Attributes;  # Will do cleaning
 
@@ -23,13 +23,19 @@ sub base : Auth('view') {
       return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
       $context->stash(job => $job);
+
+      my $args = [$jobid];
+
+      push @{$args}, $runid if $runid;
+
+      $nav->item('history/view', $args);
    }
 
    $nav->finalise;
    return;
 }
 
-sub list : Auth('view') Nav('History') {
+sub list : Auth('view') Nav('History|img/history.svg') {
    my ($self, $context) = @_;
 
    my $options = { context => $context };
@@ -42,9 +48,18 @@ sub list : Auth('view') Nav('History') {
 }
 
 sub view : Auth('view') Nav('View History') {
-   my ($self, $context, $runid) = @_;
+   my ($self, $context, $jobid, $runid) = @_;
 
-   my $options = { context => $context, result => $context->stash('job') };
+   my $job = $context->stash('job');
+
+   return $self->error($context, Unspecified, ['job']) unless $job;
+
+   my $options = { context => $context, job => $job };
+
+   if ($runid) {
+      $options->{caption} = 'Job Run History View';
+      $options->{runid} = $runid;
+   }
 
    $context->stash(table => $self->new_table('History::View', $options));
    return;

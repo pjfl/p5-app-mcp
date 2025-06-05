@@ -139,7 +139,7 @@ has 'status' =>
 
 has 'size' =>
    is      => 'lazy',
-   isa     => Int,
+   isa     => Str,
    default => sub { shift->fields->[5] // NUL };
 
 has 'referer' =>

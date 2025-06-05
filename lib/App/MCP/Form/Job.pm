@@ -6,6 +6,7 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
+with    'HTML::Forms::Role::ToggleRequired';
 
 has '+name'         => default => 'Job';
 has '+title'        => default => 'Job';
@@ -15,13 +16,16 @@ has '+item_class'   => default => 'Job';
 has_field 'job_name' => required => TRUE;
 
 has_field 'type' =>
-   type    => 'Select',
-   options => [
+   type        => 'Select',
+   html_name   => 'job_type',
+   input_param => 'job_type',
+   toggle      => { job => ['command'] },
+   options     => [
       { label => 'Box', value => 'box' },
       { label => 'Job', value => 'job' }
    ];
 
-has_field 'parent_box' => type => 'Select';
+has_field 'parent_box' => type => 'Select', label => 'Parent Box';
 
 sub options_parent_box {
    my $self    = shift;
@@ -71,6 +75,16 @@ has_field 'submit' => type => 'Button';
 #                   default_value => 488,
 #                   is_nullable   => FALSE, },
 
+
+after 'after_build_fields' => sub {
+   my $self      = shift;
+   my $resources = $self->context->config->wcom_resources;
+   my $toggle    = $resources->{toggle} . ".toggleFields('job_type')";
+
+   $self->field('type')->element_attr->{javascript} = { onchange => $toggle };
+
+   return;
+};
 
 use namespace::autoclean -except => META;
 

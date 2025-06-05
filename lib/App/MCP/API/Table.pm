@@ -44,11 +44,11 @@ sub _preference { # Accessor/mutator with builtin clearer. Store "" to delete
 
    return $rs->update_or_create({ # Mutator
       name => $name, user_id => $context->session->id, value => $value
-   }, { key => 'preference_user_id_name_uniq' }) if $value && $value ne '""';
+   }, { key => 'preferences_user_id_name_uniq' }) if $value && $value ne '""';
 
    my $pref = $rs->find({
       name => $name, user_id => $context->session->id
-   }, { key => 'preference_user_id_name_uniq' });
+   }, { key => 'preferences_user_id_name_uniq' });
 
    return $pref->delete if defined $pref && defined $value; # Clearer
 

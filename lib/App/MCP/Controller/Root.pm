@@ -11,7 +11,8 @@ has '+moniker' => default => 'z_root';
 sub dispatch_request { build_routes
    'GET|POST + /api/**.* + ?*' => 'api/root/dispatch',
 
-   'GET      + /job/*/history/run/* + ?*'          => 'history/root/base/view',
+   'GET      + /job/*/history/run/* | /job/*/history/run + ?*'
+                                                   => 'history/root/base/view',
    'GET      + /job/*/history | /job/history + ?*' => 'history/root/base/list',
 
    'GET|POST + /job/create + ?*'    => 'job/root/base/create',
