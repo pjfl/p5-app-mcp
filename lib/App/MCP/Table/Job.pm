@@ -5,8 +5,8 @@ use Moo;
 use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
-with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Configurable';
+with    'HTML::StateTable::Role::Form';
 
 has '+caption' => default => 'Jobs List';
 

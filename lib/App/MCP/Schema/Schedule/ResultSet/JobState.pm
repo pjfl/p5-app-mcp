@@ -69,9 +69,12 @@ sub find_or_create {
    }
 
    my $initial_state = ($parent_state eq 'active'
-                     or $parent_state eq 'running'
-                     or $parent_state eq 'starting')
-                     ?  'active' : 'inactive';
+                        or $parent_state eq 'running'
+                        or $parent_state eq 'starting')
+      ?  'active' : 'inactive';
+
+   $initial_state = 'running'
+      if $job->type eq 'box' and $parent_state eq 'running';
 
    return $self->create({
       job_id  => $job->id,

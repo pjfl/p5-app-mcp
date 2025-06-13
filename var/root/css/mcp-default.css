@@ -939,6 +939,25 @@ form.classic .input-button.right {
   position: absolute;
   right: 0;
 }
+form.classic .input-button a.form-button {
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border: 2px outset gainsboro;
+  border-radius: 50px;
+  color: seagreen;
+  cursor: pointer;
+  display: inline-block;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1rem;
+  line-height: 0.8rem;
+  margin: 0.5rem 0;
+  overflow: hidden;
+  padding: 0.366rem 0.75rem;
+  position: relative;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: border 0.5s, color 0.5s;
+}
 form.classic .input-captcha input,
 form.classic .input-captcha .field-label,
 form.classic .input-display .field-label,
@@ -1845,6 +1864,9 @@ body {
   background: darkred;
   color: whitesmoke;
 }
+.input-field .job-state {
+  border-radius: 5px;
+}
 *,
 *::before,
 *::after {
@@ -1852,6 +1874,7 @@ body {
 }
 html {
   height: 100%;
+  overflow: hidden;
 }
 html.dark {
   color-scheme: dark;
@@ -1866,7 +1889,8 @@ body {
 }
 header,
 footer {
-  margin: 0 0.5rem;
+  padding: 0 0.5rem;
+  width: 100%;
   z-index: 3;
 }
 @media (max-width: 680px) {
@@ -1877,13 +1901,15 @@ footer {
 }
 header {
   position: sticky;
+  top: 0;
 }
 footer {
   position: absolute;
   bottom: 0;
 }
 .frame {
-  bottom: 0;
+  bottom: 1rem;
+  padding-bottom: 0.5rem;
   overflow: auto;
   position: fixed;
   right: 0.5rem;

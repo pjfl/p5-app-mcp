@@ -72,8 +72,8 @@ sub _last_finish_event {
    # TODO: Use of first?
    return $self->{_last_finish_event} = $self->processed_events->search(
       { transition => 'finish' },
-      { order_by   => { -desc => 'runid' } }
-   )->first;
+      { order_by   => { -desc => 'runid' }, rows => 1 }
+   )->all;
 }
 
 sub _last_start_event {
@@ -83,8 +83,8 @@ sub _last_start_event {
 
    return $self->{_last_start_event} = $self->processed_events->search(
       { transition => 'start' },
-      { order_by   => { -desc => 'runid' } }
-   )->first;
+      { order_by   => { -desc => 'runid' }, rows => 1 }
+   )->all;
 }
 
 1;

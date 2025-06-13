@@ -79,7 +79,11 @@ sub purge_attachments {
       }
    }
 
-   for my $file ($self->meta_directory($config, $self->id)->all) {
+   my $attachment_dir = $self->meta_directory($config, $self->id);
+
+   return $purged unless $attachment_dir->exists;
+
+   for my $file ($attachment_dir->all) {
       next if exists $map->{$file->basename};
 
       $file->unlink;

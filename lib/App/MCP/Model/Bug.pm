@@ -1,7 +1,7 @@
 package App::MCP::Model::Bug;
 
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL TRUE );
-use App::MCP::Util        qw( redirect );
+use App::MCP::Util        qw( redirect redirect2referer );
 use Unexpected::Functions qw( UnauthorisedAccess UnknownAttachment UnknownBug );
 use Moo;
 use App::MCP::Attributes; # Will do cleaning
@@ -155,6 +155,26 @@ sub list : Auth('view') Nav('Bugs') {
    my $table = $self->new_table('Bugs', { context => $context });
 
    $context->stash(table => $table);
+   return;
+}
+
+sub remove : Auth('admin') {
+   my ($self, $context) = @_;
+
+   return unless $self->verify_form_post($context);
+
+   my $value = $context->request->body_parameters->{data} or return;
+   my $rs    = $context->model('Bug');
+   my $ids   = [];
+
+   for my $bug (grep { $_ } map { $rs->find($_) } @{$value->{selector}}) {
+      push @{$ids}, $bug->id;
+      $bug->delete;
+   }
+
+   my $message = ['Bug report(s) [_1] deleted', (join ', ', @{$ids})];
+
+   $context->stash(redirect2referer $context, $message);
    return;
 }
 

@@ -18,7 +18,8 @@ sub base : Auth('view') {
    my $nav = $context->stash('nav')->list('job')->item('job/create');
 
    if ($jobid) {
-      my $job = $context->model('Job')->find_by_key($jobid);
+      my $options = { prefetch => [qw(parent_box owner_rel group_rel)] };
+      my $job = $context->model('Job')->find_by_key($jobid, $options);
 
       return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
@@ -101,14 +102,16 @@ sub remove {
 
    my $value = $context->request->body_parameters->{data} or return;
    my $rs    = $context->model('Job');
-   my $count = 0;
+   my $names = [];
 
    for my $job (grep { $_ } map { $rs->find($_) } @{$value->{selector}}) {
+      push @{$names}, $job->job_name;
       $job->delete;
-      $count++;
    }
 
-   $context->stash(redirect2referer $context, ["${count} job(s) deleted"]);
+   my $message = ['Job(s) [_1] deleted', (join ', ', @{$names}) ];
+
+   $context->stash(redirect2referer $context, $message);
    return;
 }
 

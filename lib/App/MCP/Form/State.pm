@@ -25,7 +25,10 @@ has '_workflow' =>
 
 has_field 'job_name' => type => 'Display';
 
-has_field 'state_name' => type => 'Display', label => 'Current State';
+has_field 'state_name' =>
+   type          => 'Display',
+   label         => 'Current State',
+   element_class => ['job-state'];
 
 has_field 'condition' => type => 'Display';
 
@@ -45,16 +48,16 @@ sub options_signal {
    return [ map { $_, _to_label($_) } sort map { $_->name } @transitions ];
 }
 
-has_field 'edit' =>
-   type          => 'Button',
-   label         => 'Edit',
-   value         => 'edit',
+has_field 'view' =>
+   type          => 'Link',
+   label         => 'View',
+   element_class => ['form-button pageload'],
    wrapper_class => ['input-button', 'inline'];
 
 has_field 'history' =>
-   type          => 'Button',
+   type          => 'Link',
    label         => 'History',
-   value         => 'history',
+   element_class => ['form-button pageload'],
    wrapper_class => ['input-button', 'inline'];
 
 has_field 'submit' =>
@@ -75,6 +78,14 @@ after 'after_build_fields' => sub {
    $self->field('condition')->inactive(TRUE) unless $job->condition;
    $self->field('crontab')->inactive(TRUE) unless $job->crontab;
    $self->field('host')->inactive(TRUE) if $job->type eq 'box';
+
+   my $view = $self->context->uri_for_action('job/view', [$job->id]);
+
+   $self->field('view')->href($view->as_string);
+
+   my $history = $self->context->uri_for_action('history/view', [$job->id]);
+
+   $self->field('history')->href($history->as_string);
    return;
 };
 

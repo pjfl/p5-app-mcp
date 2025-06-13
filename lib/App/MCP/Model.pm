@@ -15,7 +15,7 @@ with    'App::MCP::Role::Schema';
 
 has '+context_class' => default => 'App::MCP::Context';
 
-has 'form' =>
+has 'form_manager' =>
    is      => 'lazy',
    isa     => class_type('HTML::Forms::Manager'),
    handles => { new_form => 'new_with_context' },
@@ -30,7 +30,7 @@ has 'form' =>
       });
    };
 
-has 'table' =>
+has 'table_manager' =>
    is      => 'lazy',
    isa     => class_type('HTML::StateTable::Manager'),
    handles => { new_table => 'new_with_context' },

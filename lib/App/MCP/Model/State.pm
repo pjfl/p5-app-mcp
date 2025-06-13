@@ -4,7 +4,7 @@ use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types            qw( Int );
 use App::MCP::Util               qw( redirect );
 use Web::ComposableRequest::Util qw( bson64id bson64id_time );
-use Unexpected::Functions        qw( throw );
+use Unexpected::Functions        qw( throw UnknownJob );
 use Try::Tiny;
 use Moo;
 use App::MCP::Attributes;
@@ -26,7 +26,9 @@ sub base : Auth('view') {
    if ($jobid) {
       my $job = $context->model('Job')->find($jobid, { prefetch => 'state' });
 
-      $context->stash(job => $job) if $job;
+      return $self->error($context, UnknownJob, [$jobid]) unless $job;
+
+      $context->stash(job => $job);
    }
 
    $nav->container_layout('left') if $context->endpoint eq 'view';
@@ -38,22 +40,7 @@ sub base : Auth('view') {
 sub edit  {
    my ($self, $context) = @_;
 
-   my $job = $context->stash->{job};
-
-   if (($context->request->body_parameters->{_submit} // NUL) eq 'edit') {
-      my $edit = $context->uri_for_action('job/edit', [$job->id]);
-
-      $context->stash(redirect $edit, []);
-      return;
-   }
-
-   if (($context->request->body_parameters->{_submit} // NUL) eq 'history') {
-      my $list = $context->uri_for_action('history/list', [$job->id]);
-
-      $context->stash(redirect $list, []);
-      return;
-   }
-
+   my $job  = $context->stash->{job};
    my $form = $self->new_form('State', { context => $context, item => $job });
 
    if ($form->process(posted => $context->posted)) {

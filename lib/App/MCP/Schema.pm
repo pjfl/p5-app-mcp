@@ -222,7 +222,7 @@ sub dump_jobs : method {
    my $self     = shift;
    my $job_spec = $self->next_argv // '%';
    my $path     = $self->next_argv // 'jobs.json';
-   my $data     = $self->schedule->resultset( 'Job' )->dump( $job_spec );
+   my $data     = $self->schema->resultset( 'Job' )->dump( $job_spec );
    my $count    = @{ $data };
 
    $self->_file_schema->dump({ data => { jobs => $data }, path => $path });
@@ -263,7 +263,7 @@ sub load_jobs : method {
    my $self  = shift;
    my $path  = $self->next_argv // 'jobs.json';
    my $data  = $self->_file_schema->load($path);
-   my $rs    = $self->schedule->resultset( 'Job' );
+   my $rs    = $self->schema->resultset( 'Job' );
    my $count = $rs->load( $self->_authenticated_user_info, $data->{jobs} );
 
    $self->info( "Loaded [_1] jobs from '[_2]'", { args => [ $count, $path ] } );
@@ -319,7 +319,7 @@ sub send_event : method {
    my $fqjn     = $self->next_argv
       or throw Unspecified, ['qualified job name'];
    my $trans    = $self->next_argv // 'start';
-   my $schema   = $self->schedule;
+   my $schema   = $self->schema;
    my $job_rs   = $schema->resultset('Job');
    my $event_rs = $schema->resultset('Event');
    my $user     = $self->_authenticated_user_info->{user};
@@ -387,7 +387,7 @@ sub _add_backup_files {
 sub _authenticated_user_info {
    my $self    = shift;
    my $info    = {};
-   my $schema  = $self->schedule;
+   my $schema  = $self->schema;
    my $user_rs = $schema->resultset('User');
    my $user    = $info->{user} = $user_rs->find_by_key($self->user_name);
 

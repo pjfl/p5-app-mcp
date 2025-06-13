@@ -58,8 +58,7 @@ sub view : Auth('admin') Nav('View Logfile') {
 
    return $self->error($context, Unspecified, ['logfile']) unless $logfile;
 
-   my $table_class = $logfile =~ m{ \. log \z }mx
-      ? 'Logfile::ViewApache' : 'Logfile::ViewCSV';
+   my $table_class = $self->_extension2table_class($logfile);
    my $options     = {
       caption => "${logfile} File View",
       context => $context,
@@ -69,6 +68,14 @@ sub view : Auth('admin') Nav('View Logfile') {
 
    $context->stash(table => $self->new_table($table_class, $options));
    return;
+}
+
+sub _extension2table_class {
+   my ($self, $logfile) = @_;
+
+   return 'Logfile::CSV' if $logfile =~ m{ \. csv \z }mx;
+
+   return 'Logfile::Apache';
 }
 
 1;

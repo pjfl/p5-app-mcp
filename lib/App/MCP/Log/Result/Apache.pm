@@ -1,4 +1,4 @@
-package App::MCP::Log::Result::ViewApache;
+package App::MCP::Log::Result::Apache;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TRUE );
 use HTML::StateTable::Types     qw( ArrayRef Date HashRef Int Str );
@@ -15,11 +15,11 @@ with 'HTML::StateTable::Result::Role';
 
 =head1 Name
 
-App::MCP::Logfile::Result::ViewApache - Result class for the logfile
+App::MCP::Logfile::Result::Apache - Result class for the logfile
 
 =head1 Synopsis
 
-   use App::MCP::Log::Result::ViewApache;
+   use App::MCP::Log::Result::Apache;
 
 =head1 Description
 

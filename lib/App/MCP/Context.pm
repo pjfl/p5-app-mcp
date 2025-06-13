@@ -41,9 +41,10 @@ has 'response' =>
    default => sub { App::MCP::Response->new };
 
 has 'session' =>
-   is      => 'lazy',
-   isa     => class_type('Web::ComposableRequest::Session'),
-   default => sub { shift->request->session };
+   is       => 'lazy',
+   isa      => class_type('Web::ComposableRequest::Session'),
+   default  => sub { shift->request->session },
+   weak_ref => TRUE;
 
 has 'time_zone' =>
    is      => 'lazy',

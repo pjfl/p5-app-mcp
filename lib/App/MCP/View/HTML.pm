@@ -47,8 +47,14 @@ sub _build__templater {
 sub _add_tt_defaults {
    my ($self, $context) = @_; weaken $context;
 
-   my $session = $context->session; weaken $session;
+   my $stash   = $context->stash;
+   my $token   = $context->verification_token;
+   my $uri_for = sub { $context->request->uri_for(@_) };
+   my $uri_for_action = sub { $context->uri_for_action(@_) };
+   my $session = $context->session;
    my $tz      = $session->timezone;
+   my $theme   = $session->theme;
+   my $session_updated = $session->updated;
 
    return {
       dt_from_epoch   => sub { dt_from_epoch shift, $tz },
@@ -57,12 +63,13 @@ sub _add_tt_defaults {
       encode_entities => \&encode_entities,
       encode_for_html => \&encode_for_html,
       process_attrs   => \&process_attrs,
-      session         => $session,
+      session_updated => $session_updated,
       status_message  => \&status_message,
-      token           => sub { $context->verification_token },
-      uri_for         => sub { $context->request->uri_for(@_) },
-      uri_for_action  => sub { $context->uri_for_action(@_) },
-      %{$context->stash},
+      theme           => $theme,
+      token           => sub { $token },
+      uri_for         => $uri_for,
+      uri_for_action  => $uri_for_action,
+      %{$stash},
    };
 }
 

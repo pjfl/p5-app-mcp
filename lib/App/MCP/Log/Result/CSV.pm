@@ -1,4 +1,4 @@
-package App::MCP::Log::Result::ViewCSV;
+package App::MCP::Log::Result::CSV;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TRUE );
 use HTML::StateTable::Types     qw( ArrayRef Date HashRef Int Str );
@@ -15,11 +15,11 @@ with 'App::MCP::Role::CSVParser';
 
 =head1 Name
 
-App::MCP::Logfile::Result::ViewCSV - Result class for the logfile
+App::MCP::Logfile::Result::CSV - Result class for the logfile
 
 =head1 Synopsis
 
-   use App::MCP::Log::Result::ViewCSV;
+   use App::MCP::Log::Result::CSV;
 
 =head1 Description
 

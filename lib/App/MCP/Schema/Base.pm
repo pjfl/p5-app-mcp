@@ -8,7 +8,7 @@ use Data::Validation;
 
 my $class = __PACKAGE__;
 
-$class->load_components( qw( InflateColumn::Object::Enum TimeStamp ) );
+$class->load_components( qw( InflateColumn::Object::Enumerated TimeStamp ) );
 
 sub validate {
    my $self = shift;

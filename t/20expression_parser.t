@@ -2,6 +2,27 @@ use t::boilerplate;
 
 use Test::More;
 
+{  package Dummy;
+
+   sub new {
+      return bless {}, 'Dummy';
+   }
+
+   sub finished {
+      return $_[ 1 ] eq 'test_job' ? 0 : 1;
+   }
+
+   sub running {
+      return $_[ 1 ] eq 'test_job' ? 1 : 0;
+   }
+
+   sub terminated {
+      return $_[ 1 ] eq 'test_job2' ? 1 : 0;
+   }
+
+   1;
+}
+
 use_ok 'App::MCP::ExpressionParser';
 
 my $ep = App::MCP::ExpressionParser->new
@@ -39,28 +60,8 @@ is $r->[ 0 ], 1, 'T7';
 is( (join ' ', sort @{ $r->[ 1 ] }), 'test_job test_job1 test_job2',
     'Job list' );
 
+wait;
 done_testing;
-
-{  package Dummy;
-
-   sub new {
-      return bless {}, 'Dummy';
-   }
-
-   sub finished {
-      return $_[ 1 ] eq 'test_job' ? 0 : 1;
-   }
-
-   sub running {
-      return $_[ 1 ] eq 'test_job' ? 1 : 0;
-   }
-
-   sub terminated {
-      return $_[ 1 ] eq 'test_job2' ? 1 : 0;
-   }
-
-   1;
-}
 
 # Local Variables:
 # mode: perl

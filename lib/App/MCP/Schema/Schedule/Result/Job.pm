@@ -36,17 +36,30 @@ $class->add_columns(
       timezone    => 'UTC',
    },
    type         => enumerated_data_type(JOB_TYPE_ENUM, 'box'),
-   owner_id     => foreign_key_data_type(1, 'owner'),
-   group_id     => foreign_key_data_type(1, 'group'),
+   owner_id     => {
+      %{foreign_key_data_type(1, 'owner')},
+      display => 'owner_rel.user_name',
+      label   => 'Owner'
+   },
+   group_id     => {
+      %{foreign_key_data_type(1, 'group')},
+      display => 'group_rel.role_name',
+      label   => 'Group'
+   },
    permissions  => {
       accessor      => '_permissions',
       data_type     => 'smallint',
       default_value => 488,
+      display       => sub { sprintf '0%o', shift->result->_permissions },
       is_nullable   => FALSE,
    },
    expected_rv  => numerical_id_data_type(0),
    delete_after => { %{boolean_data_type()}, label => 'Delete After' },
-   parent_id    => nullable_foreign_key_data_type,
+   parent_id    => {
+      %{nullable_foreign_key_data_type()},
+      display => 'parent_box.job_name',
+      label   => 'Parent Box'
+   },
    parent_path  => nullable_varchar_data_type,
    host         => varchar_data_type(64, 'localhost'),
    user_name    => { %{varchar_data_type(32, 'mcp')}, label => 'User Name' },
@@ -234,7 +247,7 @@ sub validation_attributes {
             min_length => 1,
             pattern    => '\A [A-Za-z_][/0-9A-Za-z_]+ \z', } },
       fields           => {
-         host          => { validate => 'isMandatory isValidHostname' },
+         host          => { validate => 'isValidHostname' },
          job_name      => {
             filters    => 'filterReplaceRegex',
             validate   => 'isMandatory isMatchingRegex isValidLength' },
