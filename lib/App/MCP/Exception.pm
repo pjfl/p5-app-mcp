@@ -87,9 +87,9 @@ has_exception 'UnknownToken' => parents => [$class],
 has_exception 'UnknownUser' => parents => [$class],
    error   => 'User [_1] not found', rv => HTTP_NOT_FOUND;
 
-has_exception 'Authentication'    => parents => [$class];
+has_exception 'Authentication' => parents => [$class];
 
-has_exception 'AccountInactive'   => parents => ['Authentication'],
+has_exception 'AccountInactive' => parents => ['Authentication'],
    error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
 
 has_exception 'AuthenticationRequired' => parents => ['Authentication'],

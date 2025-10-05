@@ -2,7 +2,7 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 61 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.5.%d', q$Rev: 62 $ =~ /\d+/gmx );
 
 use Class::Usul::Cmd::Util qw( ns_environment );
 
@@ -32,29 +32,11 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.5.$Rev: 61 $ of L<App::MCP>
+Describes version v0.5.$Rev: 62 $ of L<App::MCP>
 
 =head1 Synopsis
 
 =head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
-
-Defines the following methods;
-
-=over 3
-
-=item C<env_var>
-
-   $value = App::MCP->env_var( 'name', 'new_value' );
-
-Looks up the environment variable and returns it's value. Also acts as a
-mutator if provided with an optional new value. Uppercases and prefixes
-the environment variable key
-
-=back
 
 =head1 Installation
 
@@ -183,6 +165,22 @@ The prefered production deployment method uses the C<FCGI> engine over
 a socket to C<nginx>. There is an example
 [configuration recipe](https://www.roxsoft.co.uk/doh/static/en/posts/Blog/Debian-Nginx-Letsencrypt.sh-Configuration-Recipe.html)
 for this method of deployment
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<env_var>
+
+   $value = App::MCP->env_var('name', 'new_value');
+
+Looks up the environment variable and returns it's value. Also acts as a
+mutator if provided with an optional new value. Uppercases and prefixes
+the environment variable key
+
+=back
 
 =head1 Diagnostics
 

@@ -32,7 +32,9 @@ sub options_parent_box {
    my $rs      = $self->context->model($self->item_class);
    my $boxes   = [ $rs->search({ type => 'box' })->all ];
    my $option  = sub { { label => $_[0]->job_name, value => $_[0]->id } };
-   my $options = [ map { $option->($_) } @{$boxes} ];
+   my $options = [
+      map { $option->($_) } sort { $a->job_name cmp $b->job_name } @{$boxes}
+   ];
 
    unshift @{$options}, { label => NUL, value => 0 };
 
@@ -79,9 +81,9 @@ has_field 'submit' => type => 'Button';
 after 'after_build_fields' => sub {
    my $self      = shift;
    my $resources = $self->context->config->wcom_resources;
-   my $toggle    = $resources->{toggle} . ".toggleFields('job_type')";
+   my $handler   = $resources->{toggle} . ".toggleFields('job_type')";
 
-   $self->field('type')->element_attr->{javascript} = { onchange => $toggle };
+   $self->field('type')->element_attr->{javascript} = { onchange => $handler };
 
    return;
 };

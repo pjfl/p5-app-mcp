@@ -1,6 +1,5 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
-use utf8; # -*- coding: utf-8; -*-
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS CRONTAB_FIELD_NAMES FALSE
@@ -15,6 +14,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                truncate varchar_data_type );
 use Class::Usul::Cmd::Util qw( is_member );
 use Ref::Util              qw( is_arrayref );
+use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( throw UnknownJob );
 use Algorithm::Cron;
 use App::MCP::ExpressionParser;
@@ -160,15 +160,15 @@ sub insert {
 }
 
 sub is_executable_by {
-   my ($self, $id) = @_; return $self->_is_permitted($id, [64, 8, 1]);
+   my ($self, $user) = @_; return $self->_is_permitted($user, [64, 8, 1]);
 }
 
 sub is_readable_by {
-   my ($self, $id) = @_; return $self->_is_permitted($id, [256, 32, 4]);
+   my ($self, $user) = @_; return $self->_is_permitted($user, [256, 32, 4]);
 }
 
 sub is_writable_by {
-   my ($self, $id) = @_; return $self->_is_permitted($id, [128, 16, 2]);
+   my ($self, $user) = @_; return $self->_is_permitted($user, [128, 16, 2]);
 }
 
 sub materialised_path_columns {
@@ -314,17 +314,23 @@ sub _eval_condition {
 }
 
 sub _is_permitted {
-   my ($self, $user_id, $mask) = @_;
+   my ($self, $id_or_user, $mask) = @_;
 
    my $perms = $self->_permissions;
 
    return TRUE if $perms & $mask->[2];
 
-   my $user_rs = $self->result_source->schema->resultset('User');
-   my $user    = $user_rs->find($user_id);
+   my $user;
+
+   if (blessed $id_or_user) { $user = $id_or_user }
+   else {
+      my $user_rs = $self->result_source->schema->resultset('User');
+
+      $user = $user_rs->find($id_or_user, { prefetch => 'role' });
+   }
 
    return TRUE if $perms & $mask->[1]
-      and is_member($self->group, map { $_->id } $user->roles);
+      and is_member($self->group, map { $_->id } $user->role);
 
    return TRUE if $perms & $mask->[0] and $self->owner == $user->id;
 
@@ -341,14 +347,16 @@ sub _update_conditions {
 }
 
 sub _update_dependent_fields {
-   my $self         = shift;
-   my $job_rs       = $self->result_source->resultset;
+   my $self      = shift;
+   my $job_rs    = $self->result_source->resultset;
+   my $dep_names = $self->_eval_condition->[1];
+
+   return unless $dep_names->[0];
+
+   my $where        = { job_name => { -in => $dep_names } };
    my $dependencies = [];
 
-   for my $job_name (@{$self->_eval_condition->[1]}) {
-      my $job = $job_rs->find_by_key($job_name)
-         or throw UnknownJob, [$job_name];
-
+   for my $job ($job_rs->search($where, { columns => ['id'] })->all) {
       push @{$dependencies}, $job->id;
    }
 

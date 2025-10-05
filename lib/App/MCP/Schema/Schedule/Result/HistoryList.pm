@@ -1,7 +1,7 @@
 package App::MCP::Schema::Schedule::Result::HistoryList;
 
 use App::MCP::Constants qw( EXCEPTION_CLASS FALSE TRUE );
-use App::MCP::Util      qw( consise_duration foreign_key_data_type
+use App::MCP::Util      qw( concise_duration foreign_key_data_type
                             nullable_varchar_data_type numerical_data_type
                             numerical_id_data_type varchar_data_type );
 use DBIx::Class::Moo::ResultClass;
@@ -49,7 +49,7 @@ $class->add_columns(
    runid    => varchar_data_type(20),
    pid      => numerical_data_type,
    rv       => numerical_id_data_type,
-   rejected => nullable_varchar_data_type( 16 ),
+   rejected => nullable_varchar_data_type(16),
    started  => { data_type => 'timestamp', timezone => 'UTC' },
    finished => { data_type => 'timestamp', timezone => 'UTC' },
    failed   => { data_type => 'timestamp', timezone => 'UTC' },
@@ -62,7 +62,7 @@ sub duration {
 
    return unless $self->finished && $self->started;
 
-   return consise_duration($self->finished->epoch - $self->started->epoch);
+   return concise_duration($self->finished->epoch - $self->started->epoch);
 }
 
 sub success {

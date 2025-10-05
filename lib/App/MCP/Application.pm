@@ -6,7 +6,7 @@ use App::MCP::Constants          qw( COMMA FALSE LOG_KEY_WIDTH
                                      NUL TRUE OK SPC TRANSITION_ENUM );
 use Unexpected::Types            qw( HashRef LoadableClass NonEmptySimpleStr
                                      NonZeroPositiveInt Object );
-use App::MCP::Util               qw( consise_duration create_token distname
+use App::MCP::Util               qw( concise_duration create_token distname
                                      trigger_input_handler
                                      trigger_output_handler );
 use Async::IPC::Functions        qw( log_debug log_error log_info log_warn );
@@ -259,7 +259,7 @@ sub _cron_log_interval {
    my $rem     = $elapsed % $log_int;
    my $spread  = $self->config->clock_tick_interval / 2;
 
-   log_info $self->log, $name, $PID, 'Elapsed ' . consise_duration($elapsed)
+   log_info $self->log, $name, $PID, 'Elapsed ' . concise_duration($elapsed)
       if ($rem > $log_int - $spread or $rem < $spread);
 
    return;

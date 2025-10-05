@@ -1,20 +1,13 @@
 package DBIx::Class::InflateColumn::Object::Enumerated;
-$DBIx::Class::InflateColumn::Object::Enumerated::VERSION = '0.01';
+our $VERSION = '0.01';
 use warnings;
 use strict;
 use Carp qw/croak confess/;
 use Object::Enum;
-use Scalar::Util qw( weaken );
 
 =head1 NAME
 
 DBIx::Class::InflateColumn::Object::Enumerated - Allows a DBIx::Class user to define a Object::Enum column
-
-=head1 VERSION
-
-Version 0.01
-
-=cut
 
 =head1 SYNOPSIS
 
@@ -54,29 +47,27 @@ sub register_column {
            and $info->{is_nullable}
            and !$info->{default_value};
 
-    my $values = $info->{extra}->{list};
+    my $values = [ @{$info->{extra}->{list}} ];
     my %values = map { $_ => 1 } @{$values};
 
     push(@{$values},$info->{default_value})
         if defined($info->{default_value})
         && !exists $values{$info->{default_value}};
 
-weaken($info);
+    my $c = { values => $values };
+
+    $c->{unset} = $info->{is_nullable}
+       if exists $info->{is_nullable} and $info->{is_nullable};
+
+    $c->{default} = $info->{default_value} if exists $info->{default_value};
+
     $self->inflate_column(
         $column => {
             inflate => sub {
                 my $val = shift;
+                my $e   = Object::Enum->new($c);
 
-                my $c = {values => $values};
-                $c->{unset} = $info->{is_nullable}
-                    if exists $info->{is_nullable}
-                       and $info->{is_nullable};
-                $c->{default} = $info->{default_value}
-                    if exists $info->{default_value};
-
-                my $e = Object::Enum->new($c);
                 $e->value($val);
-
                 return $e;
             },
             deflate => sub {

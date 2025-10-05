@@ -15,8 +15,7 @@ sub assert_executable {
    my $job = $self->find_by_key($job_key);
 
    throw 'Job [_1] execute permission denied to [_2]',
-      [$job->job_name, $user->user_name]
-      unless $job->is_executable_by($user->id);
+      [$job->job_name, $user->user_name] unless $job->is_executable_by($user);
 
    return $job;
 }
@@ -102,11 +101,11 @@ sub writable_box_id_by_name {
    throw 'Job [_1] is not a box', [$job->job_name] unless $job->type eq 'box';
 
    my $user_rs = $self->result_source->schema->resultset('User');
-   my $user    = $user_rs->find_by_key($user_key // 0);
+   my $user    = $user_rs->find_by_key($user_key // 0, { prefetch => 'role' });
 
    throw UnknownUser, [$user_key] unless $user;
    throw 'Box [_1] write permission denied to [_1]',
-      [$job->job_name, $user->user_name] unless $job->is_writable_by($user->id);
+      [$job->job_name, $user->user_name] unless $job->is_writable_by($user);
 
    return $job->id;
 }

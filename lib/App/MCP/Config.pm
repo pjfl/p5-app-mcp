@@ -554,6 +554,7 @@ has 'request' =>
          ],
          scrubber => $self->scrubber,
          serialise_session_attr => [ qw( id realm role ) ],
+         tempdir => $self->tempdir,
          session_attr => {
             email         => [ Str, NUL ],
             enable_2fa    => [ Bool, FALSE ],
@@ -698,7 +699,7 @@ has 'state_cookie' =>
          path        => $self->mount_point,
          samesite    => 'None',
          secure      => TRUE,
-         session_key => $self->prefix.'_session',
+         session_key => $self->prefix . '_session',
       ];
    };
 

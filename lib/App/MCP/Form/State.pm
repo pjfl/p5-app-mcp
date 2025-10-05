@@ -1,7 +1,7 @@
 package App::MCP::Form::State;
 
 use App::MCP::Constants    qw( TRANSITION_ENUM );
-use HTML::Forms::Constants qw( FALSE META NUL SPC TRUE );
+use HTML::Forms::Constants qw( META  );
 use App::MCP::Util         qw( trigger_input_handler trigger_output_handler );
 use English                qw( -no_match_vars );
 use Type::Utils            qw( class_type );
@@ -70,6 +70,8 @@ after 'after_build_fields' => sub {
    my $label      = $job->type eq 'job' ? 'Job Name' : 'Box Name';
    my $state_name = $job->state->name;
 
+   $self->info_message('Change the current box state') if $job->type eq 'box';
+
    $self->field('job_name')->label($label);
    $self->field('state_name')->value($state_name);
    $self->field('state_name')->add_element_class($state_name);
@@ -111,8 +113,8 @@ sub validate {
 
    my $daemon_pid = $context->config->appclass->env_var('daemon_pid');
 
-   if ($signal ne 'start') { trigger_input_handler $daemon_pid }
-   else { trigger_output_handler $daemon_pid }
+   if ($signal eq 'start') { trigger_output_handler $daemon_pid }
+   else { trigger_input_handler $daemon_pid }
 
    return;
 }

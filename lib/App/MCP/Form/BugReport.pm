@@ -14,7 +14,7 @@ with    'App::MCP::Role::JSONParser';
 has '+item_class'    => default => 'Bug';
 has '+name'          => default => 'BugReport';
 has '+renderer_args' => default => sub {
-   return { page_names => [qw(Details Attachments Comments)] };
+   return { page_names => [qw(Details Comments Attachments)] };
 };
 has '+title' => default => 'Report Bug';
 
@@ -38,7 +38,7 @@ has_field 'id' => type => 'Display';
 
 has_field 'title' => required => TRUE;
 
-has_field 'description' => type => 'TextArea', required => TRUE;
+has_field 'description' => type => 'TextArea', required => TRUE, rows => 4;
 
 has_field 'user_id' => type => 'Hidden', disabled => TRUE;
 
@@ -66,16 +66,51 @@ sub options_assigned {
 
 has_field 'submit1' => type => 'Button';
 
+has_field 'comments' =>
+   type                   => 'DataStructure',
+   do_label               => FALSE,
+   deflate_value_method   => \&_deflate_comments,
+   inflate_default_method => \&_inflate_comments,
+   is_row_readonly        => \&_is_row_readonly,
+   tags                   => { page_break => TRUE },
+   wrapper_class          => ['compound'],
+   structure              => [{
+      name => 'comment',
+      type => 'textarea'
+   }, {
+      name          => 'owner',
+      type          => 'display',
+      readonly      => TRUE,
+      tag           => 'comment',
+      tagLabelLeft  => 'Written by',
+   }, {
+      name         => 'updated',
+      type         => 'datetime',
+      readonly     => TRUE,
+      tag          => 'comment',
+      tagLabelLeft => 'on',
+   }, {
+      name    => 'id',
+      type    => 'hidden',
+      classes => 'hide'
+   }, {
+      name    => 'user_id',
+      type    => 'hidden',
+      classes => 'hide'
+   }];
+
+has_field 'submit2' => type => 'Button';
+
 has_field 'attachments' =>
    type                   => 'DataStructure',
    add_icon               => 'attach',
    add_title              => 'Add attachment',
    do_label               => FALSE,
    deflate_value_method   => \&_deflate_attachments,
+   field_group_direction  => 'vertical',
    inflate_default_method => \&_inflate_attachments,
    is_row_readonly        => \&_is_row_readonly,
    remove_callback        => "document.getElementById('submit1').click()",
-   row_class              => 'ds-row separate',
    tags                   => { page_break => TRUE },
    wrapper_class          => ['compound'],
    structure              => [{
@@ -109,43 +144,6 @@ has_field 'attachments' =>
       classes => 'hide'
    }];
 
-has_field 'comments' =>
-   type                   => 'DataStructure',
-   do_label               => FALSE,
-   deflate_value_method   => \&_deflate_comments,
-   inflate_default_method => \&_inflate_comments,
-   is_row_readonly        => \&_is_row_readonly,
-   tags                   => { page_break => TRUE },
-   row_class              => 'ds-row separate',
-   wrapper_class          => ['compound'],
-   structure              => [{
-      name => 'comment',
-      type => 'textarea'
-   }, {
-      name         => 'updated',
-      type         => 'datetime',
-      readonly     => TRUE,
-      tag          => 'comment',
-      tagLabelLeft => 'On',
-   }, {
-      name          => 'owner',
-      type          => 'display',
-      readonly      => TRUE,
-      tag           => 'comment',
-      tagLabelLeft  => 'user',
-      tagLabelRight => 'wrote',
-   }, {
-      name    => 'id',
-      type    => 'hidden',
-      classes => 'hide'
-   }, {
-      name    => 'user_id',
-      type    => 'hidden',
-      classes => 'hide'
-   }];
-
-has_field 'submit2' => type => 'Button';
-
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
@@ -157,8 +155,8 @@ after 'after_build_fields' => sub {
       $self->field('state')->inactive(TRUE) unless $self->is_editor;
       $self->info_message([
          'Update the bug report details',
-         'Files attached to the bug report',
-         'Update the bug report comments'
+         'Update the bug report comments',
+         'Files attached to the bug report'
       ]);
    }
    else {
@@ -170,8 +168,8 @@ after 'after_build_fields' => sub {
       $self->field('updated')->inactive(TRUE);
       $self->info_message([
          'Enter the bug report details',
-         'Files attached to the bug report',
-         'Enter the bug report comments'
+         'Enter the bug report comments',
+         'Files attached to the bug report'
       ]);
    }
 

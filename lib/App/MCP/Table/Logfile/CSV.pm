@@ -81,7 +81,7 @@ has_column 'source' =>
    sortable   => TRUE,
    width      => '10rem';
 
-has_column 'pid' => searchable => TRUE;
+has_column 'pid' => cell_traits => ['Numeric'], searchable => TRUE;
 
 has_column 'remainder' => label => 'Line', searchable => TRUE;
 

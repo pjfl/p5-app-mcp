@@ -13,15 +13,15 @@ use File::DataClass::IO        qw( io );
 use HTML::Entities             qw( encode_entities );
 use JSON::MaybeXS              qw( encode_json );
 use Scalar::Util               qw( weaken );
+use Time::Duration             qw( concise duration );
 use URI::Escape                qw( );
 use URI::http;
 use URI::https;
 use DateTime;
 use DateTime::Format::Human;
-use Time::Duration;
 
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
-   consise_duration create_token created_timestamp_data_type distname
+   concise_duration create_token created_timestamp_data_type distname
    dt_from_epoch dt_human encode_for_html enumerated_data_type
    foreign_key_data_type formpost get_hashed_pw get_salt new_salt new_uri
    nullable_foreign_key_data_type nullable_varchar_data_type
@@ -149,7 +149,7 @@ sub boolean_data_type {
    };
 }
 
-sub consise_duration ($) {
+sub concise_duration ($) {
    return concise(duration($_[0]));
 }
 

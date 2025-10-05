@@ -138,11 +138,11 @@ WCom.StateDiagram = (function() {
          const attr = { className: 'dependencies' };
          this.container.appendChild(this.h.canvas(attr));
          for (const job of this.jobs) {
-//            console.log(job.jobName);
+            console.log(job.jobName);
             let { left, top } = this.h.getOffset(job.jobTile);
             left -= this.left;
             top -= this.top;
-//            console.log(left + ' ' + top);
+            console.log(left + ' ' + top);
          }
       }
    }
@@ -176,10 +176,10 @@ WCom.StateDiagram = (function() {
          this.onload    = config['onload'];
          this.token     = config['verify-token'];
          this.container = this.h.div({ className: 'diagram-container' });
-         this.resultSet = new ResultSet(config['data-uri']);
-         this.depGraph  = new DependencyGraph(container);
-         this.prefs     = new Preferences(this, config['prefs-uri']);
          container.appendChild(this.container);
+         this.resultSet = new ResultSet(config['data-uri']);
+         this.depGraph  = new DependencyGraph(this.container);
+         this.prefs     = new Preferences(this, config['prefs-uri']);
       }
       async nextJob(index) {
          const result = await this.resultSet.next();
@@ -194,10 +194,11 @@ WCom.StateDiagram = (function() {
       }
       async render() {
          await this.readJobs();
-         if (this.jobs.length)
+         if (this.jobs.length) {
             for (const job of this.jobs) job.render(this.container);
+            this.depGraph.render();
+         }
          else { this.renderNoData(this.container) }
-         this.depGraph.render();
          if (this.onload) eval(this.onload);
       }
       renderNoData(container) {

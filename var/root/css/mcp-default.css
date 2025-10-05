@@ -512,6 +512,7 @@ form.classic {
   color: gray;
   display: inline-block;
   margin: 0 1rem;
+  padding-bottom: 0.25rem;
   position: relative;
 }
 form.classic div {
@@ -523,7 +524,7 @@ form.classic .alert-info {
 }
 form.classic .alert-info {
   font-size: 0.8rem;
-  padding: 0.5rem 0 0;
+  padding-bottom: 0.5rem;
 }
 form.classic .ds-add-icon {
   font-family: Roboto, system-ui, sans-serif;
@@ -534,34 +535,42 @@ form.classic .ds-add-icon svg {
   vertical-align: middle;
 }
 form.classic .ds-form {
-  border-spacing: 0 0.5rem;
+  display: flex;
+  flex-direction: column;
   position: relative;
+  row-gap: 0.5rem;
 }
-form.classic .ds-form th {
+form.classic .ds-form .ds-header {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
 }
-form.classic .ds-form tr {
-  vertical-align: middle;
-}
-form.classic .ds-form tr.separate {
-  background: linear-gradient(0deg, whitesmoke, ivory);
+form.classic .ds-form .ds-row {
+  background: wheat;
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
-}
-form.classic .ds-form tr.separate .ds-field,
-form.classic .ds-form tr.separate .ds-remove {
-  padding-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
 }
 form.classic .ds-form .ds-field {
+  border-radius: 5px;
+  border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
   display: flex;
   flex-direction: column;
+  padding: 0.5rem 0 0.5rem 0.5rem;
 }
-form.classic .ds-form .ds-field.hide,
-form.classic .ds-form .ds-reorderable.hide,
-form.classic .ds-form .ds-remove.hide {
+form.classic .ds-form .ds-field input[readonly=readonly] {
+  background: wheat !important;
+}
+form.classic .ds-form .ds-field.hide {
   display: none;
+}
+form.classic .ds-form .ds-field-group {
+  display: flex;
+}
+form.classic .ds-form .ds-field-group.vertical {
+  flex-direction: column;
 }
 form.classic .ds-form .ds-input.input-text[readonly=readonly] {
   background: ivory;
@@ -576,14 +585,20 @@ form.classic .ds-form .ds-output {
 form.classic .ds-form .ds-reorderable-drag {
   position: absolute;
 }
+form.classic .ds-form .ds-reorderable {
+  margin: auto;
+  padding-left: 0.5rem;
+}
 form.classic .ds-form .ds-reorderable .knob {
   display: block;
   height: 20px;
   width: 20px;
 }
 form.classic .ds-form .ds-remove {
-  padding-top: 0.66rem;
-  vertical-align: top;
+  border-radius: 5px;
+  border-bottom-left-radius: 0;
+  border-top-left-radius: 0;
+  padding: 0.5rem;
 }
 form.classic .ds-form .ds-remove .ds-remove-icon {
   align-items: center;
@@ -596,7 +611,6 @@ form.classic .ds-form .ds-remove .ds-remove-icon {
   font-family: Roboto, system-ui, sans-serif;
   font-size: smaller;
   font-weight: bold;
-  height: 100%;
   padding: 0 0.25rem;
 }
 form.classic .ds-form .ds-remove .ds-remove-icon img,
@@ -615,8 +629,6 @@ form.classic .ds-form .ds-tag-label {
   margin-right: 0.25rem;
 }
 form.classic .form-wrapper {
-  border-collapse: separate;
-  border-spacing: 0 0.25rem;
   border-radius: 5px;
   padding: 0 1rem;
   position: relative;
@@ -630,17 +642,16 @@ form.classic .form-wrapper.wide .input-field input,
 form.classic .form-wrapper.wide .input-field select,
 form.classic .form-wrapper.wide .input-field textarea,
 form.classic .form-wrapper.wide .input-field .alert {
-  max-width: 20rem;
+  max-width: 40rem;
 }
 form.classic .form-wrapper:has(.input-field span.field-label) .input-button button {
   margin-top: 1rem;
 }
 form.classic .field-label {
-  display: table-cell;
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
+  grid-area: label;
   line-height: 1rem;
-  padding: 0.5rem 0.5rem 0.5rem 0;
   position: relative;
   white-space: nowrap;
 }
@@ -708,8 +719,15 @@ form.classic .input-field:has(span.field-label)::before {
   display: block;
   height: 22px;
 }
+form.classic .input-field:has(label.field-label) {
+  display: grid;
+  grid-template-columns: 7rem max-content auto;
+  grid-template-areas: "label field selector";
+  justify-items: start;
+  min-width: 20rem;
+}
 form.classic .input-field {
-  display: table-row;
+  padding-bottom: 0.5rem;
   position: relative;
 }
 form.classic .input-field input {
@@ -718,12 +736,18 @@ form.classic .input-field input {
 form.classic .input-field input,
 form.classic .input-field select,
 form.classic .input-field textarea {
-  display: table-cell;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
-  max-width: 20rem;
+  grid-area: field;
+  max-width: 40rem;
+}
+form.classic .input-field select {
+  max-width: 10rem;
 }
 form.classic .input-field textarea {
-  min-width: 20rem;
+  box-sizing: content-box;
+  min-height: 3lh;
+  min-width: 15rem;
+  overflow: auto;
 }
 form.classic .input-field input,
 form.classic .input-field select.select-multiple,
@@ -765,7 +789,7 @@ form.classic .input-field .alert {
   display: block;
   font-size: 0.8rem;
   margin-top: 0.25rem;
-  max-width: 12rem;
+  max-width: 20rem;
   padding: 0.5rem;
 }
 form.classic .input-field .alert-error {
@@ -778,12 +802,14 @@ form.classic .input-field .input-hidden .alert {
   max-width: 100%;
 }
 form.classic .input-field.inline {
-  display: inline-block;
+  display: inline-grid !important;
   margin-right: 0.5rem;
-  vertical-align: top;
 }
 form.classic .input-field.hide {
-  display: none;
+  display: none !important;
+}
+form.classic .input-field.input-button {
+  padding-bottom: 0;
 }
 form.classic .input-boolean .checkbox-wrapper {
   display: inline-block;
@@ -918,11 +944,6 @@ form.classic .input-button button[disabled=disabled]::after,
 form.classic .input-selector button[disabled=disabled]::after {
   background: linear-gradient(0deg, gainsboro, whitesmoke);
 }
-form.classic .data-structure input,
-form.classic .input-button input,
-form.classic .input-selector input {
-  margin: 0.5rem 0;
-}
 form.classic .input-button {
   align-items: center;
   display: flex;
@@ -937,7 +958,7 @@ form.classic .input-button.inline {
 form.classic .input-button.right {
   margin-right: 0;
   position: absolute;
-  right: 0;
+  right: 0.5rem;
 }
 form.classic .input-button a.form-button {
   background: linear-gradient(0deg, bisque, whitesmoke);
@@ -958,12 +979,9 @@ form.classic .input-button a.form-button {
   text-transform: uppercase;
   transition: border 0.5s, color 0.5s;
 }
-form.classic .input-captcha input,
-form.classic .input-captcha .field-label,
-form.classic .input-display .field-label,
-form.classic .field-label.select-multiple,
-form.classic .field-label.input-textarea {
-  vertical-align: middle;
+form.classic .input-selector button {
+  grid-area: selector;
+  margin: 0 0 0 0.5rem;
 }
 form.classic .input-duration .input-select-integer,
 form.classic .input-interval .input-group,
@@ -1029,36 +1047,28 @@ form.classic .input-integer .digit:last-child {
 }
 form.classic .input-password .reveal {
   position: absolute;
-  right: 0.25rem;
-  top: 0.125rem;
+  right: 2rem;
+  top: 0;
 }
 form.classic .input-select option {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
-form.classic .input-selector button {
-  margin-left: 0.5rem;
-}
-form.classic .input-textarea textarea {
-  overflow: auto;
-}
 form.classic .input-display span {
-  display: table-cell;
   font-size: 0.8rem;
-  padding: 0.5rem 0.5rem 0.5rem 0.25rem;
-  vertical-align: middle;
+  grid-area: field;
+  padding-left: 0.25rem;
   white-space: nowrap;
 }
 form.classic .label-right {
   text-align: right;
 }
 form.classic .label-right label {
-  padding: 0.5rem 0 0.5rem 0.5rem;
   text-align: left;
 }
 form.classic .page-list {
   list-style-type: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0.5rem 0;
 }
 form.classic .page-list li {
   border-bottom: 1px solid gray;
@@ -1866,64 +1876,68 @@ body {
 }
 .input-field .job-state {
   border-radius: 5px;
+  line-height: 1.5rem;
+  padding-right: 0.25rem;
 }
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
-html {
-  height: 100%;
-  overflow: hidden;
-}
-html.dark {
+html:has(body.dark) {
   color-scheme: dark;
 }
-html.light {
+html:has(body.light) {
   color-scheme: light;
 }
 body {
   background-image: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "header header" "sidebar frame" "footer footer";
   margin: 0;
-  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0 0.5rem;
+}
+@media (max-width: 480px) {
+  body {
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas: "header header" "sidebar sidebar" "frame frame" "footer footer";
+    padding: 0;
+  }
+}
+body:has(aside.link-display-icon) {
+  grid-template-columns: 4rem 1fr;
+}
+body:has(aside.link-display-text) {
+  grid-template-columns: 6rem 1fr;
+}
+aside {
+  background: unset;
+  grid-area: sidebar;
+  position: sticky;
+  z-index: 3;
 }
 header,
 footer {
-  padding: 0 0.5rem;
-  width: 100%;
-  z-index: 3;
-}
-@media (max-width: 680px) {
-  header,
-  footer {
-    margin: 0;
-  }
+  position: sticky;
+  z-index: 4;
 }
 header {
-  position: sticky;
+  grid-area: header;
   top: 0;
 }
 footer {
-  position: absolute;
+  grid-area: footer;
   bottom: 0;
 }
 .frame {
-  bottom: 1rem;
-  padding-bottom: 0.5rem;
+  grid-area: frame;
   overflow: auto;
-  position: fixed;
-  right: 0.5rem;
-  top: 3rem;
+  position: relative;
   z-index: 2;
-}
-.frame.link-display-both {
-  left: 7.75rem;
-}
-.frame.link-display-icon {
-  left: 4.75rem;
-}
-.frame.link-display-text {
-  left: 6.75rem;
 }
 .frame .exception,
 .modal .exception {
@@ -1968,8 +1982,11 @@ footer {
   min-width: 10rem;
 }
 .standard {
-  display: inline-block;
-  text-align: left;
+  display: flex;
+  line-height: 1.5;
+  padding: 0.5rem 0 0 0.5rem;
+  position: absolute;
+  width: 100%;
 }
 .standard h1,
 .standard h2,
@@ -1977,7 +1994,7 @@ footer {
 .standard h4,
 .standard h5 {
   font-family: Roboto, system-ui, sans-serif;
-  margin: 1rem 1rem;
+  margin: 1rem;
   text-wrap: balance;
 }
 .standard h1 .content,
@@ -1995,17 +2012,11 @@ footer {
   align-items: flex-start;
   display: flex;
   justify-content: center;
-  margin-top: 0.5rem;
 }
 .centred {
-  display: flex;
   justify-content: center;
-  line-height: 1.5;
 }
-.sidebar,
-.navigation {
-  align-items: center;
-  display: flex;
+.left {
   justify-content: left;
 }
 .sidebar .nav-title,
@@ -2024,7 +2035,7 @@ footer {
   margin-top: 0.3rem;
   vertical-align: top;
 }
-@media (max-width: 680px) {
+@media (max-width: 480px) {
   .sidebar .nav-title img,
   .navigation .nav-title img {
     margin-left: 0.75rem;
@@ -2039,7 +2050,7 @@ footer {
   height: 0;
   width: 0;
 }
-@media (max-width: 680px) {
+@media (max-width: 480px) {
   .sidebar .nav-title::after,
   .navigation .nav-title::after {
     border-bottom: 0;
@@ -2157,7 +2168,7 @@ footer {
   max-height: 0;
   overflow: hidden;
   position: absolute;
-  right: -1rem;
+  right: 0;
   text-align: left;
   top: 2.5rem;
   transition: all ease-in-out 500ms;
@@ -2337,6 +2348,11 @@ footer {
   overflow-x: visible;
   width: 8rem;
 }
+.navigation {
+  align-items: center;
+  display: flex;
+  justify-content: left;
+}
 .navigation .nav-menu {
   border-bottom-right-radius: 10px;
   display: inline-block;
@@ -2364,6 +2380,12 @@ footer {
   transform: rotate(30deg);
   width: 20px;
 }
+@media (max-width: 680px) {
+  .navigation .nav-menu::before,
+  .navigation .title-text {
+    display: none;
+  }
+}
 .navigation::before {
   background: bisque;
   border-top: 0.5rem;
@@ -2372,9 +2394,9 @@ footer {
   display: inline-block;
   height: 3rem;
 }
-@media (max-width: 680px) {
+@media (max-width: 480px) {
   .navigation::before {
-    width: 1rem;
+    display: none;
   }
 }
 .navigation.link-display-both::before {
@@ -2389,23 +2411,13 @@ footer {
 .navigation.navigation-header li.global a {
   padding: 0.5rem;
 }
-.navigation.navigation-header .nav-menu {
-  padding-top: 0;
-}
-@media (max-width: 680px) {
-  .navigation.navigation-header .title-text {
-    display: none;
+@media (max-width: 480px) {
+  .navigation.navigation-header li.global {
+    margin-right: 0.5rem;
   }
 }
-.sidebar {
-  background: unset;
-  border-top-left-radius: 0;
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0;
-  position: fixed;
-  top: 3rem;
-  z-index: 3;
+.navigation.navigation-header .nav-menu {
+  padding-top: 0;
 }
 .sidebar .nav-list.global {
   align-items: flex-start;
@@ -2414,17 +2426,30 @@ footer {
   min-height: 2rem;
   padding-top: 0.5rem;
 }
+@media (max-width: 480px) {
+  .sidebar .nav-list.global {
+    align-items: flex-start;
+    flex-direction: row;
+    padding-top: 0;
+  }
+}
 .sidebar .nav-list.global li.global {
   display: block;
   margin: 0;
   padding: 1rem 0;
   width: 100%;
 }
+@media (max-width: 480px) {
+  .sidebar .nav-list.global li.global {
+    padding: 0;
+  }
+}
 .sidebar .nav-list.global li.global a,
 .sidebar .nav-list.global li.global .drop-menu {
   display: inline-block;
   padding: 1rem 1rem;
   position: relative;
+  white-space: nowrap;
   width: 100%;
 }
 .sidebar .nav-list.global li.global .nav-panel {
@@ -2472,27 +2497,25 @@ footer {
   position: absolute;
   width: 5px;
 }
-@media (max-width: 680px) {
-  .sidebar {
-    margin: 0;
-    top: 3rem;
-  }
-}
 .sidebar::after {
   background: linear-gradient(to bottom, bisque, rgba(255, 228, 196, 0));
   content: '';
   display: block;
   height: 5rem;
-  margin-top: -0.25rem;
 }
-.sidebar.link-display-both .nav-list.global {
-  min-width: 7rem;
+@media (max-width: 480px) {
+  .sidebar::after {
+    display: none;
+  }
 }
-.sidebar.link-display-icon .nav-list.global {
-  min-width: 4rem;
+.sidebar.link-display-both .nav-menu {
+  width: 7rem;
 }
-.sidebar.link-display-text .nav-list.global {
-  min-width: 6rem;
+.sidebar.link-display-icon .nav-menu {
+  width: 4rem;
+}
+.sidebar.link-display-text .nav-menu {
+  width: 6rem;
 }
 .sidebar.link-display-both::after {
   width: 7rem;
@@ -2528,39 +2551,6 @@ footer {
 }
 .messages-panel .message-item.hide {
   display: none;
-}
-.version-number {
-  color: gray;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-.documentation {
-  font-family: Roboto, system-ui, sans-serif;
-  padding-top: 0.5rem;
-}
-.documentation h1 {
-  font-size: 1rem;
-}
-.documentation h2 {
-  font-size: 0.8rem;
-}
-.documentation h1,
-.documentation h2 {
-  margin: 0 0 0.25rem 0;
-}
-.documentation p,
-.documentation ul {
-  font-size: 0.8rem;
-  margin: 0 0 0.5rem 0;
-}
-.documentation pre {
-  margin: 0 0 0.5rem 2rem;
-}
-.file-preview p,
-.file-preview pre {
-  font-size: 0.8rem;
-  line-height: 0.5rem;
 }
 .modal .filemanager {
   margin: 0;
@@ -2708,7 +2698,7 @@ footer {
 }
 .modal-outer-wrapper .modal .modal-content-wrapper,
 .modal-outer-wrapper .modal .modal-footer {
-  padding: 0 0.5rem;
+  padding: 0.5rem 0.5rem 0 0.5rem;
 }
 .modal-outer-wrapper .modal .modal-footer {
   display: flex;
@@ -2719,10 +2709,48 @@ footer {
   display: flex;
   justify-content: center;
 }
+.modal-outer-wrapper .modal .modal-loader .icon-wrapper,
+.modal-outer-wrapper .modal .modal-loader .loading,
+.modal-outer-wrapper .modal .modal-loader .loading-spinner {
+  display: inline-block;
+}
 .modal-outer-wrapper .modal .modal-loader .loading {
   margin: 1rem;
 }
 .modal-outer-wrapper.mask {
   background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   z-index: 4;
+}
+.documentation {
+  font-family: Roboto, system-ui, sans-serif;
+  padding-top: 0.5rem;
+}
+.documentation h1 {
+  font-size: 1rem;
+}
+.documentation h2 {
+  font-size: 0.8rem;
+}
+.documentation h1,
+.documentation h2 {
+  margin: 0 0 0.25rem 0;
+}
+.documentation p,
+.documentation ul {
+  font-size: 0.8rem;
+  margin: 0 0 0.5rem 0;
+}
+.documentation pre {
+  margin: 0 0 0.5rem 2rem;
+}
+.file-preview p,
+.file-preview pre {
+  font-size: 0.8rem;
+  line-height: 0.5rem;
+}
+.version-number {
+  color: gray;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  opacity: 0.8;
 }
