@@ -83,7 +83,10 @@ has_column 'source' =>
 
 has_column 'pid' => cell_traits => ['Numeric'], searchable => TRUE;
 
-has_column 'remainder' => label => 'Line', searchable => TRUE;
+has_column 'remainder' =>
+   cell_traits => ['Remainder'],
+   label       => 'Line',
+   searchable  => TRUE;
 
 use namespace::autoclean -except => TABLE_META;
 

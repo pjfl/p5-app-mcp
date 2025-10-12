@@ -39,7 +39,7 @@ sub attach {
    my $form    = $self->new_form('BugAttachment', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $params = { 'current-page' => 1 };
+      my $params = { 'current-page' => 2 };
       my $edit   = $context->uri_for_action('bug/edit', [$bug->id], $params);
 
       $context->stash(redirect $edit, ['File uploaded']);
@@ -139,7 +139,7 @@ sub edit : Nav('Update Bug') {
    my $form = $self->new_form('BugReport', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $params = $bug->purge_attachments ? { 'current-page' => 1 } : {};
+      my $params = $bug->purge_attachments ? { 'current-page' => 2 } : {};
       my $edit   = $context->uri_for_action('bug/edit', [$bug->id], $params);
 
       $context->stash(redirect $edit, ['Bug report [_1] updated', $bug->id]);

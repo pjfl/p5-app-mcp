@@ -37,7 +37,7 @@ setup_resultset sub {
    my $self = shift;
    my $rs   = $self->context->model('Bug');
 
-   return $rs->search({}, { order_by => 'id' });
+   return $rs->search({}, { order_by => 'id', prefetch => 'owner' });
 };
 
 has_column 'id' =>

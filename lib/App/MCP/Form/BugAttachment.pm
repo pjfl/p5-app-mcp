@@ -50,12 +50,12 @@ sub validate {
    my $context = $self->context;
    my $request = $context->request;
 
-   $self->add_form_error('Attribute [_1] not found', 'upload object')
+   return $self->add_form_error('Request has no upload object')
       unless $request->has_upload;
 
    my $upload = $request->upload;
 
-   $self->add_form_error($upload->reason) unless $upload->is_upload;
+   return $self->add_form_error($upload->reason) unless $upload->is_upload;
 
    my $filename = $request->query_parameters->{name} || $upload->filename;
 

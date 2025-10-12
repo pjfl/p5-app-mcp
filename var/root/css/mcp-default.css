@@ -518,12 +518,11 @@ form.classic {
 form.classic div {
   color: black;
 }
-form.classic .alert,
-form.classic .alert-info {
+form.classic .alert {
   font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
 }
 form.classic .alert-info {
-  font-size: 0.8rem;
   padding-bottom: 0.5rem;
 }
 form.classic .ds-add-icon {
@@ -648,10 +647,10 @@ form.classic .form-wrapper:has(.input-field span.field-label) .input-button butt
   margin-top: 1rem;
 }
 form.classic .field-label {
+  display: flex;
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   grid-area: label;
-  line-height: 1rem;
   position: relative;
   white-space: nowrap;
 }
@@ -720,11 +719,13 @@ form.classic .input-field:has(span.field-label)::before {
   height: 22px;
 }
 form.classic .input-field:has(label.field-label) {
+  align-items: flex-start;
   display: grid;
   grid-template-columns: 7rem max-content auto;
-  grid-template-areas: "label field selector";
+  grid-template-areas: "label input selector" "label alert selector";
   justify-items: start;
   min-width: 20rem;
+  row-gap: 0.25rem;
 }
 form.classic .input-field {
   padding-bottom: 0.5rem;
@@ -736,8 +737,10 @@ form.classic .input-field input {
 form.classic .input-field input,
 form.classic .input-field select,
 form.classic .input-field textarea {
+  border-radius: 5px;
+  font-size: 0.85rem;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
-  grid-area: field;
+  grid-area: input;
   max-width: 40rem;
 }
 form.classic .input-field select {
@@ -748,12 +751,6 @@ form.classic .input-field textarea {
   min-height: 3lh;
   min-width: 15rem;
   overflow: auto;
-}
-form.classic .input-field input,
-form.classic .input-field select.select-multiple,
-form.classic .input-field textarea {
-  border-radius: 5px;
-  font-size: 0.85rem;
 }
 form.classic .input-field input:focus,
 form.classic .input-field textarea:focus {
@@ -788,7 +785,7 @@ form.classic .input-field .alert {
   border-radius: 5px;
   display: block;
   font-size: 0.8rem;
-  margin-top: 0.25rem;
+  grid-area: alert;
   max-width: 20rem;
   padding: 0.5rem;
 }
@@ -811,8 +808,24 @@ form.classic .input-field.hide {
 form.classic .input-field.input-button {
   padding-bottom: 0;
 }
+form.classic .input-boolean,
+form.classic .input-captcha,
+form.classic .input-display,
+form.classic .input-duration,
+form.classic .input-integer,
+form.classic .input-interval,
+form.classic .input-money,
+form.classic .input-number,
+form.classic .input-password,
+form.classic .input-select,
+form.classic .input-selector,
+form.classic .input-text,
+form.classic .input-textarea,
+form.classic .input-time-with-zone {
+  align-items: center;
+}
 form.classic .input-boolean .checkbox-wrapper {
-  display: inline-block;
+  grid-area: input;
   isolation: isolate;
   position: relative;
 }
@@ -821,7 +834,6 @@ form.classic .input-boolean .checkbox-wrapper input[type=checkbox] {
   margin: 0;
   opacity: 0;
   position: relative;
-  top: 4px;
   width: 40px;
   z-index: 3;
 }
@@ -834,7 +846,7 @@ form.classic .input-boolean .checkbox-wrapper::after {
   position: absolute;
   height: 1.25rem;
   left: 0;
-  top: 4px;
+  top: -1px;
   width: 20px;
   z-index: 2;
 }
@@ -850,7 +862,6 @@ form.classic .input-boolean .checkbox-wrapper::before {
   position: absolute;
   height: 1.25rem;
   left: 0;
-  top: 4px;
   width: 40px;
   z-index: 1;
 }
@@ -1015,7 +1026,7 @@ form.classic .input-immutable h2,
 form.classic .input-immutable h3,
 form.classic .input-immutable h4,
 form.classic .input-immutable h5 {
-  margin: 1rem 0;
+  margin: 0 0 0.5rem 0;
 }
 form.classic .input-immutable p,
 form.classic .input-immutable pre code {
@@ -1055,7 +1066,7 @@ form.classic .input-select option {
 }
 form.classic .input-display span {
   font-size: 0.8rem;
-  grid-area: field;
+  grid-area: input;
   padding-left: 0.25rem;
   white-space: nowrap;
 }
@@ -1088,6 +1099,9 @@ form.classic .page-list li.selected {
 form.classic .form-page.hide {
   display: none;
 }
+form.classic.filemanager {
+  padding: 0.5rem;
+}
 .form-error {
   background: lightpink;
   border: 1px solid gray;
@@ -1102,9 +1116,8 @@ form.classic .form-page.hide {
 .form-error h3 {
   margin: 0.5rem 0 !important;
 }
-.form-messages .alert {
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.8rem;
+.form-messages {
+  margin-bottom: 0.5rem;
 }
 .form-messages .alert .card {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
@@ -1127,9 +1140,15 @@ form.classic .form-page.hide {
   right: 0;
   width: 100%;
 }
+.form-messages .alert-error,
+.form-messages .alert-error-message,
 .form-messages .alert-severe .card {
-  background: lightpink;
   border-radius: 5px;
+  background: lightpink;
+  padding: 0.25rem;
+}
+.form-messages .alert-error-message {
+  display: block;
 }
 .selector form.classic {
   box-shadow: none;
@@ -1198,6 +1217,9 @@ body {
 }
 .state-table table td.number {
   text-align: right;
+}
+.state-table table td.remainder {
+  word-wrap: anywhere;
 }
 .state-table table th {
   background: ivory;
@@ -1489,11 +1511,16 @@ body {
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
   position: absolute;
-  top: 25px;
   z-index: 10;
 }
+.state-table .filter-dialog {
+  top: 25px;
+}
+.state-table .preference-dialog {
+  top: 2rem;
+}
 .state-table .preference-dialog.control-right {
-  right: 0;
+  right: 0.5rem;
 }
 .state-table table.preference-columns {
   border: 2px transparent solid;
@@ -1915,71 +1942,23 @@ body:has(aside.link-display-text) {
   grid-template-columns: 6rem 1fr;
 }
 aside {
-  background: unset;
   grid-area: sidebar;
   position: sticky;
-  z-index: 3;
-}
-header,
-footer {
-  position: sticky;
-  z-index: 4;
+  z-index: 2;
 }
 header {
   grid-area: header;
-  top: 0;
+  position: sticky;
+  z-index: 2;
 }
 footer {
   grid-area: footer;
-  bottom: 0;
 }
 .frame {
   grid-area: frame;
   overflow: auto;
   position: relative;
-  z-index: 2;
-}
-.frame .exception,
-.modal .exception {
-  background: lightpink;
-  border: 1px solid gray;
-  border-radius: 5px;
-  box-shadow: 3px 3px 3px gray;
-  margin: 0.5rem 0;
-  max-width: 50rem;
-  padding: 0.5rem;
-}
-.frame .exception h1,
-.modal .exception h1,
-.frame .exception h2,
-.modal .exception h2,
-.frame .exception h3,
-.modal .exception h3 {
-  margin: 0.5rem 0;
-  text-wrap: balance;
-}
-.frame .exception h1 span.content,
-.modal .exception h1 span.content,
-.frame .exception h2 span.content,
-.modal .exception h2 span.content,
-.frame .exception h3 span.content,
-.modal .exception h3 span.content {
-  font-family: Roboto, system-ui, sans-serif;
-}
-.frame .exception svg.error,
-.modal .exception svg.error {
-  height: 40px;
-  width: 40px;
-  vertical-align: middle;
-}
-.frame .exception .line,
-.modal .exception .line {
-  display: flex;
-}
-.frame .exception .line label,
-.modal .exception .line label {
-  font-family: Roboto, system-ui, sans-serif;
-  min-width: 10rem;
+  z-index: 1;
 }
 .standard {
   display: flex;
@@ -2530,6 +2509,7 @@ footer {
   bottom: 1rem;
   position: absolute;
   right: 1rem;
+  z-index: 3;
 }
 .messages-panel .message-item {
   background: linen;
@@ -2544,13 +2524,58 @@ footer {
   max-width: 16rem;
   padding: 0.5rem;
   transition: opacity 1s;
-  z-index: 3;
 }
 .messages-panel .message-item.fade {
   opacity: 0;
 }
 .messages-panel .message-item.hide {
   display: none;
+}
+.frame .exception,
+.modal .exception {
+  background: lightpink;
+  border: 1px solid gray;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  margin: 0.5rem 0;
+  max-width: 50rem;
+  padding: 0.5rem;
+}
+.frame .exception h1,
+.modal .exception h1,
+.frame .exception h2,
+.modal .exception h2,
+.frame .exception h3,
+.modal .exception h3 {
+  margin: 0.5rem 0;
+  text-wrap: balance;
+}
+.frame .exception h1 span.content,
+.modal .exception h1 span.content,
+.frame .exception h2 span.content,
+.modal .exception h2 span.content,
+.frame .exception h3 span.content,
+.modal .exception h3 span.content {
+  font-family: Roboto, system-ui, sans-serif;
+}
+.frame .exception svg.error,
+.modal .exception svg.error {
+  height: 40px;
+  width: 40px;
+  vertical-align: middle;
+}
+.frame .exception .line,
+.modal .exception .line {
+  display: flex;
+}
+.frame .exception .line label,
+.modal .exception .line label {
+  font-family: Roboto, system-ui, sans-serif;
+  min-width: 10rem;
+}
+.frame .exception .line span,
+.modal .exception .line span {
+  word-wrap: anywhere;
 }
 .modal .filemanager {
   margin: 0;
@@ -2723,7 +2748,6 @@ footer {
 }
 .documentation {
   font-family: Roboto, system-ui, sans-serif;
-  padding-top: 0.5rem;
 }
 .documentation h1 {
   font-size: 1rem;
@@ -2741,7 +2765,7 @@ footer {
   margin: 0 0 0.5rem 0;
 }
 .documentation pre {
-  margin: 0 0 0.5rem 2rem;
+  margin: 0 0 1rem 2rem;
 }
 .file-preview p,
 .file-preview pre {

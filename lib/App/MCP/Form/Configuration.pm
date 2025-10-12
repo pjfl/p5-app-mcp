@@ -60,11 +60,7 @@ after 'after_build_fields' => sub {
 sub _encode_ref {
    my ($self, $v) = @_;
 
-   (my $string = $self->json_parser->encode($v)) =~ s{ \n }{ }gmx;
-
-   $string =~ s{ \{ }{\{ }gmx;
-   $string =~ s{ \} }{ \}}gmx;
-   $string =~ s{ \, }{\, }gmx;
+   my $string = $self->json_parser->pretty->encode($v);
 
    return $string;
 }
