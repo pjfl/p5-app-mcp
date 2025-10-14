@@ -4,7 +4,7 @@ use HTML::Forms::Constants qw( TRUE );
 use App::MCP::Util         qw( dt_from_epoch dt_human encode_for_html );
 use Encode                 qw( encode );
 use HTML::Entities         qw( encode_entities );
-use HTML::Forms::Util      qw( get_token process_attrs );
+use HTML::Forms::Util      qw( process_attrs );
 use HTTP::Status           qw( status_message );
 use Scalar::Util           qw( weaken );
 use Moo;
@@ -19,7 +19,7 @@ sub serialize {
 
    $self->_maybe_render_partial($context);
 
-   my $stash = $self->_add_tt_defaults($context);
+   my $stash = $self->_add_tt_functions($context);
    my $html  = encode($self->encoding, $self->render_template($stash));
 
    return [ $stash->{code}, _header($stash->{http_headers}), [$html] ];
@@ -31,7 +31,7 @@ sub _build__templater {
    my $args        =  {
       COMPILE_DIR  => $config->tempdir->catdir('ttc')->pathname,
       COMPILE_EXT  => 'c',
-      ENCODING     => 'utf-8',
+      ENCODING     => $config->encoding,
       INCLUDE_PATH => [$self->templates->pathname],
       PRE_PROCESS  => $config->skin . '/site/preprocess.tt',
       RELATIVE     => TRUE,
@@ -44,36 +44,27 @@ sub _build__templater {
    return $template;
 }
 
-sub _add_tt_defaults {
+sub _add_tt_functions {
    my ($self, $context) = @_; weaken $context;
 
-   my $session    = $context->session; weaken $session;
-   my $prefix     = $self->config->prefix;
-   my $skin       = $session->skin || $self->config->skin;
-   my $stylesheet = $context->request->uri_for("css/${prefix}-${skin}.css");
-   my $javascript = $context->request->uri_for("js/${prefix}.js");
-   my $tz         = $session->timezone;
+   my $tz = $context->session->timezone;
 
    return {
+      %{$context->stash},
       dt_from_epoch   => sub { dt_from_epoch shift, $tz },
       dt_human        => \&dt_human,
       dt_user         => sub { my $dt = shift; $dt->set_time_zone($tz); $dt },
       encode_entities => \&encode_entities,
       encode_for_html => \&encode_for_html,
-      javascript      => $javascript->as_string,
       process_attrs   => \&process_attrs,
-      session         => $session,
       status_message  => \&status_message,
-      stylesheet      => $stylesheet->as_string,
-      token           => sub { $context->verification_token },
       uri_for         => sub { $context->request->uri_for(@_) },
       uri_for_action  => sub { $context->uri_for_action(@_) },
-      %{$context->stash},
    };
 }
 
 sub _header {
-   return [ 'Content-Type'  => 'text/html', @{ $_[0] // [] } ];
+   return [ 'Content-Type' => 'text/html', @{ $_[0] // [] } ];
 }
 
 sub _maybe_render_partial {

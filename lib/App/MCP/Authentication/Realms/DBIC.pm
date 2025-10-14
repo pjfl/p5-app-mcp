@@ -33,10 +33,13 @@ sub authenticate {
 sub find_user {
    my ($self, $args) = @_;
 
-   my $rs     = $self->schema->resultset($self->result_class);
-   my $method = $self->find_user_method;
+   my $rs      = $self->schema->resultset($self->result_class);
+   my $method  = $self->find_user_method;
+   my $options = $args->{options} // {};
 
-   return $rs->$method($args->{username}, $args->{options});
+   $options->{prefetch} = 'role' unless exists $options->{prefetch};
+
+   return $rs->$method($args->{username}, $options);
 }
 
 sub to_session {

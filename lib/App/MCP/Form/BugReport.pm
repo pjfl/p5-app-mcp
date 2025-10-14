@@ -32,7 +32,7 @@ has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
 has '_icons' =>
    is      => 'lazy',
    isa     => Str,
-   default => sub { shift->context->uri_for_icons->as_string };
+   default => sub { shift->context->icons_uri->as_string };
 
 has_field 'id' => type => 'Display';
 

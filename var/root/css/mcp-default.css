@@ -511,7 +511,6 @@ form.classic {
   box-shadow: 3px 3px 3px;
   color: gray;
   display: inline-block;
-  margin: 0 1rem;
   padding-bottom: 0.25rem;
   position: relative;
 }
@@ -521,9 +520,6 @@ form.classic div {
 form.classic .alert {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
-}
-form.classic .alert-info {
-  padding-bottom: 0.5rem;
 }
 form.classic .ds-add-icon {
   font-family: Roboto, system-ui, sans-serif;
@@ -543,6 +539,7 @@ form.classic .ds-form .ds-header {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
+  padding-top: 0.2rem;
 }
 form.classic .ds-form .ds-row {
   background: wheat;
@@ -651,6 +648,7 @@ form.classic .field-label {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   grid-area: label;
+  padding-top: 0.2rem;
   position: relative;
   white-space: nowrap;
 }
@@ -731,9 +729,6 @@ form.classic .input-field {
   padding-bottom: 0.5rem;
   position: relative;
 }
-form.classic .input-field input {
-  height: 1.5rem;
-}
 form.classic .input-field input,
 form.classic .input-field select,
 form.classic .input-field textarea {
@@ -741,13 +736,18 @@ form.classic .input-field textarea {
   font-size: 0.85rem;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
   grid-area: input;
+}
+form.classic .input-field input {
+  height: 1.5rem;
   max-width: 40rem;
 }
 form.classic .input-field select {
+  background: linear-gradient(0deg, bisque, whitesmoke);
   max-width: 10rem;
 }
 form.classic .input-field textarea {
   box-sizing: content-box;
+  max-width: 40rem;
   min-height: 3lh;
   min-width: 15rem;
   overflow: auto;
@@ -771,12 +771,12 @@ form.classic .input-field input[readonly=readonly][type=datetime-local] {
   border: 0;
   color: black;
 }
-form.classic .input-field select.select-multiple option {
-  min-width: 8rem;
-}
 form.classic .input-field input[type=submit] {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
+}
+form.classic .input-field select.select-multiple option {
+  min-width: 8rem;
 }
 form.classic .input-field select.select-multiple option[selected=selected] {
   background: bisque;
@@ -827,6 +827,7 @@ form.classic .input-time-with-zone {
 form.classic .input-boolean .checkbox-wrapper {
   grid-area: input;
   isolation: isolate;
+  padding-top: 0.2rem;
   position: relative;
 }
 form.classic .input-boolean .checkbox-wrapper input[type=checkbox] {
@@ -846,7 +847,7 @@ form.classic .input-boolean .checkbox-wrapper::after {
   position: absolute;
   height: 1.25rem;
   left: 0;
-  top: -1px;
+  top: 3px;
   width: 20px;
   z-index: 2;
 }
@@ -1057,9 +1058,9 @@ form.classic .input-integer .digit:last-child {
   border-top-right-radius: 5px;
 }
 form.classic .input-password .reveal {
-  position: absolute;
-  right: 2rem;
-  top: 0;
+  cursor: pointer;
+  grid-area: selector;
+  padding: 0 0.5rem;
 }
 form.classic .input-select option {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
@@ -1067,7 +1068,7 @@ form.classic .input-select option {
 form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
-  padding-left: 0.25rem;
+  padding: 0.2rem 0 0 0.25rem;
   white-space: nowrap;
 }
 form.classic .label-right {
@@ -1117,7 +1118,7 @@ form.classic.filemanager {
   margin: 0.5rem 0 !important;
 }
 .form-messages {
-  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 .form-messages .alert .card {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
@@ -1159,9 +1160,7 @@ body {
   counter-reset: section;
 }
 .state-table {
-  display: inline-block;
   text-align: left;
-  vertical-align: top;
 }
 .state-table caption {
   display: none;
@@ -1646,7 +1645,6 @@ body {
 .state-table .chart-container,
 .state-table .table-container {
   display: inline-block;
-  padding-top: 0.5rem;
   vertical-align: top;
 }
 .state-table .table-form .credit-control {
@@ -1911,6 +1909,9 @@ body {
 *::after {
   box-sizing: border-box;
 }
+html {
+  overflow: hidden;
+}
 html:has(body.dark) {
   color-scheme: dark;
 }
@@ -1920,9 +1921,9 @@ html:has(body.light) {
 body {
   background-image: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   display: grid;
+  grid-template-areas: "header header" "sidebar main" "footer footer";
   grid-template-columns: 7rem 1fr;
   grid-template-rows: auto 1fr auto;
-  grid-template-areas: "header header" "sidebar frame" "footer footer";
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
@@ -1930,8 +1931,8 @@ body {
 }
 @media (max-width: 480px) {
   body {
+    grid-template-areas: "header header" "sidebar sidebar" "main main" "footer footer";
     grid-template-rows: auto auto 1fr auto;
-    grid-template-areas: "header header" "sidebar sidebar" "frame frame" "footer footer";
     padding: 0;
   }
 }
@@ -1941,24 +1942,27 @@ body:has(aside.link-display-icon) {
 body:has(aside.link-display-text) {
   grid-template-columns: 6rem 1fr;
 }
-aside {
-  grid-area: sidebar;
-  position: sticky;
-  z-index: 2;
-}
 header {
   grid-area: header;
   position: sticky;
+  top: 0;
+  z-index: 3;
+}
+aside {
+  grid-area: sidebar;
+  position: sticky;
+  top: 3rem;
   z-index: 2;
+}
+main {
+  grid-area: main;
+  overflow: auto;
+  position: relative;
+  scrollbar-color: orange linen;
+  z-index: 1;
 }
 footer {
   grid-area: footer;
-}
-.frame {
-  grid-area: frame;
-  overflow: auto;
-  position: relative;
-  z-index: 1;
 }
 .standard {
   display: flex;
@@ -1989,6 +1993,7 @@ footer {
 }
 .standard .panel {
   align-items: flex-start;
+  column-gap: 0.5rem;
   display: flex;
   justify-content: center;
 }
@@ -2531,7 +2536,7 @@ footer {
 .messages-panel .message-item.hide {
   display: none;
 }
-.frame .exception,
+.main .exception,
 .modal .exception {
   background: lightpink;
   border: 1px solid gray;
@@ -2541,39 +2546,39 @@ footer {
   max-width: 50rem;
   padding: 0.5rem;
 }
-.frame .exception h1,
+.main .exception h1,
 .modal .exception h1,
-.frame .exception h2,
+.main .exception h2,
 .modal .exception h2,
-.frame .exception h3,
+.main .exception h3,
 .modal .exception h3 {
   margin: 0.5rem 0;
   text-wrap: balance;
 }
-.frame .exception h1 span.content,
+.main .exception h1 span.content,
 .modal .exception h1 span.content,
-.frame .exception h2 span.content,
+.main .exception h2 span.content,
 .modal .exception h2 span.content,
-.frame .exception h3 span.content,
+.main .exception h3 span.content,
 .modal .exception h3 span.content {
   font-family: Roboto, system-ui, sans-serif;
 }
-.frame .exception svg.error,
+.main .exception svg.error,
 .modal .exception svg.error {
   height: 40px;
   width: 40px;
   vertical-align: middle;
 }
-.frame .exception .line,
+.main .exception .line,
 .modal .exception .line {
   display: flex;
 }
-.frame .exception .line label,
+.main .exception .line label,
 .modal .exception .line label {
   font-family: Roboto, system-ui, sans-serif;
   min-width: 10rem;
 }
-.frame .exception .line span,
+.main .exception .line span,
 .modal .exception .line span {
   word-wrap: anywhere;
 }

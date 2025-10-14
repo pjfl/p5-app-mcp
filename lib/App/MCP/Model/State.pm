@@ -82,7 +82,7 @@ sub view : Auth('view') Nav('State|info') {
 
    $context->stash(state_config => {
       'data-uri'     => $data_uri->as_string,
-      'icons'        => $context->uri_for_icons->as_string,
+      'icons'        => $context->icons_uri->as_string,
       'max-jobs'     => $self->max_jobs,
       'name'         => $name,
       'onload'       => "${wcom}.onContentLoad()",

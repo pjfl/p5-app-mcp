@@ -22,6 +22,15 @@ has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 
 has 'controllers' => is => 'ro', isa => HashRef, default => sub { {} };
 
+has 'icons_uri' =>
+   is      => 'lazy',
+   isa     => class_type('URI'),
+   default => sub {
+      my $self = shift;
+
+      return $self->request->uri_for($self->config->icons);
+   };
+
 has 'models' => is => 'ro', isa => HashRef, default => sub { {} };
 
 has 'posted' =>
@@ -51,15 +60,6 @@ has 'time_zone' =>
    isa     => Str,
    default => sub { shift->session->timezone };
 
-has 'uri_for_icons' =>
-   is      => 'lazy',
-   isa     => class_type('URI'),
-   default => sub {
-      my $self = shift;
-
-      return $self->request->uri_for($self->config->icons);
-   };
-
 has 'views' => is => 'ro', isa => HashRef, default => sub { {} };
 
 has '_api_routes' =>
@@ -75,9 +75,24 @@ has '_api_routes' =>
    };
 
 has '_stash' =>
-   is      => 'ro',
+   is      => 'lazy',
    isa     => HashRef,
-   default => sub { { version => App::MCP->VERSION } };
+   default => sub {
+      my $self       = shift;
+      my $prefix     = $self->config->prefix;
+      my $skin       = $self->session->skin || $self->config->skin;
+      my $stylesheet = $self->request->uri_for("css/${prefix}-${skin}.css");
+      my $javascript = $self->request->uri_for("js/${prefix}.js");
+
+      return {
+         javascript         => $javascript->as_string,
+         session_updated    => $self->session->updated,
+         stylesheet         => $stylesheet->as_string,
+         theme              => $self->session->theme,
+         verification_token => $self->verification_token,
+         version            => App::MCP->VERSION
+      };
+   };
 
 with 'App::MCP::Role::Authentication';
 
@@ -135,9 +150,9 @@ sub res { shift->response }
 sub stash {
    my ($self, @args) = @_;
 
-   return $self->_stash unless $args[0];
+   return $self->_stash unless defined $args[0];
 
-   return $self->_stash->{$args[0]} unless $args[1];
+   return $self->_stash->{$args[0]} unless defined $args[1];
 
    for my $pair (pairs @args) {
       $self->_stash->{$pair->key} = $pair->value;

@@ -8,7 +8,7 @@ extends 'HTML::StateTable';
 
 has '+caption' => default => 'Event History View';
 
-has '+icons' => default => sub { shift->context->uri_for_icons->as_string };
+has '+icons' => default => sub { shift->context->icons_uri->as_string };
 
 has '+page_control_location' => default => 'TopLeft';
 

@@ -27,7 +27,7 @@
   </div>
   <div class="line">
     <label>Session updated</label>
-    <span>[% ucfirst(dt_human(dt_from_epoch(session.updated))) %]</span>
+    <span>[% ucfirst(dt_human(dt_from_epoch(session_updated))) %]</span>
   </div>
 [% ELSE -%]
   <div class="line">

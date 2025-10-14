@@ -29,7 +29,7 @@ has 'max_copies' => is => 'ro', isa => Int, default => 9;
 has '_icons' =>
    is      => 'lazy',
    isa     => Str,
-   default => sub { shift->context->uri_for_icons->as_string };
+   default => sub { shift->context->icons_uri->as_string };
 
 has_field 'file' => type => 'Upload';
 

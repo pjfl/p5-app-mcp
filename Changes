@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Stash now initiaised with more attributes from HTML view
           - Some logic moved to HTML view from wrapper template
           - Improved bug reporting form
           - Fixes memory leak in DBIx::Class::InflateColumn::Object::Enum
