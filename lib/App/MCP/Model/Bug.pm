@@ -39,10 +39,11 @@ sub attach {
    my $form    = $self->new_form('BugAttachment', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $params = { 'current-page' => 2 };
-      my $edit   = $context->uri_for_action('bug/edit', [$bug->id], $params);
+      my $params   = { 'current-page' => 2 };
+      my $edit     = $context->uri_for_action('bug/edit', [$bug->id], $params);
+      my $filename = $form->destination;
 
-      $context->stash(redirect $edit, ['File uploaded']);
+      $context->stash(redirect $edit, ['File [_1] uploaded', $filename]);
       return;
    }
 
@@ -139,10 +140,15 @@ sub edit : Nav('Update Bug') {
    my $form = $self->new_form('BugReport', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $params = $bug->purge_attachments ? { 'current-page' => 2 } : {};
-      my $edit   = $context->uri_for_action('bug/edit', [$bug->id], $params);
+      my $purged  = $bug->purge_attachments;
+      my $params  = $purged ? { 'current-page' => 2 } : {};
+      my $edit    = $context->uri_for_action('bug/edit', [$bug->id], $params);
+      my $message = ['Bug report [_1] updated', $bug->id];
 
-      $context->stash(redirect $edit, ['Bug report [_1] updated', $bug->id]);
+      $message = ['Attactment [_1] deleted', join ', ', @{$purged}]
+         if $purged;
+
+      $context->stash(redirect $edit, $message);
    }
 
    $context->stash(form => $form);

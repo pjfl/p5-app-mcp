@@ -37,17 +37,22 @@ has_field 'email' => type => 'Display', label => 'Email Address';
 
 has_field 'timezone' => type => 'Timezone';
 
-has_field 'enable_2fa' => type => 'Boolean', label => 'Enable 2FA';
+has_field 'enable_2fa' =>
+   type   => 'Boolean',
+   label  => 'Enable 2FA',
+   toggle => { -checked => ['mobile_phone', 'postcode'] };
 
 has_field 'mobile_phone' =>
-   type  => 'PosInteger',
-   label => 'Mobile #',
-   size  => 12,
-   title => 'Additional security question used by 2FA token reset';
+   type          => 'PosInteger',
+   label         => 'Mobile #',
+   size          => 12,
+   title         => 'Additional security question used by 2FA token reset',
+   wrapper_class => ['input-integer', 'hide'];
 
 has_field 'postcode' =>
-   size  => 8,
-   title => 'Additional security question used by 2FA token reset';
+   size          => 8,
+   title         => 'Additional security question used by 2FA token reset',
+   wrapper_class => ['input-text', 'hide'];
 
 has_field 'skin' =>
    type    => 'Select',
@@ -88,6 +93,16 @@ has_field 'theme' =>
 ];
 
 has_field 'submit' => type => 'Button';
+
+after 'after_build_fields' => sub {
+   my $self      = shift;
+   my $resources = $self->context->config->wcom_resources;
+   my $handler   = $resources->{toggle} . ".toggleFields('enable_2fa')";
+   my $attr      = $self->field('enable_2fa')->element_attr;
+
+   $attr->{javascript} = { onchange => $handler };
+   return;
+};
 
 sub validate {
    my $self       = shift;

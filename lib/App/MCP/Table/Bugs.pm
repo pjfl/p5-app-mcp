@@ -7,6 +7,7 @@ use HTML::StateTable::Moo;
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Configurable';
+with    'HTML::StateTable::Role::Filterable';
 
 has '+caption' => default => 'Bugs List';
 
@@ -58,11 +59,17 @@ has_column 'title' =>
    sortable => TRUE,
    title    => 'Sort by title';
 
-has_column 'user_id' => label => 'Owner', value => 'owner.user_name';
+has_column 'user_id' =>
+   filterable => TRUE,
+   label      => 'Owner',
+   value      => 'owner.user_name';
 
 has_column 'created' => cell_traits => ['DateTime'];
 
-has_column 'state' => sortable => TRUE, title => 'Sort by state';
+has_column 'state' =>
+   filterable => TRUE,
+   sortable   => TRUE,
+   title      => 'Sort by state';
 
 has_column 'check' =>
    cell_traits => ['Checkbox'],

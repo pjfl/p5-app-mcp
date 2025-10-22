@@ -68,7 +68,7 @@ sub purge_attachments {
    my ($self, $for_delete) = @_;
 
    my $config = $self->result_source->schema->config;
-   my $purged = FALSE;
+   my $purged = [];
    my $map    = {};
 
    unless ($for_delete) {
@@ -81,16 +81,18 @@ sub purge_attachments {
 
    my $attachment_dir = $self->meta_directory($config, $self->id);
 
-   return $purged unless $attachment_dir->exists;
+   return FALSE unless $attachment_dir->exists;
 
    for my $file ($attachment_dir->all) {
-      next if exists $map->{$file->basename};
+      my $base = $file->basename;
 
+      next if exists $map->{$base} or $base =~ m{ \A \. }mx;
+
+      push @{$purged}, $base;
       $file->unlink;
-      $purged = TRUE;
    }
 
-   return $purged;
+   return $purged->[0] ? $purged : FALSE;
 }
 
 sub update {

@@ -1,20 +1,20 @@
 <!doctype html>
 <html lang="en">
-<head>
-   <meta charset="[% config.encoding %]">
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-   <meta name="apple-mobile-web-app-capable" content="yes">
-   <meta name="description" content="[% config.name %] [% config.deployment %]">
-   <meta name="keywords" content="[% config.name %]">
-   <meta name="generator" content="[% config.name %] v[% version %]">
-   <title>[% nav.title_abbrev _ ' - ' _ nav.title_entry %]</title>
-   <link rel="shortcut icon" href="[% uri_for('img/favicon.ico') %]">
-   <link rel="stylesheet" href="[% stylesheet %]" type="text/css">
-   <script src="[% javascript %]"></script>
-   <script src="https://code.highcharts.com/highcharts.js"></script>
-</head>
-<body id="body" class="[% theme || 'light' %]">
+  <head>
+    <meta charset="[% config.encoding %]">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="description" content="[% config.name %]">
+    <meta name="keywords" content="[% config.keywords %]">
+    <meta name="generator" content="[% config.deployment %] v[% version %]">
+    <title>[% nav.title_abbrev _ ' - ' _ nav.title_entry %]</title>
+    <link rel="shortcut icon" href="[% uri_for('img/favicon.ico') %]">
+    <link rel="stylesheet" href="[% stylesheet %]" type="text/css">
+    <script src="[% javascript %]"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+  </head>
+  <body id="body" class="[% theme || 'light' %]">
 [% content -%]
-</body>
+  </body>
 </html>

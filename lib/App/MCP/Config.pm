@@ -101,6 +101,7 @@ has 'bug_attachments' =>
       return {
          directory  => $self->vardir->catdir('bugs'),
          extensions => 'csv|doc|png|txt',
+         max_size   => 5_120_000,
          sharedir   => $self->rootdir->catdir('bugs')
       };
    };
@@ -273,6 +274,14 @@ symbols used when generating HTML
 =cut
 
 has 'icons' => is => 'ro', isa => Str, default => 'img/icons.svg';
+
+=item C<keywords>
+
+Space separated list of keywords which appear in the meta of the HTML pages
+
+=cut
+
+has 'keywords' => is => 'ro', isa => Str, default => 'enterprise scheduler';
 
 =item C<library_class>
 

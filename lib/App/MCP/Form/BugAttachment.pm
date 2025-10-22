@@ -61,9 +61,15 @@ sub validate {
 
    $filename = $self->meta_scrub($filename);
 
-   my ($extn) = $filename =~ m{ \. ([^\.]+) \z }mx;
-   my $config = $context->config->bug_attachments;
-   my $extns  = $config->{extensions} || 'csv|txt';
+   my ($extn)   = $filename =~ m{ \. ([^\.]+) \z }mx;
+   my $config   = $context->config->bug_attachments;
+   my $max_size = $config->{max_size} // 0;
+
+   return $self->add_form_error(
+      'Size [_1] greater than maximum [_2]', $upload->size, $max_size
+   ) if $max_size and $upload->size > $max_size;
+
+   my $extns = $config->{extensions} || 'csv|txt';
 
    return $self->add_form_error('File type [_1] not allowed', ".${extn}")
       unless $extn =~ m{ \A (?: $extns ) \z }mx;
@@ -81,21 +87,21 @@ sub validate {
       $dest     = $filename ? $base->catfile($filename) : NUL;
    }
 
-   if ($dest) {
-      try   { io($upload->path)->copy($dest) }
-      catch { $self->add_form_error("${_}") };
+   return unless $dest;
 
-      return if $self->result->has_form_errors;
+   try   { io($upload->path)->copy($dest) }
+   catch { $self->add_form_error("${_}") };
 
-      $self->meta_add($context, $directory, $filename);
-      $self->destination($dest->abs2rel($self->meta_directory($context)));
+   return if $self->result->has_form_errors;
 
-      $context->model('BugAttachment')->create({
-         bug_id  => $bug_id,
-         path    => $filename,
-         user_id => $context->session->id
-      });
-   }
+   $self->meta_add($context, $directory, $filename);
+   $self->destination($dest->basename);
+
+   $context->model('BugAttachment')->create({
+      bug_id  => $bug_id,
+      path    => $filename,
+      user_id => $context->session->id
+   });
 
    return;
 }

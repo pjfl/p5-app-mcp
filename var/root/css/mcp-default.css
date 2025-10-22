@@ -825,6 +825,7 @@ form.classic .input-time-with-zone {
   align-items: center;
 }
 form.classic .input-boolean .checkbox-wrapper {
+  display: flex;
   grid-area: input;
   isolation: isolate;
   padding-top: 0.2rem;
@@ -1102,6 +1103,13 @@ form.classic .form-page.hide {
 }
 form.classic.filemanager {
   padding: 0.5rem;
+}
+.modal .filemanager {
+  margin: 0;
+  min-width: 10rem;
+}
+.modal .filemanager .input-field:has(label.field-label) {
+  grid-template-columns: auto max-content auto;
 }
 .form-error {
   background: lightpink;
@@ -1538,19 +1546,19 @@ body {
   justify-content: space-between;
 }
 .state-table .dialog-close {
-  align-items: center;
   background: linear-gradient(0deg, bisque, whitesmoke);
   border-radius: 3px;
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
   cursor: pointer;
-  display: inline-flex;
   font-family: Roboto, system-ui, sans-serif;
   font-size: smaller;
   font-weight: bold;
-  height: 100%;
-  margin-top: 2px;
-  padding: 0 0.25rem;
+}
+.state-table .dialog-close .icon-wrapper {
+  align-items: center;
+  display: flex;
+  padding: 0.125rem;
 }
 .state-table .dialog-close img,
 .state-table .dialog-close object {
@@ -1587,6 +1595,7 @@ body {
   line-height: 1rem;
 }
 .state-table .dialog-title {
+  align-items: center;
   background: linen;
   border-bottom: 1px solid;
   border-color: orange;
@@ -1602,6 +1611,7 @@ body {
 }
 .state-table .filter-label {
   display: inline-block;
+  padding-left: 0.25rem;
 }
 .state-table .filter-label img,
 .state-table .filter-label svg {
@@ -1921,35 +1931,36 @@ html:has(body.light) {
 body {
   background-image: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   display: grid;
-  grid-template-areas: "header header" "sidebar main" "footer footer";
-  grid-template-columns: 7rem 1fr;
-  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "header header" "sidebar main" "sidebar footer";
+  grid-template-columns: 7.5rem 1fr;
+  grid-template-rows: auto 1fr 2rem;
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 0 0.5rem;
+  padding: 0;
 }
 @media (max-width: 480px) {
   body {
     grid-template-areas: "header header" "sidebar sidebar" "main main" "footer footer";
-    grid-template-rows: auto auto 1fr auto;
-    padding: 0;
+    grid-template-rows: auto auto 1fr 2rem;
   }
 }
-body:has(aside.link-display-icon) {
+body:has(aside.nav-link-icon) {
   grid-template-columns: 4rem 1fr;
 }
-body:has(aside.link-display-text) {
-  grid-template-columns: 6rem 1fr;
+body:has(aside.nav-link-text) {
+  grid-template-columns: 6.5rem 1fr;
 }
 header {
   grid-area: header;
+  padding: 0 0.5rem;
   position: sticky;
   top: 0;
   z-index: 3;
 }
 aside {
   grid-area: sidebar;
+  padding-left: 0.5rem;
   position: sticky;
   top: 3rem;
   z-index: 2;
@@ -1963,11 +1974,14 @@ main {
 }
 footer {
   grid-area: footer;
+  bottom: 0;
+  padding: 0.5rem;
+  position: sticky;
 }
 .standard {
   display: flex;
   line-height: 1.5;
-  padding: 0.5rem 0 0 0.5rem;
+  padding: 0.5rem;
   position: absolute;
   width: 100%;
 }
@@ -2006,7 +2020,6 @@ footer {
 .sidebar .nav-title,
 .navigation .nav-title {
   border-top: 0.5rem solid bisque;
-  display: inline-block;
   font-family: Roboto, system-ui, sans-serif;
   font-size: larger;
   height: 3rem;
@@ -2015,8 +2028,7 @@ footer {
 .navigation .nav-title img {
   height: 24px;
   width: 24px;
-  margin-right: 0.25rem;
-  margin-top: 0.3rem;
+  margin: 0.3rem 0.25rem 0 0;
   vertical-align: top;
 }
 @media (max-width: 480px) {
@@ -2093,7 +2105,6 @@ footer {
   overflow-y: hidden;
   position: absolute;
   text-align: left;
-  top: 2.5rem;
   transition: all ease-in-out 500ms;
   width: 8rem;
 }
@@ -2154,7 +2165,6 @@ footer {
   position: absolute;
   right: 0;
   text-align: left;
-  top: 2.5rem;
   transition: all ease-in-out 500ms;
 }
 .sidebar .nav-control .nav-panel:hover,
@@ -2339,11 +2349,9 @@ footer {
 }
 .navigation .nav-menu {
   border-bottom-right-radius: 10px;
-  display: inline-block;
   flex-grow: 10;
   height: 3rem;
-  padding-right: 1rem;
-  padding-top: 0.5rem;
+  padding: 0.5rem 0.5rem 0 0;
   position: relative;
   text-align: right;
 }
@@ -2383,13 +2391,13 @@ footer {
     display: none;
   }
 }
-.navigation.link-display-both::before {
+.navigation.nav-link-both::before {
   width: 7rem;
 }
-.navigation.link-display-icon::before {
-  width: 4rem;
+.navigation.nav-link-icon::before {
+  width: 3.5rem;
 }
-.navigation.link-display-text::before {
+.navigation.nav-link-text::before {
   width: 6rem;
 }
 .navigation.navigation-header li.global a {
@@ -2408,7 +2416,6 @@ footer {
   display: flex;
   flex-direction: column;
   min-height: 2rem;
-  padding-top: 0.5rem;
 }
 @media (max-width: 480px) {
   .sidebar .nav-list.global {
@@ -2420,7 +2427,7 @@ footer {
 .sidebar .nav-list.global li.global {
   display: block;
   margin: 0;
-  padding: 1rem 0;
+  padding: 0.5rem 0;
   width: 100%;
 }
 @media (max-width: 480px) {
@@ -2492,26 +2499,20 @@ footer {
     display: none;
   }
 }
-.sidebar.link-display-both .nav-menu {
+.sidebar.nav-link-both::after,
+.sidebar.nav-link-both .nav-menu {
   width: 7rem;
 }
-.sidebar.link-display-icon .nav-menu {
-  width: 4rem;
+.sidebar.nav-link-icon::after,
+.sidebar.nav-link-icon .nav-menu {
+  width: 3.5rem;
 }
-.sidebar.link-display-text .nav-menu {
-  width: 6rem;
-}
-.sidebar.link-display-both::after {
-  width: 7rem;
-}
-.sidebar.link-display-icon::after {
-  width: 4rem;
-}
-.sidebar.link-display-text::after {
+.sidebar.nav-link-text::after,
+.sidebar.nav-link-text .nav-menu {
   width: 6rem;
 }
 .messages-panel {
-  bottom: 1rem;
+  bottom: 2rem;
   position: absolute;
   right: 1rem;
   z-index: 3;
@@ -2581,10 +2582,6 @@ footer {
 .main .exception .line span,
 .modal .exception .line span {
   word-wrap: anywhere;
-}
-.modal .filemanager {
-  margin: 0;
-  min-width: 10rem;
 }
 .modal-outer-wrapper {
   bottom: 0;
@@ -2771,6 +2768,9 @@ footer {
 }
 .documentation pre {
   margin: 0 0 1rem 2rem;
+}
+.documentation pre code.code {
+  font-family: ui-monospace, 'Cascadia Code', Menlo, 'DejaVu Sans Mono', monospace;
 }
 .file-preview p,
 .file-preview pre {
