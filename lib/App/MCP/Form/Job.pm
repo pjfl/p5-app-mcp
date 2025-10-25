@@ -16,13 +16,14 @@ has '+item_class'   => default => 'Job';
 has_field 'job_name' => required => TRUE;
 
 has_field 'type' =>
-   type        => 'Select',
-   html_name   => 'job_type',
-   input_param => 'job_type',
-   toggle      => { job => ['command'] },
-   options     => [
+   type         => 'Select',
+   html_name    => 'job_type',
+   input_param  => 'job_type',
+   toggle       => { job => ['command'] },
+   toggle_event => 'change',
+   options      => [
+      { label => 'Job', value => 'job' },
       { label => 'Box', value => 'box' },
-      { label => 'Job', value => 'job' }
    ];
 
 has_field 'parent_box' => type => 'Select', label => 'Parent Box';
@@ -76,17 +77,6 @@ has_field 'submit' => type => 'Button';
 #                   data_type     => 'smallint',
 #                   default_value => 488,
 #                   is_nullable   => FALSE, },
-
-
-after 'after_build_fields' => sub {
-   my $self      = shift;
-   my $resources = $self->context->config->wcom_resources;
-   my $handler   = $resources->{toggle} . ".toggleFields('job_type')";
-
-   $self->field('type')->element_attr->{javascript} = { onchange => $handler };
-
-   return;
-};
 
 use namespace::autoclean -except => META;
 

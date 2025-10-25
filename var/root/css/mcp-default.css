@@ -521,108 +521,8 @@ form.classic .alert {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
 }
-form.classic .ds-add-icon {
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: smaller;
-  font-weight: bold;
-}
-form.classic .ds-add-icon svg {
-  vertical-align: middle;
-}
-form.classic .ds-form {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  row-gap: 0.5rem;
-}
-form.classic .ds-form .ds-header {
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.8rem;
-  font-weight: normal;
-  padding-top: 0.2rem;
-}
-form.classic .ds-form .ds-row {
-  background: wheat;
-  border-radius: 5px;
-  box-shadow: 3px 3px 3px gray;
-  display: flex;
-  justify-content: space-between;
-}
-form.classic .ds-form .ds-field {
-  border-radius: 5px;
-  border-bottom-right-radius: 0;
-  border-top-right-radius: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem 0 0.5rem 0.5rem;
-}
-form.classic .ds-form .ds-field input[readonly=readonly] {
-  background: wheat !important;
-}
-form.classic .ds-form .ds-field.hide {
+form.classic .form-page.hide {
   display: none;
-}
-form.classic .ds-form .ds-field-group {
-  display: flex;
-}
-form.classic .ds-form .ds-field-group.vertical {
-  flex-direction: column;
-}
-form.classic .ds-form .ds-input.input-text[readonly=readonly] {
-  background: ivory;
-  border: 0;
-  border-radius: 0;
-  color: black;
-}
-form.classic .ds-form .ds-output {
-  font-size: 0.8rem;
-  margin-right: 0.25rem;
-}
-form.classic .ds-form .ds-reorderable-drag {
-  position: absolute;
-}
-form.classic .ds-form .ds-reorderable {
-  margin: auto;
-  padding-left: 0.5rem;
-}
-form.classic .ds-form .ds-reorderable .knob {
-  display: block;
-  height: 20px;
-  width: 20px;
-}
-form.classic .ds-form .ds-remove {
-  border-radius: 5px;
-  border-bottom-left-radius: 0;
-  border-top-left-radius: 0;
-  padding: 0.5rem;
-}
-form.classic .ds-form .ds-remove .ds-remove-icon {
-  align-items: center;
-  background: linear-gradient(0deg, bisque, whitesmoke);
-  border-radius: 3px;
-  box-shadow: 2px 2px 2px gray;
-  color: firebrick;
-  cursor: pointer;
-  display: flex;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: smaller;
-  font-weight: bold;
-  padding: 0 0.25rem;
-}
-form.classic .ds-form .ds-remove .ds-remove-icon img,
-form.classic .ds-form .ds-remove .ds-remove-icon svg {
-  height: 20px;
-  width: 20px;
-  vertical-align: middle;
-}
-form.classic .ds-form .ds-remove .ds-remove-icon:hover {
-  box-shadow: inset 0 0 3px gray;
-  color: black;
-}
-form.classic .ds-form .ds-tag-label {
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.8rem;
-  margin-right: 0.25rem;
 }
 form.classic .form-wrapper {
   border-radius: 5px;
@@ -643,43 +543,40 @@ form.classic .form-wrapper.wide .input-field .alert {
 form.classic .form-wrapper:has(.input-field span.field-label) .input-button button {
   margin-top: 1rem;
 }
-form.classic .field-label {
-  display: flex;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.8rem;
-  grid-area: label;
-  padding-top: 0.2rem;
-  position: relative;
-  white-space: nowrap;
+form.classic .input-field:has(label.field-label) {
+  align-items: flex-start;
+  column-gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 7rem min-content auto;
+  grid-template-areas: "label input selector" "label alert alert";
+  justify-items: start;
+  min-width: 20rem;
+  row-gap: 0.25rem;
 }
-form.classic .field-label .label-sep-after {
-  position: absolute;
-  right: 0.25rem;
+form.classic .input-field.label-right:has(label.field-label) {
+  grid-template-columns: min-content auto 7rem;
+  grid-template-areas: "selector input label" "alert alert label";
 }
-form.classic .field-label:has(+span.digit-input-wrapper)::after,
-form.classic .field-label:has(+input[required=required])::after,
-form.classic .field-label:has(+select[required=required])::after,
-form.classic .field-label:has(+textarea[required=required])::after {
+form.classic .input-field.label-right:has(label.field-label) input,
+form.classic .input-field.label-right:has(label.field-label) select,
+form.classic .input-field.label-right:has(label.field-label) span,
+form.classic .input-field.label-right:has(label.field-label) textarea {
+  justify-self: end;
+}
+form.classic .input-field:has(span.digit-input-wrapper) .field-label::after,
+form.classic .input-field:has(input[required=required]) .field-label::after,
+form.classic .input-field:has(select[required=required]) .field-label::after,
+form.classic .input-field:has(textarea[required=required]) .field-label::after {
   color: red;
   content: '*';
-  display: inline-block;
-  float: right;
   min-width: 2ch;
   padding-left: 0.25rem;
 }
-form.classic .field-label:has(+span.digit-input-wrapper > input:valid)::after,
-form.classic .field-label:has(+input:valid)::after,
-form.classic .field-label:has(+select:valid)::after,
-form.classic .field-label:has(+textarea:valid)::after {
+form.classic .input-field:has(span.digit-input-wrapper > input:valid) .field-label::after,
+form.classic .input-field:has(input:valid) .field-label::after,
+form.classic .input-field:has(select:valid) .field-label::after,
+form.classic .input-field:has(textarea:valid) .field-label::after {
   content: ' ';
-}
-form.classic span.field-label {
-  border: 2px solid transparent;
-  left: 0.5rem;
-  padding: 2px 0.25rem;
-  position: absolute;
-  top: 24px;
-  transition: top 0.5s;
 }
 form.classic .input-field:has(input:focus) span.field-label {
   background: bisque;
@@ -691,7 +588,7 @@ form.classic .input-field:has(input:focus) span.field-label {
 form.classic .input-field:hover span.field-label,
 form.classic .input-field:has(input:focus) span.field-label,
 form.classic .input-field:has(input:valid) span.field-label {
-  top: 1px;
+  top: -3px;
 }
 form.classic .input-field:has(span.field-label) input {
   height: 1.75rem;
@@ -716,15 +613,6 @@ form.classic .input-field:has(span.field-label)::before {
   display: block;
   height: 22px;
 }
-form.classic .input-field:has(label.field-label) {
-  align-items: flex-start;
-  display: grid;
-  grid-template-columns: 7rem max-content auto;
-  grid-template-areas: "label input selector" "label alert selector";
-  justify-items: start;
-  min-width: 20rem;
-  row-gap: 0.25rem;
-}
 form.classic .input-field {
   padding-bottom: 0.5rem;
   position: relative;
@@ -745,12 +633,21 @@ form.classic .input-field select {
   background: linear-gradient(0deg, bisque, whitesmoke);
   max-width: 10rem;
 }
+form.classic .input-field span.field-label {
+  border: 2px solid transparent;
+  left: 0.5rem;
+  padding: 2px 0.25rem;
+  position: absolute;
+  top: 22px;
+  transition: top 0.5s;
+}
 form.classic .input-field textarea {
   box-sizing: content-box;
   max-width: 40rem;
   min-height: 3lh;
   min-width: 15rem;
   overflow: auto;
+  padding-left: 0.25rem;
 }
 form.classic .input-field input:focus,
 form.classic .input-field textarea:focus {
@@ -795,6 +692,18 @@ form.classic .input-field .alert-error {
 form.classic .input-field .alert-info {
   background: bisque;
 }
+form.classic .input-field .field-label {
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  grid-area: label;
+  padding-top: 0.2rem;
+  position: relative;
+  white-space: nowrap;
+}
+form.classic .input-field .field-label .label-sep-after {
+  position: absolute;
+  right: 0.25rem;
+}
 form.classic .input-field .input-hidden .alert {
   max-width: 100%;
 }
@@ -804,25 +713,7 @@ form.classic .input-field.inline {
 }
 form.classic .input-field.hide {
   display: none !important;
-}
-form.classic .input-field.input-button {
-  padding-bottom: 0;
-}
-form.classic .input-boolean,
-form.classic .input-captcha,
-form.classic .input-display,
-form.classic .input-duration,
-form.classic .input-integer,
-form.classic .input-interval,
-form.classic .input-money,
-form.classic .input-number,
-form.classic .input-password,
-form.classic .input-select,
-form.classic .input-selector,
-form.classic .input-text,
-form.classic .input-textarea,
-form.classic .input-time-with-zone {
-  align-items: center;
+  opacity: 0;
 }
 form.classic .input-boolean .checkbox-wrapper {
   display: flex;
@@ -883,7 +774,6 @@ form.classic .input-selector button {
   border-radius: 50px;
   color: seagreen;
   cursor: pointer;
-  margin: 0.5rem 0;
   overflow: hidden;
   padding: 0.25rem 0.75rem;
   position: relative;
@@ -994,7 +884,6 @@ form.classic .input-button a.form-button {
 }
 form.classic .input-selector button {
   grid-area: selector;
-  margin: 0 0 0 0.5rem;
 }
 form.classic .input-duration .input-select-integer,
 form.classic .input-interval .input-group,
@@ -1061,22 +950,12 @@ form.classic .input-integer .digit:last-child {
 form.classic .input-password .reveal {
   cursor: pointer;
   grid-area: selector;
-  padding: 0 0.5rem;
-}
-form.classic .input-select option {
-  font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
 form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
-  padding: 0.2rem 0 0 0.25rem;
+  padding: 0.2rem 0 0 0.35rem;
   white-space: nowrap;
-}
-form.classic .label-right {
-  text-align: right;
-}
-form.classic .label-right label {
-  text-align: left;
 }
 form.classic .page-list {
   list-style-type: none;
@@ -1098,8 +977,109 @@ form.classic .page-list li.selected {
   border-bottom: 1px solid transparent;
   color: black;
 }
-form.classic .form-page.hide {
+form.classic .ds-add-icon {
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: smaller;
+  font-weight: bold;
+}
+form.classic .ds-add-icon svg {
+  vertical-align: middle;
+}
+form.classic .ds-form {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0.5rem;
+  position: relative;
+  row-gap: 0.5rem;
+}
+form.classic .ds-form .ds-header {
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: normal;
+  padding-top: 0.2rem;
+}
+form.classic .ds-form .ds-row {
+  background: wheat;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  display: flex;
+  justify-content: space-between;
+}
+form.classic .ds-form .ds-field {
+  border-radius: 5px;
+  border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0 0.5rem 0.5rem;
+}
+form.classic .ds-form .ds-field input[readonly=readonly] {
+  background: wheat !important;
+}
+form.classic .ds-form .ds-field.hide {
   display: none;
+}
+form.classic .ds-form .ds-field-group {
+  display: flex;
+}
+form.classic .ds-form .ds-field-group.vertical {
+  flex-direction: column;
+}
+form.classic .ds-form .ds-input.input-text[readonly=readonly] {
+  background: ivory;
+  border: 0;
+  border-radius: 0;
+  color: black;
+}
+form.classic .ds-form .ds-output {
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
+}
+form.classic .ds-form .ds-reorderable-drag {
+  position: absolute;
+}
+form.classic .ds-form .ds-reorderable {
+  margin: auto;
+  padding-left: 0.5rem;
+}
+form.classic .ds-form .ds-reorderable .knob {
+  display: block;
+  height: 20px;
+  width: 20px;
+}
+form.classic .ds-form .ds-remove {
+  border-radius: 5px;
+  border-bottom-left-radius: 0;
+  border-top-left-radius: 0;
+  padding: 0.5rem;
+}
+form.classic .ds-form .ds-remove .ds-remove-icon {
+  align-items: center;
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border-radius: 3px;
+  box-shadow: 2px 2px 2px gray;
+  color: firebrick;
+  cursor: pointer;
+  display: flex;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: smaller;
+  font-weight: bold;
+  padding: 0 0.25rem;
+}
+form.classic .ds-form .ds-remove .ds-remove-icon img,
+form.classic .ds-form .ds-remove .ds-remove-icon svg {
+  height: 20px;
+  width: 20px;
+  vertical-align: middle;
+}
+form.classic .ds-form .ds-remove .ds-remove-icon:hover {
+  box-shadow: inset 0 0 3px gray;
+  color: black;
+}
+form.classic .ds-form .ds-tag-label {
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
 }
 form.classic.filemanager {
   padding: 0.5rem;
@@ -1158,6 +1138,7 @@ form.classic.filemanager {
 }
 .form-messages .alert-error-message {
   display: block;
+  margin-left: -0.25rem;
 }
 .selector form.classic {
   box-shadow: none;

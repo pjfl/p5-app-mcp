@@ -35,12 +35,12 @@ has 'app' =>
 has 'port' =>
    is      => 'lazy',
    isa     => NonZeroPositiveInt,
-   default => sub { $_[0]->config->port };
+   default => sub { shift->config->port };
 
 has 'worker' =>
    is      => 'lazy',
    isa     => NonEmptySimpleStr,
-   default => sub { $_[0]->config->appclass.'::Worker' };
+   default => sub { shift->config->appclass.'::Worker' };
 
 # Private attributes
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };

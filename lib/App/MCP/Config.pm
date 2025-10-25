@@ -831,7 +831,6 @@ has 'wcom_resources' =>
          modal          => 'WCom.Modal',
          navigation     => 'WCom.Navigation.manager',
          table_renderer => 'WCom.Table.Renderer.manager',
-         toggle         => 'WCom.Form.Toggle'
       };
    };
 

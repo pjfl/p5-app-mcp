@@ -2,6 +2,7 @@ package App::MCP::Form::Profile;
 
 use HTML::Forms::Constants qw( FALSE META TRUE );
 use HTML::Forms::Types     qw( HashRef Object );
+use HTML::Forms::Util      qw( json_bool );
 use Type::Utils            qw( class_type );
 use Moo;
 use HTML::Forms::Moo;
@@ -43,16 +44,14 @@ has_field 'enable_2fa' =>
    toggle => { -checked => ['mobile_phone', 'postcode'] };
 
 has_field 'mobile_phone' =>
-   type          => 'PosInteger',
-   label         => 'Mobile #',
-   size          => 12,
-   title         => 'Additional security question used by 2FA token reset',
-   wrapper_class => ['input-integer', 'hide'];
+   type  => 'PosInteger',
+   label => 'Mobile #',
+   size  => 12,
+   title => 'Additional security question used by 2FA token reset';
 
 has_field 'postcode' =>
-   size          => 8,
-   title         => 'Additional security question used by 2FA token reset',
-   wrapper_class => ['input-text', 'hide'];
+   size  => 8,
+   title => 'Additional security question used by 2FA token reset';
 
 has_field 'skin' =>
    type    => 'Select',
@@ -95,12 +94,13 @@ has_field 'theme' =>
 has_field 'submit' => type => 'Button';
 
 after 'after_build_fields' => sub {
-   my $self      = shift;
-   my $resources = $self->context->config->wcom_resources;
-   my $handler   = $resources->{toggle} . ".toggleFields('enable_2fa')";
-   my $attr      = $self->field('enable_2fa')->element_attr;
+   my $self = shift;
 
-   $attr->{javascript} = { onchange => $handler };
+   unless ($self->user->enable_2fa) {
+      $self->field('mobile_phone')->add_wrapper_class('hide');
+      $self->field('postcode')->add_wrapper_class('hide');
+   }
+
    return;
 };
 
@@ -110,7 +110,7 @@ sub validate {
    my $user       = $self->user;
    my $value      = $user->profile_value;
 
-   $value->{enable_2fa}    = $enable_2fa ? \1 : \0;
+   $value->{enable_2fa}    = $enable_2fa ? json_bool TRUE : json_bool FALSE;
    $value->{link_display}  = $self->field('link_display')->value;
    $value->{menu_location} = $self->field('menu_location')->value;
    $value->{mobile_phone}  = $self->field('mobile_phone')->value;
@@ -124,7 +124,6 @@ sub validate {
    }, {
       key  => 'preferences_user_id_name_uniq'
    });
-
 
    $user->totp_enable($enable_2fa);
 

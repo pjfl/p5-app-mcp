@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Form toggle cleanup
           - Breakpoint save
           - Stash now initiaised with more attributes from HTML view
           - Some logic moved to HTML view from wrapper template
