@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Leaner login form
           - Form toggle cleanup
           - Breakpoint save
           - Stash now initiaised with more attributes from HTML view

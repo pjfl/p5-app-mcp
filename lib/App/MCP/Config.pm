@@ -825,12 +825,10 @@ has 'wcom_resources' =>
    isa     => HashRef[Str],
    default => sub {
       return {
-         data_structure => 'WCom.Form.DataStructure',
-         downloadable   => 'WCom.Table.Role.Downloadable',
-         form_util      => 'WCom.Form.Util',
-         modal          => 'WCom.Modal',
-         navigation     => 'WCom.Navigation.manager',
-         table_renderer => 'WCom.Table.Renderer.manager',
+         downloadable => 'WCom.Table.Role.Downloadable',
+         form_util    => 'WCom.Form.Util',
+         modal        => 'WCom.Modal',
+         navigation   => 'WCom.Navigation.manager',
       };
    };
 

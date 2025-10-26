@@ -16,34 +16,24 @@ has '+title'        => default => 'Login';
 has '+info_message' => default => 'Stop! You have your papers?';
 has '+item_class'   => default => 'User';
 
-my $change_fields = "['login', 'password_reset', 'totp_reset']";
-my $change_js     = "WCom.Form.Util.fieldChange('%s', ${change_fields})";
-my $unrequire_js  = "WCom.Form.Util.unrequire(['auth_code', 'password'])";
-
 has_field 'name' =>
    html_name   => 'user_name',
    input_param => 'user_name',
    label       => 'User Name',
+   label_top   => TRUE,
    required    => TRUE,
-   tags        => { label_tag => 'span' },
    title       => 'Enter your user name or email address';
 
 has_field 'password' =>
-   type         => 'Password',
-   element_attr => {
-      javascript => { oninput => sprintf $change_js, 'password' }
-   },
-   required     => TRUE,
-   tags         => { label_tag => 'span' };
+   type      => 'Password',
+   label_top => TRUE,
+   required  => TRUE;
 
 has_field 'auth_code' =>
    type          => 'Digits',
-   element_attr  => {
-      javascript => { onblur => sprintf $change_js, 'auth_code' }
-   },
    label         => 'Auth. Code',
+   label_top     => TRUE,
    size          => 6,
-   tags          => { label_tag => 'span' },
    title         => 'Enter the Authenticator code',
    wrapper_class => ['input-integer'];
 
@@ -59,10 +49,7 @@ has_field 'login' =>
 has_field 'password_reset' =>
    type          => 'Button',
    disabled      => TRUE,
-   element_attr  => {
-      'data-field-depends' => ['user_name'],
-      'javascript'         => { onclick => $unrequire_js }
-   },
+   element_attr  => { 'data-field-depends' => ['user_name'] },
    html_name     => 'submit',
    label         => 'Forgot Password?',
    title         => 'Send password reset email',
@@ -72,10 +59,7 @@ has_field 'password_reset' =>
 has_field 'totp_reset' =>
    type          => 'Button',
    disabled      => TRUE,
-   element_attr  => {
-      'data-field-depends' => ['user_name'],
-      'javascript'         => { onclick => $unrequire_js }
-   },
+   element_attr  => { 'data-field-depends' => ['user_name'] },
    html_name     => 'submit',
    label         => 'Reset Auth.',
    title         => 'Request a TOTP reset',
@@ -91,9 +75,13 @@ after 'after_build_fields' => sub {
    my $session = $context->session;
 
    unless ($session->enable_2fa) {
-      push @{$self->field('auth_code')->wrapper_class}, 'hide';
-      push @{$self->field('totp_reset')->wrapper_class}, 'hide';
+      $self->field('auth_code')->add_wrapper_class('hide');
+      $self->field('totp_reset')->add_wrapper_class('hide');
    }
+
+   my $change_fields = "['login', 'password_reset', 'totp_reset']";
+   my $change_js     = "WCom.Form.Util.fieldChange('%s', ${change_fields})";
+   my $unrequire_js  = "WCom.Form.Util.unrequire(['auth_code', 'password'])";
 
    my $utils  = $context->config->wcom_resources;
    my $method = $utils->{form_util} . '.showIfRequired';
@@ -101,15 +89,26 @@ after 'after_build_fields' => sub {
    my $uri    = $context->uri_for_action(
       'api/object_fetch', ['property'], $params
    );
-   my $showif = "${method}('user_name', ['auth_code', 'totp_reset'], '${uri}')";
-   my $js     = "${showif}; " . sprintf $change_js, 'user_name';
-   my $attr   = $self->field('name')->element_attr;
-   my $u_conf = $context->config->user;
+   my $showif  = "${method}('user_name', ['auth_code','totp_reset'], '${uri}')";
+   my $blur_js = "${showif}; " . sprintf $change_js, 'user_name';
+   my $u_conf  = $context->config->user;
+   my $attr    = $self->field('name')->element_attr;
 
-   $attr->{javascript} = { onblur => $js };
+   $attr->{javascript} = { onblur => $blur_js };
    $attr->{minlength}  = $u_conf->{min_name_len};
+
    $attr = $self->field('password')->element_attr;
+   $attr->{javascript} = { oninput => sprintf $change_js, 'password' };
    $attr->{minlength}  = $u_conf->{min_password_len};
+
+   $attr = $self->field('auth_code')->element_attr;
+   $attr->{javascript} = { onblur => sprintf $change_js, 'auth_code' };
+
+   $attr = $self->field('password_reset')->element_attr;
+   $attr->{javascript} = { onclick => $unrequire_js };
+
+   $attr = $self->field('totp_reset')->element_attr;
+   $attr->{javascript} = { onclick => $unrequire_js };
    return;
 };
 

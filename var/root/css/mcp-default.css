@@ -874,7 +874,6 @@ form.classic .input-button a.form-button {
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
   line-height: 0.8rem;
-  margin: 0.5rem 0;
   overflow: hidden;
   padding: 0.366rem 0.75rem;
   position: relative;
@@ -954,7 +953,7 @@ form.classic .input-password .reveal {
 form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
-  padding: 0.2rem 0 0 0.35rem;
+  padding: 0.2rem 0.35rem;
   white-space: nowrap;
 }
 form.classic .page-list {
@@ -1303,8 +1302,9 @@ body {
   display: inline-block;
 }
 .state-table .search-box .search-wrapper {
-  display: flex;
   align-items: stretch;
+  display: flex;
+  line-height: 1rem;
 }
 .state-table .search-box .search-wrapper .search-hidden {
   display: inline-block;
@@ -1342,13 +1342,20 @@ body {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   height: 1.6rem;
-  padding: 0.175rem 1rem 0.325rem 0.5rem;
+  padding: 0.25rem 1rem 0.25rem 0.5rem;
   vertical-align: top;
 }
 .state-table .search-box .search-wrapper .search-button button,
 .state-table .search-box .search-wrapper .search-button button::after {
   border-top-left-radius: 2px;
   border-bottom-left-radius: 2px;
+}
+.state-table .search-box .search-wrapper .search-button button {
+  padding: 1px 0.5rem 1px 0.25rem;
+}
+.state-table .search-box .search-wrapper .search-button button .icon-wrapper {
+  height: 20px;
+  width: 20px;
 }
 .state-table .search-box .search-wrapper input.search-field {
   color: inherit;
@@ -1357,6 +1364,7 @@ body {
   border-bottom: 2px inset gainsboro;
   border-top: 2px inset gainsboro;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
+  line-height: 1rem;
   margin: 0;
   outline: 0;
   padding: 0 0.25rem;
@@ -1552,7 +1560,12 @@ body {
   color: black;
 }
 .state-table .dialog-form {
-  padding: 0 1rem 0.25rem 1rem;
+  padding: 0 0.5rem;
+}
+.state-table .dialog-form td:first-child,
+.state-table .dialog-form th {
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
 }
 .state-table .dialog-form table td:first-child,
 .state-table .dialog-form table th:first-child {
@@ -1562,8 +1575,61 @@ body {
 .state-table .dialog-form table th:last-child {
   padding-right: 0;
 }
+.state-table .dialog-form .checkbox {
+  isolation: isolate;
+  padding-top: 0.25rem;
+  position: relative;
+  text-align: left;
+}
+.state-table .dialog-form .checkbox input[type=checkbox] {
+  height: 1.25rem;
+  left: -5px;
+  margin: 0;
+  opacity: 0;
+  position: relative;
+  width: 40px;
+  z-index: 3;
+}
+.state-table .dialog-form .checkbox::after {
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border: 2px inset gainsboro;
+  border-radius: 10px;
+  content: '';
+  display: block;
+  position: absolute;
+  height: 1.25rem;
+  left: 0;
+  top: 0.25rem;
+  width: 20px;
+  z-index: 2;
+}
+.state-table .dialog-form .checkbox:has(input[type=checkbox]:checked)::after {
+  left: 20px;
+}
+.state-table .dialog-form .checkbox::before {
+  background: firebrick;
+  border: 2px inset gainsboro;
+  border-radius: 10px;
+  content: '';
+  display: block;
+  position: absolute;
+  height: 1.25rem;
+  left: 0;
+  width: 40px;
+  z-index: 1;
+}
+.state-table .dialog-form .checkbox:has(input[type=checkbox]:checked)::before {
+  background: seagreen;
+}
 .state-table .dialog-input {
+  margin-bottom: 0.5rem;
   padding: 0.25rem 0;
+}
+.state-table .dialog-input select {
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
 .state-table .dialog-input button {
   margin-right: 0.25rem;
@@ -1624,14 +1690,15 @@ body {
   display: inline-block;
   height: 20px;
   width: 20px;
-  vertical-align: bottom;
+  vertical-align: top;
 }
 .state-table .grab-handle-cell {
   cursor: grab;
+  padding-top: 0.25rem;
   text-align: center;
 }
 .state-table .grab-handle-cell:hover {
-  background: seagreen;
+  background: orange;
 }
 .state-table .chart-container,
 .state-table .table-container {
@@ -1669,6 +1736,7 @@ body {
 .state-table .table-form .table-button span,
 .state-table .table-form button span,
 .state-table .dialog-form button span {
+  display: inline-block;
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
@@ -1892,8 +1960,6 @@ body {
 }
 .input-field .job-state {
   border-radius: 5px;
-  line-height: 1.5rem;
-  padding-right: 0.25rem;
 }
 *,
 *::before,
@@ -1912,9 +1978,9 @@ html:has(body.light) {
 body {
   background-image: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
   display: grid;
-  grid-template-areas: "header header" "sidebar main" "sidebar footer";
+  grid-template-areas: "header header" "sidebar main";
   grid-template-columns: 7.5rem 1fr;
-  grid-template-rows: auto 1fr 2rem;
+  grid-template-rows: auto 1fr;
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
@@ -1922,8 +1988,8 @@ body {
 }
 @media (max-width: 480px) {
   body {
-    grid-template-areas: "header header" "sidebar sidebar" "main main" "footer footer";
-    grid-template-rows: auto auto 1fr 2rem;
+    grid-template-areas: "header header" "sidebar sidebar" "main main";
+    grid-template-rows: auto auto 1fr;
   }
 }
 body:has(aside.nav-link-icon) {
@@ -1953,18 +2019,21 @@ main {
   scrollbar-color: orange linen;
   z-index: 1;
 }
-footer {
-  grid-area: footer;
-  bottom: 0;
+.main-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  position: absolute;
+  width: 100%;
+}
+.main-container footer {
   padding: 0.5rem;
-  position: sticky;
 }
 .standard {
   display: flex;
   line-height: 1.5;
   padding: 0.5rem;
-  position: absolute;
-  width: 100%;
 }
 .standard h1,
 .standard h2,
