@@ -11,7 +11,7 @@ has '+redis_client_name' => is => 'ro', default => 'job_stash';
 sub send_message {
    my ($self, $context, $token, $params) = @_;
 
-   $self->redis->set($token, $self->json_parser->encode($params));
+   $self->redis_client->set($token, $self->json_parser->encode($params));
 
    my $prefix  = $context->config->prefix;
    my $program = $context->config->bin->catfile("${prefix}-cli");

@@ -10,6 +10,7 @@ with    'HTML::Forms::Role::Defaults';
 has '+default_field_traits' => default => sub { [] };
 has '+default_wrapper_tag' => default => 'fieldset';
 has '+do_form_wrapper' => default => TRUE;
+has '+form_wrapper_class' => default => sub { ['wide'] };
 has '+info_message' => default => 'Capture the QR with your mobile device';
 has '+no_update' => default => TRUE;
 has '+title' => default => 'TOTP Account Information';

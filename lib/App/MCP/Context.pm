@@ -78,16 +78,16 @@ has '_stash' =>
    is      => 'lazy',
    isa     => HashRef,
    default => sub {
-      my $self       = shift;
-      my $prefix     = $self->config->prefix;
-      my $skin       = $self->session->skin || $self->config->skin;
-      my $stylesheet = $self->request->uri_for("css/${prefix}-${skin}.css");
-      my $javascript = $self->request->uri_for("js/${prefix}.js");
+      my $self   = shift;
+      my $prefix = $self->config->prefix;
+      my $skin   = $self->session->skin || $self->config->skin;
 
       return {
-         javascript         => $javascript->as_string,
+         chartlibrary       => 'js/highcharts.js',
+         favicon            => 'img/favicon.ico',
+         javascript         => "js/${prefix}.js",
          session_updated    => $self->session->updated,
-         stylesheet         => $stylesheet->as_string,
+         stylesheet         => "css/${prefix}-${skin}.css",
          theme              => $self->session->theme,
          verification_token => $self->verification_token,
          version            => App::MCP->VERSION

@@ -6,12 +6,7 @@ use Unexpected::Functions       qw( throw );
 use Moo;
 use App::MCP::Attributes; # Will do namespace cleaning
 
-with 'App::MCP::Role::Config';
-with 'App::MCP::Role::Redis';
-
 has 'name' => is => 'ro', isa => Str, required => TRUE;
-
-has '+redis_client_name' => default => 'job_stash';
 
 sub field : Auth('none') {
    my ($self, $context, $field_name, $operation) = @_;
@@ -20,7 +15,7 @@ sub field : Auth('none') {
 
    if ($operation eq 'validate') {
       my $value   = $context->request->query_parameters->{value};
-      my $options = { context => $context, redis => $self->redis_client };
+      my $options = { context => $context };
       my $name    = $self->name; $name =~ s{ _ }{::}gmx;
       my $form    = $context->models->{page}->new_form($name, $options);
       my $field   = $form->field($field_name);

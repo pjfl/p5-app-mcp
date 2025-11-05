@@ -314,6 +314,7 @@
   cursor: pointer;
   display: inline-block;
   line-height: 0.8rem;
+  margin-right: 0.25rem;
   overflow: hidden;
   padding: 0.25rem 0.75rem;
   position: relative;
@@ -389,6 +390,7 @@
 .filter-container .type-container input[type=text] {
   border-radius: 5px;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
+  margin-right: 0.5rem;
 }
 .filter-container .type-container label {
   font-family: Roboto, system-ui, sans-serif;
@@ -506,27 +508,23 @@
   right: 0.25rem;
 }
 form.classic {
+  --label-width: 7rem;
   background: ivory;
   border-radius: 5px;
-  box-shadow: 3px 3px 3px;
-  color: gray;
-  display: inline-block;
-  padding-bottom: 0.25rem;
-  position: relative;
-}
-form.classic div {
+  box-shadow: 3px 3px 3px gray;
   color: black;
+  display: inline-block;
+  padding-bottom: 0.125rem;
+  position: relative;
 }
 form.classic .alert {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
 }
-form.classic .form-page.hide {
-  display: none;
-}
 form.classic .form-wrapper {
   border-radius: 5px;
-  padding: 0 1rem;
+  min-width: 16rem;
+  padding: 0 1rem 0.25rem 1rem;
   position: relative;
 }
 form.classic .form-wrapper .form-title {
@@ -534,27 +532,40 @@ form.classic .form-wrapper .form-title {
   font-family: Roboto, system-ui, sans-serif;
   margin-left: -2px;
 }
-form.classic .form-wrapper.wide .input-field input,
-form.classic .form-wrapper.wide .input-field select,
-form.classic .form-wrapper.wide .input-field textarea,
-form.classic .form-wrapper.wide .input-field .alert {
-  max-width: 40rem;
-}
 form.classic .form-wrapper:has(.input-field span.field-label) .input-button button {
   margin-top: 1rem;
 }
+form.classic.narrow,
+form.classic .form-wrapper.narrow {
+  --label-width: 5rem;
+}
+form.classic.wide,
+form.classic .form-wrapper.wide {
+  min-width: 40rem;
+}
+form.classic .form-page > .alert-info,
+form.classic .form-wrapper > .alert-info,
+form.classic > .alert-info {
+  padding-bottom: 0.5rem;
+}
+form.classic .form-wrapper > .alert-info {
+  padding-top: 0.25rem;
+}
+form.classic .input-field {
+  padding-bottom: 0.5rem;
+  position: relative;
+}
 form.classic .input-field:has(label.field-label) {
-  align-items: flex-start;
+  align-items: baseline;
   column-gap: 0.5rem;
   display: grid;
-  grid-template-columns: 7rem min-content auto;
+  grid-template-columns: var(--label-width) min-content auto;
   grid-template-areas: "label input selector" "label alert alert";
   justify-items: start;
-  min-width: 20rem;
-  row-gap: 0.25rem;
+  min-width: 12rem;
 }
 form.classic .input-field.label-right:has(label.field-label) {
-  grid-template-columns: min-content auto 7rem;
+  grid-template-columns: min-content auto var(--label-width);
   grid-template-areas: "selector input label" "alert alert label";
 }
 form.classic .input-field.label-right:has(label.field-label) input,
@@ -563,35 +574,29 @@ form.classic .input-field.label-right:has(label.field-label) span,
 form.classic .input-field.label-right:has(label.field-label) textarea {
   justify-self: end;
 }
-form.classic .input-field:has(span.digit-input-wrapper) .field-label::after,
-form.classic .input-field:has(input[required=required]) .field-label::after,
-form.classic .input-field:has(select[required=required]) .field-label::after,
-form.classic .input-field:has(textarea[required=required]) .field-label::after {
-  color: red;
-  content: '*';
-  min-width: 2ch;
-  padding-left: 0.25rem;
+form.classic .input-field.hide {
+  display: none !important;
+  opacity: 0;
 }
-form.classic .input-field:has(span.digit-input-wrapper > input:valid) .field-label::after,
-form.classic .input-field:has(input:valid) .field-label::after,
-form.classic .input-field:has(select:valid) .field-label::after,
-form.classic .input-field:has(textarea:valid) .field-label::after {
-  content: ' ';
+form.classic .input-field.inline:not(.hide) {
+  display: inline-grid !important;
+  margin-right: 0.5rem;
 }
-form.classic .input-field:has(input:focus) span.field-label {
-  background: bisque;
-  border: 2px inset gainsboro;
-  border-bottom: 2px solid bisque;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
+form.classic .input-field.inline:not(.hide):not(.input-datastructure):has(label.field-label) {
+  grid-template-columns: min-content min-content auto !important;
 }
-form.classic .input-field:hover span.field-label,
-form.classic .input-field:has(input:focus) span.field-label,
-form.classic .input-field:has(input:valid) span.field-label {
-  top: -3px;
+form.classic .input-field.inline:not(.hide) .input-field {
+  padding-bottom: 0;
+}
+form.classic .input-field:has(span.field-label) {
+  display: grid;
+  grid-template-columns: 0 min-content auto;
+  grid-template-areas: "label input selector" "label alert alert";
+  justify-content: center;
 }
 form.classic .input-field:has(span.field-label) input {
   height: 1.75rem;
+  margin-top: 1.25rem;
   max-width: unset;
   outline: 0;
 }
@@ -608,43 +613,53 @@ form.classic .input-field:has(span.field-label) input.digit:last-child {
   border-bottom-right-radius: 50px;
   border-top-right-radius: 50px;
 }
-form.classic .input-field:has(span.field-label)::before {
-  content: '';
-  display: block;
-  height: 22px;
+form.classic .input-field span.field-label {
+  border: 2px solid transparent;
+  padding: 2px 0.25rem;
+  position: absolute;
+  top: 1.25rem;
+  transition: top 0.5s;
+  translate: 0.5rem;
 }
-form.classic .input-field {
-  padding-bottom: 0.5rem;
-  position: relative;
+form.classic .input-field:hover span.field-label,
+form.classic .input-field:has(input:focus) span.field-label,
+form.classic .input-field:has(input:valid) span.field-label {
+  top: -0.25rem;
+}
+form.classic .input-field:has(.digit-input-wrapper) .field-label::after,
+form.classic .input-field:has(input[required=required]) .field-label::after,
+form.classic .input-field:has(select[required=required]) .field-label::after,
+form.classic .input-field:has(textarea[required=required]) .field-label::after {
+  color: red;
+  content: '*';
+  min-width: 2ch;
+  padding-left: 0.25rem;
+}
+form.classic .input-field:has(.digit-input-wrapper > input:valid) .field-label::after,
+form.classic .input-field:has(input:valid) .field-label::after,
+form.classic .input-field:has(select:valid) .field-label::after,
+form.classic .input-field:has(textarea:valid) .field-label::after {
+  content: ' ';
 }
 form.classic .input-field input,
 form.classic .input-field select,
 form.classic .input-field textarea {
   border-radius: 5px;
-  font-size: 0.85rem;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
+  font-size: 0.85rem;
   grid-area: input;
 }
 form.classic .input-field input {
   height: 1.5rem;
-  max-width: 40rem;
 }
 form.classic .input-field select {
   background: linear-gradient(0deg, bisque, whitesmoke);
-  max-width: 10rem;
-}
-form.classic .input-field span.field-label {
-  border: 2px solid transparent;
-  left: 0.5rem;
-  padding: 2px 0.25rem;
-  position: absolute;
-  top: 22px;
-  transition: top 0.5s;
+  max-width: 12rem;
 }
 form.classic .input-field textarea {
   box-sizing: content-box;
-  max-width: 40rem;
   min-height: 3lh;
+  max-width: 24rem;
   min-width: 15rem;
   overflow: auto;
   padding-left: 0.25rem;
@@ -683,11 +698,13 @@ form.classic .input-field .alert {
   display: block;
   font-size: 0.8rem;
   grid-area: alert;
-  max-width: 20rem;
-  padding: 0.5rem;
+  margin-top: 0.25rem;
+  max-width: 14rem;
+  padding: 0.25rem 0.5rem;
 }
 form.classic .input-field .alert-error {
   background: lightpink;
+  box-shadow: 3px 3px 3px gray;
 }
 form.classic .input-field .alert-info {
   background: bisque;
@@ -696,7 +713,6 @@ form.classic .input-field .field-label {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   grid-area: label;
-  padding-top: 0.2rem;
   position: relative;
   white-space: nowrap;
 }
@@ -704,22 +720,137 @@ form.classic .input-field .field-label .label-sep-after {
   position: absolute;
   right: 0.25rem;
 }
-form.classic .input-field .input-hidden .alert {
+form.classic .input-field.input-button,
+form.classic .input-field.input-filter,
+form.classic .input-field.input-hidden .alert {
   max-width: 100%;
 }
-form.classic .input-field.inline {
-  display: inline-grid !important;
-  margin-right: 0.5rem;
+form.classic .data-structure,
+form.classic .input-button,
+form.classic .input-selector {
+  isolation: isolate;
 }
-form.classic .input-field.hide {
-  display: none !important;
+form.classic .data-structure button,
+form.classic .input-button button,
+form.classic .input-selector button,
+form.classic .data-structure a.form-button,
+form.classic .input-button a.form-button,
+form.classic .input-selector a.form-button {
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border: 2px outset gainsboro;
+  border-radius: 50px;
+  color: seagreen;
+  cursor: pointer;
+  display: inline-block;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1rem;
+  line-height: 0.8rem;
+  overflow: hidden;
+  padding: 0.366rem 0.75rem;
+  position: relative;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: border 0.5s, color 0.5s;
+}
+form.classic .data-structure button span,
+form.classic .input-button button span,
+form.classic .input-selector button span,
+form.classic .data-structure a.form-button span,
+form.classic .input-button a.form-button span,
+form.classic .input-selector a.form-button span,
+form.classic .data-structure button svg,
+form.classic .input-button button svg,
+form.classic .input-selector button svg,
+form.classic .data-structure a.form-button svg,
+form.classic .input-button a.form-button svg,
+form.classic .input-selector a.form-button svg {
+  font-size: 0.7rem;
+  letter-spacing: 0.1rem;
+  position: relative;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  z-index: 3;
+}
+form.classic .data-structure button span.icon-wrapper,
+form.classic .input-button button span.icon-wrapper,
+form.classic .input-selector button span.icon-wrapper,
+form.classic .data-structure a.form-button span.icon-wrapper,
+form.classic .input-button a.form-button span.icon-wrapper,
+form.classic .input-selector a.form-button span.icon-wrapper {
+  display: block;
+}
+form.classic .data-structure button span.icon-wrapper svg,
+form.classic .input-button button span.icon-wrapper svg,
+form.classic .input-selector button span.icon-wrapper svg,
+form.classic .data-structure a.form-button span.icon-wrapper svg,
+form.classic .input-button a.form-button span.icon-wrapper svg,
+form.classic .input-selector a.form-button span.icon-wrapper svg {
+  vertical-align: top;
+}
+form.classic .data-structure button:hover,
+form.classic .input-button button:hover,
+form.classic .input-selector button:hover,
+form.classic .data-structure a.form-button:hover,
+form.classic .input-button a.form-button:hover,
+form.classic .input-selector a.form-button:hover {
+  border: 2px inset gainsboro;
+  color: black;
+}
+form.classic .data-structure button::before,
+form.classic .input-button button::before,
+form.classic .input-selector button::before,
+form.classic .data-structure a.form-button::before,
+form.classic .input-button a.form-button::before,
+form.classic .input-selector a.form-button::before {
+  background: radial-gradient(limegreen, transparent, transparent);
+  content: '';
+  display: block;
+  height: 3rem;
+  left: var(--x);
   opacity: 0;
+  position: absolute;
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.5s;
+  width: 3rem;
+  z-index: 1;
+}
+form.classic .data-structure button:hover::before,
+form.classic .input-button button:hover::before,
+form.classic .input-selector button:hover::before,
+form.classic .data-structure a.form-button:hover::before,
+form.classic .input-button a.form-button:hover::before,
+form.classic .input-selector a.form-button:hover::before {
+  opacity: 1;
+}
+form.classic .data-structure button::after,
+form.classic .input-button button::after,
+form.classic .input-selector button::after,
+form.classic .data-structure a.form-button::after,
+form.classic .input-button a.form-button::after,
+form.classic .input-selector a.form-button::after {
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border-radius: 50px;
+  content: '';
+  inset: 3px;
+  position: absolute;
+  z-index: 2;
+}
+form.classic .data-structure button[disabled=disabled],
+form.classic .input-button button[disabled=disabled],
+form.classic .input-selector button[disabled=disabled],
+form.classic .data-structure button[disabled=disabled]::after,
+form.classic .input-button button[disabled=disabled]::after,
+form.classic .input-selector button[disabled=disabled]::after {
+  background: linear-gradient(0deg, gainsboro, whitesmoke);
 }
 form.classic .input-boolean .checkbox-wrapper {
   display: flex;
   grid-area: input;
   isolation: isolate;
-  padding-top: 0.2rem;
+  padding: 2px 0;
   position: relative;
 }
 form.classic .input-boolean .checkbox-wrapper input[type=checkbox] {
@@ -739,7 +870,6 @@ form.classic .input-boolean .checkbox-wrapper::after {
   position: absolute;
   height: 1.25rem;
   left: 0;
-  top: 3px;
   width: 20px;
   z-index: 2;
 }
@@ -761,128 +891,34 @@ form.classic .input-boolean .checkbox-wrapper::before {
 form.classic .input-boolean .checkbox-wrapper:has(input[type=checkbox]:checked)::before {
   background: seagreen;
 }
-form.classic .data-structure,
-form.classic .input-button,
-form.classic .input-selector {
-  isolation: isolate;
-}
-form.classic .data-structure button,
-form.classic .input-button button,
-form.classic .input-selector button {
-  background: linear-gradient(0deg, bisque, whitesmoke);
-  border: 2px outset gainsboro;
-  border-radius: 50px;
-  color: seagreen;
-  cursor: pointer;
-  overflow: hidden;
-  padding: 0.25rem 0.75rem;
-  position: relative;
-  transition: 0.5s;
-}
-form.classic .data-structure button span,
-form.classic .input-button button span,
-form.classic .input-selector button span,
-form.classic .data-structure button svg,
-form.classic .input-button button svg,
-form.classic .input-selector button svg {
-  font-size: 0.7rem;
-  letter-spacing: 0.1rem;
-  position: relative;
-  text-decoration: none;
-  text-transform: uppercase;
-  z-index: 3;
-}
-form.classic .data-structure button span.icon-wrapper,
-form.classic .input-button button span.icon-wrapper,
-form.classic .input-selector button span.icon-wrapper {
-  display: block;
-}
-form.classic .data-structure button span.icon-wrapper svg,
-form.classic .input-button button span.icon-wrapper svg,
-form.classic .input-selector button span.icon-wrapper svg {
-  vertical-align: top;
-}
-form.classic .data-structure button:hover,
-form.classic .input-button button:hover,
-form.classic .input-selector button:hover {
-  border: 2px inset gainsboro;
-  color: black;
-}
-form.classic .data-structure button::before,
-form.classic .input-button button::before,
-form.classic .input-selector button::before {
-  background: radial-gradient(limegreen, transparent, transparent);
-  content: '';
-  display: block;
-  height: 3rem;
-  left: var(--x);
-  opacity: 0;
-  position: absolute;
-  top: var(--y);
-  transform: translate(-50%, -50%);
-  transition: opacity 0.5s;
-  width: 3rem;
-  z-index: 1;
-}
-form.classic .data-structure button:hover::before,
-form.classic .input-button button:hover::before,
-form.classic .input-selector button:hover::before {
-  opacity: 1;
-}
-form.classic .data-structure button::after,
-form.classic .input-button button::after,
-form.classic .input-selector button::after {
-  background: linear-gradient(0deg, bisque, whitesmoke);
-  border-radius: 50px;
-  content: '';
-  inset: 3px;
-  position: absolute;
-  z-index: 2;
-}
-form.classic .data-structure button[disabled=disabled],
-form.classic .input-button button[disabled=disabled],
-form.classic .input-selector button[disabled=disabled],
-form.classic .data-structure button[disabled=disabled]::after,
-form.classic .input-button button[disabled=disabled]::after,
-form.classic .input-selector button[disabled=disabled]::after {
-  background: linear-gradient(0deg, gainsboro, whitesmoke);
+form.classic .input-boolean:has(.label-checkbox) {
+  align-items: center !important;
 }
 form.classic .input-button {
   align-items: center;
   display: flex;
   justify-content: right;
+  padding-top: 0.25rem;
 }
 form.classic .input-button.expand button {
   flex: 2;
 }
-form.classic .input-button.inline {
-  display: inline-flex;
-}
 form.classic .input-button.right {
-  margin-right: 0;
+  margin-right: 0 !important;
   position: absolute;
   right: 0.5rem;
 }
-form.classic .input-button a.form-button {
-  background: linear-gradient(0deg, bisque, whitesmoke);
-  border: 2px outset gainsboro;
-  border-radius: 50px;
-  color: seagreen;
-  cursor: pointer;
-  display: inline-block;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.7rem;
-  letter-spacing: 0.1rem;
-  line-height: 0.8rem;
-  overflow: hidden;
-  padding: 0.366rem 0.75rem;
-  position: relative;
-  text-decoration: none;
-  text-transform: uppercase;
-  transition: border 0.5s, color 0.5s;
-}
 form.classic .input-selector button {
   grid-area: selector;
+}
+form.classic .input-display span {
+  font-size: 0.8rem;
+  grid-area: input;
+  padding: 0.125rem 0.35rem;
+  white-space: nowrap;
+}
+form.classic .input-display:has(img) {
+  align-items: flex-start !important;
 }
 form.classic .input-duration .input-select-integer,
 form.classic .input-interval .input-group,
@@ -950,31 +986,22 @@ form.classic .input-password .reveal {
   cursor: pointer;
   grid-area: selector;
 }
-form.classic .input-display span {
-  font-size: 0.8rem;
+form.classic .input-select:has(label.select-multiple) {
+  align-items: flex-start !important;
+  padding-bottom: 0rem;
+}
+form.classic .input-select:has(label.select-multiple) label.select-multiple {
+  padding-top: 2px;
+}
+form.classic .input-textarea:has(.field-label) {
+  align-items: flex-start !important;
+}
+form.classic .input-textarea:has(.field-label) .field-label {
+  padding-top: 3px;
+}
+form.classic .digit-input-wrapper {
+  display: flex;
   grid-area: input;
-  padding: 0.2rem 0.35rem;
-  white-space: nowrap;
-}
-form.classic .page-list {
-  list-style-type: none;
-  margin: 0;
-  padding: 0 0 0.5rem 0;
-}
-form.classic .page-list li {
-  border-bottom: 1px solid gray;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 5px;
-  cursor: pointer;
-  display: inline;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.8rem;
-  padding: 0 0.5rem;
-}
-form.classic .page-list li.selected {
-  border: 1px solid gray;
-  border-bottom: 1px solid transparent;
-  color: black;
 }
 form.classic .ds-add-icon {
   font-family: Roboto, system-ui, sans-serif;
@@ -987,9 +1014,9 @@ form.classic .ds-add-icon svg {
 form.classic .ds-form {
   display: flex;
   flex-direction: column;
-  padding-bottom: 0.5rem;
+  padding-bottom: 1rem;
   position: relative;
-  row-gap: 0.5rem;
+  gap: 0.5rem;
 }
 form.classic .ds-form .ds-header {
   font-family: Roboto, system-ui, sans-serif;
@@ -1003,6 +1030,7 @@ form.classic .ds-form .ds-row {
   box-shadow: 3px 3px 3px gray;
   display: flex;
   justify-content: space-between;
+  padding: 0.5rem;
 }
 form.classic .ds-form .ds-field {
   border-radius: 5px;
@@ -1010,7 +1038,11 @@ form.classic .ds-form .ds-field {
   border-top-right-radius: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.5rem 0 0.5rem 0.5rem;
+}
+form.classic .ds-form .ds-field img {
+  aspect-ratio: 16 / 9;
+  inline-size: 100%;
+  object-fit: contain;
 }
 form.classic .ds-form .ds-field input[readonly=readonly] {
   background: wheat !important;
@@ -1029,8 +1061,10 @@ form.classic .ds-form .ds-input.input-text[readonly=readonly] {
   border: 0;
   border-radius: 0;
   color: black;
+  padding: 0;
 }
 form.classic .ds-form .ds-output {
+  box-sizing: content-box;
   font-size: 0.8rem;
   margin-right: 0.25rem;
 }
@@ -1050,7 +1084,7 @@ form.classic .ds-form .ds-remove {
   border-radius: 5px;
   border-bottom-left-radius: 0;
   border-top-left-radius: 0;
-  padding: 0.5rem;
+  padding: 0.125rem 0 0 0.25rem;
 }
 form.classic .ds-form .ds-remove .ds-remove-icon {
   align-items: center;
@@ -1075,20 +1109,53 @@ form.classic .ds-form .ds-remove .ds-remove-icon:hover {
   box-shadow: inset 0 0 3px gray;
   color: black;
 }
+form.classic .ds-form .ds-tag {
+  padding-bottom: 0.25rem;
+}
 form.classic .ds-form .ds-tag-label {
   font-family: Roboto, system-ui, sans-serif;
   font-size: 0.8rem;
   margin-right: 0.25rem;
 }
+form.classic .ds-form.horizontal {
+  flex-direction: row;
+  overflow-x: auto;
+  max-width: 21rem;
+  overscroll-behavior-inline: contain;
+  scroll-behavior: smooth;
+}
+form.classic .ds-form.horizontal.snaps-inline {
+  scroll-snap-type: inline mandatory;
+}
+form.classic .ds-form.horizontal.snaps-inline > * {
+  scroll-snap-align: start;
+}
+form.classic .form-page.hide {
+  display: none;
+}
+form.classic .page-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0 0 0.5rem 0;
+}
+form.classic .page-list li {
+  border-bottom: 1px solid gray;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  color: gray;
+  cursor: pointer;
+  display: inline;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  padding: 0 0.5rem;
+}
+form.classic .page-list li.selected {
+  border: 1px solid gray;
+  border-bottom: 1px solid transparent;
+  color: black;
+}
 form.classic.filemanager {
   padding: 0.5rem;
-}
-.modal .filemanager {
-  margin: 0;
-  min-width: 10rem;
-}
-.modal .filemanager .input-field:has(label.field-label) {
-  grid-template-columns: auto max-content auto;
 }
 .form-error {
   background: lightpink;
@@ -1105,7 +1172,7 @@ form.classic.filemanager {
   margin: 0.5rem 0 !important;
 }
 .form-messages {
-  padding-bottom: 0.5rem;
+  display: none;
 }
 .form-messages .alert .card {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
@@ -1133,32 +1200,35 @@ form.classic.filemanager {
 .form-messages .alert-severe .card {
   border-radius: 5px;
   background: lightpink;
+  box-shadow: 3px 3px 3px gray;
   padding: 0.25rem;
 }
+.form-messages .alert-error,
 .form-messages .alert-error-message {
-  display: block;
   margin-left: -0.25rem;
 }
-.selector form.classic {
+.form-messages:has(span) {
+  display: inline-flex;
+  flex-direction: column;
+  padding-bottom: 0.5rem;
+}
+.modal .filemanager {
+  margin: 0;
+  min-width: 10rem;
+}
+.modal .filemanager .input-field:has(label.field-label) {
+  grid-template-columns: auto max-content auto;
+}
+.selector form.classic:not(.wide) {
   box-shadow: none;
   margin: 0;
-  min-width: 15rem;
+  min-width: 16rem;
 }
 body {
   counter-reset: section;
 }
-.state-table {
-  text-align: left;
-}
 .state-table caption {
   display: none;
-}
-.state-table .caption {
-  font-family: Roboto, system-ui, sans-serif;
-  font-weight: normal;
-  margin: 0;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 .state-table table {
   border-collapse: collapse;
@@ -1243,10 +1313,19 @@ body {
 .state-table table tr.inactive {
   background: gainsboro;
 }
-.state-table .active-control-label {
-  font-family: Roboto, system-ui, sans-serif;
+.state-table .chart-container,
+.state-table .table-container {
+  display: inline-block;
+  text-align: left;
+  vertical-align: top;
 }
-.state-table .active-control-label,
+.state-table .caption {
+  font-family: Roboto, system-ui, sans-serif;
+  font-weight: normal;
+  margin: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .state-table .download-link,
 .state-table .page-control a,
 .state-table .page-control li,
@@ -1336,7 +1415,6 @@ body {
   background-image: linear-gradient(0deg, gainsboro, whitesmoke);
   border: 2px outset gainsboro;
   border-radius: 50px 0 0 50px;
-  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.6);
   color: gray;
   display: inline-block;
   font-family: Roboto, system-ui, sans-serif;
@@ -1414,6 +1492,12 @@ body {
 }
 .state-table .active-control {
   display: inline;
+}
+.state-table .active-control-label {
+  color: gray;
+  cursor: pointer;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: small;
 }
 .state-table .bottom-control,
 .state-table .top-control {
@@ -1700,11 +1784,6 @@ body {
 .state-table .grab-handle-cell:hover {
   background: orange;
 }
-.state-table .chart-container,
-.state-table .table-container {
-  display: inline-block;
-  vertical-align: top;
-}
 .state-table .table-form .credit-control {
   display: flex;
   justify-content: space-between;
@@ -1838,6 +1917,9 @@ body {
 }
 .state-table.object-view td.boolean {
   text-align: left;
+}
+.state-table.object-view tr {
+  line-height: 1.5rem;
 }
 .state-table.object-view .caption {
   margin-left: 0.5rem;
@@ -2019,7 +2101,7 @@ main {
   scrollbar-color: orange linen;
   z-index: 1;
 }
-.main-container {
+main .main-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2027,7 +2109,7 @@ main {
   position: absolute;
   width: 100%;
 }
-.main-container footer {
+footer {
   padding: 0.5rem;
 }
 .standard {
@@ -2497,7 +2579,7 @@ main {
   display: inline-block;
   left: unset;
   overflow-x: hidden;
-  top: 1.6rem;
+  top: 1.25rem;
   width: 0;
 }
 .sidebar .nav-list.global li.global:hover .nav-panel {
@@ -2563,8 +2645,8 @@ main {
 }
 .messages-panel {
   bottom: 2rem;
+  left: 1rem;
   position: absolute;
-  right: 1rem;
   z-index: 3;
 }
 .messages-panel .message-item {
@@ -2717,7 +2799,7 @@ main {
   cursor: pointer;
   display: inline-block;
   line-height: 0.8rem;
-  margin: 0.5rem 0;
+  margin-bottom: 0.5rem;
   overflow: hidden;
   padding: 0.25rem 0.75rem;
   position: relative;

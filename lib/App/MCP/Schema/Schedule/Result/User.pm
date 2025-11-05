@@ -266,7 +266,7 @@ sub update {
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       constraints    => {
-         user_name   => { max_length => 64, min_length => 1, } },
+         user_name   => { max_length => 64, min_length => 3, } },
       fields         => {
          password    => { validate => 'isMandatory' },
          user_name   => {

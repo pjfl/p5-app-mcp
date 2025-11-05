@@ -12,9 +12,9 @@ extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
 has '+name'         => default => 'Login';
-has '+title'        => default => 'Login';
 has '+info_message' => default => 'Stop! You have your papers?';
 has '+item_class'   => default => 'User';
+has '+title'        => default => 'Login';
 
 has_field 'name' =>
    html_name   => 'user_name',
@@ -79,27 +79,23 @@ after 'after_build_fields' => sub {
       $self->field('totp_reset')->add_wrapper_class('hide');
    }
 
+   my $util          = $context->config->wcom_resources->{form_util};
    my $change_fields = "['login', 'password_reset', 'totp_reset']";
-   my $change_js     = "WCom.Form.Util.fieldChange('%s', ${change_fields})";
-   my $unrequire_js  = "WCom.Form.Util.unrequire(['auth_code', 'password'])";
+   my $change_js     = "${util}.fieldChange('%s', ${change_fields})";
+   my $unrequire_js  = "${util}.unrequire(['auth_code', 'password'])";
+   my $showif        = "${util}.showIfRequired";
 
-   my $utils  = $context->config->wcom_resources;
-   my $method = $utils->{form_util} . '.showIfRequired';
-   my $params = { class => 'User', property => 'enable_2fa' };
-   my $uri    = $context->uri_for_action(
-      'api/object_fetch', ['property'], $params
-   );
-   my $showif  = "${method}('user_name', ['auth_code','totp_reset'], '${uri}')";
-   my $blur_js = "${showif}; " . sprintf $change_js, 'user_name';
-   my $u_conf  = $context->config->user;
+   my $action  = 'api/object_fetch';
+   my $params  = { class => 'User', property => 'enable_2fa' };
+   my $uri     = $context->uri_for_action($action, ['property'], $params);
+   my $show_js = "${showif}('user_name', ['auth_code','totp_reset'], '${uri}')";
+   my $blur_js = "${show_js}; " . sprintf $change_js, 'user_name';
    my $attr    = $self->field('name')->element_attr;
 
    $attr->{javascript} = { onblur => $blur_js };
-   $attr->{minlength}  = $u_conf->{min_name_len};
 
    $attr = $self->field('password')->element_attr;
    $attr->{javascript} = { oninput => sprintf $change_js, 'password' };
-   $attr->{minlength}  = $u_conf->{min_password_len};
 
    $attr = $self->field('auth_code')->element_attr;
    $attr->{javascript} = { onblur => sprintf $change_js, 'auth_code' };

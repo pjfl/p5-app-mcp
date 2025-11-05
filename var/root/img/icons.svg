@@ -69,7 +69,7 @@
        d="M 330,768 480,618 630,768 672,726 522,576 672,426 630,384 480,534 330,384 288,426 438,576 288,726 Z M 480,976 Q 398,976 325,944.5 252,913 197.5,858.5 143,804 111.5,731 80,658 80,576 80,493 111.5,420 143,347 197.5,293 252,239 325,207.5 398,176 480,176 q 83,0 156,31.5 73,31.5 127,85.5 54,54 85.5,127 31.5,73 31.5,156 0,82 -31.5,155 Q 817,804 763,858.5 709,913 636,944.5 563,976 480,976 Z m 0,-60 Q 622,916 721,816.5 820,717 820,576 820,434 721,335 622,236 480,236 339,236 239.5,335 140,434 140,576 140,717 239.5,816.5 339,916 480,916 Z m 0,-340 z"
        id="path11"
        inkscape:connector-curvature="0"
-       style="fill:firebrick" />
+       style="fill:currentColor" />
   </symbol>
   <symbol viewBox="0 0 24 24" id="icon-add">
     <g
@@ -787,6 +787,17 @@
          d="M4.93 4.93l14.14 14.14"
          id="path288" />
     </g>
+  </symbol>
+  <symbol viewBox="25 25 50 50" id="icon-loading">
+    <circle
+       stroke-linecap="round"
+       fill="none"
+       stroke-miterlimit="10"
+       stroke="currentColor"
+       cx="50"
+       cy="50"
+       r="20"
+       id="circle293" />
   </symbol>
   <symbol viewBox="0 0 200 200" id="icon-spinner" height="40" width="40">
     <linearGradient id="a11">

@@ -2,6 +2,7 @@ package App::MCP::Form::Register;
 
 use HTML::Forms::Constants qw( EXCEPTION_CLASS FALSE META TRUE );
 use App::MCP::Util         qw( create_token redirect );
+use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( catch_class );
 use Try::Tiny;
 use Moo;
@@ -9,6 +10,7 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
+with    'App::MCP::Role::JSONParser';
 with    'App::MCP::Role::SendMessage';
 
 has '+name'         => default => 'Register';
@@ -16,6 +18,8 @@ has '+title'        => default => 'Registration Request';
 has '+info_message' => default => 'Answer the registration questions';
 has '+item_class'   => default => 'User';
 has '+no_update'    => default => TRUE;
+
+has '+redis_client_name' => default => 'job_stash';
 
 has_field 'user_name' => label => 'User Name', required => TRUE;
 
@@ -42,10 +46,10 @@ sub validate {
    my $name   = $self->field('user_name');
    my $email  = $self->field('email');
 
-   $name->add_error('User name [_1] not unique', [$name->value])
+   $name->add_error("User name '[_1]' not unique", $name->value)
       if $rs->find({ name => $name->value });
 
-   $name->add_error('User name [_1] too short', [$name->value])
+   $name->add_error("User name '[_1]' too short", $name->value)
       if length $name->value < $config->user->{min_name_len};
 
    $email->add_error('Email address [_1] not unique', [$email->value])

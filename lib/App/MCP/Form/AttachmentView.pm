@@ -8,10 +8,11 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+do_form_wrapper' => default => FALSE;
-has '+info_message'    => default => NUL;
-has '+name'            => default => 'BugAttachment';
-has '+no_update'       => default => TRUE;
+has '+do_form_wrapper'    => default => FALSE;
+has '+form_wrapper_class' => default => sub { ['wide'] };
+has '+info_message'       => default => NUL;
+has '+name'               => default => 'BugAttachment';
+has '+no_update'          => default => TRUE;
 
 has 'attachment' => is => 'ro', isa => Object, required => TRUE;
 

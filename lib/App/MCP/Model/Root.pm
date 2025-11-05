@@ -127,7 +127,7 @@ sub password : Auth('none') Nav('Change Password') {
 
    if ($form->process( posted => $context->posted )) {
       my $default = $context->uri_for_action($self->config->redirect);
-      my $message = ['User [_1] changed password', $form->item->name];
+      my $message = ['User [_1] changed password', $form->item->user_name];
 
       $context->stash(redirect $default, $message);
    }
@@ -268,7 +268,7 @@ sub _create_user {
    };
    my $user    = $context->model('User')->create($args);
    my $changep = $context->uri_for_action('page/password', [$user->id]);
-   my $message = ['User [_1] created', $user->name];
+   my $message = ['User [_1] created', $user->user_name];
 
    $context->stash(redirect $changep, $message);
    $self->redis_client->remove($token);

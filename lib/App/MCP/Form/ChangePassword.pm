@@ -34,10 +34,26 @@ has_field '_password' =>
 
 has_field 'submit' => type => 'Button';
 
+after 'after_build_fields' => sub {
+   my $self = shift;
+   my $attr = $self->field('password')->element_attr;
+
+   $attr->{minlength} = $self->context->config->user->{min_password_len};
+   return;
+};
+
 sub validate {
    my $self = shift;
-   my $old  = $self->field('old_password')->value;
-   my $new  = $self->field('password')->value;
+
+   return if $self->result->has_errors;
+   return if $self->field('password')->has_errors;
+   return if $self->field('_password')->has_errors;
+
+   my $old = $self->field('old_password')->value;
+   my $new = $self->field('password')->value;
+
+   return $self->add_form_error('Old and new passwords are the same')
+      if $old eq $new;
 
    try   { $self->item->set_password($old, $new) }
    catch {

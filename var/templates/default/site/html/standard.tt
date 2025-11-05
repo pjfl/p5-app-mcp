@@ -5,14 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="description" content="[% config.name %]">
+    <meta name="description" content="[% config.name %] v[% version %]">
     <meta name="keywords" content="[% config.keywords %]">
-    <meta name="generator" content="[% config.deployment %] v[% version %]">
+    <meta name="generator" content="[% ucfirst(config.deployment) %]">
     <title>[% nav.title_abbrev _ ' - ' _ nav.title_entry %]</title>
-    <link rel="shortcut icon" href="[% uri_for('img/favicon.ico') %]">
-    <link rel="stylesheet" href="[% stylesheet %]" type="text/css">
-    <script src="[% javascript %]"></script>
-    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <link rel="shortcut icon" href="[% uri_for(favicon) %]">
+    <link rel="stylesheet" href="[% uri_for(stylesheet) %]" type="text/css">
+    <script src="[% uri_for(javascript) %]"></script>
+    <script src="[% uri_for(chartlibrary) %]"></script>
   </head>
   <body id="body" class="[% theme || 'light' %]">
 [% content -%]

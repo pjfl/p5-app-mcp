@@ -121,23 +121,17 @@ sub delete : Auth('admin') Nav('Delete Bug') {
 sub edit : Nav('Update Bug') {
    my ($self, $context) = @_;
 
-   my $bug       = $context->stash('bug');
-   my $session   = $context->session;
-   my $is_owner  = $session->id == $bug->user_id ? TRUE : FALSE;
-   my $is_editor = ($session->role eq 'manager' or $session->role eq 'admin')
-                 ? TRUE : FALSE;
-
-   return $self->error($context, UnauthorisedAccess, [])
-      if $context->posted && !($is_editor || $is_owner);
-
+   my $bug     = $context->stash('bug');
    my $options = {
       context      => $context,
       info_message => 'Edit bug details',
-      is_editor    => $is_editor,
       item         => $bug,
       title        => 'Update Bug',
    };
    my $form = $self->new_form('BugReport', $options);
+
+   return $self->error($context, UnauthorisedAccess, [])
+      if $context->posted && !$form->is_editor;
 
    if ($form->process(posted => $context->posted)) {
       my $purged  = $bug->purge_attachments;

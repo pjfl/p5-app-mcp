@@ -11,12 +11,12 @@ extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
 with    'App::MCP::Role::JSONParser';
 
-has '+item_class'    => default => 'Bug';
 has '+name'          => default => 'BugReport';
+has '+title'         => default => 'Report Bug';
+has '+item_class'    => default => 'Bug';
 has '+renderer_args' => default => sub {
    return { page_names => [qw(Details Comments Attachments)] };
 };
-has '+title' => default => 'Report Bug';
 
 has 'current_page' =>
    is      => 'lazy',
@@ -24,10 +24,24 @@ has 'current_page' =>
    default => sub {
       my $self = shift;
 
-      return$self->context->request->query_parameters->{'current-page'} // 0;
+      return $self->context->request->query_parameters->{'current-page'} // 0;
    };
 
-has 'is_editor' => is => 'ro', isa => Bool, default => FALSE;
+has 'is_editor' =>
+   is      => 'lazy',
+   isa     => Bool,
+   default => sub {
+      my $self = shift;
+
+      return TRUE unless $self->item;
+
+      my $session = $self->context->session;
+
+      return TRUE if $session->id == $self->item->user_id;
+
+      return ($session->role eq 'manager' or $session->role eq 'admin')
+         ? TRUE : FALSE;
+   };
 
 has '_icons' =>
    is      => 'lazy',
@@ -78,11 +92,11 @@ has_field 'comments' =>
       name => 'comment',
       type => 'textarea'
    }, {
-      name          => 'owner',
-      type          => 'display',
-      readonly      => TRUE,
-      tag           => 'comment',
-      tagLabelLeft  => 'Written by',
+      name         => 'owner',
+      type         => 'display',
+      readonly     => TRUE,
+      tag          => 'comment',
+      tagLabelLeft => 'Written by',
    }, {
       name         => 'updated',
       type         => 'datetime',
@@ -92,11 +106,11 @@ has_field 'comments' =>
    }, {
       name    => 'id',
       type    => 'hidden',
-      classes => 'hide'
+      classes => 'hide',
    }, {
       name    => 'user_id',
       type    => 'hidden',
-      classes => 'hide'
+      classes => 'hide',
    }];
 
 has_field 'submit2' => type => 'Button';
@@ -104,10 +118,13 @@ has_field 'submit2' => type => 'Button';
 has_field 'attachments' =>
    type                   => 'DataStructure',
    add_icon               => 'attach',
+   add_icon_height        => '20px',
+   add_icon_width         => '20px',
    add_title              => 'Add attachment',
    do_label               => FALSE,
    deflate_value_method   => \&_deflate_attachments,
    field_group_direction  => 'vertical',
+   flex_direction         => 'horizontal',
    inflate_default_method => \&_inflate_attachments,
    is_row_readonly        => \&_is_row_readonly,
    remove_callback        => "document.getElementById('submit1').click()",
@@ -166,10 +183,11 @@ after 'after_build_fields' => sub {
       $self->field('owner')->inactive(TRUE);
       $self->field('state')->inactive(TRUE);
       $self->field('updated')->inactive(TRUE);
+      $self->field('updated')->inactive(TRUE);
+      $self->field('attachments')->inactive(TRUE);
       $self->info_message([
          'Enter the bug report details',
          'Enter the bug report comments',
-         'Files attached to the bug report'
       ]);
    }
 
