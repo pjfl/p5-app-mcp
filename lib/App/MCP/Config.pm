@@ -313,6 +313,15 @@ has 'lock_attributes' =>
    isa     => HashRef,
    default => sub { { redis => $_[0]->redis, type => 'redis' } };
 
+=item log_message_maxlen
+
+Maximum length of a logfile message in characters. If zero (the default) no
+limit is applied
+
+=cut
+
+has 'log_message_maxlen' => is => 'ro', isa => PositiveInt, default => 0;
+
 =item C<logsdir>
 
 Directory containing logfiles

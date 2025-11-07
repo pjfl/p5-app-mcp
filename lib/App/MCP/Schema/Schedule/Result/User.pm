@@ -217,6 +217,17 @@ sub insert {
    return $self->next::method;
 }
 
+sub is_authorised {
+   my ($self, $session, $roles) = @_;
+
+   return FALSE unless $session;
+
+   my $role          = $session->role;
+   my $is_authorised = join NUL, grep { $_ eq $role } @{$roles // []};
+
+   return $self->id == $session->id || $is_authorised ? TRUE : FALSE;
+}
+
 sub mobile_phone {
    my ($self, $value) = @_; return $self->_profile('mobile_phone', $value);
 }

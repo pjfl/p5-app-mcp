@@ -7,7 +7,7 @@ use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( throw UnknownToken Unspecified );
-use Text::MultiMarkdown;
+use App::MCP::Markdown;
 use Moo;
 use Class::Usul::Cmd::Options;
 
@@ -72,8 +72,8 @@ has 'assetdir' =>
 
 has 'formatter' =>
    is      => 'lazy',
-   isa     => class_type('Text::MultiMarkdown'),
-   default => sub { Text::MultiMarkdown->new( tab_width => 3 ) };
+   isa     => class_type('App::MCP::Markdown'),
+   default => sub { App::MCP::Markdown->new( tab_width => 3 ) };
 
 =item C<templatedir>
 
@@ -315,7 +315,8 @@ sub _load_stash {
    my ($self, $quote) = @_;
 
    my $token    = $self->options->{token} or throw Unspecified, ['token'];
-   my $encoded  = $self->redis->get($token) or throw UnknownToken, [$token];
+   my $encoded  = $self->redis_client->get($token)
+      or throw UnknownToken, [$token];
    my $stash    = $self->json_parser->decode($encoded);
    my $template = delete $stash->{template};
    my $path     = $self->templatedir->catdir('email')->catfile($template);

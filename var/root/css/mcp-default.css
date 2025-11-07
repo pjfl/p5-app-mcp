@@ -1241,9 +1241,13 @@ body {
   border-right: 1px solid transparent;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
+.state-table table td svg.icon {
+  height: 20px;
+  width: 20px;
+  vertical-align: text-bottom;
+}
 .state-table table td,
 .state-table table th {
-  box-sizing: border-box;
   color: black;
   padding: 0 0.5rem;
 }
@@ -1262,15 +1266,13 @@ body {
 .state-table table td a:hover {
   font-style: italic;
 }
-.state-table table td svg.icon {
-  height: 20px;
-  width: 20px;
-  vertical-align: text-bottom;
-}
 .state-table table td.boolean,
 .state-table table td.checkbox,
 .state-table table td:has(svg.icon) {
   text-align: center;
+}
+.state-table table td.datetime {
+  white-space: nowrap;
 }
 .state-table table td.number {
   text-align: right;
@@ -1284,6 +1286,8 @@ body {
   border-color: gray;
   font-family: Roboto, system-ui, sans-serif;
   font-weight: normal;
+  position: relative;
+  text-align: left;
   white-space: nowrap;
 }
 .state-table table th .column-header {
@@ -1295,8 +1299,12 @@ body {
 }
 .state-table table th a.filter-control {
   color: gray;
-  float: right;
   opacity: 50%;
+  position: absolute;
+  right: 0;
+}
+.state-table table th:has(a.filter-control) .column-header {
+  padding-right: 20px;
 }
 .state-table table th.active-sort-column {
   background: bisque;
@@ -1313,8 +1321,8 @@ body {
 .state-table table tr.inactive {
   background: gainsboro;
 }
-.state-table .chart-container,
-.state-table .table-container {
+.state-table .chart-container.inline,
+.state-table .table-container.inline {
   display: inline-block;
   text-align: left;
   vertical-align: top;
@@ -1509,10 +1517,22 @@ body {
   display: flex;
   justify-content: space-between;
 }
+@media (max-width: 480px) {
+  .state-table .bottom-control.visible,
+  .state-table .top-control.visible {
+    flex-direction: column;
+  }
+}
 .state-table .bottom-left-control,
 .state-table .bottom-right-control {
   align-items: center;
   display: flex;
+}
+@media (max-width: 480px) {
+  .state-table .bottom-left-control,
+  .state-table .bottom-right-control {
+    max-width: 470px;
+  }
 }
 .state-table .top-left-control,
 .state-table .top-right-control {
@@ -1520,6 +1540,18 @@ body {
   display: inline-flex;
   justify-content: flex-start;
   margin-top: 0.25rem;
+}
+@media (max-width: 480px) {
+  .state-table .top-left-control,
+  .state-table .top-right-control {
+    max-width: 470px;
+  }
+}
+@media (max-width: 480px) {
+  .state-table .credit-control,
+  .state-table .title-control {
+    max-width: 470px;
+  }
 }
 .state-table .cell-content-append {
   display: inline-block;
@@ -1742,7 +1774,7 @@ body {
 }
 .state-table .filter-label {
   display: inline-block;
-  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 }
 .state-table .filter-label img,
 .state-table .filter-label svg {
@@ -1901,11 +1933,6 @@ body {
   .state-table .chart-container {
     display: none !important;
   }
-}
-.state-table.object-view {
-  box-shadow: 3px 3px 3px gray;
-  display: inline-block;
-  text-align: left;
 }
 .state-table.object-view td:first-child {
   border-right: 1px solid;
@@ -2101,7 +2128,10 @@ main {
   scrollbar-color: orange linen;
   z-index: 1;
 }
-main .main-container {
+footer {
+  padding: 0.5rem;
+}
+.standard-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2109,44 +2139,41 @@ main .main-container {
   position: absolute;
   width: 100%;
 }
-footer {
-  padding: 0.5rem;
-}
-.standard {
+.standard-container .standard {
   display: flex;
   line-height: 1.5;
   padding: 0.5rem;
 }
-.standard h1,
-.standard h2,
-.standard h3,
-.standard h4,
-.standard h5 {
+.standard-container .standard h1,
+.standard-container .standard h2,
+.standard-container .standard h3,
+.standard-container .standard h4,
+.standard-container .standard h5 {
   font-family: Roboto, system-ui, sans-serif;
   margin: 1rem;
   text-wrap: balance;
 }
-.standard h1 .content,
-.standard h2 .content,
-.standard h3 .content,
-.standard h4 .content,
-.standard h5 .content {
+.standard-container .standard h1 .content,
+.standard-container .standard h2 .content,
+.standard-container .standard h3 .content,
+.standard-container .standard h4 .content,
+.standard-container .standard h5 .content {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
-.standard .inline-panel {
+.standard-container .standard .inline-panel {
   display: inline-block;
   vertical-align: top;
 }
-.standard .panel {
-  align-items: flex-start;
-  column-gap: 0.5rem;
+.standard-container .standard .panel {
   display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-evenly;
+}
+.standard-container .centred {
   justify-content: center;
 }
-.centred {
-  justify-content: center;
-}
-.left {
+.standard-container .left {
   justify-content: left;
 }
 .sidebar .nav-title,

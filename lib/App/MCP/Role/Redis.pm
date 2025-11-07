@@ -6,6 +6,8 @@ use Type::Utils         qw( class_type );
 use App::MCP::Redis;
 use Moo::Role;
 
+requires 'config';
+
 has 'redis_client' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Redis'),

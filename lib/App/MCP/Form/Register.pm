@@ -10,8 +10,6 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
-with    'App::MCP::Role::JSONParser';
-with    'App::MCP::Role::SendMessage';
 
 has '+name'         => default => 'Register';
 has '+title'        => default => 'Registration Request';
@@ -19,7 +17,10 @@ has '+info_message' => default => 'Answer the registration questions';
 has '+item_class'   => default => 'User';
 has '+no_update'    => default => TRUE;
 
-has '+redis_client_name' => default => 'job_stash';
+has 'config' => is => 'lazy', default => sub { shift->context->config };
+
+with 'App::MCP::Role::JSONParser';
+with 'App::MCP::Role::SendMessage';
 
 has_field 'user_name' => label => 'User Name', required => TRUE;
 

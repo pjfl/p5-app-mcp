@@ -64,22 +64,24 @@ has_column 'timestamp' =>
    label       => 'Timestamp',
    searchable  => TRUE,
    sortable    => TRUE,
-   title       => 'Sort by date and time',
-   width       => '18ch';
+   title       => 'Sort by date and time';
 
-has_column 'status' => filterable => TRUE, sortable => TRUE, width => '10ch';
+has_column 'status' =>
+   filterable => TRUE,
+   sortable   => TRUE,
+   title      => 'Sort by status';
 
 has_column 'username' =>
    filterable => TRUE,
    searchable => TRUE,
    sortable   => TRUE,
-   width      => '14ch';
+   title      => 'Sort by user name';
 
 has_column 'source' =>
    filterable => TRUE,
    searchable => TRUE,
    sortable   => TRUE,
-   width      => '10rem';
+   title      => 'Sort by source identifier';
 
 has_column 'pid' => cell_traits => ['Numeric'], searchable => TRUE;
 

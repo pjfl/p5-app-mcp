@@ -7,9 +7,10 @@ use Plack::Session::Store::Cache;
 use Moo;
 
 with 'App::MCP::Role::JSONParser';
-with 'App::MCP::Role::Redis';
 
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
+
+with 'App::MCP::Role::Redis';
 
 has '+redis_client_name' => default => 'session_store';
 

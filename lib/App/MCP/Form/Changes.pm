@@ -3,7 +3,7 @@ package App::MCP::Form::Changes;
 use HTML::Forms::Constants qw( EXCEPTION_CLASS FALSE META TRUE );
 use HTML::Forms::Types     qw( Str );
 use Type::Utils            qw( class_type );
-use Text::MultiMarkdown;
+use App::MCP::Markdown;
 use Moo;
 use HTML::Forms::Moo;
 
@@ -12,8 +12,8 @@ with    'HTML::Forms::Role::Defaults';
 
 has 'formatter' =>
    is      => 'lazy',
-   isa     => class_type('Text::MultiMarkdown'),
-   default => sub { Text::MultiMarkdown->new( tab_width => 3 ) };
+   isa     => class_type('App::MCP::Markdown'),
+   default => sub { App::MCP::Markdown->new( tab_width => 3 ) };
 
 has '+title' => default => 'Changes';
 

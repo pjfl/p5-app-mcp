@@ -15,19 +15,19 @@ sub base : Auth('view') {
    my ($self, $context, $userid) = @_;
 
    my $nav = $context->stash('nav')->list('user')->item('user/create');
-   my $session = $context->session;
 
-   if ($userid && ($userid == $session->id || $session->role eq 'admin')) {
+   if ($userid) {
+      my $session = $context->session;
       my $args = { username => $userid, options => { prefetch => 'profile' } };
       my $user = $context->find_user($args, $session->realm);
 
       return $self->error($context, UnknownUser, [$userid]) unless $user;
 
+      return $self->error($context, UnauthorisedAccess)
+         unless $user->is_authorised($session, ['admin', 'manager']);
+
       $context->stash(user => $user);
       $nav->crud('user', $userid);
-   }
-   elsif ($userid) {
-      return $self->error($context, UnauthorisedAccess);
    }
 
    $nav->finalise;
@@ -89,6 +89,10 @@ sub profile : Auth('view') Nav('Profile') {
    my ($self, $context) = @_;
 
    my $user = $context->stash('user');
+
+   return $self->error($context, UnauthorisedAccess)
+      if $context->posted && !$user->is_authorised($context->session,['admin']);
+
    my $form = $self->new_form('Profile', { context => $context, user => $user});
 
    if ($form->process(posted => $context->posted)) {
@@ -103,7 +107,7 @@ sub profile : Auth('view') Nav('Profile') {
    return;
 }
 
-sub list : Auth('admin') Nav('Users') {
+sub list : Auth('manager') Nav('Users') {
    my ($self, $context) = @_;
 
    my $options = { context => $context, resultset => $context->model('User') };
@@ -133,13 +137,18 @@ sub remove : Auth('admin') {
 sub totp : Auth('view') Nav('View TOTP') {
    my ($self, $context) = @_;
 
-   my $options = { context => $context, user => $context->stash('user') };
+   my $user = $context->stash('user');
+
+   return $self->error($context, UnauthorisedAccess)
+      unless $user->is_authorised($context->session, ['admin']);
+
+   my $options = { context => $context, user => $user };
 
    $context->stash(form => $self->new_form('TOTP::Secret', $options));
    return;
 }
 
-sub view : Auth('admin') Nav('View User') {
+sub view : Auth('manager') Nav('View User') {
    my ($self, $context) = @_;
 
    my $user    = $context->stash('user');

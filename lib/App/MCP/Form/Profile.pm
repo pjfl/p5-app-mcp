@@ -10,7 +10,7 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+title'                  => default => 'Profile';
+has '+title'                  => default => 'User Profile';
 has '+default_wrapper_tag'    => default => 'fieldset';
 has '+do_form_wrapper'        => default => TRUE;
 has '+info_message'           => default => 'Update profile information';

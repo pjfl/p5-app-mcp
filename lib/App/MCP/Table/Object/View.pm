@@ -10,11 +10,10 @@ use HTML::StateTable::Moo;
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Form';
 
-has '+max_width' => default => '30rem';
-
-has '+no_count' => default => TRUE;
-
-has '+paging' => default => FALSE;
+has '+form_classes' => default => sub { ['classic', 'fieldset'] };
+has '+max_width'    => default => '50rem';
+has '+no_count'     => default => TRUE;
+has '+paging'       => default => FALSE;
 
 has 'add_columns' =>
    is          => 'ro',

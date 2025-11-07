@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Finer grained authorisation on user object
           - Added horizontal scrolling to bug attachments
           - Leaner login form
           - Form toggle cleanup
