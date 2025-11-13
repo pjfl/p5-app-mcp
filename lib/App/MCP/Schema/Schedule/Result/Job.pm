@@ -61,6 +61,7 @@ $class->add_columns(
       label   => 'Parent Box'
    },
    parent_path  => nullable_varchar_data_type,
+   path_depth   => numerical_id_data_type(0),
    host         => varchar_data_type(64, 'localhost'),
    user_name    => { %{varchar_data_type(32, 'mcp')}, label => 'User Name' },
    command      => nullable_varchar_data_type,
@@ -229,9 +230,9 @@ sub update {
    my $sep  = SEPARATOR;
    my $path = { $self->get_inflated_columns }->{parent_path};
 
-#   $columns //= {};
-#   $columns->{level} = () = split m{ $sep }mx, $path, -1;
-   $self->set_inflated_columns($columns) if $columns;
+   $columns //= {};
+   $columns->{path_depth} = () = split m{ $sep }mx, $path, -1;
+   $self->set_inflated_columns($columns);
 
    $self->_update_dependent_fields;
 

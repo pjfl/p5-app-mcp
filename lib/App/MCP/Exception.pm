@@ -69,12 +69,6 @@ has_exception 'UnknownAPIClass' => parents => [$class],
 has_exception 'UnknownAPIMethod' => parents => [$class],
    error   => 'Class [_1] has no [_2] method', rv => HTTP_NOT_FOUND;
 
-has_exception 'UnknownAttachment' => parents => [$class],
-   error   => 'Attachment [_1] not found', rv => HTTP_NOT_FOUND;
-
-has_exception 'UnknownBug' => parents => [$class],
-   error   => 'Bug [_1] not found', rv => HTTP_NOT_FOUND;
-
 has_exception 'UnknownJob' => parents => [$class],
    error   => 'Job [_1] not found', rv => HTTP_NOT_FOUND;
 

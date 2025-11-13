@@ -9,9 +9,9 @@ use HTML::StateTable::Constants       ( );
 use HTML::Forms::Constants            ( );
 use Web::ComposableRequest::Constants ( );
 
-our @EXPORT = qw( BUG_STATE_ENUM CRONTAB_FIELD_NAMES DOTS HASH_CHAR
-                  LOG_KEY_WIDTH JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_NOW
-                  SQL_TRUE STATE_ENUM TRANSITION_ENUM VARCHAR_MAX_SIZE );
+our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
+                  JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_NOW SQL_TRUE STATE_ENUM
+                  TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
 my $exception_class = 'App::MCP::Exception';
 
@@ -19,8 +19,6 @@ Class::Usul::Cmd::Constants->Exception_Class($exception_class);
 HTML::StateTable::Constants->Exception_Class($exception_class);
 HTML::Forms::Constants->Exception_Class($exception_class);
 Web::ComposableRequest::Constants->Exception_Class($exception_class);
-
-my $Code_Attr = {};
 
 sub import {
    my $class       = shift;
@@ -41,7 +39,6 @@ sub HASH_CHAR () { chr 35     }
 sub DOTS      () { "\x{2026}" }
 sub SEPARATOR () { '/'        }
 
-sub BUG_STATE_ENUM      () { [ qw( assigned fixed open wontfix ) ] }
 sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
 sub LOG_KEY_WIDTH       () { 13 }
 sub JOB_TYPE_ENUM       () { [ 'box', 'job' ] }
