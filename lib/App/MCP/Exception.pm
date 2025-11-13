@@ -1,7 +1,7 @@
 package App::MCP::Exception;
 
 use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_NOT_FOUND
-                              HTTP_UNAUTHORIZED );
+                              HTTP_REQUEST_TIMEOUT HTTP_UNAUTHORIZED );
 use Unexpected::Types     qw( Int Object );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( has_exception );
@@ -52,6 +52,9 @@ has_exception 'NoUserRole' => parents => [$class],
 
 has_exception 'PageNotFound' => parents => [$class],
    error   => 'Page [_1] not found', rv => HTTP_NOT_FOUND;
+
+has_exception 'Timedout' => parents => [$class],
+   error   => 'Timedout after [_1] seconds waiting for [_2]';
 
 has_exception 'UnauthorisedAPICall' => parents => [$class],
    error   => 'Class [_1] method [_2] unauthorised call attempt',

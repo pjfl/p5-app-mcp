@@ -107,9 +107,8 @@ sub _add_node {
 sub _fetch_jobs {
    my ($self, $params) = @_;
 
-   # TODO: Use level to restrict rows in result
-   my $level = $params->{level} // 1;
-   my $jobs  = $self->schema->resultset('Job')->search({}, {
+   my $where = $self->_get_where_clause($params);
+   my $jobs  = $self->schema->resultset('Job')->search($where, {
       columns  => [qw( condition dependencies id job_name parent_id type )],
       order_by => [\q{parent_id NULLS FIRST}, 'id'],
       prefetch => ['state'],
@@ -129,6 +128,7 @@ sub _get_job_item {
       'id'         => $job->id,
       'job-name'   => $job->job_name,
       'job-uri'    => $uri->as_string,
+      'parent-id'  => $job->parent_id,
       'state-name' => $job->state->name,
       'type'       => $job->type,
    };
@@ -156,7 +156,9 @@ sub _get_job_tree {
          else { push @{$all_jobs}, $job }
 
          if (++$loop_count >= $jobs2go) { # Prevent infinite looping
-            if ($jobs2go == scalar @{$all_jobs}) { $all_jobs = [] }
+            if ($jobs2go == scalar @{$all_jobs}) {
+               throw 'Dependencies not found';
+            }
             else {
                $jobs2go = scalar @{$all_jobs};
                $loop_count = 0;
@@ -166,7 +168,20 @@ sub _get_job_tree {
    }
    catch { $self->error($context, $_) };
 
-   return { 'job-count' => $job_count, jobs => $nodes->[0] };
+   return { 'job-count' => $job_count, 'jobs' => $nodes->[0] };
+}
+
+sub _get_where_clause {
+   my ($self, $params) = @_;
+
+   my $pattern = q{\A\d+/\d+(/\d+)?\Z};
+   my $where = {
+      -or => { parent_id => undef, parent_path => { '~' => $pattern } }
+   };
+
+   return $where unless $params->{focus};
+
+   return $where;
 }
 
 sub _have_seen_dependencies {

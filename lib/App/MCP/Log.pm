@@ -116,7 +116,9 @@ sub _log {
    ($leader, $message) = $self->_get_leader($message, $context) unless $leader;
 
    if (my $maxlen = $self->config->log_message_maxlen) {
-      $message = (substr $message, 0, $maxlen) . '...';
+      if (length $message > $maxlen) {
+         $message = (substr $message, 0, $maxlen) . '...';
+      }
    }
 
    my $now      = now_dt->strftime('%Y/%m/%d %T');

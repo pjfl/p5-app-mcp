@@ -87,12 +87,13 @@ sub find_or_create {
 sub _trigger_update_cascade {
    my ($self, $event) = @_;
 
-   my $schema = $self->result_source->schema;
-   my $ev_rs  = $schema->resultset('Event');
-   my $jc_rs  = $schema->resultset('JobCondition');
+   my $schema     = $self->result_source->schema;
+   my $ev_rs      = $schema->resultset('Event');
+   my $jc_rs      = $schema->resultset('JobCondition');
+   my $transition = $event->transition->value;
 
    for my $jc ($jc_rs->search({ job_id => $event->job->id })->all) {
-      $ev_rs->create({ job_id => $jc->reverse_id, transition => 'start' });
+      $ev_rs->create({ job_id => $jc->reverse_id, transition => $transition });
    }
 
    return;

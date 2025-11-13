@@ -30,11 +30,11 @@ has_field 'state_name' =>
    label         => 'Current State',
    element_class => ['job-state'];
 
-has_field 'condition' => type => 'Display';
+has_field 'condition' => type => 'Display', element_class => ['breaking-text'];
 
 has_field 'crontab' => type => 'Display';
 
-has_field 'command' => type => 'Display';
+has_field 'command' => type => 'Display', element_class => ['breaking-text'];
 
 has_field 'host' => type => 'Display';
 

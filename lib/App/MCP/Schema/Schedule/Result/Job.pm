@@ -226,6 +226,11 @@ sub sqlt_deploy_hook {
 sub update {
    my ($self, $columns) = @_;
 
+   my $sep  = SEPARATOR;
+   my $path = { $self->get_inflated_columns }->{parent_path};
+
+#   $columns //= {};
+#   $columns->{level} = () = split m{ $sep }mx, $path, -1;
    $self->set_inflated_columns($columns) if $columns;
 
    $self->_update_dependent_fields;
@@ -244,8 +249,8 @@ sub validation_attributes {
       constraints      => {
          job_name      => {
             max_length => VARCHAR_MAX_SIZE,
-            min_length => 1,
-            pattern    => '\A [A-Za-z_][/0-9A-Za-z_]+ \z', } },
+            min_length => 3,
+            pattern    => '\A [A-Za-z_]+ [/0-9A-Za-z_]+ \z', } },
       fields           => {
          host          => { validate => 'isValidHostname' },
          job_name      => {
@@ -282,7 +287,7 @@ sub _crontab {
    my @names = CRONTAB_FIELD_NAMES;
 
    unless (defined $self->{_crontab}) {
-      my @fields = split m{ \s+ }mx, $self->crontab;
+      my @fields = split m{ \s+ }mx, $self->crontab // NUL;
 
       $self->{_crontab}->{$names[$_]} = ($fields[$_] // NUL) for (0 .. 4);
    }

@@ -1,5 +1,9 @@
 Revision history for App::MCP
 
+          - Adding level to job. Removing bugs
+          - Added wait-for-file to CLI. Limit log message length
+          - Weakened resultset attributes in log view classes
+          - State diagram drawing lines and closing boxes without content
           - Finer grained authorisation on user object
           - Added horizontal scrolling to bug attachments
           - Leaner login form

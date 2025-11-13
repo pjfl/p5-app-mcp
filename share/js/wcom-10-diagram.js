@@ -13,6 +13,7 @@ WCom.StateDiagram = (function() {
          this.jobName   = result['job-name'];
          this.jobURI    = result['job-uri'];
          this.nodes     = result['nodes'] || [];
+         this.parentId  = result['parent-id'];
          this.stateName = result['state-name'];
          this.type      = result['type'];
          this.index     = index;
@@ -23,8 +24,11 @@ WCom.StateDiagram = (function() {
          if (this.type == 'box') title.push(this._renderToggleIcon());
          const content = [this.h.div({ className: 'title' }, title)];
          if (this.type == 'box') {
-            this.boxTable = this.h.div({ className: 'box-table open' });
-            this._renderNodes(this.boxTable);
+            this.boxTable = this.h.div({ className: 'box-table' });
+            if (this.nodes[0]) {
+               this._renderNodes(this.boxTable);
+               this.boxTable.classList.add('open');
+            }
             content.push(this.boxTable);
          }
          const id = this.type + this.id;
@@ -93,14 +97,18 @@ WCom.StateDiagram = (function() {
                event.preventDefault();
                this.boxTable.classList.toggle('open');
                this.toggleIcon.classList.toggle('reversed');
+               this.diagram.depGraph.render();
             }.bind(this)
          };
          const icons = this.diagram.icons;
-         if (!icons) return this.h.span(attr, 'V');
-         const toggleIcon = this.h.icon({
-            className: 'toggle-icon', icons, name: 'chevron-down'
-         });
-         this.toggleIcon = this.h.span(attr, toggleIcon);
+         if (icons) {
+            const icon = this.h.icon({
+               className: 'toggle-icon', icons, name: 'chevron-down'
+            });
+            this.toggleIcon = this.h.span(attr, icon);
+         }
+         else { this.toggleIcon = this.h.span(attr, 'V') }
+         if (!this.nodes[0]) this.toggleIcon.classList.add('reversed');
          return this.toggleIcon;
       }
    }
@@ -127,22 +135,53 @@ WCom.StateDiagram = (function() {
    }
    Object.assign(ResultSet.prototype, Utils.Bitch);
    class DependencyGraph {
-      constructor(container) {
-         this.container = container;
-         const { left, top } = this.h.getOffset(container);
-         this.left = left + 4;
-         this.top = top - 3;
+      constructor(diagram) {
+         this.diagram = diagram;
+         this.index = [];
          this.jobs = [];
+         this.container = this.diagram.container;
+         this.canvas = this.h.canvas({ className: 'dependencies' });
+         this.container.insertBefore(this.canvas, this.container.firstChild);
       }
       render() {
-         const attr = { className: 'dependencies' };
-         this.container.appendChild(this.h.canvas(attr));
+         if (!(this.canvas.getContext && this.jobs[0])) return;
+         this.canvas.height = this.container.offsetHeight;
+         this.canvas.width = this.container.offsetWidth;
+         const { left, top } = this.h.getOffset(this.container);
+         const containerLeft = left;
+         const containerTop = top;
          for (const job of this.jobs) {
-            console.log(job.jobName);
-            let { left, top } = this.h.getOffset(job.jobTile);
-            left -= this.left;
-            top -= this.top;
-            console.log(left + ' ' + top);
+            this.index[job.id] = job;
+            const { bottom, left, right, top } = this.h.getOffset(job.jobTile);
+            // Make relative to container
+            job.bottom = bottom - containerTop;
+            job.left = left - containerLeft;
+            job.right = right - containerLeft;
+            job.top = top - containerTop;
+         }
+         const context = this.canvas.getContext('2d');
+         for (const job of this.jobs) {
+            if (!job.dependsOn[0]) continue;
+            const parent = this.index[job.parentId];
+            // Parent box is closed so no lines to draw
+            if (parent && parent.toggleIcon.classList.contains('reversed'))
+               continue;
+            context.beginPath();
+            for (const depends of job.dependsOn) {
+               const fj = this.index[depends];
+               const from = {
+                  x: fj.left + Math.round((fj.right - fj.left) / 2),
+                  y: fj.bottom,
+               };
+               const to = {
+                  x: job.left + Math.round((job.right - job.left) / 2),
+                  y: job.top,
+               };
+               context.moveTo(from.x, from.y);
+               context.lineTo(to.x, to.y);
+            }
+            context.closePath();
+            context.stroke();
          }
       }
    }
@@ -170,6 +209,7 @@ WCom.StateDiagram = (function() {
    Object.assign(Preferences.prototype, Utils.Bitch);
    class Diagram {
       constructor(container, config) {
+         this.domWait   = config['dom-wait'] || 500;
          this.icons     = config['icons'];
          this.maxJobs   = config['max-jobs'];
          this.name      = config['name'];
@@ -178,7 +218,7 @@ WCom.StateDiagram = (function() {
          this.container = this.h.div({ className: 'diagram-container' });
          container.appendChild(this.container);
          this.resultSet = new ResultSet(config['data-uri']);
-         this.depGraph  = new DependencyGraph(this.container);
+         this.depGraph  = new DependencyGraph(this);
          this.prefs     = new Preferences(this, config['prefs-uri']);
       }
       async nextJob(index) {
@@ -196,7 +236,9 @@ WCom.StateDiagram = (function() {
          await this.readJobs();
          if (this.jobs.length) {
             for (const job of this.jobs) job.render(this.container);
-            this.depGraph.render();
+            setTimeout(
+               function() { this.depGraph.render() }.bind(this), this.domWait
+            );
          }
          else { this.renderNoData(this.container) }
          if (this.onload) eval(this.onload);

@@ -2,11 +2,11 @@ package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL OK TRUE );
 use File::DataClass::Types qw( Directory );
-use Class::Usul::Cmd::Util qw( ensure_class_loaded );
+use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
-use Unexpected::Functions  qw( throw UnknownToken Unspecified );
+use Unexpected::Functions  qw( throw Timedout UnknownToken Unspecified );
 use App::MCP::Markdown;
 use Moo;
 use Class::Usul::Cmd::Options;
@@ -260,6 +260,35 @@ sub send_message : method {
    }
    elsif ($sink eq 'sms') { $self->_send_sms($stash) }
    else { throw 'Message sink [_1] unknown', [$sink] }
+
+   return OK;
+}
+
+=item wait_for_file - Waits for the file specified by option 'path'
+
+Polling frequency defaults to once every five seconds and is set by the option
+'rate'. If option 'timeout' is set and the elapsed runtime exceeds this,
+exit with a non zero return code (fail)
+
+=cut
+
+sub wait_for_file : method {
+   my $self = shift;
+
+   throw Unspecified, ['option path'] unless exists $self->options->{path};
+
+   my $path = io $self->options->{path};
+
+   $path = $path->absolute($self->config->vardir) unless $path->is_absolute;
+
+   my $rate    = $self->options->{rate} // 5;
+   my $timeout = $self->options->{timeout} // 0;
+
+   while (!$path->exists) {
+      throw Timedout, [$timeout, $path] if $timeout and elapsed > $timeout;
+
+      sleep $rate;
+   }
 
    return OK;
 }

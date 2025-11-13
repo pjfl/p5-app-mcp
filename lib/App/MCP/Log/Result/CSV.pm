@@ -96,7 +96,7 @@ has 'field_map' =>
 
 =cut
 
-has '_resultset' => is => 'ro', init_arg => 'resultset';
+has '_resultset' => is => 'ro', init_arg => 'resultset', weak_ref => TRUE;
 
 =item timestamp
 
