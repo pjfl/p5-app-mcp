@@ -86,26 +86,6 @@ has 'bin' =>
    isa     => Directory,
    default => sub { shift->pathname->parent };
 
-=item C<bug_attachments>
-
-A hash reference of parameters used to configure the bug attachment uploads
-
-=cut
-
-has 'bug_attachments' =>
-   is      => 'lazy',
-   isa     => HashRef,
-   default => sub {
-      my $self = shift;
-
-      return {
-         directory  => $self->vardir->catdir('bugs'),
-         extensions => 'csv|doc|png|txt',
-         max_size   => 5_120_000,
-         sharedir   => $self->rootdir->catdir('bugs')
-      };
-   };
-
 =item C<clock_tick_interval>
 
 A non zero positive integer that defaults to B<3>.
@@ -854,7 +834,7 @@ has 'web_components' =>
    isa     => HashRef,
    default => sub {
       return {
-         'Model::State' => { max_jobs => 10_000 }
+         'Model::State' => { max_jobs => 1_000 }
       };
    };
 

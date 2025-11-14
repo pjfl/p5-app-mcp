@@ -14,6 +14,8 @@ with    'Web::Components::Role';
 
 has '+moniker' => default => 'state';
 
+has 'default_path_depth' => is => 'ro', isa => Int, default => 3;
+
 # Hard limit on the number of jobs to fetch from the database
 has 'max_jobs' => is => 'ro', isa => Int, default => 10_000;
 
@@ -61,10 +63,10 @@ sub edit  {
 sub view : Auth('view') Nav('State|info') {
    my ($self, $context) = @_;
 
-   my $params = $context->request->query_parameters;
+   my $req_params = $context->request->query_parameters;
 
-   if (($params->{'state-data'} // NUL) eq 'true') {
-      my $tree = $self->_get_job_tree($context, $params);
+   if (($req_params->{'state-data'} // NUL) eq 'true') {
+      my $tree = $self->_get_job_tree($context, $req_params);
 
       $context->stash(json => $tree, view => 'json')
          unless $context->stash->{finalised};
@@ -72,8 +74,7 @@ sub view : Auth('view') Nav('State|info') {
       return;
    }
 
-   $params = { 'state-data' => 'true' };
-
+   my $params    = { 'state-data' => 'true' };
    my $data_uri  = $context->uri_for_action('state/view', [], $params);
    my $wcom      = $self->config->wcom_resources->{navigation};
    my $name      = 'state-diagram';
@@ -87,7 +88,7 @@ sub view : Auth('view') Nav('State|info') {
       'name'         => $name,
       'onload'       => "${wcom}.onContentLoad()",
       'prefs-uri'    => $prefs_uri->as_string,
-      'verify-token' => $context->verification_token
+      'verify-token' => $context->verification_token,
    });
    return;
 }
@@ -96,7 +97,11 @@ sub view : Auth('view') Nav('State|info') {
 sub _add_node {
    my ($self, $nodes, $job, $item) = @_;
 
-   $nodes->[$job->id] = $item->{'nodes'} = [] if $job->type eq 'box';
+   $nodes->[$job->parent_id] //= [] if $job->parent_id;
+
+   if ($job->type eq 'box') {
+      $item->{'nodes'} = $nodes->[$job->id] //= [];
+   }
 
    my $list = $job->parent_id ? $nodes->[$job->parent_id] : $nodes->[0];
 
@@ -109,7 +114,9 @@ sub _fetch_jobs {
 
    my $where = $self->_get_where_clause($params);
    my $jobs  = $self->schema->resultset('Job')->search($where, {
-      columns  => [qw( condition dependencies id job_name parent_id type )],
+      columns  => [
+         qw( condition dependencies id job_name parent_id path_depth type )
+      ],
       order_by => [\q{parent_id NULLS FIRST}, 'id'],
       prefetch => ['state'],
       rows     => $self->max_jobs,
@@ -129,6 +136,7 @@ sub _get_job_item {
       'job-name'   => $job->job_name,
       'job-uri'    => $uri->as_string,
       'parent-id'  => $job->parent_id,
+      'path-depth' => $job->path_depth,
       'state-name' => $job->state->name,
       'type'       => $job->type,
    };
@@ -168,20 +176,22 @@ sub _get_job_tree {
    }
    catch { $self->error($context, $_) };
 
-   return { 'job-count' => $job_count, 'jobs' => $nodes->[0] };
+   my $node_id = $params->{selected} ? $params->{selected} : 0;
+
+   return { 'job-count' => $job_count, 'jobs' => $nodes->[$node_id] };
 }
 
 sub _get_where_clause {
    my ($self, $params) = @_;
 
-   my $pattern = q{\A\d+/\d+(/\d+)?\Z};
-   my $where = {
-      -or => { parent_id => undef, parent_path => { '~' => $pattern } }
+   my $depth = $params->{'path-depth'} || $self->default_path_depth;
+
+   return { path_depth => { '<=' => $depth } } unless $params->{selected};
+
+   return {
+      parent_id  => $params->{selected},
+      path_depth => { '<=' => $depth + $self->default_path_depth },
    };
-
-   return $where unless $params->{focus};
-
-   return $where;
 }
 
 sub _have_seen_dependencies {

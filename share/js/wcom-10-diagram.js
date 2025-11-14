@@ -14,6 +14,7 @@ WCom.StateDiagram = (function() {
          this.jobURI    = result['job-uri'];
          this.nodes     = result['nodes'] || [];
          this.parentId  = result['parent-id'];
+         this.pathDepth = result['path-depth'];
          this.stateName = result['state-name'];
          this.type      = result['type'];
          this.index     = index;
@@ -26,7 +27,7 @@ WCom.StateDiagram = (function() {
          if (this.type == 'box') {
             this.boxTable = this.h.div({ className: 'box-table' });
             if (this.nodes[0]) {
-               this._renderNodes(this.boxTable);
+               this._renderNodes(this.boxTable, this.nodes);
                this.boxTable.classList.add('open');
             }
             content.push(this.boxTable);
@@ -75,11 +76,11 @@ WCom.StateDiagram = (function() {
          link.setAttribute('clicklistener', true);
          return link;
       }
-      _renderNodes(container) {
+      _renderNodes(container, results) {
          const job2row = {};
          const rows = [];
          let jobIndex = this.index + 1;
-         for (const result of this.nodes) {
+         for (const result of results) {
             const job = new Job(this.diagram, result, jobIndex++);
             const rowIndex = this._maxRowIndex(job2row, job) + 1;
             job2row[job.id] = rowIndex;
@@ -90,6 +91,20 @@ WCom.StateDiagram = (function() {
             job.render(rows[rowIndex]);
          }
       }
+      async _renderSelectedNodes() {
+         if (!this.nodes[0]) {
+            const uri = new URL(this.diagram.resultSet.dataURI);
+            uri.searchParams.set('selected', this.id);
+            uri.searchParams.set('path-depth', this.pathDepth);
+            const resultSet = new ResultSet(uri);
+            let result;
+            while (result = await resultSet.next()) {
+               this.nodes.push(result);
+            }
+            this._renderNodes(this.boxTable, this.nodes);
+         }
+         this.diagram.depGraph.render();
+      }
       _renderToggleIcon() {
          const attr = {
             className: 'button-icon box-toggle',
@@ -97,7 +112,7 @@ WCom.StateDiagram = (function() {
                event.preventDefault();
                this.boxTable.classList.toggle('open');
                this.toggleIcon.classList.toggle('reversed');
-               this.diagram.depGraph.render();
+               this._renderSelectedNodes();
             }.bind(this)
          };
          const icons = this.diagram.icons;
@@ -209,31 +224,31 @@ WCom.StateDiagram = (function() {
    Object.assign(Preferences.prototype, Utils.Bitch);
    class Diagram {
       constructor(container, config) {
+         this.container = this.h.div({ className: 'diagram-container' });
+         container.appendChild(this.container);
          this.domWait   = config['dom-wait'] || 500;
          this.icons     = config['icons'];
          this.maxJobs   = config['max-jobs'];
          this.name      = config['name'];
          this.onload    = config['onload'];
          this.token     = config['verify-token'];
-         this.container = this.h.div({ className: 'diagram-container' });
-         container.appendChild(this.container);
          this.resultSet = new ResultSet(config['data-uri']);
          this.depGraph  = new DependencyGraph(this);
          this.prefs     = new Preferences(this, config['prefs-uri']);
+         this.index     = 0;
+         this.jobs      = [];
       }
       async nextJob(index) {
          const result = await this.resultSet.next();
          if (result) return new Job(this, result, index);
          return undefined;
       }
-      async readJobs() {
-         this.jobs = [];
-         let index = 0;
+      async readJobs(acc) {
          let job;
-         while (job = await this.nextJob(++index)) this.jobs.push(job);
+         while (job = await this.nextJob(++this.index)) acc.push(job);
       }
       async render() {
-         await this.readJobs();
+         await this.readJobs(this.jobs);
          if (this.jobs.length) {
             for (const job of this.jobs) job.render(this.container);
             setTimeout(

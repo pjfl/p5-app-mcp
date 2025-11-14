@@ -54,11 +54,9 @@ sub root : Auth('none') {
    my $nav     = Web::Components::Navigation->new($args);
    my $session = $context->session;
 
-   $nav->list('bugs')->item('bug/create');
    $nav->list('_control');
 
    if ($session->authenticated) {
-      $nav->menu('bugs')->item('bug/list');
       $nav->item('page/changes');
       $nav->item('page/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);

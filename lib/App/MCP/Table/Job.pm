@@ -40,6 +40,7 @@ setup_resultset sub {
 has_column 'id' =>
    cell_traits => ['Numeric'],
    label       => 'ID',
+   sortable    => TRUE,
    width       => '3rem';
 
 has_column 'job_name' =>
