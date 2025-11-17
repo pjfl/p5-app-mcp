@@ -16,6 +16,8 @@ has '+moniker' => default => 'state';
 
 has 'default_path_depth' => is => 'ro', isa => Int, default => 3;
 
+has 'dom_wait' => is => 'ro', isa => Int, default => 500;
+
 # Hard limit on the number of jobs to fetch from the database
 has 'max_jobs' => is => 'ro', isa => Int, default => 10_000;
 
@@ -83,6 +85,7 @@ sub view : Auth('view') Nav('State|info') {
 
    $context->stash(state_config => {
       'data-uri'     => $data_uri->as_string,
+      'dom-wait'     => $self->dom_wait,
       'icons'        => $context->icons_uri->as_string,
       'max-jobs'     => $self->max_jobs,
       'name'         => $name,

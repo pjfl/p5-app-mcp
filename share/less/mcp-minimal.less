@@ -1,3 +1,4 @@
+@row-max-width: 30rem;
 #colours() {
     contrast: whitesmoke;
     line-border: gray;
@@ -21,7 +22,8 @@
             display: none; flex-direction: column;
         }
         .box-table.open, .box-row {
-            display: flex; gap: 1rem;
+            display: flex; flex-wrap: wrap; gap: 1rem;
+            max-width: @row-max-width;
         }
         .box-tile, .job-tile {
             border: 1px solid #colours[line-border]; border-radius: 5px;

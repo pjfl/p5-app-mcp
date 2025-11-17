@@ -559,7 +559,7 @@ form.classic .input-field:has(label.field-label) {
   align-items: baseline;
   column-gap: 0.5rem;
   display: grid;
-  grid-template-columns: var(--label-width) auto auto;
+  grid-template-columns: var(--label-width) min-content auto;
   grid-template-areas: "label input selector" "label alert alert";
   justify-items: start;
   min-width: 15rem;
@@ -914,11 +914,17 @@ form.classic .input-selector button {
 form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
+  max-width: 20rem;
   padding: 0.125rem 0.35rem;
+  white-space: nowrap;
 }
 form.classic .input-display span.breaking-text {
-  white-space: wrap;
-  max-width: 15rem;
+  min-width: 15rem;
+  white-space: break-spaces;
+}
+form.classic .input-display span.code {
+  min-width: 15rem;
+  white-space: unset;
 }
 form.classic .input-display:has(img) {
   align-items: flex-start !important;
@@ -1993,7 +1999,9 @@ body {
 .state-container .diagram-container .box-table.open,
 .state-container .diagram-container .box-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
+  max-width: 30rem;
 }
 .state-container .diagram-container .box-tile,
 .state-container .diagram-container .job-tile {
@@ -2117,14 +2125,14 @@ header {
   padding: 0 0.5rem;
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 5;
 }
 aside {
   grid-area: sidebar;
   padding-left: 0.5rem;
   position: sticky;
   top: 3rem;
-  z-index: 2;
+  z-index: 5;
 }
 main {
   grid-area: main;
@@ -2136,7 +2144,7 @@ main {
 footer {
   padding: 0.5rem;
 }
-.standard-container {
+.layout-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2144,44 +2152,40 @@ footer {
   position: absolute;
   width: 100%;
 }
-.standard-container .standard {
-  display: flex;
-  line-height: 1.5;
-  padding: 0.5rem;
-}
-.standard-container .standard h1,
-.standard-container .standard h2,
-.standard-container .standard h3,
-.standard-container .standard h4,
-.standard-container .standard h5 {
+.layout-container h1,
+.layout-container h2,
+.layout-container h3,
+.layout-container h4,
+.layout-container h5 {
   font-family: Roboto, system-ui, sans-serif;
   margin: 1rem;
   text-wrap: balance;
 }
-.standard-container .standard h1 .content,
-.standard-container .standard h2 .content,
-.standard-container .standard h3 .content,
-.standard-container .standard h4 .content,
-.standard-container .standard h5 .content {
+.layout-container h1 .content,
+.layout-container h2 .content,
+.layout-container h3 .content,
+.layout-container h4 .content,
+.layout-container h5 .content {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
-.standard-container .standard .inline-panel {
-  display: inline-block;
-  vertical-align: top;
+.layout-container .layout {
+  display: flex;
+  line-height: 1.5;
+  padding: 0.5rem;
 }
-.standard-container .standard .panel {
+.layout-container .layout .panel {
   display: flex;
   gap: 1rem;
 }
-.standard-container .standard .panel .block-container {
+.layout-container .layout .panel .block-container {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-.standard-container .centred {
+.layout-container .centred {
   justify-content: center;
 }
-.standard-container .left {
+.layout-container .left {
   justify-content: left;
 }
 .sidebar .nav-title,
@@ -2194,9 +2198,9 @@ footer {
 .sidebar .nav-title img,
 .navigation .nav-title img {
   height: 24px;
-  width: 24px;
   margin: 0.3rem 0.25rem 0 0;
   vertical-align: top;
+  width: 24px;
 }
 @media (max-width: 480px) {
   .sidebar .nav-title img,
@@ -2682,7 +2686,7 @@ footer {
   bottom: 2rem;
   left: 1rem;
   position: absolute;
-  z-index: 3;
+  z-index: 7;
 }
 .messages-panel .message-item {
   background: linen;
@@ -2779,7 +2783,7 @@ footer {
   max-height: 90%;
   max-width: 80%;
   overflow: auto;
-  z-index: 5;
+  z-index: 4;
 }
 .modal-outer-wrapper .modal .modal-header {
   align-items: center;
@@ -2913,7 +2917,8 @@ footer {
 }
 .modal-outer-wrapper.mask {
   background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
-  z-index: 4;
+  isolation: isolate;
+  z-index: 6;
 }
 .documentation {
   font-family: Roboto, system-ui, sans-serif;

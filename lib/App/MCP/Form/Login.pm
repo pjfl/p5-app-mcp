@@ -128,7 +128,7 @@ around 'validate_form' => sub {
 sub validate {
    my $self = shift;
 
-   return if $self->result->has_errors;
+   return unless $self->validated;
 
    my $context = $self->context;
    my $name    = $self->field('name');

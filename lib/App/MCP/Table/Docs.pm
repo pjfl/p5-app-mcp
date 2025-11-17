@@ -76,7 +76,7 @@ setup_resultset sub {
       extension         => $self->extensions,
       recurse           => FALSE,
       result_class      => 'App::MCP::File::Result::List',
-      table             => $self
+      table             => $self,
    );
 };
 
@@ -86,11 +86,15 @@ has_column 'icon' => cell_traits => ['Icon'], label => 'Type';
 
 has_column 'name' =>
    cell_traits => ['Modal'],
+   sortable    => TRUE,
    link        => sub {
       my $cell = shift; return $cell->table->_build_name_link($cell);
    },
-   options  => { 'title' => 'Documentation', 'trigger-modal' => 'modal' },
-   sortable => TRUE;
+   options => {
+      'constraints'   => { top => 42, left => 56 },
+      'title'         => 'Documentation',
+      'trigger-modal' => 'modal',
+   };
 
 has_column 'size' =>
    cell_traits => ['Numeric'],

@@ -168,7 +168,7 @@ sub make_css : method {
 =item make_js - Make concatenated JS file
 
 Run automatically if L<App::Burp> is running. It concatenates multiple JS files
-into a single one
+into a single one. Strips JSDoc comments
 
 =cut
 
@@ -182,7 +182,7 @@ sub make_js : method {
    my $prefix = $self->config->prefix;
    my $file   = "${prefix}.js";
    my $out    = io([qw( var root js ), $file])->assert_open('a')->truncate(0);
-   my $count  =()= map  { $out->append($_->slurp) }
+   my $count  =()= map  { $out->appendln($self->_strip_comments($_->slurp)) }
                    sort { $a->name cmp $b->name } @files;
    my $options = { name => 'CLI.make_js' };
 
@@ -412,6 +412,17 @@ sub _send_email {
 }
 
 sub _send_sms { ... }
+
+sub _strip_comments {
+   my ($self, @js) = @_;
+
+   my $js = join NUL, @js;
+
+   $js =~ s{ /\*\* [^*]* \*/ }{}gmsx;
+   $js =~ s{ \n [ ]* \n }{\n}gmsx;
+
+   return split m{ \n }mx, $js, -1;
+}
 
 use namespace::autoclean;
 

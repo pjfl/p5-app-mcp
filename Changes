@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Strips JSDoc when concatenating JS files
           - State diagram fetches results on box open
           - Schema upgrade
           - Adding level to job. Removing bugs

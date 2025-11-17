@@ -34,9 +34,9 @@ has_field 'condition' => type => 'Display', element_class => ['breaking-text'];
 
 has_field 'crontab' => type => 'Display';
 
-has_field 'command' => type => 'Display', element_class => ['breaking-text'];
-
 has_field 'host' => type => 'Display';
+
+has_field 'command' => type => 'Display', element_class => ['code'];
 
 has_field 'signal' => type => 'Select';
 
@@ -94,7 +94,7 @@ after 'after_build_fields' => sub {
 sub validate {
    my $self = shift;
 
-   return if $self->result->has_errors;
+   return unless $self->validated;
 
    my $context = $self->context;
    my $signal  = $self->field('signal')->value;

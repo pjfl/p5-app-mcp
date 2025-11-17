@@ -26,7 +26,7 @@ WCom.StateDiagram = (function() {
          const content = [this.h.div({ className: 'title' }, title)];
          if (this.type == 'box') {
             this.boxTable = this.h.div({ className: 'box-table' });
-            if (this.nodes[0]) {
+            if (this._has_nodes()) {
                this._renderNodes(this.boxTable, this.nodes);
                this.boxTable.classList.add('open');
             }
@@ -36,7 +36,11 @@ WCom.StateDiagram = (function() {
          const className = (this.type == 'box') ? 'box-tile' : 'job-tile';
          const jobTile = this.h.div({ className, id }, content);
          jobTile.classList.add(this.stateName);
-         this.jobTile = this.display(container, 'jobTile', jobTile);
+         this.jobTile = this.addReplace(container, 'jobTile', jobTile);
+      }
+      _has_nodes() {
+         return this.nodes[0] ? true : false;
+
       }
       _maxRowIndex(job2row, job) {
          let rowIndex = 0;
@@ -92,7 +96,7 @@ WCom.StateDiagram = (function() {
          }
       }
       async _renderSelectedNodes() {
-         if (!this.nodes[0]) {
+         if (!this._has_nodes()) {
             const uri = new URL(this.diagram.resultSet.dataURI);
             uri.searchParams.set('selected', this.id);
             uri.searchParams.set('path-depth', this.pathDepth);
@@ -123,7 +127,7 @@ WCom.StateDiagram = (function() {
             this.toggleIcon = this.h.span(attr, icon);
          }
          else { this.toggleIcon = this.h.span(attr, 'V') }
-         if (!this.nodes[0]) this.toggleIcon.classList.add('reversed');
+         if (!this._has_nodes()) this.toggleIcon.classList.add('reversed');
          return this.toggleIcon;
       }
    }
@@ -175,13 +179,13 @@ WCom.StateDiagram = (function() {
             job.top = top - containerTop;
          }
          const context = this.canvas.getContext('2d');
+         context.beginPath();
          for (const job of this.jobs) {
             if (!job.dependsOn[0]) continue;
             const parent = this.index[job.parentId];
             // Parent box is closed so no lines to draw
             if (parent && parent.toggleIcon.classList.contains('reversed'))
                continue;
-            context.beginPath();
             for (const depends of job.dependsOn) {
                const fj = this.index[depends];
                const from = {
@@ -195,9 +199,9 @@ WCom.StateDiagram = (function() {
                context.moveTo(from.x, from.y);
                context.lineTo(to.x, to.y);
             }
-            context.closePath();
-            context.stroke();
          }
+         context.closePath();
+         context.stroke();
       }
    }
    Object.assign(DependencyGraph.prototype, Utils.Markup);

@@ -45,9 +45,7 @@ after 'after_build_fields' => sub {
 sub validate {
    my $self = shift;
 
-   return if $self->result->has_errors;
-   return if $self->field('password')->has_errors;
-   return if $self->field('_password')->has_errors;
+   return unless $self->validated;
 
    my $old = $self->field('old_password')->value;
    my $new = $self->field('password')->value;

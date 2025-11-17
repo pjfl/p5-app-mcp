@@ -28,7 +28,7 @@ $class->table('jobs');
 $class->load_components('+App::MCP::MaterialisedPath');
 
 $class->add_columns(
-   id           => serial_data_type,
+   id           => { %{serial_data_type()}, hidden => TRUE },
    job_name     => { %{varchar_data_type()}, label => 'Job Name' },
    created      => {
       %{set_on_create_datetime_data_type()},
@@ -53,15 +53,15 @@ $class->add_columns(
       display       => sub { sprintf '0%o', shift->result->_permissions },
       is_nullable   => FALSE,
    },
-   expected_rv  => numerical_id_data_type(0),
+   expected_rv  => { %{numerical_id_data_type(0)}, label => 'Expected RV' },
    delete_after => { %{boolean_data_type()}, label => 'Delete After' },
    parent_id    => {
       %{nullable_foreign_key_data_type()},
       display => 'parent_box.job_name',
       label   => 'Parent Box'
    },
-   parent_path  => nullable_varchar_data_type,
-   path_depth   => numerical_id_data_type(0),
+   parent_path  => { %{nullable_varchar_data_type()}, hidden => TRUE },
+   path_depth   => { %{numerical_id_data_type(0)}, hidden => TRUE },
    host         => varchar_data_type(64, 'localhost'),
    user_name    => { %{varchar_data_type(32, 'mcp')}, label => 'User Name' },
    command      => nullable_varchar_data_type,
@@ -71,7 +71,7 @@ $class->add_columns(
       accessor  => '_condition',
    },
    directory    => nullable_varchar_data_type,
-   dependencies => nullable_varchar_data_type,
+   dependencies => { %{nullable_varchar_data_type()}, hidden => TRUE },
 );
 
 $class->set_primary_key('id');

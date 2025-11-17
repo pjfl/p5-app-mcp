@@ -4,25 +4,11 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-Describes version v0.5.$Rev: 55 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
+Describes version v0.5.$Rev: 72 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
 
 # Synopsis
 
 # Description
-
-# Configuration and Environment
-
-# Subroutines/Methods
-
-Defines the following methods;
-
-- `env_var`
-
-        $value = App::MCP->env_var( 'name', 'new_value' );
-
-    Looks up the environment variable and returns it's value. Also acts as a
-    mutator if provided with an optional new value. Uppercases and prefixes
-    the environment variable key
 
 # Installation
 
@@ -146,6 +132,18 @@ The prefered production deployment method uses the `FCGI` engine over
 a socket to `nginx`. There is an example
 \[configuration recipe\](https://www.roxsoft.co.uk/doh/static/en/posts/Blog/Debian-Nginx-Letsencrypt.sh-Configuration-Recipe.html)
 for this method of deployment
+
+# Subroutines/Methods
+
+Defines the following methods;
+
+- `env_var`
+
+        $value = App::MCP->env_var('name', 'new_value');
+
+    Looks up the environment variable and returns it's value. Also acts as a
+    mutator if provided with an optional new value. Uppercases and prefixes
+    the environment variable key
 
 # Diagnostics
 

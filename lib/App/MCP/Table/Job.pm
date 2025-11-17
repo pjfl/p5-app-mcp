@@ -7,6 +7,7 @@ use HTML::StateTable::Moo;
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Form';
+with    'HTML::StateTable::Role::Filterable';
 
 has '+caption' => default => 'Jobs List';
 
@@ -54,13 +55,13 @@ has_column 'job_name' =>
       return $context->uri_for_action('job/view', [$self->result->id]);
    };
 
-has_column 'type';
+has_column 'type', filterable => TRUE;
 
-has_column 'created' => cell_traits => ['DateTime'];
+has_column 'created' => cell_traits => ['DateTime'], sortable => TRUE;
 
 has_column 'host';
 
-has_column 'user_name' => label => 'User Name';
+has_column 'user_name' => label => 'User Name', filterable => TRUE;
 
 has_column 'command';
 

@@ -15,7 +15,7 @@ with 'App::MCP::Role::CSVParser';
 
 =head1 Name
 
-App::MCP::Logfile::Result::CSV - Result class for the logfile
+App::MCP::Logfile::Result::CSV - Result class a CSV formatted logfile
 
 =head1 Synopsis
 
@@ -40,6 +40,12 @@ line from a logfile
 =cut
 
 has 'line' => is => 'ro', isa => Str, required => TRUE;
+
+=item resultset
+
+=cut
+
+has 'resultset' => is => 'ro', required => TRUE, weak_ref => TRUE;
 
 =item fields
 
@@ -92,12 +98,6 @@ has 'field_map' =>
       return $field_map;
    };
 
-=item _resultset
-
-=cut
-
-has '_resultset' => is => 'ro', init_arg => 'resultset', weak_ref => TRUE;
-
 =item timestamp
 
 This L<DateTime> object is parsed from the first two fields of the logfile
@@ -122,7 +122,7 @@ has 'timestamp' =>
          $timestamp = NUL;
       }
 
-      my $context = $self->_resultset->table->context;
+      my $context = $self->resultset->table->context;
 
       $timestamp->set_time_zone($context->session->timezone) if $timestamp;
 
