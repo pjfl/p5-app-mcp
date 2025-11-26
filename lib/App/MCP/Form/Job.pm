@@ -1,6 +1,6 @@
 package App::MCP::Form::Job;
 
-use HTML::Forms::Constants qw( FALSE META NUL TRUE );
+use HTML::Forms::Constants qw( FALSE META NUL SPC TRUE );
 use Moo;
 use HTML::Forms::Moo;
 
@@ -16,17 +16,23 @@ has '+item_class'   => default => 'Job';
 has_field 'job_name' => required => TRUE;
 
 has_field 'type' =>
-   type         => 'Select',
-   html_name    => 'job_type',
-   input_param  => 'job_type',
-   toggle       => { job => ['command'] },
-   toggle_event => 'change',
-   options      => [
+   type          => 'Select',
+   html_name     => 'job_type',
+   input_param   => 'job_type',
+   toggle        => {
+      job => [qw(command delete_after directory expected_rv host user_name)]
+   },
+   toggle_event  => 'change',
+   wrapper_class => [qw(input-select inline)],
+   options       => [
       { label => 'Job', value => 'job' },
       { label => 'Box', value => 'box' },
    ];
 
-has_field 'parent_box' => type => 'Select', label => 'Parent Box';
+has_field 'parent_box' =>
+   type          => 'Select',
+   label         => 'Parent Box',
+   wrapper_class => [qw(input-select inline shrink)];
 
 sub options_parent_box {
    my $self    = shift;
@@ -43,31 +49,59 @@ sub options_parent_box {
 }
 
 has_field 'expected_rv' =>
-   type    => 'PosInteger',
-   default => 0,
-   label   => 'Expected RV';
+   type                => 'PosInteger',
+   default             => 0,
+   label               => 'Expected RV',
+   size                => 3,
+   validate_inline     => TRUE,
+   validate_when_empty => TRUE,
+   wrapper_class       => [qw(input-integer break inline)];
 
-has_field 'delete_after' => type => 'Boolean';
+has_field 'delete_after' =>
+   type          => 'Boolean',
+   wrapper_class => [qw(input-boolean inline shrink)];
 
-has_field 'host' => default => 'localhost', required => TRUE;
+has_field 'user_name' =>
+   default       => 'mcp',
+   required      => TRUE,
+   size          => 10,
+   wrapper_class => [qw(input-text break inline)];
 
-has_field 'user_name' => default => 'mcp', required => TRUE;
+has_field 'host' =>
+   default       => 'localhost',
+   required      => TRUE,
+   size          => 18,
+   wrapper_class => [qw(input-text inline shrink)];
 
-has_field 'command' => required => TRUE;
+has_field 'command' => type => 'TextArea', cols => 46, required => TRUE;
 
-has_field 'crontab_min' => label => 'Minute';
+has_field 'directory', size => 46;
 
-has_field 'crontab_hour' => label => 'Hour';
+has_field 'condition', size => 46;
 
-has_field 'crontab_mday' => label => 'Day of Month';
+has_field 'crontab_min' =>
+   label         => 'Minute',
+   size          => 3,
+   wrapper_class => [qw(input-text inline)];
 
-has_field 'crontab_mon' => label => 'Month';
+has_field 'crontab_hour' =>
+   label         => 'Hour',
+   size          => 3,
+   wrapper_class => [qw(input-text inline shrink)];
 
-has_field 'crontab_wday' => label => 'Day of Week';
+has_field 'crontab_mday' =>
+   label         => 'Day of Month',
+   size          => 3,
+   wrapper_class => [qw(input-text break inline)];
 
-has_field 'condition';
+has_field 'crontab_mon' =>
+   label         => 'Month',
+   size          => 3,
+   wrapper_class => [qw(input-text inline shrink)];
 
-has_field 'directory';
+has_field 'crontab_wday' =>
+   label => 'Day of Week',
+   size  => 3;
 
 has_field 'submit' => type => 'Button';
 

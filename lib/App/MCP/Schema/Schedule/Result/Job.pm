@@ -36,6 +36,11 @@ $class->add_columns(
       timezone    => 'UTC',
    },
    type         => enumerated_data_type(JOB_TYPE_ENUM, 'box'),
+   parent_id    => {
+      %{nullable_foreign_key_data_type()},
+      display => 'parent_box.job_name',
+      label   => 'Parent Box'
+   },
    owner_id     => {
       %{foreign_key_data_type(1, 'owner')},
       display => 'owner_rel.user_name',
@@ -55,22 +60,17 @@ $class->add_columns(
    },
    expected_rv  => { %{numerical_id_data_type(0)}, label => 'Expected RV' },
    delete_after => { %{boolean_data_type()}, label => 'Delete After' },
-   parent_id    => {
-      %{nullable_foreign_key_data_type()},
-      display => 'parent_box.job_name',
-      label   => 'Parent Box'
-   },
    parent_path  => { %{nullable_varchar_data_type()}, hidden => TRUE },
    path_depth   => { %{numerical_id_data_type(0)}, hidden => TRUE },
-   host         => varchar_data_type(64, 'localhost'),
    user_name    => { %{varchar_data_type(32, 'mcp')}, label => 'User Name' },
+   host         => varchar_data_type(64, 'localhost'),
    command      => nullable_varchar_data_type,
-   crontab      => nullable_varchar_data_type(127),
+   directory    => nullable_varchar_data_type,
    condition    => {
       %{nullable_varchar_data_type()},
       accessor  => '_condition',
    },
-   directory    => nullable_varchar_data_type,
+   crontab      => nullable_varchar_data_type(127),
    dependencies => { %{nullable_varchar_data_type()}, hidden => TRUE },
 );
 

@@ -3,8 +3,9 @@ package App::MCP::Schema::Schedule::Result::JobState;
 use strictures;
 use parent 'App::MCP::Schema::Base';
 
-use App::MCP::Constants qw( STATE_ENUM );
-use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type );
+use App::MCP::Constants qw( SQL_NOW STATE_ENUM );
+use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
+                            updated_timestamp_data_type );
 
 my $class  = __PACKAGE__;
 my $result = 'App::MCP::Schema::Schedule::Result';
@@ -12,9 +13,9 @@ my $result = 'App::MCP::Schema::Schedule::Result';
 $class->table('job_states');
 
 $class->add_columns(
-   job_id    => foreign_key_data_type,
-   updated   => { data_type => 'datetime', timezone => 'UTC' },
-   name      => enumerated_data_type( STATE_ENUM ),
+   job_id  => foreign_key_data_type,
+   updated => updated_timestamp_data_type,
+   name    => enumerated_data_type(STATE_ENUM),
 );
 
 $class->set_primary_key('job_id');
@@ -24,43 +25,58 @@ $class->has_many  ( events           => "${result}::Event",          'job_id' );
 $class->has_many  ( processed_events => "${result}::ProcessedEvent", 'job_id' );
 
 # Public methods
+sub insert {
+   my $self    = shift;
+   my $columns = { $self->get_inflated_columns };
+
+   $columns->{updated} = SQL_NOW;
+   $self->set_inflated_columns($columns);
+
+   return $self->next::method;
+}
+
 sub job_name {
-   return $_[0]->job->name;
+   return shift->job->name;
 }
 
 sub last_finish {
-   my $self  = shift;
-   my $event = $self->_last_finish_event;
+   my $event = shift->_last_finish_event;
 
    return $event ? $event->processed : 'never';
 }
 
 sub last_pid {
-   my $self  = shift;
-   my $event = $self->_last_finish_event;
+   my $event = shift->_last_finish_event;
 
    return $event ? $event->pid : 'none';
 }
 
 sub last_runid {
-   my $self  = shift;
-   my $event = $self->_last_finish_event;
+   my $event = shift->_last_finish_event;
 
    return $event ? $event->runid : 'none';
 }
 
 sub last_rv {
-   my $self  = shift;
-   my $event = $self->_last_finish_event;
+   my $event = shift->_last_finish_event;
 
    return $event ? $event->rv : 'none';
 }
 
 sub last_start {
-   my $self  = shift;
-   my $event = $self->_last_start_event;
+   my $event = shift->_last_start_event;
 
    return $event ? $event->created : 'never';
+}
+
+sub update {
+   my ($self, $columns) = @_;
+
+   $columns = { $self->get_inflated_columns, %{$columns // {}} };
+   $columns->{updated} = SQL_NOW;
+   $self->set_inflated_columns($columns);
+
+   return $self->next::method;
 }
 
 # Private methods
@@ -86,6 +102,8 @@ sub _last_start_event {
       { order_by   => { -desc => 'runid' }, rows => 1 }
    )->all;
 }
+
+use namespace::autoclean;
 
 1;
 

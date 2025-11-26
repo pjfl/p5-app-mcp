@@ -8,12 +8,15 @@ extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Filterable';
+with    'HTML::StateTable::Role::Downloadable';
 
 has '+caption' => default => 'Jobs List';
 
 has '+configurable_action' => default => 'api/table_preference';
 
 has '+configurable_control_location' => default => 'TopRight';
+
+has '+download_display' => default => FALSE;
 
 has '+form_buttons' => default => sub {
    return [{
@@ -59,9 +62,9 @@ has_column 'type', filterable => TRUE;
 
 has_column 'created' => cell_traits => ['DateTime'], sortable => TRUE;
 
-has_column 'host';
-
 has_column 'user_name' => label => 'User Name', filterable => TRUE;
+
+has_column 'host';
 
 has_column 'command';
 

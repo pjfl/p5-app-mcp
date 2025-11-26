@@ -43,7 +43,7 @@ after 'after_build_fields' => sub {
          my $v = $t->[$i];
 
          $v = $self->_encode_ref($v) if is_plain_hashref $v or is_arrayref $v;
-         $v = "# <span id=\"${v}\">${v}</span>" if $i == 0;
+         $v = "## <span id=\"${v}\">${v}</span>" if $i == 0;
          $v = $self->_pod2markdown($v) if $i == 2;
          $v = "\n```code\n${v} \n```"  if $i == 3;
 

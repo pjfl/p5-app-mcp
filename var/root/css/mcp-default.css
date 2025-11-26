@@ -1,3 +1,6 @@
+/* Dimensions */
+/* Font Sizes */
+/* Colours */
 .filter-container {
   align-items: flex-start;
   display: flex;
@@ -221,7 +224,7 @@
 }
 .filter-container .node-rule-wrapper .node-rule-box .node-rule-title-wrapper .node-rule-title {
   flex-grow: 2;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
   margin: 0;
@@ -234,7 +237,7 @@
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
   cursor: pointer;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-weight: bold;
   padding: 0 0.25rem;
 }
@@ -269,7 +272,7 @@
 .filter-container .node-rule-wrapper .node-rule-box .type-name,
 .filter-container .node-rule-wrapper .node-rule-box .type-negate,
 .filter-container .node-rule-wrapper .node-rule-box .type-operation {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
 }
 .filter-container .node-rule-wrapper .node-rule-box .type-event,
 .filter-container .node-rule-wrapper .node-rule-box .type-negate {
@@ -322,7 +325,7 @@
   transition: border 500ms, color 500ms;
 }
 .filter-container .rule-editor .node-rule-edit-container button span {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
   position: relative;
@@ -370,7 +373,7 @@
   padding: 0 1rem;
 }
 .filter-container .rule-editor .node-rule-edit-container .node-rule-edit .node-rule-edit-title {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   margin-left: -2px;
   white-space: nowrap;
 }
@@ -383,7 +386,6 @@
   align-items: center;
   border-collapse: collapse;
   display: flex;
-  flex-wrap: wrap;
   margin: 0.5rem 0;
   justify-content: flex-start;
 }
@@ -393,7 +395,7 @@
   margin-right: 0.5rem;
 }
 .filter-container .type-container label {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   line-height: 1rem;
   padding-right: 0.5rem;
@@ -425,6 +427,7 @@
 }
 .filter-container .type-container .type-list-display {
   font-size: 0.8rem;
+  white-space: nowrap;
 }
 .filter-container .type-container .checkbox-wrapper {
   display: inline-block;
@@ -507,29 +510,33 @@
   position: absolute;
   right: 0.25rem;
 }
+/* Font Sizes */
+/* Dimensions */
+/* Colours */
 form.classic {
   --label-width: 7rem;
-  background: ivory;
+  background: hsl(from ivory h s l / 0.25);
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
   color: black;
   display: inline-block;
-  padding-bottom: 0.125rem;
+  padding: 0 0.5rem 0.5rem;
   position: relative;
 }
 form.classic .alert {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
 }
 form.classic .form-wrapper {
   border-radius: 5px;
   min-width: 16rem;
+  margin: 0;
   padding: 0 1rem 0.25rem 1rem;
   position: relative;
 }
 form.classic .form-wrapper .form-title {
   color: black;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   margin-left: -2px;
 }
 form.classic .form-wrapper:has(.input-field span.field-label) .input-button button {
@@ -574,6 +581,9 @@ form.classic .input-field.label-right:has(label.field-label) span,
 form.classic .input-field.label-right:has(label.field-label) textarea {
   justify-self: end;
 }
+form.classic .input-field.collapse:not(.hide):not(.input-datastructure):has(label.field-label) {
+  grid-template-columns: min-content min-content auto !important;
+}
 form.classic .input-field.hide {
   display: none !important;
   opacity: 0;
@@ -582,11 +592,11 @@ form.classic .input-field.inline:not(.hide) {
   display: inline-grid !important;
   margin-right: 0.5rem;
 }
-form.classic .input-field.inline:not(.hide):not(.input-datastructure):has(label.field-label) {
-  grid-template-columns: min-content min-content auto !important;
-}
 form.classic .input-field.inline:not(.hide) .input-field {
   padding-bottom: 0;
+}
+form.classic .input-field.shrink:not(.hide):not(.input-datastructure):has(label.field-label) {
+  grid-template-columns: 5rem min-content auto !important;
 }
 form.classic .input-field:has(span.field-label) {
   display: grid;
@@ -630,7 +640,7 @@ form.classic .input-field:has(.digit-input-wrapper) .field-label::after,
 form.classic .input-field:has(input[required=required]) .field-label::after,
 form.classic .input-field:has(select[required=required]) .field-label::after,
 form.classic .input-field:has(textarea[required=required]) .field-label::after {
-  color: red;
+  color: firebrick;
   content: '*';
   min-width: 2ch;
   padding-left: 0.25rem;
@@ -663,6 +673,7 @@ form.classic .input-field textarea {
   min-width: 15rem;
   overflow: auto;
   padding-left: 0.25rem;
+  padding-top: 0;
 }
 form.classic .input-field input:focus,
 form.classic .input-field textarea:focus {
@@ -675,16 +686,34 @@ form.classic .input-field input[type=text],
 form.classic .input-field select.select-multiple option {
   padding: 0 0.25rem;
 }
+form.classic .input-field input[type=file] {
+  height: unset;
+}
+form.classic .input-field input[type=file]::file-selector-button {
+  background: linear-gradient(0deg, bisque, whitesmoke);
+  border: 2px outset gainsboro;
+  border-radius: 50px;
+  color: seagreen;
+  cursor: pointer;
+  font-size: 0.7rem;
+  letter-spacing: 0.1rem;
+  line-height: 0.8rem;
+  padding: 0.366rem 0.75rem;
+  text-transform: uppercase;
+}
+form.classic .input-field input[type=file]::file-selector-button:hover {
+  color: black;
+}
 form.classic .input-field input[readonly=readonly] {
   color: gray;
 }
 form.classic .input-field input[readonly=readonly][type=datetime-local] {
-  background: ivory;
+  background: hsl(from ivory h s l / 0.25);
   border: 0;
   color: black;
 }
 form.classic .input-field input[type=submit] {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
 }
 form.classic .input-field select.select-multiple option {
@@ -710,7 +739,7 @@ form.classic .input-field .alert-info {
   background: bisque;
 }
 form.classic .input-field .field-label {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   grid-area: label;
   position: relative;
@@ -742,15 +771,10 @@ form.classic .input-selector a.form-button {
   color: seagreen;
   cursor: pointer;
   display: inline-block;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 0.7rem;
-  letter-spacing: 0.1rem;
-  line-height: 0.8rem;
   overflow: hidden;
-  padding: 0.366rem 0.75rem;
+  padding: 0.25rem 0.75rem;
   position: relative;
   text-decoration: none;
-  text-transform: uppercase;
   transition: border 0.5s, color 0.5s;
 }
 form.classic .data-structure button span,
@@ -765,6 +789,7 @@ form.classic .input-selector button svg,
 form.classic .data-structure a.form-button svg,
 form.classic .input-button a.form-button svg,
 form.classic .input-selector a.form-button svg {
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
   position: relative;
@@ -915,7 +940,7 @@ form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
   max-width: 20rem;
-  padding: 0.125rem 0.35rem;
+  padding: 3px 0.25rem 1px;
   white-space: nowrap;
 }
 form.classic .input-display span.breaking-text {
@@ -1013,8 +1038,8 @@ form.classic .digit-input-wrapper {
   grid-area: input;
 }
 form.classic .ds-add-icon {
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: smaller;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 0.8rem;
   font-weight: bold;
 }
 form.classic .ds-add-icon svg {
@@ -1028,13 +1053,13 @@ form.classic .ds-form {
   gap: 0.5rem;
 }
 form.classic .ds-form .ds-header {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
   padding-top: 0.2rem;
 }
 form.classic .ds-form .ds-row {
-  background: wheat;
+  background: bisque;
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
   display: flex;
@@ -1054,7 +1079,7 @@ form.classic .ds-form .ds-field img {
   object-fit: contain;
 }
 form.classic .ds-form .ds-field input[readonly=readonly] {
-  background: wheat !important;
+  background: bisque !important;
 }
 form.classic .ds-form .ds-field.hide {
   display: none;
@@ -1066,7 +1091,7 @@ form.classic .ds-form .ds-field-group.vertical {
   flex-direction: column;
 }
 form.classic .ds-form .ds-input.input-text[readonly=readonly] {
-  background: ivory;
+  background: hsl(from ivory h s l / 0.25);
   border: 0;
   border-radius: 0;
   color: black;
@@ -1103,8 +1128,8 @@ form.classic .ds-form .ds-remove .ds-remove-icon {
   color: firebrick;
   cursor: pointer;
   display: flex;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: smaller;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 0.8rem;
   font-weight: bold;
   padding: 0 0.25rem;
 }
@@ -1122,7 +1147,7 @@ form.classic .ds-form .ds-tag {
   padding-bottom: 0.25rem;
 }
 form.classic .ds-form .ds-tag-label {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   margin-right: 0.25rem;
 }
@@ -1131,6 +1156,7 @@ form.classic .ds-form.horizontal {
   overflow-x: auto;
   max-width: 21rem;
   overscroll-behavior-inline: contain;
+  padding-right: 0.25rem;
   scroll-behavior: smooth;
 }
 form.classic .ds-form.horizontal.snaps-inline {
@@ -1154,7 +1180,7 @@ form.classic .page-list li {
   color: gray;
   cursor: pointer;
   display: inline;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   padding: 0 0.5rem;
 }
@@ -1163,8 +1189,38 @@ form.classic .page-list li.selected {
   border-bottom: 1px solid transparent;
   color: black;
 }
-form.classic.filemanager {
-  padding: 0.5rem;
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes spin {
+  from {
+    --angle: 0deg;
+  }
+  to {
+    --angle: 360deg;
+  }
+}
+form.classic.shiny::after,
+form.classic.shiny::before {
+  animation: 3s spin linear infinite;
+  background: conic-gradient(from var(--angle), transparent 70%, bisque);
+  border-radius: 5px;
+  content: '';
+  height: 100%;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  translate: -50% -50%;
+  width: 100%;
+  z-index: -1;
+}
+form.classic.shiny::before {
+  filter: blur(1.5rem);
+}
+form.classic.shiny .form-wrapper {
+  background: ivory;
 }
 .form-error {
   background: lightpink;
@@ -1232,7 +1288,12 @@ form.classic.filemanager {
   box-shadow: none;
   margin: 0;
   min-width: 16rem;
+  padding: 0;
 }
+/* Breaks */
+/* Font Sizes */
+/* Dimensions */
+/* Colours */
 body {
   counter-reset: section;
 }
@@ -1241,10 +1302,8 @@ body {
 }
 .state-table table {
   border-collapse: collapse;
-  display: block;
   margin: 0.25rem 0 0.5rem;
   position: relative;
-  width: 100%;
 }
 .state-table table td {
   border-right: 1px solid transparent;
@@ -1266,7 +1325,6 @@ body {
 }
 .state-table table td a {
   color: seagreen;
-  font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
 }
 .state-table table td a:link {
   text-decoration: none;
@@ -1291,9 +1349,8 @@ body {
 }
 .state-table table th {
   background: ivory;
-  border-right: 1px solid;
-  border-color: gray;
-  font-family: Roboto, system-ui, sans-serif;
+  border-right: 1px solid gray;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-weight: normal;
   position: relative;
   text-align: left;
@@ -1337,7 +1394,7 @@ body {
   vertical-align: top;
 }
 .state-table .caption {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-weight: normal;
   margin: 0;
   text-transform: uppercase;
@@ -1349,13 +1406,13 @@ body {
 .state-table .page-size-control a {
   color: gray;
   cursor: pointer;
-  font-size: small;
+  font-size: 0.8rem;
 }
 .state-table .page-control,
 .state-table .page-size-control {
   color: gray;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: small;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 0.8rem;
   margin: 0;
   padding-left: 0;
 }
@@ -1406,14 +1463,13 @@ body {
   display: inline-block;
   overflow: hidden;
   position: relative;
-  vertical-align: top;
 }
 .state-table .search-box .search-wrapper .search-hidden select {
   cursor: pointer;
+  height: 1.75rem;
   left: 0;
   opacity: 0;
   position: absolute;
-  top: 5px;
 }
 .state-table .search-box .search-wrapper .search-hidden .search-arrow {
   border: 3px solid transparent;
@@ -1428,15 +1484,13 @@ body {
   width: 0;
 }
 .state-table .search-box .search-wrapper .search-hidden .search-display {
-  background: gainsboro;
-  background-image: linear-gradient(0deg, gainsboro, whitesmoke);
+  background: linear-gradient(0deg, bisque, whitesmoke);
   border: 2px outset gainsboro;
   border-radius: 50px 0 0 50px;
   color: gray;
   display: inline-block;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
-  height: 1.6rem;
   padding: 0.25rem 1rem 0.25rem 0.5rem;
   vertical-align: top;
 }
@@ -1446,9 +1500,10 @@ body {
   border-bottom-left-radius: 2px;
 }
 .state-table .search-box .search-wrapper .search-button button {
-  padding: 1px 0.5rem 1px 0.25rem;
+  padding: 2px 0.5rem 0 0.25rem;
 }
 .state-table .search-box .search-wrapper .search-button button .icon-wrapper {
+  display: inline-block;
   height: 20px;
   width: 20px;
 }
@@ -1462,15 +1517,15 @@ body {
   line-height: 1rem;
   margin: 0;
   outline: 0;
-  padding: 0 0.25rem;
+  padding: 0 0.25rem 2px;
 }
 .state-table .search-box .search-wrapper input.search-field:placeholder-shown {
   font-style: italic;
 }
 .state-table .section-row {
   background: gainsboro;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: smaller;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 0.8rem;
 }
 .state-table .section-row .section-check {
   text-align: center;
@@ -1490,7 +1545,7 @@ body {
   background: khaki;
   border-radius: 5px;
   color: black;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
@@ -1513,8 +1568,8 @@ body {
 .state-table .active-control-label {
   color: gray;
   cursor: pointer;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: small;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 0.8rem;
 }
 .state-table .bottom-control,
 .state-table .top-control {
@@ -1665,8 +1720,8 @@ body {
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
   cursor: pointer;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: smaller;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 0.8rem;
   font-weight: bold;
 }
 .state-table .dialog-close .icon-wrapper {
@@ -1687,9 +1742,15 @@ body {
 .state-table .dialog-form {
   padding: 0 0.5rem;
 }
-.state-table .dialog-form td:first-child,
 .state-table .dialog-form th {
-  font-family: Roboto, system-ui, sans-serif;
+  font-size: 0.8rem;
+  min-width: 4rem;
+}
+.state-table .dialog-form th:first-child {
+  min-width: 6rem;
+}
+.state-table .dialog-form td:first-child {
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
 }
 .state-table .dialog-form table td:first-child,
@@ -1708,7 +1769,7 @@ body {
 }
 .state-table .dialog-form .checkbox input[type=checkbox] {
   height: 1.25rem;
-  left: -5px;
+  left: 0;
   margin: 0;
   opacity: 0;
   position: relative;
@@ -1723,13 +1784,13 @@ body {
   display: block;
   position: absolute;
   height: 1.25rem;
-  left: 0;
+  left: 0.5rem;
   top: 0.25rem;
   width: 20px;
   z-index: 2;
 }
 .state-table .dialog-form .checkbox:has(input[type=checkbox]:checked)::after {
-  left: 20px;
+  left: 28px;
 }
 .state-table .dialog-form .checkbox::before {
   background: firebrick;
@@ -1739,7 +1800,7 @@ body {
   display: block;
   position: absolute;
   height: 1.25rem;
-  left: 0;
+  left: 0.5rem;
   width: 40px;
   z-index: 1;
 }
@@ -1750,32 +1811,32 @@ body {
   margin-bottom: 0.5rem;
   padding: 0.25rem 0;
 }
+.state-table .dialog-input button {
+  margin-right: 0.25rem;
+  padding: 3px 0.75rem 5px;
+}
 .state-table .dialog-input select {
   background: linear-gradient(0deg, bisque, whitesmoke);
   border-radius: 5px;
-  font-size: 0.85rem;
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
-}
-.state-table .dialog-input button {
-  margin-right: 0.25rem;
+  font-size: 0.85rem;
 }
 .state-table .dialog-input > span,
 .state-table .dialog-input label {
   color: black;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   line-height: 1rem;
 }
 .state-table .dialog-title {
   align-items: center;
   background: linen;
-  border-bottom: 1px solid;
-  border-color: orange;
+  border-bottom: 1px solid orange;
   border-top-left-radius: 5px;
   border-top-right-radius: 5px;
   color: black;
   display: flex;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 1rem;
   justify-content: space-between;
   min-width: 6rem;
@@ -1796,7 +1857,7 @@ body {
 }
 .state-table .filter-values {
   font-family: 'Roboto Slab', 'DejaVu Serif', 'Sitka Small', serif;
-  font-size: smaller;
+  font-size: 0.85rem;
   height: 6.5rem;
   list-style: none;
   margin: 0.25rem 0;
@@ -1820,10 +1881,9 @@ body {
 .state-table .grab-handle-cell {
   cursor: grab;
   padding-top: 0.25rem;
-  text-align: center;
 }
 .state-table .grab-handle-cell:hover {
-  background: orange;
+  background: bisque;
 }
 .state-table .table-form .credit-control {
   display: flex;
@@ -1846,7 +1906,6 @@ body {
   color: seagreen;
   cursor: pointer;
   display: inline-block;
-  line-height: 0.8rem;
   overflow: hidden;
   padding: 0.25rem 0.75rem;
   position: relative;
@@ -1856,14 +1915,23 @@ body {
 .state-table .table-form .table-button span,
 .state-table .table-form button span,
 .state-table .dialog-form button span {
-  display: inline-block;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
   position: relative;
   text-decoration: none;
   text-transform: uppercase;
+  white-space: nowrap;
   z-index: 3;
+}
+.state-table .table-form a.table-button {
+  line-height: 0.875rem;
+}
+.state-table .table-form a.table-button[disabled=disabled] {
+  padding: 3px 0.75rem 5px;
+}
+.state-table .table-form button.table-button {
+  padding: 0.25rem 0.75rem;
 }
 .state-table .table-form .table-button:hover,
 .state-table .table-form button:hover,
@@ -1931,12 +1999,14 @@ body {
     text-align: left !important;
   }
   .state-table table td::before {
+    color: gray;
     content: attr(data-cell) ': ';
-    font-family: Roboto, system-ui, sans-serif;
-    font-weight: bold;
+    font-family: 'Roboto', system-ui, sans-serif;
+    font-size: 0.8rem;
     text-transform: capitalize;
   }
-  .state-table table th {
+  .state-table table th,
+  .state-table table td.no-data::before {
     display: none;
   }
   .state-table .chart-container {
@@ -1944,12 +2014,17 @@ body {
   }
 }
 .state-table.object-view td:first-child {
-  border-right: 1px solid;
-  font-family: Roboto, system-ui, sans-serif;
+  border-right: 1px solid gray;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
   padding-right: 0.5rem;
   white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .state-table.object-view td:first-child {
+    border: 0;
+  }
 }
 .state-table.object-view td.boolean {
   text-align: left;
@@ -1973,9 +2048,14 @@ body {
 .state-table.object-view .state-table th:first-child a {
   color: black;
 }
-.state-table.object-view .table-form .table-button:first-child,
-.state-table.object-view .table-form button:first-child {
-  margin-left: 0.5rem;
+.state-table.object-view .table-button.right {
+  position: absolute;
+  right: 0;
+}
+@media (max-width: 680px) {
+  .state-table.object-view table td::before {
+    display: none;
+  }
 }
 .state-table .state-table table {
   margin-bottom: 0;
@@ -2042,11 +2122,13 @@ body {
 .job-tile.active,
 .input-field .active {
   background: bisque;
+  color: black;
 }
 .box-tile.failed,
 .job-tile.failed,
 .input-field .failed {
   background: red;
+  color: whitesmoke;
 }
 .box-tile.finished,
 .job-tile.finished,
@@ -2058,21 +2140,25 @@ body {
 .job-tile.hold,
 .input-field .hold {
   background: blue;
+  color: whitesmoke;
 }
 .box-tile.inactive,
 .job-tile.inactive,
 .input-field .inactive {
   background: lightgray;
+  color: black;
 }
 .box-tile.running,
 .job-tile.running,
 .input-field .running {
   background: lightgreen;
+  color: black;
 }
 .box-tile.starting,
 .job-tile.starting,
 .input-field .starting {
   background: cyan;
+  color: black;
 }
 .box-tile.terminated,
 .job-tile.terminated,
@@ -2082,7 +2168,12 @@ body {
 }
 .input-field .job-state {
   border-radius: 5px;
+  text-transform: uppercase;
 }
+/* Breaks */
+/* Font Sizes */
+/* Dimensions */
+/* Colours */
 *,
 *::before,
 *::after {
@@ -2098,7 +2189,8 @@ html:has(body.light) {
   color-scheme: light;
 }
 body {
-  background-image: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
+  --base-colour: bisque;
+  background: linear-gradient(to bottom right, hsl(from linen h s l / 0), var(--base-colour));
   display: grid;
   grid-template-areas: "header header" "sidebar main";
   grid-template-columns: 7.5rem 1fr;
@@ -2110,8 +2202,8 @@ body {
 }
 @media (max-width: 480px) {
   body {
-    grid-template-areas: "header header" "sidebar sidebar" "main main";
-    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "header header" "main main";
+    grid-template-rows: auto 1fr;
   }
 }
 body:has(aside.nav-link-icon) {
@@ -2127,12 +2219,22 @@ header {
   top: 0;
   z-index: 5;
 }
+@media (max-width: 480px) {
+  header {
+    padding: 0;
+  }
+}
 aside {
   grid-area: sidebar;
   padding-left: 0.5rem;
   position: sticky;
   top: 3rem;
   z-index: 5;
+}
+@media (max-width: 480px) {
+  aside {
+    display: none;
+  }
 }
 main {
   grid-area: main;
@@ -2157,7 +2259,7 @@ footer {
 .layout-container h3,
 .layout-container h4,
 .layout-container h5 {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   margin: 1rem;
   text-wrap: balance;
 }
@@ -2182,6 +2284,11 @@ footer {
   flex-direction: column;
   gap: 1rem;
 }
+@media (max-width: 480px) {
+  .layout-container .layout .panel {
+    flex-direction: column;
+  }
+}
 .layout-container .centred {
   justify-content: center;
 }
@@ -2190,8 +2297,8 @@ footer {
 }
 .sidebar .nav-title,
 .navigation .nav-title {
-  border-top: 0.5rem solid bisque;
-  font-family: Roboto, system-ui, sans-serif;
+  border-top: 0.5rem solid var(--base-colour);
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: larger;
   height: 3rem;
 }
@@ -2211,7 +2318,7 @@ footer {
 .sidebar .nav-title::after,
 .navigation .nav-title::after {
   border-bottom: 40px solid transparent;
-  border-right: 28px solid bisque;
+  border-right: 28px solid var(--base-colour);
   content: '';
   display: inline-block;
   height: 0;
@@ -2223,7 +2330,7 @@ footer {
     border-bottom: 0;
     border-right: 0;
     border-top-right-radius: 10px;
-    box-shadow: 0.5rem 0 bisque;
+    box-shadow: 0.5rem 0 var(--base-colour);
     height: 100%;
     width: 1rem;
   }
@@ -2231,7 +2338,7 @@ footer {
 .sidebar .nav-title::before,
 .navigation .nav-title::before {
   border-top-left-radius: 10px;
-  box-shadow: inset 0.5rem 0 bisque;
+  box-shadow: inset 0.5rem 0 var(--base-colour);
   content: '';
   display: inline-block;
   height: 100%;
@@ -2346,6 +2453,67 @@ footer {
 .navigation .nav-control:hover .nav-panel {
   max-height: 32rem;
 }
+@media (max-width: 480px) {
+  .sidebar .nav-control,
+  .navigation .nav-control {
+    display: none;
+  }
+}
+.sidebar .nav-mobile,
+.navigation .nav-mobile {
+  display: none;
+  position: relative;
+}
+.sidebar .nav-mobile .hamburger[type=checkbox],
+.navigation .nav-mobile .hamburger[type=checkbox],
+.sidebar .nav-mobile .mobile-panel,
+.navigation .nav-mobile .mobile-panel {
+  display: none;
+}
+.sidebar .nav-mobile:has(.hamburger[type=checkbox]:checked) .mobile-panel,
+.navigation .nav-mobile:has(.hamburger[type=checkbox]:checked) .mobile-panel {
+  background: linen;
+  border: 1px solid gray;
+  border-radius: 5px;
+  display: inline-block;
+  position: absolute;
+  z-index: 6;
+  transform: translate(-100%, 0);
+  text-align: left;
+}
+.sidebar .nav-mobile .nav-hamburger,
+.navigation .nav-mobile .nav-hamburger {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 0 0.25rem 1rem;
+}
+.sidebar .nav-mobile .nav-hamburger span,
+.navigation .nav-mobile .nav-hamburger span {
+  display: block;
+  font-size: 1.5rem;
+  height: 24px;
+  width: 24px;
+}
+.sidebar .nav-mobile .nav-list.context,
+.navigation .nav-mobile .nav-list.context {
+  border: 0;
+}
+.sidebar .nav-mobile .nav-list.mobile,
+.navigation .nav-mobile .nav-list.mobile {
+  width: 100%;
+}
+.sidebar .nav-mobile .nav-list.mobile .drop-menu,
+.navigation .nav-mobile .nav-list.mobile .drop-menu {
+  color: gray;
+  padding-left: 0.5rem;
+}
+@media (max-width: 480px) {
+  .sidebar .nav-mobile,
+  .navigation .nav-mobile {
+    display: inline-block;
+  }
+}
 .sidebar .nav-list,
 .navigation .nav-list {
   display: inline-block;
@@ -2358,8 +2526,7 @@ footer {
 .sidebar .nav-list .drop-menu,
 .navigation .nav-list .drop-menu {
   border-radius: 3px;
-  color: seagreen;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
 }
 .sidebar .nav-list a img,
 .navigation .nav-list a img,
@@ -2373,9 +2540,17 @@ footer {
   width: 24px;
   vertical-align: middle;
 }
+.sidebar .nav-list a,
+.navigation .nav-list a {
+  color: seagreen;
+}
 .sidebar .nav-list a:link,
 .navigation .nav-list a:link {
   text-decoration: none;
+}
+.sidebar .nav-list .drop-menu,
+.navigation .nav-list .drop-menu {
+  color: black;
 }
 .sidebar .nav-list li,
 .navigation .nav-list li {
@@ -2385,10 +2560,17 @@ footer {
 .navigation .nav-list li.control {
   font-size: medium;
 }
+.sidebar .nav-list li.mobile,
+.navigation .nav-list li.mobile {
+  font-size: medium;
+  text-align: left;
+}
 .sidebar .nav-list li.control,
 .navigation .nav-list li.control,
 .sidebar .nav-list li.context,
-.navigation .nav-list li.context {
+.navigation .nav-list li.context,
+.sidebar .nav-list li.mobile,
+.navigation .nav-list li.mobile {
   display: block;
   position: relative;
   white-space: nowrap;
@@ -2398,20 +2580,28 @@ footer {
 .navigation .nav-list li.control a:active,
 .sidebar .nav-list li.context a:active,
 .navigation .nav-list li.context a:active,
+.sidebar .nav-list li.mobile a:active,
+.navigation .nav-list li.mobile a:active,
 .sidebar .nav-list li.control a:hover,
 .navigation .nav-list li.control a:hover,
 .sidebar .nav-list li.context a:hover,
 .navigation .nav-list li.context a:hover,
+.sidebar .nav-list li.mobile a:hover,
+.navigation .nav-list li.mobile a:hover,
 .sidebar .nav-list li.control .form-button:hover,
 .navigation .nav-list li.control .form-button:hover,
 .sidebar .nav-list li.context .form-button:hover,
-.navigation .nav-list li.context .form-button:hover {
-  background: linear-gradient(0deg, bisque, linen);
+.navigation .nav-list li.context .form-button:hover,
+.sidebar .nav-list li.mobile .form-button:hover,
+.navigation .nav-list li.mobile .form-button:hover {
+  background: linear-gradient(0deg, var(--base-colour), linen);
 }
 .sidebar .nav-list li.control a,
 .navigation .nav-list li.control a,
 .sidebar .nav-list li.context a,
 .navigation .nav-list li.context a,
+.sidebar .nav-list li.mobile a,
+.navigation .nav-list li.mobile a,
 .sidebar .nav-list .form-button span,
 .navigation .nav-list .form-button span {
   display: block;
@@ -2436,7 +2626,9 @@ footer {
 .sidebar .nav-list li.context.selected::before,
 .navigation .nav-list li.context.selected::before,
 .sidebar .nav-list li.control.selected::before,
-.navigation .nav-list li.control.selected::before {
+.navigation .nav-list li.control.selected::before,
+.sidebar .nav-list li.mobile.selected::before,
+.navigation .nav-list li.mobile.selected::before {
   background: seagreen;
   border-radius: 2px;
   content: '';
@@ -2454,8 +2646,8 @@ footer {
   border-radius: 3px;
   color: seagreen;
   cursor: pointer;
-  font-family: Roboto, system-ui, sans-serif;
-  font-size: 16px;
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-size: 1rem;
   padding: 0 !important;
   text-align: left;
   text-decoration: none;
@@ -2488,7 +2680,7 @@ footer {
 }
 .sidebar .nav-menu,
 .navigation .nav-menu {
-  background: bisque;
+  background: var(--base-colour);
 }
 .sidebar .slide-out,
 .navigation .slide-out {
@@ -2530,8 +2722,8 @@ footer {
   position: relative;
 }
 .navigation .nav-menu::before {
-  background: bisque;
-  border: 1px solid bisque;
+  background: var(--base-colour);
+  border: 1px solid var(--base-colour);
   border-bottom-color: ivory;
   border-radius: 50%;
   bottom: -1px;
@@ -2544,32 +2736,41 @@ footer {
   width: 20px;
 }
 @media (max-width: 680px) {
-  .navigation .nav-menu::before,
-  .navigation .title-text {
+  .navigation .nav-menu::before {
     display: none;
   }
 }
 .navigation::before {
-  background: bisque;
+  background: var(--base-colour);
   border-top: 0.5rem;
   border-top-left-radius: 20px;
   content: '';
   display: inline-block;
   height: 3rem;
 }
-@media (max-width: 480px) {
-  .navigation::before {
-    display: none;
-  }
-}
 .navigation.nav-link-both::before {
   width: 7rem;
+}
+@media (max-width: 480px) {
+  .navigation.nav-link-both::before {
+    width: 1rem;
+  }
 }
 .navigation.nav-link-icon::before {
   width: 3.5rem;
 }
+@media (max-width: 480px) {
+  .navigation.nav-link-icon::before {
+    width: 1rem;
+  }
+}
 .navigation.nav-link-text::before {
   width: 6rem;
+}
+@media (max-width: 480px) {
+  .navigation.nav-link-text::before {
+    width: 1rem;
+  }
 }
 .navigation.navigation-header li.global a {
   padding: 0.5rem;
@@ -2618,7 +2819,7 @@ footer {
   display: inline-block;
   left: unset;
   overflow-x: hidden;
-  top: 1.25rem;
+  top: 1rem;
   width: 0;
 }
 .sidebar .nav-list.global li.global:hover .nav-panel {
@@ -2630,7 +2831,7 @@ footer {
   padding-top: 0;
 }
 .sidebar .nav-list.global li.global:first-child .nav-panel {
-  top: 0.6rem;
+  top: 0.5rem;
 }
 .sidebar .nav-list.global li.global.selected > span::before,
 .sidebar .nav-list.global li.global.selected > a::before {
@@ -2660,7 +2861,7 @@ footer {
   width: 5px;
 }
 .sidebar::after {
-  background: linear-gradient(to bottom, bisque, rgba(255, 228, 196, 0));
+  background: linear-gradient(to bottom, var(--base-colour), hsl(from var(--base-colour) h s l / 0));
   content: '';
   display: block;
   height: 5rem;
@@ -2689,12 +2890,12 @@ footer {
   z-index: 7;
 }
 .messages-panel .message-item {
-  background: linen;
+  background: ivory;
   border: 2px solid firebrick;
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
   color: black;
-  font-family: 'Segoe Print', 'Bradley Hand', Chilanka, casual, cursive;
+  font-family: 'Segoe Print', 'Bradley Hand', 'Chilanka', casual, cursive;
   opacity: 1;
   position: relative;
   margin-top: 1rem;
@@ -2733,7 +2934,7 @@ footer {
 .modal .exception h2 span.content,
 .main .exception h3 span.content,
 .modal .exception h3 span.content {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
 }
 .main .exception svg.error,
 .modal .exception svg.error {
@@ -2747,7 +2948,7 @@ footer {
 }
 .main .exception .line label,
 .modal .exception .line label {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   min-width: 10rem;
 }
 .main .exception .line span,
@@ -2793,14 +2994,14 @@ footer {
   border-top-right-radius: 5px;
   display: flex;
   justify-content: space-between;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.5rem 0.25rem 1rem;
   position: sticky;
   top: 0;
   z-index: 6;
 }
 .modal-outer-wrapper .modal .modal-header .modal-title {
   flex-grow: 2;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 1rem;
   font-weight: normal;
   margin: 0;
@@ -2813,7 +3014,7 @@ footer {
   color: firebrick;
   cursor: pointer;
   display: flex;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: smaller;
   font-weight: bold;
   height: 100%;
@@ -2837,8 +3038,6 @@ footer {
   color: seagreen;
   cursor: pointer;
   display: inline-block;
-  line-height: 0.8rem;
-  margin-bottom: 0.5rem;
   overflow: hidden;
   padding: 0.25rem 0.75rem;
   position: relative;
@@ -2847,7 +3046,7 @@ footer {
 }
 .modal-outer-wrapper .modal modal-header .button span,
 .modal-outer-wrapper .modal .modal-footer .button span {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.7rem;
   letter-spacing: 0.1rem;
   position: relative;
@@ -2892,16 +3091,22 @@ footer {
 .modal-outer-wrapper .modal .modal-footer .button[disabled=disabled],
 .modal-outer-wrapper .modal modal-header .button[disabled=disabled]::after,
 .modal-outer-wrapper .modal .modal-footer .button[disabled=disabled]::after {
-  background: linear-gradient(0deg, gainsboro, whitesmoke);
+  background: gainsboro;
 }
-.modal-outer-wrapper .modal .modal-content-wrapper,
-.modal-outer-wrapper .modal .modal-footer {
-  padding: 0.5rem 0.5rem 0 0.5rem;
+.modal-outer-wrapper .modal .modal-content-wrapper {
+  padding: 0.5rem 1rem 0.25rem 1rem;
+}
+.modal-outer-wrapper .modal .modal-content-wrapper .input-button.right {
+  right: 0rem;
 }
 .modal-outer-wrapper .modal .modal-footer {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
+  padding: 0 1rem 1rem 1rem;
+}
+.modal-outer-wrapper .modal .modal-footer .input-button.right {
+  right: 0rem;
 }
 .modal-outer-wrapper .modal .modal-loader {
   display: flex;
@@ -2916,18 +3121,18 @@ footer {
   margin: 1rem;
 }
 .modal-outer-wrapper.mask {
-  background: linear-gradient(to bottom right, rgba(250, 240, 230, 0), bisque);
+  background: linear-gradient(to bottom right, hsl(from linen h s l / 0), var(--base-colour));
   isolation: isolate;
   z-index: 6;
 }
 .documentation {
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
 }
 .documentation h1 {
-  font-size: 1rem;
+  font-size: 1.25rem;
 }
 .documentation h2 {
-  font-size: 0.8rem;
+  font-size: 1rem;
 }
 .documentation h1,
 .documentation h2 {
@@ -2935,23 +3140,24 @@ footer {
 }
 .documentation p,
 .documentation ul {
-  font-size: 0.8rem;
+  font-size: 1rem;
   margin: 0 0 0.5rem 0;
 }
 .documentation pre {
   margin: 0 0 1rem 2rem;
 }
 .documentation pre code.code {
-  font-family: ui-monospace, 'Cascadia Code', Menlo, 'DejaVu Sans Mono', monospace;
+  font-family: 'Cascadia Code', 'Menlo', 'DejaVu Sans Mono', ui-monospace, monospace;
 }
 .file-preview p,
 .file-preview pre {
   font-size: 0.8rem;
-  line-height: 0.5rem;
+  line-height: 1.25rem;
+  margin: 0;
 }
 .version-number {
   color: gray;
-  font-family: Roboto, system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
   font-size: 0.8rem;
   opacity: 0.8;
 }

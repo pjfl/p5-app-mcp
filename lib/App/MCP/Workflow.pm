@@ -101,7 +101,7 @@ sub process_event {
          $instance   = $transition->apply($instance, $event);
          $state_name = $instance->state->name;
       }
-      catch_class [ Retry => sub { $trigger = TRUE } ];
+      catch_class ['Retry' => sub { $trigger = TRUE }, '*' => sub { throw $_ }];
    }
 
    return $state_name;

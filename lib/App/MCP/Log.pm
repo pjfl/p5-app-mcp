@@ -5,6 +5,7 @@ use Class::Usul::Cmd::Types     qw( Bool ConfigProvider );
 use Class::Usul::Cmd::Util      qw( now_dt trim );
 use HTML::StateTable::Util      qw( escape_formula );
 use Ref::Util                   qw( is_arrayref is_coderef );
+use Scalar::Util                qw( blessed );
 use Moo;
 
 with 'App::MCP::Role::CSVParser';
@@ -106,6 +107,11 @@ sub _get_leader {
 
 sub _log {
    my ($self, $level, $leader, $message, $context) = @_;
+
+   if (blessed $message && $message->isa('App::MCP::Context')) {
+      $context = $message;
+      $message = 'Unknown';
+   }
 
    $level   ||= 'ERROR';
    $message ||= 'Unknown';

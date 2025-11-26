@@ -10,7 +10,7 @@ use App::MCP::Util               qw( concise_duration create_token distname
                                      trigger_input_handler
                                      trigger_output_handler );
 use Async::IPC::Functions        qw( log_debug log_error log_info log_warn );
-use Class::Usul::Cmd::Util       qw( elapsed );
+use Class::Usul::Cmd::Util       qw( elapsed ensure_class_loaded );
 use English                      qw( -no_match_vars );
 use List::Util                   qw( first );
 use Scalar::Util                 qw( weaken );
@@ -92,7 +92,7 @@ sub input_handler {
 
       for my $event ($events->all) {
          $schema->txn_do(sub {
-            my $p_ev = $self->_process_event($name, $event);
+            my $p_ev = $self->_process_event($name, $event, 'warn');
 
             $trigger = TRUE unless $p_ev->{rejected};
 
@@ -233,14 +233,9 @@ sub output_handler {
             return $self->_process_start_event($name, $event, $ipc_ssh);
          });
 
-         if ($success && $event->job->type eq 'box') {
-            $ev_rs->create({ job_id => $job_id, transition => 'started' });
-            trigger_input_handler $sig_hndlr_pid;
-         }
-         elsif ($success) { $trigger = TRUE }
-         else {
-            $ev_rs->create({ job_id => $job_id, transition => 'fail' });
-            trigger_input_handler $sig_hndlr_pid;
+         if ($success) {
+            trigger_input_handler $sig_hndlr_pid if $event->job->type eq 'box';
+            $trigger = TRUE;
          }
       }
 
@@ -310,7 +305,7 @@ sub _install_remote {
 }
 
 sub _process_event {
-   my ($self, $name, $event) = @_;
+   my ($self, $name, $event, $log_method) = @_;
 
    my $cols  = { $event->get_inflated_columns };
    my $js_rs = $self->schema->resultset('JobState');
@@ -318,7 +313,9 @@ sub _process_event {
    my $mesg  = 'Job ' . $r->[1] . ' event ' . $r->[0]
              . ' rejected - ' . $r->[2]->class;
 
-   log_warn $self->log, $name, $PID, $mesg;
+   if ($log_method eq 'info') { log_info $self->log, $name, $PID, $mesg }
+   else { log_warn $self->log, $name, $PID, $mesg }
+
    $cols->{rejected} = $r->[2]->class;
    return $cols;
 }
@@ -326,13 +323,19 @@ sub _process_event {
 sub _process_start_event {
    my ($self, $name, $event, $ipc_ssh) = @_;
 
-   my $p_ev = $self->_process_event($name, $event);
+   my $p_ev    = $self->_process_event($name, $event, 'info');
+   my $success = !$p_ev->{rejected};
 
-   if (!$p_ev->{rejected} && $event->job->type eq 'job') {
+   if ($success && $event->job->type eq 'job') {
       my ($runid, $token) = $self->_start_job($ipc_ssh, $event->job);
 
       $p_ev->{runid} = $runid;
       $p_ev->{token} = $token;
+   }
+   elsif ($success && $event->job->type eq 'box') {
+      my $ev_rs = $self->schema->resultset('Event');
+
+      $ev_rs->create({ job_id => $event->job->id, transition => 'started' });
    }
 
    $self->schema->resultset('ProcessedEvent')->create($p_ev);
@@ -352,13 +355,15 @@ sub _start_job {
    my ($self, $ipc_ssh, $job) = @_;
 
    my $runid = bson64id;
+   my $token = substr create_token, 0, 32;
    my $host  = $job->host;
    my $user  = $job->user_name;
    my $cmd   = $job->command;
-   my $class = $self->config->appclass;
-   my $token = substr create_token, 0, 32;
+
+   log_info $self->log, $job->job_name, $runid, "Start ${user}\@${host} ${cmd}";
+
    my $args  = {
-      appclass  => $class,
+      appclass  => $self->config->appclass,
       command   => $cmd,
       debug     => $self->debug,
       directory => $job->directory,
@@ -369,12 +374,25 @@ sub _start_job {
       token     => $token,
       worker    => $self->worker,
    };
-   my $calls = [['dispatch', [%{$args}]]];
 
-   log_info $self->log, $job->job_name, $runid, "Start ${user}\@${host} ${cmd}";
-   $args = { calls => $calls, host => $host, user => $user, };
-   $self->ipc_ssh_add_provisioning($args);
-   $ipc_ssh->call($runid, $args); # Calls ipc_ssh_caller
+   if ($host ne 'localhost') {
+      my $calls   = [['dispatch', [%{$args}]]];
+      my $options = { calls => $calls, host => $host, user => $user, };
+
+      $self->ipc_ssh_add_provisioning($options);
+      $ipc_ssh->call($runid, $options); # Calls ipc_ssh_caller
+   }
+   else {
+      ensure_class_loaded $self->worker;
+
+      $args->{config} = $self->config;
+      $args->{log} = $self->log;
+
+      my $out = $self->worker->new($args)->dispatch;
+
+      log_debug $self->log, $job->job_name, $runid, $out;
+   }
+
    return ($runid, $token);
 }
 

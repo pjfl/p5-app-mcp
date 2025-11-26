@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - CSS colour refactoring
           - Strips JSDoc when concatenating JS files
           - State diagram fetches results on box open
           - Schema upgrade

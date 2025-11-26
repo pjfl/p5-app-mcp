@@ -1,16 +1,35 @@
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
-use strictures;
-use parent 'DBIx::Class::ResultSet';
-
-use App::MCP::Constants    qw( EXCEPTION_CLASS NUL SQL_NOW );
+use App::MCP::Constants    qw( EXCEPTION_CLASS NUL );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
+use Unexpected::Types      qw( HashRef );
+use Unexpected::Functions  qw( Unknown );
+use Class::Usul::Cmd::Util qw( is_member );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( blessed );
-use Unexpected::Functions  qw( Unknown );
 use Web::Components::Util  qw( exception throw );
 use App::MCP::Workflow;
 use Try::Tiny;
+use Moo;
+
+extends 'DBIx::Class::ResultSet';
+
+has 'event_propagation' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return {
+         'activate'   => 'activate',
+         'deactivate' => 'deactivate',
+         'fail'       => NUL,
+         'finish'     => 'start',
+         'off_hold'   => 'activate',
+         'on_hold'    => 'deactivate',
+         'start'      => NUL,
+         'started'    => 'start',
+         'terminate'  => 'start',
+      };
+   };
 
 # Public methods
 sub create_and_or_update {
@@ -34,7 +53,6 @@ sub create_and_or_update {
    return $res if $res;
 
    $job_state->name($state_name);
-   $job_state->updated(SQL_NOW);
    $job_state->update;
    $self->_trigger_update_cascade($event);
    return;
@@ -51,59 +69,68 @@ sub find_by_key {
 
    $options->{prefetch} = 'job';
 
-   return $self->search({ 'me.job_name' => $state_key }, $options)->single;
+   return $self->search({ 'me.name' => $state_key }, $options)->single;
 }
 
 sub find_or_create {
    my ($self, $job) = @_;
 
-   my $parent_state = 'active';
    my $job_state = $self->find($job->id);
 
    return $job_state if $job_state;
 
+   my $parent_state = 'inactive';
+
    if ($job->parent_id and $job->id != $job->parent_id) {
-      $parent_state = $self->find($job->parent_id);
-      $parent_state = $parent_state->name if $parent_state;
-      $parent_state = 'inactive' unless $parent_state;
+      if ($parent_state = $self->find($job->parent_id)) {
+         $parent_state = $parent_state->name;
+      }
    }
 
-   my $initial_state = ($parent_state eq 'active'
-                        or $parent_state eq 'running'
-                        or $parent_state eq 'starting')
-      ?  'active' : 'inactive';
+   my $initial_state = 'inactive';
 
-   $initial_state = 'running'
-      if $job->type eq 'box' and $parent_state eq 'running';
+   $initial_state = 'active' if is_member $parent_state,
+      qw(active running starting);
 
-   return $self->create({
-      job_id  => $job->id,
-      name    => $initial_state,
-      updated => SQL_NOW
-   });
+   $initial_state = 'running' if $parent_state eq 'running'
+      and !$job->condition
+      and !$job->crontab;
+
+   return $self->create({ job_id => $job->id, name => $initial_state });
 }
 
 # Private methods
 sub _trigger_update_cascade {
    my ($self, $event) = @_;
 
+   my $ev_trans   = $event->transition->value;
+   my $transition = $self->event_propagation->{$ev_trans} or return;
    my $schema     = $self->result_source->schema;
    my $ev_rs      = $schema->resultset('Event');
+   my $job_rs     = $schema->resultset('Job');
    my $jc_rs      = $schema->resultset('JobCondition');
-   my $transition = $event->transition->value;
+
+   for my $job ($job_rs->search({ parent_id => $event->job->id })->all) {
+      next if $job->condition;
+      $ev_rs->create({ job_id => $job->id, transition => $transition });
+   }
+
+   return unless $transition eq 'start';
 
    for my $jc ($jc_rs->search({ job_id => $event->job->id })->all) {
       $ev_rs->create({ job_id => $jc->reverse_id, transition => $transition });
    }
 
    return;
-};
+}
 
 my $_workflow_cache;
 
 sub _workflow {
    $_workflow_cache //= App::MCP::Workflow->new; return $_workflow_cache;
 }
+
+use namespace::autoclean;
 
 1;
 
