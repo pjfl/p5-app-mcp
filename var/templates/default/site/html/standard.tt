@@ -10,6 +10,7 @@
     <meta name="generator" content="[% ucfirst(config.deployment) %]">
     <title>[% nav.title_abbrev _ ' - ' _ nav.title_entry %]</title>
     <link rel="shortcut icon" href="[% uri_for(favicon) %]">
+    [% google_fonts(config.fonts) %]
     <link rel="stylesheet" href="[% uri_for(stylesheet) %]" type="text/css">
     <script src="[% uri_for(javascript) %]"></script>
     <script src="[% uri_for(chartlibrary) %]"></script>

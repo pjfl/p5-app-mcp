@@ -246,6 +246,23 @@ The output encoding used by the application
 
 has 'encoding' => is => 'ro', isa => Str, default => 'utf-8';
 
+=item C<fonts>
+
+Fonts used in the application pages. To be fetched from Google's CDN
+
+=cut
+
+has 'fonts' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return {
+         fonts   => ['EB+Garamond:ital,wght@0,400..800;1,400..800'],
+         gapis   => 'https://fonts.googleapis.com',
+         gstatic => 'https://fonts.gstatic.com',
+      };
+   };
+
 =item C<icons>
 
 A partial string path from the document root to the file containing SVG
