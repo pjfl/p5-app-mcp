@@ -49,7 +49,7 @@ sub default : Auth('none') {
 
    my $default = $context->uri_for_action($self->config->redirect);
 
-   $context->stash(redirect $default, []);
+   $context->stash(redirect $default, ['Redirecting to [_1]', $default]);
    return;
 }
 

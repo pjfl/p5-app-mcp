@@ -16,9 +16,8 @@ sub get {
    $parser->parse_file($path->as_string);
 
    my $formatter = App::MCP::Markdown->new();
-   my $doc       = $formatter->markdown($markdown);
 
-   return $self->_html->div({ class => 'documentation' }, $doc);
+   return $formatter->markdown($markdown);
 }
 
 use namespace::autoclean;

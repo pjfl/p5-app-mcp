@@ -203,7 +203,7 @@ has 'source' =>
 
       my $source = $self->fields->[3] // NUL;
 
-      $source =~ s{ \[ \d+ \] \z }{}mx;
+      $source =~ s{ \[ .+ \] \z }{}mx;
 
       return $source;
    };
@@ -224,7 +224,7 @@ The operating system id (integer) of the process that created this logfile line
 
 has 'pid' =>
    is      => 'lazy',
-   isa     => Int,
+   isa     => Str,
    default => sub {
       my $self = shift;
 
@@ -232,7 +232,7 @@ has 'pid' =>
 
       my $source = $self->fields->[3] // NUL;
 
-      my ($pid) = $source =~ m{ \[ (\d+) \] \z }mx;
+      my ($pid) = $source =~ m{ \[ ([^\]]+) \] \z }mx;
 
       return $pid || 0;
    };

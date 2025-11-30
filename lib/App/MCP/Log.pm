@@ -6,6 +6,7 @@ use Class::Usul::Cmd::Util      qw( now_dt trim );
 use HTML::StateTable::Util      qw( escape_formula );
 use Ref::Util                   qw( is_arrayref is_coderef );
 use Scalar::Util                qw( blessed );
+use English                     qw( -no_match_vars );
 use Moo;
 
 with 'App::MCP::Role::CSVParser';
@@ -102,6 +103,8 @@ sub _get_leader {
       else { $leader = 'Unknown' }
    }
 
+   $leader = "${leader}[${PID}]" unless $leader =~ m{ \[ .+ \] }mx;
+
    return (trim($leader), trim($message));
 }
 
@@ -110,7 +113,7 @@ sub _log {
 
    if (blessed $message && $message->isa('App::MCP::Context')) {
       $context = $message;
-      $message = 'Unknown';
+      $message = 'No message supplied';
    }
 
    $level   ||= 'ERROR';

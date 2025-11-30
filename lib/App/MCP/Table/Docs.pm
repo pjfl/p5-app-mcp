@@ -91,7 +91,7 @@ has_column 'name' =>
       my $cell = shift; return $cell->table->_build_name_link($cell);
    },
    options => {
-      'constraints'   => { top => 42, left => 56 },
+      'constraints'   => { top => 36, left => 56 },
       'title'         => 'Documentation',
       'trigger-modal' => 'modal',
    };

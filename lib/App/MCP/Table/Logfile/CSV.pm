@@ -83,7 +83,10 @@ has_column 'source' =>
    sortable   => TRUE,
    title      => 'Sort by source identifier';
 
-has_column 'pid' => cell_traits => ['Numeric'], searchable => TRUE;
+has_column 'pid' =>
+   cell_traits => ['Numeric'],
+   filterable  => TRUE,
+   searchable  => TRUE;
 
 has_column 'remainder' =>
    cell_traits => ['Remainder'],

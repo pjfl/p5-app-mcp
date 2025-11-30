@@ -6,6 +6,7 @@ use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Configurable';
+with    'HTML::StateTable::Role::Searchable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Filterable';
 with    'HTML::StateTable::Role::Downloadable';
@@ -35,6 +36,8 @@ has '+page_control_location' => default => 'TopLeft';
 
 has '+page_size_control_location' => default => 'BottomLeft';
 
+has '+searchable_control_location' => default => 'TopRight';
+
 set_table_name 'job';
 
 setup_resultset sub {
@@ -48,10 +51,11 @@ has_column 'id' =>
    width       => '3rem';
 
 has_column 'job_name' =>
-   label    => 'Job Name',
-   sortable => TRUE,
-   title    => 'Sort by job',
-   link     => sub {
+   label      => 'Job Name',
+   searchable => TRUE,
+   sortable   => TRUE,
+   title      => 'Sort by job',
+   link       => sub {
       my $self    = shift;
       my $context = $self->table->context;
 
@@ -62,15 +66,18 @@ has_column 'type', filterable => TRUE;
 
 has_column 'created' => cell_traits => ['DateTime'], sortable => TRUE;
 
-has_column 'user_name' => label => 'User Name', filterable => TRUE;
+has_column 'user_name' =>
+   label      => 'User Name',
+   searchable => TRUE,
+   filterable => TRUE;
 
-has_column 'host';
+has_column 'host' => searchable => TRUE;
 
-has_column 'command';
+has_column 'command' => searchable => TRUE;
 
 has_column 'check' =>
    cell_traits => ['Checkbox'],
-   label       => SPC,
+   label       => 'Select',
    value       => 'id';
 
 use namespace::autoclean -except => TABLE_META;

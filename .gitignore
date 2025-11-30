@@ -33,6 +33,7 @@ var/bugs
 var/etc/app-mcp-local.json
 var/log
 var/root/js
+var/root/fonts
 var/run
 var/share
 var/sql/*.sql

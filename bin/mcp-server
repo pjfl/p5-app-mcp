@@ -20,21 +20,21 @@ __END__
 
 =head1 NAME
 
-mcp-listener - I<One line abstract describing the programs purpose>
+mcp-server - I<One line abstract describing the programs purpose>
 
 =head1 SYNOPSIS
 
 =over 3
 
-=item B<mcp-listener> B<> I<>
+=item B<mcp-server> B<> I<>
 
 I<Command line description>
 
-=item B<mcp-listener> B<-H> | B<-h> I<[method]> | B<-?>
+=item B<mcp-server> B<-H> | B<-h> I<[method]> | B<-?>
 
 Display man page / method help  / usage strings
 
-=item B<mcp-listener> B<list_methods>
+=item B<mcp-server> B<list_methods>
 
 Lists the methods available in this program
 

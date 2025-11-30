@@ -7,8 +7,6 @@
 [% content %]
       </div>
     </div>
-    <footer id="footer">
-      <span class="version-number">v[% version %]</span>
-    </footer>
+[% footer = skin _ '/site/footer.tt'; INCLUDE $footer %]
   </div>
 </main>

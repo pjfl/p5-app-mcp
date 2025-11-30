@@ -103,7 +103,15 @@ has_field 'crontab_wday' =>
    label => 'Day of Week',
    size  => 3;
 
-has_field 'submit' => type => 'Button';
+has_field 'view' =>
+   type          => 'Link',
+   label         => 'View',
+   element_class => ['form-button pageload'],
+   wrapper_class => ['input-button', 'inline'];
+
+has_field 'submit' =>
+   type          => 'Button',
+   wrapper_class => ['input-button'];
 
 # owner_id     => foreign_key_data_type( 1, 'owner' ),
 # group_id     => foreign_key_data_type( 1, 'group' ),
@@ -111,6 +119,21 @@ has_field 'submit' => type => 'Button';
 #                   data_type     => 'smallint',
 #                   default_value => 488,
 #                   is_nullable   => FALSE, },
+
+after 'after_build_fields' => sub {
+   my $self = shift;
+
+   if ($self->item) {
+      $self->field('submit')->add_wrapper_class(['inline', 'right']);
+
+      my $view = $self->context->uri_for_action('job/view', [$self->item->id]);
+
+      $self->field('view')->href($view->as_string);
+   }
+   else { $self->field('view')->inactive(TRUE) }
+
+   return;
+};
 
 use namespace::autoclean -except => META;
 

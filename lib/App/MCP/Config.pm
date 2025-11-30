@@ -248,7 +248,8 @@ has 'encoding' => is => 'ro', isa => Str, default => 'utf-8';
 
 =item C<fonts>
 
-Fonts used in the application pages. To be fetched from Google's CDN
+Fonts used in the application pages. Either fetched from Google's CDN or
+served locally
 
 =cut
 
@@ -257,9 +258,14 @@ has 'fonts' =>
    isa     => HashRef,
    default => sub {
       return {
-         fonts   => ['EB+Garamond:ital,wght@0,400..800;1,400..800'],
-         gapis   => 'https://fonts.googleapis.com',
-         gstatic => 'https://fonts.gstatic.com',
+         google_apis   => 'https://fonts.googleapis.com',
+         google_fonts  => ['Roboto:ital,wght@0,100..900;1,100..900'],
+         google_static => 'https://fonts.gstatic.com',
+         local_fonts   => [{
+            name   => 'DejaVu Serif',
+            file   => 'DejaVuSerif.ttf',
+            format => 'truetype',
+         }],
       };
    };
 
@@ -740,7 +746,7 @@ A non empty simple string which defaults to B<css | file | font | img | js>.
 has 'static' =>
    is      => 'ro',
    isa     => NonEmptySimpleStr,
-   default => 'css | file | font | img | js';
+   default => 'css | file | fonts | img | js';
 
 =item C<stop_signals>
 

@@ -88,6 +88,7 @@ has '_stash' =>
          javascript         => "js/${prefix}.js",
          session_updated    => $self->session->updated,
          stylesheet         => "css/${prefix}-${skin}.css",
+         skin               => $skin,
          theme              => $self->session->theme,
          verification_token => $self->verification_token,
          version            => App::MCP->VERSION

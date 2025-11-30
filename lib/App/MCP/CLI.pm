@@ -1,6 +1,6 @@
 package App::MCP::CLI;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL OK TRUE );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
 use File::DataClass::Types qw( Directory );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
@@ -113,19 +113,14 @@ sub install : method {
    my $self   = shift;
    my $config = $self->config;
 
-   for my $dir (qw( backup log tmp )) {
+   for my $dir (qw( backup log run tmp )) {
       my $path = $config->vardir->catdir($dir);
 
       $path->mkpath(oct '0770') unless $path->exists;
    }
 
-   # Share directory for bug attachments
-   my $path = $config->rootdir->catdir('bugs');
-
-   $path->mkpath(oct '0770') unless $path->exists;
-
-   # Share directory for documentation
-   $path = $config->rootdir->catdir('file');
+   # Share directory for filemanager
+   my $path = $config->rootdir->catdir('file');
 
    $path->mkpath(oct '0770') unless $path->exists;
 
@@ -159,9 +154,25 @@ sub make_css : method {
    my $out    = io([qw( var root css ), $file])->assert_open('a')->truncate(0);
    my $count  =()= map  { $out->append($_->slurp) }
                    sort { $a->name cmp $b->name } @files;
-   my $options = { name => 'CLI.make_css' };
+   my $options = { leader => 'CLI.make_css' };
 
    $self->info("Concatenated ${count} files to ${file}", $options);
+   return OK;
+}
+
+=item make_fe - Run JS and CSS production methods
+
+A convienience method which calls the other three front end file production
+methods
+
+=cut
+
+sub make_fe : method {
+   my $self = shift;
+
+   $self->make_less;
+   $self->make_css;
+   $self->make_js;
    return OK;
 }
 
@@ -231,6 +242,7 @@ sub send_message : method {
    my $stash    = $self->_load_stash($quote);
    my $attaches = $self->_qualify_assets(delete $stash->{attachments});
    my $log_opts = { name => 'CLI.send_message' };
+   my $success;
 
    if ($sink eq 'email') {
       my $recipients = delete $stash->{recipients};
@@ -255,13 +267,13 @@ sub send_message : method {
             $stash->{username} = "${user}";
          }
 
-         $self->_send_email($stash, $attaches);
+         $success = $self->_send_email($stash, $attaches);
       }
    }
-   elsif ($sink eq 'sms') { $self->_send_sms($stash) }
+   elsif ($sink eq 'sms') { $success = $self->_send_sms($stash) }
    else { throw 'Message sink [_1] unknown', [$sink] }
 
-   return OK;
+   return $success ? OK : FAILED;
 }
 
 =item wait_for_file - Waits for the file specified by option 'path'
@@ -405,10 +417,14 @@ sub _send_email {
    $post->{attachments} = $attaches if $attaches;
 
    my ($id)    = $self->send_email($post);
+
+   return FALSE unless $id;
+
    my $options = { args => [$stash->{email}, $id], name => 'CLI.send_message' };
 
    $self->info('Emailed [_1] message id. [_2]', $options);
-   return;
+
+   return TRUE;
 }
 
 sub _send_sms { ... }
