@@ -1,4 +1,4 @@
-package App::MCP::Log::Result::CSV;
+package App::MCP::File::Result::CSV;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TRUE );
 use HTML::StateTable::Types     qw( ArrayRef Date HashRef Int Str );
@@ -15,11 +15,11 @@ with 'App::MCP::Role::CSVParser';
 
 =head1 Name
 
-App::MCP::Logfile::Result::CSV - Result class a CSV formatted logfile
+App::MCP::File::Result::CSV - Result class a CSV formatted logfile
 
 =head1 Synopsis
 
-   use App::MCP::Log::Result::CSV;
+   use App::MCP::File::Result::CSV;
 
 =head1 Description
 
@@ -32,6 +32,14 @@ Defines the following attributes;
 
 =over 3
 
+=item table
+
+Has to be weak or big memory leak results
+
+=cut
+
+has 'table' => is => 'ro', required => TRUE, weak_ref => TRUE;
+
 =item line
 
 Each of these result objects is inflated from this required string, a single
@@ -40,12 +48,6 @@ line from a logfile
 =cut
 
 has 'line' => is => 'ro', isa => Str, required => TRUE;
-
-=item resultset
-
-=cut
-
-has 'resultset' => is => 'ro', required => TRUE, weak_ref => TRUE;
 
 =item fields
 
@@ -122,9 +124,9 @@ has 'timestamp' =>
          $timestamp = NUL;
       }
 
-      my $context = $self->resultset->table->context;
+      my $context = $self->table->context;
 
-      $timestamp->set_time_zone($context->session->timezone) if $timestamp;
+      $timestamp->set_time_zone($context->time_zone) if $timestamp;
 
       return $timestamp;
    };
@@ -224,17 +226,40 @@ The operating system id (integer) of the process that created this logfile line
 
 has 'pid' =>
    is      => 'lazy',
-   isa     => Str,
+   isa     => Int,
    default => sub {
       my $self = shift;
 
       return 0 unless $self->remainder_start;
 
       my $source = $self->fields->[3] // NUL;
-
-      my ($pid) = $source =~ m{ \[ ([^\]]+) \] \z }mx;
+      my ($pid)  = $source =~ m{ \[ ([\d]+) \] \z }mx;
 
       return $pid || 0;
+   };
+
+=item runid
+
+Ties logfile lines together across multiple events
+
+=cut
+
+has 'runid' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub {
+      my $self = shift;
+
+      return NUL unless $self->remainder_start;
+
+      my $source = $self->fields->[3] // NUL;
+      my ($pid)  = $source =~ m{ \[ ([\d]+) \] \z }mx;
+
+      return NUL if $pid;
+
+      my ($runid) = $source =~ m{ \[ ([^\]]+) \] \z }mx;
+
+      return $runid || NUL;
    };
 
 =item remainder

@@ -254,20 +254,31 @@ served locally
 =cut
 
 has 'fonts' =>
-   is      => 'ro',
-   isa     => HashRef,
-   default => sub {
+   is       => 'lazy',
+   isa      => HashRef,
+   init_arg => undef,
+   default  => sub {
+      my $self = shift;
+
       return {
          google_apis   => 'https://fonts.googleapis.com',
-         google_fonts  => ['Roboto:ital,wght@0,100..900;1,100..900'],
          google_static => 'https://fonts.gstatic.com',
-         local_fonts   => [{
-            name   => 'DejaVu Serif',
-            file   => 'DejaVuSerif.ttf',
-            format => 'truetype',
-         }],
+         google_fonts  => $self->_google_fonts,
+         local_fonts   => $self->_local_fonts,
       };
    };
+
+has '_google_fonts' =>
+   is       => 'ro',
+   isa      => ArrayRef,
+   init_arg => 'google_fonts',
+   default  => sub { [] };
+
+has '_local_fonts' =>
+   is       => 'ro',
+   isa      => ArrayRef,
+   init_arg => 'local_fonts',
+   default  => sub { [] };
 
 =item C<icons>
 

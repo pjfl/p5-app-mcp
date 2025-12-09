@@ -1,6 +1,10 @@
 {
    "cron_log_interval": "600",
+   "google_fonts": ["Roboto:ital,wght@0,100..900;1,100..900"],
    "local_config_file": "app-mcp-local.json",
+   "local_fonts": [{
+      "name": "DejaVu Serif", "file": "DejaVuSerif.ttf", "format": "truetype"
+   }],
    "navigation": {
       "control_label": "img/settings.svg",
       "logo": "img/logo.svg"

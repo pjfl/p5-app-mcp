@@ -54,7 +54,7 @@ setup_resultset sub {
       directory    => $config->logfile->parent,
       file         => $self->logfile,
       redis        => $self->redis,
-      result_class => 'App::MCP::Log::Result::CSV',
+      result_class => 'App::MCP::File::Result::CSV',
       table        => $self,
    );
 };
@@ -82,6 +82,10 @@ has_column 'source' =>
    searchable => TRUE,
    sortable   => TRUE,
    title      => 'Sort by source identifier';
+
+has_column 'runid' =>
+   filterable => TRUE,
+   searchable => TRUE;
 
 has_column 'pid' =>
    cell_traits => ['Numeric'],

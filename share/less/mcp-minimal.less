@@ -27,21 +27,25 @@
         }
         .box-tile, .job-tile {
             border: 1px solid @line-border; border-radius: 5px;
-            box-shadow: 3px 3px 3px @panel-shadow;
-            padding: 0.25rem;
-        }
-        .box-tile:has(> .box-table.open) {
-            padding: 0.25rem 0.25rem 0.5rem 0.25rem;
-        }
-        .box-tile .title {
-            align-items: center; display: flex; gap: 1rem;
-            justify-content: space-between;
-            .box-toggle {
-                color: @toggle; cursor: pointer; height: 20px;
-                width: 20px;
+            box-shadow: 3px 3px 3px @panel-shadow; padding: 0.25rem;
+            &:has(> .box-table.open) {
+                padding: 0.25rem 0.25rem 0.5rem 0.25rem;
             }
-            .box-toggle.reversed {
-                transform: rotate(180deg);
+        }
+        .box-tile {
+            & > .title {
+                align-items: center; display: flex; gap: 1rem;
+                justify-content: space-between;
+                &:not(:has(.button-icon.reversed)) {
+                    padding-bottom: 0.25rem;
+                }
+                .box-toggle {
+                    color: @toggle; cursor: pointer; height: 20px;
+                    width: 20px;
+                    &.reversed {
+                        transform: rotate(180deg);
+                    }
+                }
             }
         }
         .title a {

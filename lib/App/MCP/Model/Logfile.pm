@@ -3,6 +3,7 @@ package App::MCP::Model::Logfile;
 use HTML::StateTable::Constants qw( EXCEPTION_CLASS FALSE TRUE );
 use App::MCP::Util              qw( redirect2referer );
 use Unexpected::Functions       qw( Unspecified NotFound );
+use Format::Human::Bytes;
 use Moo;
 use App::MCP::Attributes; # Will do namespace cleaning
 
@@ -13,6 +14,8 @@ with    'App::MCP::Role::Redis';
 has '+moniker' => default => 'logfile';
 
 has '+redis_client_name' => default => 'logfile_cache';
+
+has '_format_number' => is => 'ro', default => sub { Format::Human::Bytes->new};
 
 sub base : Auth('admin') {
    my ($self, $context, $logfile) = @_;
@@ -58,9 +61,15 @@ sub view : Auth('admin') Nav('View Logfile') {
 
    return $self->error($context, Unspecified, ['logfile']) unless $logfile;
 
+   my $path = $self->config->logsdir->catfile($logfile);
+   my $size = 0;
+
+   $size = $self->_format_number->base2($path->stat->{size})
+      if $path->exists;
+
    my $table_class = $self->_extension2table_class($logfile);
    my $options     = {
-      caption => "${logfile} File View",
+      caption => "${logfile} File View (${size})",
       context => $context,
       logfile => $logfile,
       redis   => $self->redis_client
@@ -70,6 +79,7 @@ sub view : Auth('admin') Nav('View Logfile') {
    return;
 }
 
+# Private methods
 sub _extension2table_class {
    my ($self, $logfile) = @_;
 

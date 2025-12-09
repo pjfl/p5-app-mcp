@@ -42,13 +42,30 @@ sub default_password {
 
 has_field 'password_expired' => type => 'Boolean', default => TRUE;
 
-has_field 'submit' => type => 'Button';
+has_field 'view' =>
+   type          => 'Link',
+   label         => 'View',
+   element_class => ['form-button pageload'],
+   wrapper_class => ['input-button', 'inline'];
+
+has_field 'submit' =>
+   type          => 'Button',
+   wrapper_class => ['input-button'];
 
 after 'after_build_fields' => sub {
    my $self = shift;
    my $attr = $self->field('user_name')->element_attr;
 
    $attr->{minlength} = $self->context->config->user->{min_name_len};
+
+   if ($self->item) {
+      my $view = $self->context->uri_for_action('user/view', [$self->item->id]);
+
+      $self->field('view')->href($view->as_string);
+      $self->field('submit')->add_wrapper_class(['inline', 'right']);
+   }
+   else { $self->field('view')->inactive(TRUE) }
+
    return;
 };
 

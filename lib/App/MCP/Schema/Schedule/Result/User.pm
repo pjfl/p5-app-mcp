@@ -26,7 +26,7 @@ my $result = 'App::MCP::Schema::Schedule::Result';
 $class->table('users');
 
 $class->add_columns(
-   id        => { %{serial_data_type()}, label => 'User ID' },
+   id        => { %{serial_data_type()}, label => 'User ID', hidden => TRUE },
    user_name => varchar_data_type(64),
    email     => text_data_type(),
    role_id   => {
@@ -39,6 +39,7 @@ $class->add_columns(
    password  => {
       %{text_data_type()},
       display => sub { truncate shift->result->password, 20 },
+      hidden  => TRUE,
    },
    password_expired => { %{boolean_data_type()}, label => 'Password Expired' },
 );

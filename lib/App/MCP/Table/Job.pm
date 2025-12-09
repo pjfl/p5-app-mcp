@@ -40,9 +40,7 @@ has '+searchable_control_location' => default => 'TopRight';
 
 set_table_name 'job';
 
-setup_resultset sub {
-   return shift->context->model('Job');
-};
+setup_resultset sub { shift->context->model('Job') };
 
 has_column 'id' =>
    cell_traits => ['Numeric'],
@@ -71,7 +69,7 @@ has_column 'user_name' =>
    searchable => TRUE,
    filterable => TRUE;
 
-has_column 'host' => searchable => TRUE;
+has_column 'host' => filterable => TRUE, searchable => TRUE;
 
 has_column 'command' => searchable => TRUE;
 

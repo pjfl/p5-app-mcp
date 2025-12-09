@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added field groups to job edit form
           - Added configurable local fonts
           - Added configurable Google fonts
           - CSS colour refactoring

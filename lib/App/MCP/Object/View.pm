@@ -114,14 +114,23 @@ sub build_results {
    if ($table->can('has_add_columns') && $table->has_add_columns) {
       for my $pair (pairs @{$table->add_columns}) {
          my $value = $pair->value;
+         my $traits;
+
+         if (is_plain_hashref $value and exists $value->{cell_traits}) {
+            $traits = $value->{cell_traits};
+            $value  = $value->{value};
+         }
+         else { $value = $pair->value }
 
          if (is_arrayref $value or is_plain_hashref $value) {
             $value = $self->json_parser->encode($value);
          }
 
-         push @{$results}, $self->result_class->new(
-            name => $pair->key, value => $value
-         );
+         my $args = { name => $pair->key, value => $value };
+
+         $args->{cell_traits} = $traits if $traits;
+
+         push @{$results}, $self->result_class->new($args);
       }
    }
 

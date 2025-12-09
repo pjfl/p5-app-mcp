@@ -8,31 +8,32 @@ extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
 with    'HTML::Forms::Role::ToggleRequired';
 
-has '+name'         => default => 'Job';
-has '+title'        => default => 'Job';
-has '+info_message' => default => 'Create or edit jobs';
-has '+item_class'   => default => 'Job';
+has '+name'               => default => 'Job';
+has '+info_message'       => default => 'Create or edit jobs';
+has '+item_class'         => default => 'Job';
+has '+form_element_class' => default => sub { ['narrow'] };
+has '+title'              => default => 'Create Job';
 
 has_field 'job_name' => required => TRUE;
+
+has_field '_g1' => type => 'Group';
 
 has_field 'type' =>
    type          => 'Select',
    html_name     => 'job_type',
    input_param   => 'job_type',
-   toggle        => {
-      job => [qw(command delete_after directory expected_rv host user_name)]
-   },
+   field_group   => '_g1',
+   toggle        => { job => [qw(command directory _g2 _g3)] },
    toggle_event  => 'change',
-   wrapper_class => [qw(input-select inline)],
    options       => [
       { label => 'Job', value => 'job' },
       { label => 'Box', value => 'box' },
    ];
 
 has_field 'parent_box' =>
-   type          => 'Select',
-   label         => 'Parent Box',
-   wrapper_class => [qw(input-select inline shrink)];
+   type        => 'Select',
+   field_group => '_g1',
+   label       => 'Parent Box';
 
 sub options_parent_box {
    my $self    = shift;
@@ -48,56 +49,69 @@ sub options_parent_box {
    return $options;
 }
 
+has_field '_g2' =>
+   type => 'Group',
+   info => 'These fields are not needed if job type is box';
+
 has_field 'expected_rv' =>
    type                => 'PosInteger',
    default             => 0,
+   field_group         => '_g2',
    label               => 'Expected RV',
    size                => 3,
    validate_inline     => TRUE,
-   validate_when_empty => TRUE,
-   wrapper_class       => [qw(input-integer break inline)];
+   validate_when_empty => TRUE;
 
 has_field 'delete_after' =>
-   type          => 'Boolean',
-   wrapper_class => [qw(input-boolean inline shrink)];
+   type        => 'Boolean',
+   field_group => '_g2';
+
+has_field '_g3' => type => 'Group';
 
 has_field 'user_name' =>
    default       => 'mcp',
+   field_group   => '_g3',
    required      => TRUE,
-   size          => 10,
-   wrapper_class => [qw(input-text break inline)];
+   size          => 10;
 
 has_field 'host' =>
-   default       => 'localhost',
-   required      => TRUE,
-   size          => 18,
-   wrapper_class => [qw(input-text inline shrink)];
+   default     => 'localhost',
+   field_group => '_g3',
+   required    => TRUE;
 
-has_field 'command' => type => 'TextArea', cols => 46, required => TRUE;
+has_field 'command' =>
+   type     => 'TextArea',
+   cols     => 38,
+   required => TRUE,
+   tags     => { nospellcheck => TRUE };
 
-has_field 'directory', size => 46;
+has_field 'directory' => size => 36;
 
-has_field 'condition', size => 46;
+has_field 'condition' => size => 36;
+
+has_field '_g4' => type => 'Group';
 
 has_field 'crontab_min' =>
-   label         => 'Minute',
-   size          => 3,
-   wrapper_class => [qw(input-text inline)];
+   label       => 'Minute',
+   field_group => '_g4',
+   size        => 3;
 
 has_field 'crontab_hour' =>
-   label         => 'Hour',
-   size          => 3,
-   wrapper_class => [qw(input-text inline shrink)];
+   label       => 'Hour',
+   field_group => '_g4',
+   size        => 3;
+
+has_field '_g5' => type => 'Group';
 
 has_field 'crontab_mday' =>
-   label         => 'Day of Month',
-   size          => 3,
-   wrapper_class => [qw(input-text break inline)];
+   label       => 'Day of Month',
+   field_group => '_g5',
+   size        => 3;
 
 has_field 'crontab_mon' =>
-   label         => 'Month',
-   size          => 3,
-   wrapper_class => [qw(input-text inline shrink)];
+   label       => 'Month',
+   field_group => '_g5',
+   size        => 3;
 
 has_field 'crontab_wday' =>
    label => 'Day of Week',
@@ -106,12 +120,10 @@ has_field 'crontab_wday' =>
 has_field 'view' =>
    type          => 'Link',
    label         => 'View',
-   element_class => ['form-button pageload'],
-   wrapper_class => ['input-button', 'inline'];
+   element_class => ['form-button'],
+   wrapper_class => [qw(input-button inline)];
 
-has_field 'submit' =>
-   type          => 'Button',
-   wrapper_class => ['input-button'];
+has_field 'submit' => type => 'Button';
 
 # owner_id     => foreign_key_data_type( 1, 'owner' ),
 # group_id     => foreign_key_data_type( 1, 'group' ),
@@ -124,11 +136,10 @@ after 'after_build_fields' => sub {
    my $self = shift;
 
    if ($self->item) {
-      $self->field('submit')->add_wrapper_class(['inline', 'right']);
-
       my $view = $self->context->uri_for_action('job/view', [$self->item->id]);
 
       $self->field('view')->href($view->as_string);
+      $self->field('submit')->add_wrapper_class(['inline', 'right']);
    }
    else { $self->field('view')->inactive(TRUE) }
 

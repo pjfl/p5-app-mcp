@@ -169,6 +169,7 @@ sub view : Auth('manager') Nav('View User') {
       value     => 'Delete',
    }];
    my $options = {
+      add_columns  => ['Time Zone' => $context->time_zone],
       caption      => 'View User',
       context      => $context,
       form_buttons => $buttons,

@@ -1,4 +1,4 @@
-package App::MCP::Log::Result::Apache;
+package App::MCP::File::Result::Apache;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TRUE );
 use HTML::StateTable::Types     qw( ArrayRef Date HashRef Int Str );
@@ -15,11 +15,11 @@ with 'HTML::StateTable::Result::Role';
 
 =head1 Name
 
-App::MCP::Logfile::Result::Apache - Result class for an Apache style logfile
+App::MCP::File::Result::Apache - Result class for an Apache style logfile
 
 =head1 Synopsis
 
-   use App::MCP::Log::Result::Apache;
+   use App::MCP::File::Result::Apache;
 
 =head1 Description
 
@@ -32,6 +32,14 @@ Defines the following attributes;
 
 =over 3
 
+=item table
+
+Has to be weak or big memory leak results
+
+=cut
+
+has 'table' => is => 'ro', required => TRUE, weak_ref => TRUE;
+
 =item line
 
 Each of these result objects is inflated from this required string, a single
@@ -40,12 +48,6 @@ line from a logfile
 =cut
 
 has 'line' => is => 'ro', isa => Str, required => TRUE;
-
-=item resultset
-
-=cut
-
-has 'resultset' => is => 'ro', required => TRUE, weak_ref => TRUE;
 
 =item fields
 
@@ -97,9 +99,9 @@ has 'timestamp' =>
          $timestamp = NUL;
       }
 
-      my $context = $self->resultset->table->context;
+      my $context = $self->table->context;
 
-      $timestamp->set_time_zone($context->session->timezone) if $timestamp;
+      $timestamp->set_time_zone($context->time_zone) if $timestamp;
 
       return $timestamp;
    };

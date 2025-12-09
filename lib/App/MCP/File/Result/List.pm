@@ -29,7 +29,7 @@ has 'modified' =>
          time_zone => $context->config->local_tz
       );
 
-      $dt->set_time_zone($context->session->timezone);
+      $dt->set_time_zone($context->time_zone);
       return $dt;
    };
 

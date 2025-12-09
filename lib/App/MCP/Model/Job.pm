@@ -34,7 +34,7 @@ sub base : Auth('view') {
 sub create : Nav('Create Job') {
    my ($self, $context) = @_;
 
-   my $options = { context => $context, title => 'Create Job' };
+   my $options = { context => $context };
    my $form    = $self->new_form('Job', $options);
 
    if ($form->process(posted => $context->posted)) {

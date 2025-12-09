@@ -45,9 +45,11 @@ sub _build__templater {
 }
 
 sub _add_tt_functions {
-   my ($self, $context) = @_; weaken $context;
+   my ($self, $context) = @_;
 
-   my $tz = $context->session->timezone;
+   weaken $context;
+
+   my $tz = $context->time_zone;
 
    return {
       %{$context->stash},

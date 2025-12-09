@@ -40,6 +40,7 @@ has_field 'timezone' => type => 'Timezone';
 
 has_field 'enable_2fa' =>
    type   => 'Boolean',
+   info   => 'Additional security questions should be answered if enabled',
    label  => 'Enable 2FA',
    toggle => { -checked => ['mobile_phone', 'postcode'] };
 
@@ -87,9 +88,16 @@ has_field 'theme' =>
    type    => 'Select',
    default => 'light',
    options => [
-      { label => 'Dark',  value => 'dark' },
-      { label => 'Light', value => 'light' },
+      { label => 'Dark',   value => 'theme-dark' },
+      { label => 'Light',  value => 'theme-light' },
+      { label => 'System', value => 'theme-system' },
 ];
+
+has_field 'view' =>
+   type          => 'Link',
+   label         => 'View',
+   element_class => ['form-button'],
+   wrapper_class => [qw(input-button inline)];
 
 has_field 'submit' => type => 'Button';
 
@@ -97,9 +105,15 @@ after 'after_build_fields' => sub {
    my $self = shift;
 
    unless ($self->user->enable_2fa) {
+      $self->field('enable_2fa')->hide_info(TRUE);
       $self->field('mobile_phone')->add_wrapper_class('hide');
       $self->field('postcode')->add_wrapper_class('hide');
    }
+
+   my $view = $self->context->uri_for_action('user/view', [$self->user->id]);
+
+   $self->field('view')->href($view->as_string);
+   $self->field('submit')->add_wrapper_class(['inline', 'right']);
 
    return;
 };

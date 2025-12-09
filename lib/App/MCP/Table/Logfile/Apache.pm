@@ -60,7 +60,7 @@ setup_resultset sub {
       directory    => $config->logfile->parent,
       file         => $self->logfile,
       redis        => $self->redis,
-      result_class => 'App::MCP::Log::Result::Apache',
+      result_class => 'App::MCP::File::Result::Apache',
       table        => $self,
    );
 };
