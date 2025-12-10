@@ -517,7 +517,7 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 form.classic {
-  --label-width: 7.5rem;
+  --label-width: 8rem;
   --form-bg-semitrans: hsl(from var(--bg-lighter) h s l / 0.25);
   background: var(--form-bg-semitrans);
   border-radius: 5px;
@@ -566,7 +566,7 @@ form.classic .form-wrapper.narrow {
 form.classic.wide .form-wrapper,
 form.classic .form-wrapper.wide {
   max-width: unset;
-  --label-width: 10rem;
+  --label-width: 13rem;
 }
 form.classic > .alert-info,
 form.classic .form-wrapper > .alert-info,
@@ -595,8 +595,9 @@ form.classic .compound-field input:not([type=submit]) {
   max-width: 12rem !important;
 }
 form.classic .compound-field .alert-info {
-  background: var(--bg-base);
+  background: var(--bg-dark);
   border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
   left: calc(var(--label-width) + 0.5rem);
   padding: 0.25rem;
   position: absolute;
@@ -614,7 +615,7 @@ form.classic .form-wrapper {
   padding: 0 1rem 0.5rem;
   position: relative;
 }
-form.classic .form-wrapper:has(.input-field span.field-label) .input-button button {
+form.classic .form-wrapper:has(.input-field.floating) .input-button button {
   margin-top: 1rem;
 }
 form.classic .form-wrapper .form-title {
@@ -636,14 +637,14 @@ form.classic .input-field.fixed {
   grid-template-columns: var(--label-width) min-content min-content;
   grid-template-areas: "label input selector" "blank alert alert";
   justify-items: start;
-  min-width: 12.5rem;
+  min-width: 12rem;
   row-gap: 0.25rem;
 }
 form.classic .input-field.fixed.collapse:not(.hide):not(.input-datastructure) {
   grid-template-columns: min-content min-content min-content;
 }
 form.classic .input-field.fixed.expand:not(.hide):not(.input-datastructure) {
-  grid-template-columns: 10rem min-content min-content;
+  grid-template-columns: 13rem min-content min-content;
 }
 form.classic .input-field.fixed.shrink:not(.hide):not(.input-datastructure) {
   grid-template-columns: 5rem min-content min-content;
@@ -695,11 +696,6 @@ form.classic .input-field.inline:not(.hide) {
 form.classic .input-field.inline:not(.hide) .input-field {
   padding-bottom: 0;
 }
-form.classic .input-field:hover span.field-label,
-form.classic .input-field:has(input:focus) span.field-label,
-form.classic .input-field:has(input:valid) span.field-label {
-  top: -0.25rem;
-}
 form.classic .input-field:has(.digit-input-wrapper) .field-label::after,
 form.classic .input-field:has(input[required=required]) .field-label::after,
 form.classic .input-field:has(select[required=required]) .field-label::after,
@@ -715,6 +711,19 @@ form.classic .input-field:has(select:valid) .field-label::after,
 form.classic .input-field:has(textarea:valid) .field-label::after {
   content: ' ';
 }
+form.classic .input-field:hover span.field-label,
+form.classic .input-field:has(input:focus) span.field-label,
+form.classic .input-field:has(input:valid) span.field-label {
+  top: -0.25rem;
+}
+form.classic .input-field span.field-label {
+  border: 2px solid transparent;
+  padding: 0.125rem 0.25rem;
+  position: absolute;
+  top: 1.3175rem;
+  transition: top 0.5s;
+  translate: 0.5rem;
+}
 form.classic .input-field input,
 form.classic .input-field select,
 form.classic .input-field textarea {
@@ -724,9 +733,9 @@ form.classic .input-field textarea {
   font-weight: normal;
   grid-area: input;
 }
-form.classic .input-field input:focus,
-form.classic .input-field select:focus,
-form.classic .input-field textarea:focus {
+form.classic .input-field input:focus:not(.digit),
+form.classic .input-field select:focus:not(.digit),
+form.classic .input-field textarea:focus:not(.digit) {
   outline: 1px solid darkorange;
 }
 form.classic .input-field input {
@@ -741,15 +750,13 @@ form.classic .input-field input[type=password],
 form.classic .input-field input[type=text] {
   padding: 0.125rem 0.25rem;
 }
-form.classic .input-field input[type=file] {
-  height: unset;
-}
 form.classic .input-field input[type=file]::file-selector-button {
   background: var(--button-bg);
   border: 2px outset gainsboro;
   border-radius: 50px;
   color: seagreen;
   cursor: pointer;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.7rem;
   font-weight: 410;
   letter-spacing: 0.1rem;
@@ -763,7 +770,7 @@ form.classic .input-field input[type=file]::file-selector-button:hover {
 form.classic .input-field input[readonly=readonly] {
   color: gray;
 }
-form.classic .input-field input[readonly=readonly][type=datetime-local] {
+form.classic .input-field input[readonly=readonly][type=datetime-local]:not(.tile) {
   background: var(--form-bg-semitrans);
   border: 0;
   color: black;
@@ -799,20 +806,12 @@ form.classic .input-field textarea {
   box-sizing: content-box;
   min-height: 3lh;
   max-width: 40rem;
-  min-width: 15rem;
+  min-width: 20rem;
   overflow: auto;
   padding: 0.25rem;
 }
 form.classic .input-field textarea:focus {
   background: var(--bg-base);
-}
-form.classic .input-field span.field-label {
-  border: 2px solid transparent;
-  padding: 0.125rem 0.25rem;
-  position: absolute;
-  top: 1.5rem;
-  transition: top 0.5s;
-  translate: 0.5rem;
 }
 form.classic .input-field .alert {
   border-radius: 5px;
@@ -827,7 +826,8 @@ form.classic .input-field .alert-error {
   box-shadow: 3px 3px 3px gray;
 }
 form.classic .input-field .alert-info {
-  background: var(--bg-base);
+  background: var(--bg-dark);
+  box-shadow: 3px 3px 3px gray;
   min-width: 12.5rem;
 }
 form.classic .input-field .field-label {
@@ -1177,6 +1177,13 @@ form.classic .input-button.right {
   position: absolute;
   right: 1rem;
 }
+form.classic .input-datetime input.tile {
+  background: var(--bg-lightest);
+  border: 2px inset gainsboro;
+  border-radius: 5px;
+  color: gray;
+  font-size: 0.7375rem;
+}
 form.classic .input-display:has(img) {
   align-items: flex-start !important;
 }
@@ -1185,7 +1192,7 @@ form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
   max-width: 20rem;
-  padding: 0.25rem 0.25rem 0.25rem 0.35rem;
+  padding: 0.25rem;
 }
 form.classic .input-display span.breaking-text {
   min-width: 15rem;
@@ -1197,6 +1204,13 @@ form.classic .input-display span.code {
 }
 form.classic .input-display span.datetime {
   white-space: nowrap;
+}
+form.classic .input-display span.tile {
+  background: var(--bg-lightest);
+  border: 2px inset gainsboro;
+  border-radius: 5px;
+  color: gray;
+  min-width: 8ch;
 }
 form.classic .input-duration .input-select-integer,
 form.classic .input-interval .input-group,
@@ -1282,7 +1296,7 @@ form.classic .input-textarea:has(.field-label) .field-label {
 form.classic .page-list {
   list-style-type: none;
   margin: 0;
-  padding: 0 0 0.5rem 0;
+  padding: 0.5rem 0;
 }
 form.classic .page-list li {
   border-bottom: 1px solid gray;
@@ -1293,7 +1307,7 @@ form.classic .page-list li {
   display: inline;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.5rem;
 }
 form.classic .page-list li.selected {
   border: 1px solid gray;
@@ -1307,7 +1321,7 @@ form.classic .page-list li.selected {
   box-shadow: 3px 3px 3px gray;
   max-width: 50rem;
   overflow: hidden;
-  padding: 0.5rem;
+  padding: 0.5rem 0.5rem;
 }
 .form-error h1,
 .form-error h2,
@@ -1485,6 +1499,9 @@ body {
 .state-table table:not(.object-view):not(.preference-columns) th:has(a.filter-control) .column-header {
   padding-right: 20px;
 }
+.state-table table:not(.object-view):not(.preference-columns) th.active-sort-column {
+  background: var(--bg-base);
+}
 .state-table table:not(.object-view):not(.preference-columns) th a {
   color: black;
   cursor: pointer;
@@ -1497,9 +1514,6 @@ body {
   opacity: 50%;
   position: absolute;
   right: 0;
-}
-.state-table table:not(.object-view):not(.preference-columns) th .active-sort-column {
-  background: var(--bg-base);
 }
 .state-table table:not(.object-view):not(.preference-columns) th .column-header {
   display: inline-block;
@@ -1938,7 +1952,7 @@ body {
   color: gray;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
-  line-height: 1.5rem;
+  line-height: 1.875rem;
   margin: 0;
   padding-left: 0;
 }
@@ -2314,54 +2328,53 @@ body {
 }
 .box-tile.active,
 .job-tile.active,
-.input-field .active {
-  background: bisque;
-  color: black;
+.job-state.active {
+  background: bisque !important;
+  color: black !important;
 }
 .box-tile.failed,
 .job-tile.failed,
-.input-field .failed {
-  background: red;
-  color: whitesmoke;
+.job-state.failed {
+  background: red !important;
+  color: whitesmoke !important;
 }
 .box-tile.finished,
 .job-tile.finished,
-.input-field .finished {
-  background: darkgreen;
-  color: whitesmoke;
+.job-state.finished {
+  background: darkgreen !important;
+  color: whitesmoke !important;
 }
 .box-tile.hold,
 .job-tile.hold,
-.input-field .hold {
-  background: blue;
-  color: whitesmoke;
+.job-state.hold {
+  background: blue !important;
+  color: whitesmoke !important;
 }
 .box-tile.inactive,
 .job-tile.inactive,
-.input-field .inactive {
-  background: lightgray;
-  color: black;
+.job-state.inactive {
+  background: lightgray !important;
+  color: black !important;
 }
 .box-tile.running,
 .job-tile.running,
-.input-field .running {
-  background: lightgreen;
-  color: black;
+.job-state.running {
+  background: lightgreen !important;
+  color: black !important;
 }
 .box-tile.starting,
 .job-tile.starting,
-.input-field .starting {
-  background: cyan;
-  color: black;
+.job-state.starting {
+  background: cyan !important;
+  color: black !important;
 }
 .box-tile.terminated,
 .job-tile.terminated,
-.input-field .terminated {
-  background: darkred;
-  color: whitesmoke;
+.job-state.terminated {
+  background: darkred !important;
+  color: whitesmoke !important;
 }
 .input-field .job-state {
-  border-radius: 5px;
   text-transform: uppercase;
 }
 /* Breaks */
@@ -2392,6 +2405,7 @@ html:has(body.theme-light) {
   color-scheme: light;
 }
 body {
+  --bg-lightest: white;
   --bg-lighter: hsl(
         from var(--bg-base) calc(h * 1.82) s calc(l * 1.1)
     );
@@ -2404,6 +2418,7 @@ body {
   --bg-darker: hsl(
         from var(--bg-base) calc(h * 1.55) s calc(l * 0.37)
     );
+  --bg-darkest: black;
   --body-bg: linear-gradient(135deg, transparent, var(--bg-base));
   --button-bg: linear-gradient(0deg, var(--bg-base), var(--bg-lighter));
   --button-bg-disabled: linear-gradient(0deg, gainsboro, var(--bg-lighter));
@@ -2972,7 +2987,7 @@ footer {
 }
 .navigation .nav-list.context li.context a,
 .navigation .nav-list.context li.context .drop-menu {
-  padding: 0.5625rem 0.5rem 0.4375rem 0.5rem !important;
+  padding: 0.5rem !important;
 }
 .navigation .nav-list.global {
   align-items: flex-start;
@@ -3077,7 +3092,7 @@ footer {
 }
 .sidebar .nav-list.context li.context a,
 .sidebar .nav-list.context li.context .drop-menu {
-  padding: 0.5625rem 0.5rem 0.4375rem 0.5rem !important;
+  padding: 0.5rem !important;
 }
 .sidebar .nav-list.global {
   align-items: flex-start;
@@ -3222,6 +3237,7 @@ footer {
 .main .exception .line,
 .modal .exception .line {
   display: flex;
+  padding-bottom: 0.5rem;
 }
 .main .exception .line label,
 .modal .exception .line label {
@@ -3312,8 +3328,8 @@ footer {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 1rem;
   font-weight: normal;
+  line-height: 1.5rem;
   margin: 0;
-  padding-top: 0.25rem;
 }
 .modal-outer-wrapper .modal .modal-header .modal-close {
   align-items: center;
@@ -3404,7 +3420,7 @@ footer {
   z-index: 3;
 }
 .modal-outer-wrapper .modal .modal-content-wrapper {
-  padding: 0.5rem 1rem 0.25rem 1rem;
+  padding: 0.5rem 1rem 0.25rem;
 }
 .modal-outer-wrapper .modal .modal-content-wrapper .input-button.right {
   right: 0rem;
@@ -3413,7 +3429,7 @@ footer {
   display: flex;
   gap: 1rem;
   justify-content: space-between;
-  padding: 0 1rem 1rem 1rem;
+  padding: 0 1rem 1rem;
 }
 .modal-outer-wrapper .modal .modal-footer .input-button.right {
   right: 0rem;

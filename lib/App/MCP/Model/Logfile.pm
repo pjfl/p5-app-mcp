@@ -83,9 +83,9 @@ sub view : Auth('admin') Nav('View Logfile') {
 sub _extension2table_class {
    my ($self, $logfile) = @_;
 
-   return 'Logfile::CSV' if $logfile =~ m{ \. csv \z }mx;
+   return 'View::CSV' if $logfile =~ m{ \. csv \z }mx;
 
-   return 'Logfile::Apache';
+   return 'View::Apache';
 }
 
 1;

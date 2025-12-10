@@ -1,4 +1,4 @@
-package App::MCP::Table::Logfile::Apache;
+package App::MCP::Table::View::Apache;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TABLE_META TRUE );
 use HTML::StateTable::Types     qw( Str );

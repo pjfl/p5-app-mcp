@@ -1,4 +1,4 @@
-package App::MCP::Table::History::View;
+package App::MCP::Table::View::History;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TABLE_META TRUE );
 use Moo;

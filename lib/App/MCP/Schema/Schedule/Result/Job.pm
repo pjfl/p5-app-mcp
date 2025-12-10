@@ -30,17 +30,17 @@ $class->load_components('+App::MCP::MaterialisedPath');
 $class->add_columns(
    id           => { %{serial_data_type()}, hidden => TRUE },
    job_name     => { %{varchar_data_type()}, label => 'Job Name' },
+   parent_id    => {
+      %{nullable_foreign_key_data_type()},
+      display => 'parent_box.job_name',
+      label   => 'Parent Box'
+   },
    created      => {
       %{set_on_create_datetime_data_type()},
       cell_traits => ['DateTime'],
       timezone    => 'UTC',
    },
    type         => enumerated_data_type(JOB_TYPE_ENUM, 'box'),
-   parent_id    => {
-      %{nullable_foreign_key_data_type()},
-      display => 'parent_box.job_name',
-      label   => 'Parent Box'
-   },
    owner_id     => {
       %{foreign_key_data_type(1, 'owner')},
       display => 'owner_rel.user_name',
@@ -58,19 +58,19 @@ $class->add_columns(
       display       => sub { sprintf '0%o', shift->result->_permissions },
       is_nullable   => FALSE,
    },
-   expected_rv  => { %{numerical_id_data_type(0)}, label => 'Expected RV' },
-   delete_after => { %{boolean_data_type()}, label => 'Delete After' },
+   condition    => {
+      %{nullable_varchar_data_type()},
+      accessor  => '_condition',
+   },
+   crontab      => nullable_varchar_data_type(127),
    parent_path  => { %{nullable_varchar_data_type()}, hidden => TRUE },
    path_depth   => { %{numerical_id_data_type(0)}, hidden => TRUE },
    user_name    => { %{varchar_data_type(32, 'mcp')}, label => 'User Name' },
    host         => varchar_data_type(64, 'localhost'),
    command      => nullable_varchar_data_type,
    directory    => nullable_varchar_data_type,
-   condition    => {
-      %{nullable_varchar_data_type()},
-      accessor  => '_condition',
-   },
-   crontab      => nullable_varchar_data_type(127),
+   expected_rv  => { %{numerical_id_data_type(0)}, label => 'Expected RV' },
+   delete_after => { %{boolean_data_type()}, label => 'Delete After' },
    dependencies => { %{nullable_varchar_data_type()}, hidden => TRUE },
 );
 

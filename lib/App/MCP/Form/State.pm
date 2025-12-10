@@ -12,11 +12,12 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
 
-has '+name'            => default => 'state-edit';
-has '+title'           => default => 'State';
-has '+do_form_wrapper' => default => FALSE;
-has '+info_message'    => default => 'Change the current job state';
-has '+is_html5'        => default => TRUE;
+has '+do_form_wrapper'    => default => FALSE;
+has '+form_element_class' => default => sub { ['narrow'] };
+has '+info_message'       => default => 'Change the current job state';
+has '+is_html5'           => default => TRUE;
+has '+name'               => default => 'state-edit';
+has '+title'              => default => 'State';
 
 has '_workflow' =>
    is      => 'lazy',
@@ -28,11 +29,11 @@ has_field 'job_name' => type => 'Display';
 has_field 'state_name' =>
    type          => 'Display',
    label         => 'Current State',
-   element_class => ['job-state'];
+   element_class => ['job-state tile'];
 
 has_field 'condition' => type => 'Display', element_class => ['breaking-text'];
 
-has_field 'crontab' => type => 'Display';
+has_field 'crontab' => type => 'Display', element_class => ['datetime'];
 
 has_field 'host' => type => 'Display';
 

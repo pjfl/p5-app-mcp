@@ -27,7 +27,7 @@ $class->table('users');
 
 $class->add_columns(
    id        => { %{serial_data_type()}, label => 'User ID', hidden => TRUE },
-   user_name => varchar_data_type(64),
+   user_name => { %{varchar_data_type(64)}, label => 'User Name' },
    email     => text_data_type(),
    role_id   => {
       %{foreign_key_data_type()},

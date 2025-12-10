@@ -1,8 +1,8 @@
 package App::MCP::Model::Job;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use App::MCP::Util         qw( redirect redirect2referer );
-use Unexpected::Functions  qw( UnknownJob );
+use Unexpected::Functions  qw( UnauthorisedAccess UnknownJob );
 use Moo;
 use App::MCP::Attributes;  # Will do cleaning
 
@@ -19,11 +19,16 @@ sub base : Auth('view') {
 
    if ($jobid) {
       my $options = { prefetch => [qw(parent_box owner_rel group_rel)] };
-      my $job = $context->model('Job')->find_by_key($jobid, $options);
+      my $job     = $context->model('Job')->find_by_key($jobid, $options);
 
       return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
-      $context->stash(job => $job);
+      my $user = $self->_get_user($context);
+
+      return $self->error($context, UnauthorisedAccess)
+         unless $job->is_readable_by($user);
+
+      $context->stash(job => $job, user => $user);
       $nav->crud('job', $jobid);
    }
 
@@ -53,7 +58,11 @@ sub delete : Nav('Delete Job') {
 
    return unless $self->verify_form_post($context);
 
-   my $job  = $context->stash('job');
+   my $job = $context->stash('job');
+
+   return $self->error($context, UnauthorisedAccess)
+      unless $self->_can_update($context, $job);
+
    my $name = $job->job_name;
 
    $job->delete;
@@ -70,6 +79,9 @@ sub edit : Nav('Edit Job') {
    my $job     = $context->stash('job');
    my $options = { context => $context, item => $job, title => 'Edit job' };
    my $form    = $self->new_form('Job', $options);
+
+   return $self->error($context, UnauthorisedAccess)
+      if $context->posted && !$self->_can_update($context, $job);
 
    if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('job/view', [$job->id]);
@@ -104,7 +116,12 @@ sub remove {
    my $rs    = $context->model('Job');
    my $names = [];
 
+   $context->stash(user => $self->_get_user($context));
+
    for my $job (grep { $_ } map { $rs->find($_) } @{$value->{selector}}) {
+      return $self->error($context, UnauthorisedAccess)
+         unless $self->_can_update($context, $job);
+
       push @{$names}, $job->job_name;
       $job->delete;
    }
@@ -115,13 +132,52 @@ sub remove {
    return;
 }
 
+sub select {
+   my ($self, $context) = @_;
+
+   my $options  = { context => $context };
+   my $params   = $context->request->query_parameters;
+   my $selected = $params->{selected};
+
+   $options->{configurable} = FALSE;
+   $options->{caption}      = NUL;
+   $options->{selected}     = $selected if $selected;
+   $options->{selectonly}   = TRUE;
+
+   $context->stash(table => $self->new_table('BoxSelector', $options));
+   return;
+}
+
 sub view : Auth('view') Nav('View Job') {
    my ($self, $context) = @_;
 
    my $options = { context => $context, result => $context->stash('job') };
 
-   $context->stash(table => $self->new_table('Job::View', $options));
+   $context->stash(table => $self->new_table('View::Job', $options));
    return;
+}
+
+# Private methods
+sub _can_update {
+   my ($self, $context, $job) = @_;
+
+   my $session = $context->session;
+   my $role    = $session->role || NUL;
+   my $user    = $context->stash('user');
+
+   return FALSE if $role eq 'view';
+   return TRUE  if $role eq 'admin' || $role eq 'manager';
+   return TRUE  if $user && $job->is_writable_by($user);
+   return FALSE;
+}
+
+sub _get_user {
+   my ($self, $context) = @_;
+
+   my $options = { prefetch => 'role' };
+   my $user_id = $context->session->id;
+
+   return $context->model('User')->find_by_key($user_id, $options);
 }
 
 1;

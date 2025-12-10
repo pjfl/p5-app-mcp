@@ -176,7 +176,7 @@ sub view : Auth('manager') Nav('View User') {
       result       => $user
    };
 
-   $context->stash(table => $self->new_table('Object::View', $options));
+   $context->stash(table => $self->new_table('View::Object', $options));
    return;
 }
 

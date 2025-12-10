@@ -37,9 +37,12 @@ sub _install_after_column_change {
    my ($self, $path_info) = @_;
 
    my $method; $method = sub {
-      my $self = shift; my $rel = $path_info->{children_relationship};
+      my $self = shift;
+      my $rel  = $path_info->{children_relationship};
 
       $self->_set_materialised_path( $path_info );
+
+      return unless $method;
 
       $method->( $_ ) for $self->$rel->search( { # to avoid recursion
          map +( "me.$_" => { '!=' => $self->get_column($_) }, ),

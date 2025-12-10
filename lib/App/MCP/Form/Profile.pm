@@ -11,8 +11,6 @@ extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
 has '+title'                  => default => 'User Profile';
-has '+default_wrapper_tag'    => default => 'fieldset';
-has '+do_form_wrapper'        => default => TRUE;
 has '+info_message'           => default => 'Update profile information';
 has '+use_init_obj_over_item' => default => TRUE;
 
@@ -32,15 +30,22 @@ has 'user' =>
    isa      => class_type('App::MCP::Schema::Schedule::Result::User'),
    required => TRUE;
 
-has_field 'user_name' => type => 'Display', label => 'User Name';
+has_field 'user_name' =>
+   type          => 'Display',
+   element_class => 'tile',
+   label         => 'User Name';
 
-has_field 'email' => type => 'Display', label => 'Email Address';
+has_field 'email' =>
+   type          => 'Display',
+   element_class => 'tile',
+   label         => 'Email Address';
 
 has_field 'timezone' => type => 'Timezone';
 
 has_field 'enable_2fa' =>
    type   => 'Boolean',
-   info   => 'Additional security questions should be answered if enabled',
+   info   =>
+      'Additional security questions should be answered if 2FA is enabled',
    label  => 'Enable 2FA',
    toggle => { -checked => ['mobile_phone', 'postcode'] };
 
@@ -51,7 +56,7 @@ has_field 'mobile_phone' =>
    title => 'Additional security question used by 2FA token reset';
 
 has_field 'postcode' =>
-   size  => 8,
+   size  => 9,
    title => 'Additional security question used by 2FA token reset';
 
 has_field 'skin' =>
@@ -65,20 +70,25 @@ sub default_skin {
    return shift->context->config->skin;
 }
 
+has_field '_g1' => type => 'Group';
+
 has_field 'menu_location' =>
-   type    => 'Select',
-   default => 'header',
-   label   => 'Menu Location',
-   options => [
+   type        => 'Select',
+   default     => 'header',
+   field_group => '_g1',
+   label       => 'Menu Location',
+   options     => [
       { label => 'Header',  value => 'header' },
       { label => 'Sidebar', value => 'sidebar' },
    ];
 
 has_field 'link_display' =>
-   type    => 'Select',
-   default => 'both',
-   label   => 'Link Display',
-   options => [
+   type          => 'Select',
+   default       => 'both',
+   field_group   => '_g1',
+   label         => 'Link Display',
+   wrapper_class => 'input-select shrink',
+   options       => [
       { label => 'Both', value => 'both' },
       { label => 'Icon', value => 'icon' },
       { label => 'Text', value => 'text' },

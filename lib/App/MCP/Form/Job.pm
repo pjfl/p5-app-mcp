@@ -1,18 +1,39 @@
 package App::MCP::Form::Job;
 
 use HTML::Forms::Constants qw( FALSE META NUL SPC TRUE );
+use HTML::Forms::Types     qw( ArrayRef HashRef Str );
 use Moo;
 use HTML::Forms::Moo;
 
 extends 'HTML::Forms::Model::DBIC';
 with    'HTML::Forms::Role::Defaults';
 with    'HTML::Forms::Role::ToggleRequired';
+with    'App::MCP::Role::JSONParser';
 
-has '+name'               => default => 'Job';
+has '+form_wrapper_class' => default => sub { ['narrow'] };
 has '+info_message'       => default => 'Create or edit jobs';
 has '+item_class'         => default => 'Job';
-has '+form_element_class' => default => sub { ['narrow'] };
+has '+name'               => default => 'Job';
 has '+title'              => default => 'Create Job';
+
+has 'default_group' => is => 'ro', isa => Str, default => 'edit';
+
+has '_groups' =>
+   is      => 'lazy',
+   isa     => ArrayRef,
+   default => sub { [shift->context->model('Role')->all] };
+
+has '_group_map' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub {
+      return { map { $_->role_name => $_->id } @{shift->_groups} };
+   };
+
+has '_icons' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub { shift->context->icons_uri->as_string };
 
 has_field 'job_name' => required => TRUE;
 
@@ -23,60 +44,103 @@ has_field 'type' =>
    html_name     => 'job_type',
    input_param   => 'job_type',
    field_group   => '_g1',
-   toggle        => { job => [qw(command directory _g2 _g3)] },
+   toggle        => { job => [qw(command directory _g3 _g4)] },
    toggle_event  => 'change',
    options       => [
       { label => 'Job', value => 'job' },
       { label => 'Box', value => 'box' },
    ];
 
-has_field 'parent_box' =>
-   type        => 'Select',
+has_field 'parent_id' => type => 'Hidden', field_group => '_g1';
+
+has_field 'parent_name' =>
+   type        => 'Selector',
+   display_as  => '...',
+   label       => 'Parent Box',
    field_group => '_g1',
-   label       => 'Parent Box';
+   noupdate    => TRUE,
+   title       => 'Select Parent';
 
-sub options_parent_box {
-   my $self    = shift;
-   my $rs      = $self->context->model($self->item_class);
-   my $boxes   = [ $rs->search({ type => 'box' })->all ];
-   my $option  = sub { { label => $_[0]->job_name, value => $_[0]->id } };
-   my $options = [
-      map { $option->($_) } sort { $a->job_name cmp $b->job_name } @{$boxes}
-   ];
+has_field '_g2' => type => 'Group';
 
-   unshift @{$options}, { label => NUL, value => 0 };
+has_field 'owner' => type => 'Hidden', field_group => '_g2';
 
-   return $options;
+has_field 'owner_name' =>
+   type          => 'Text',
+   field_group   => '_g2',
+   label         => 'Owner',
+   noupdate      => TRUE,
+   readonly      => TRUE,
+   size          => 9,
+   value         => 'owner_rel.user_name';
+
+has_field 'group_rel' =>
+   type        => 'Select',
+   field_group => '_g2',
+   label       => 'Group',
+   value       => 'group_rel.role_name';
+
+sub options_group_rel {
+   my $self   = shift;
+   my $option = sub {
+      return { label => ucfirst $_[0]->role_name, value => $_[0]->id };
+   };
+
+   return [ map { $option->($_) } @{$self->_groups} ];
 }
 
-has_field '_g2' =>
+has_field 'permissions' =>
+   type        => 'PosInteger',
+   default     => '0750',
+   field_group => '_g2',
+   size        => 4;
+
+has_field 'condition' =>
+   type => 'TextArea',
+   cols => 38,
+   tags => { nospellcheck => TRUE };
+
+has_field '_g5' => type => 'Group';
+
+has_field 'crontab_min' =>
+   label       => 'Minute',
+   field_group => '_g5',
+   size        => 3;
+
+has_field 'crontab_hour' =>
+   label       => 'Hour',
+   field_group => '_g5',
+   size        => 3;
+
+has_field '_g6' => type => 'Group';
+
+has_field 'crontab_mday' =>
+   label       => 'Day of Month',
+   field_group => '_g6',
+   size        => 3;
+
+has_field 'crontab_mon' =>
+   label       => 'Month',
+   field_group => '_g6',
+   size        => 3;
+
+has_field 'crontab_wday' =>
+   label => 'Day of Week',
+   size  => 3;
+
+has_field '_g4' =>
    type => 'Group',
    info => 'These fields are not needed if job type is box';
 
-has_field 'expected_rv' =>
-   type                => 'PosInteger',
-   default             => 0,
-   field_group         => '_g2',
-   label               => 'Expected RV',
-   size                => 3,
-   validate_inline     => TRUE,
-   validate_when_empty => TRUE;
-
-has_field 'delete_after' =>
-   type        => 'Boolean',
-   field_group => '_g2';
-
-has_field '_g3' => type => 'Group';
-
 has_field 'user_name' =>
    default       => 'mcp',
-   field_group   => '_g3',
+   field_group   => '_g4',
    required      => TRUE,
-   size          => 10;
+   size          => 9;
 
 has_field 'host' =>
    default     => 'localhost',
-   field_group => '_g3',
+   field_group => '_g4',
    required    => TRUE;
 
 has_field 'command' =>
@@ -87,35 +151,20 @@ has_field 'command' =>
 
 has_field 'directory' => size => 36;
 
-has_field 'condition' => size => 36;
+has_field '_g3' => type => 'Group';
 
-has_field '_g4' => type => 'Group';
+has_field 'expected_rv' =>
+   type                => 'PosInteger',
+   default             => 0,
+   field_group         => '_g3',
+   label               => 'Expected RV',
+   size                => 3,
+   validate_inline     => TRUE,
+   validate_when_empty => TRUE;
 
-has_field 'crontab_min' =>
-   label       => 'Minute',
-   field_group => '_g4',
-   size        => 3;
-
-has_field 'crontab_hour' =>
-   label       => 'Hour',
-   field_group => '_g4',
-   size        => 3;
-
-has_field '_g5' => type => 'Group';
-
-has_field 'crontab_mday' =>
-   label       => 'Day of Month',
-   field_group => '_g5',
-   size        => 3;
-
-has_field 'crontab_mon' =>
-   label       => 'Month',
-   field_group => '_g5',
-   size        => 3;
-
-has_field 'crontab_wday' =>
-   label => 'Day of Week',
-   size  => 3;
+has_field 'delete_after' =>
+   type        => 'Boolean',
+   field_group => '_g3';
 
 has_field 'view' =>
    type          => 'Link',
@@ -125,26 +174,62 @@ has_field 'view' =>
 
 has_field 'submit' => type => 'Button';
 
-# owner_id     => foreign_key_data_type( 1, 'owner' ),
-# group_id     => foreign_key_data_type( 1, 'group' ),
-# permissions  => { accessor      => '_permissions',
-#                   data_type     => 'smallint',
-#                   default_value => 488,
-#                   is_nullable   => FALSE, },
-
 after 'after_build_fields' => sub {
-   my $self = shift;
+   my $self    = shift;
+   my $context = $self->context;
 
-   if ($self->item) {
-      my $view = $self->context->uri_for_action('job/view', [$self->item->id]);
+   if (my $item = $self->item) {
+      my $view = $self->context->uri_for_action('job/view', [$item->id]);
 
       $self->field('view')->href($view->as_string);
       $self->field('submit')->add_wrapper_class(['inline', 'right']);
+      $self->field('type')->disabled(TRUE);
+      $self->field('parent_name')->default($item->parent_box->job_name)
+         if $item->parent_box;
+      $self->field('group_rel')->value($item->group);
+      $self->field('owner_name')->default($item->owner_rel->user_name);
    }
-   else { $self->field('view')->inactive(TRUE) }
+   else {
+      my $group_id = $self->_group_map->{$self->default_group};
 
+      $self->field('group_rel')->default($group_id);
+      $self->field('owner')->default($context->session->id);
+      $self->field('owner_name')->default($context->session->username);
+      $self->field('view')->inactive(TRUE);
+   }
+
+   my $selector = $context->uri_for_action('job/select', [], {});
+   my $modal    = $context->config->wcom_resources->{modal};
+   my $args     = $self->json_parser->encode({
+      icons    => $self->_icons,
+      target   => 'parent_name',
+      title    => 'Select Parent',
+      url      => $selector
+   });
+
+   $self->field('parent_name')->selector("${modal}.createSelector(${args})");
    return;
 };
+
+sub validate {
+   my $self = shift;
+
+   if ($self->item) { $self->field('owner')->value($self->item->owner) }
+   else { $self->field('owner')->value($self->context->session->id) }
+
+   if (my $parent_name = $self->field('parent_name')->value) {
+      my $rs     = $self->context->model('Job');
+      my $parent = $rs->find({ job_name => $parent_name });
+
+      $self->field('parent_id')->value($parent->id) if $parent;
+   }
+
+   my $perms = $self->field('permissions');
+
+   $perms->value(oct $perms->value);
+
+   return;
+}
 
 use namespace::autoclean -except => META;
 

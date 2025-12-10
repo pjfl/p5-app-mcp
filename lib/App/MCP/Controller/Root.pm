@@ -16,6 +16,7 @@ sub dispatch_request { build_routes
    'GET      + /job/*/history | /job/history + ?*' => 'history/root/base/list',
 
    'GET|POST + /job/create + ?*'    => 'job/root/base/create',
+   'GET|POST + /job/select + ?*'    => 'job/root/base/select',
    'POST     + /job/*/delete + ?*'  => 'job/root/base/delete',
    'GET|POST + /job/*/edit + ?*'    => 'job/root/base/edit',
    'GET      + /job/* + ?*'         => 'job/root/base/view',

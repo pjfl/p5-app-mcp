@@ -1,4 +1,4 @@
-package App::MCP::Table::Object::View;
+package App::MCP::Table::View::Object;
 
 use HTML::StateTable::Constants qw( FALSE SPC TABLE_META TRUE );
 use HTML::StateTable::Types     qw( ArrayRef DBIxClass Str );

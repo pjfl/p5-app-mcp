@@ -61,7 +61,7 @@ sub view : Auth('view') Nav('View History') {
       $options->{runid} = $runid;
    }
 
-   $context->stash(table => $self->new_table('History::View', $options));
+   $context->stash(table => $self->new_table('View::History', $options));
    return;
 }
 

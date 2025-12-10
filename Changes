@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Renamed away most table View classes
           - Added field groups to job edit form
           - Added configurable local fonts
           - Added configurable Google fonts

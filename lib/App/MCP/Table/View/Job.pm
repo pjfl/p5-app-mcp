@@ -1,9 +1,9 @@
-package App::MCP::Table::Job::View;
+package App::MCP::Table::View::Job;
 
 use HTML::StateTable::Constants qw( FALSE TRUE );
 use Moo;
 
-extends 'App::MCP::Table::Object::View';
+extends 'App::MCP::Table::View::Object';
 
 has '+caption' => default => 'Job View';
 
