@@ -10,8 +10,9 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+title'                  => default => 'User Profile';
+has '+form_wrapper_class'     => default => sub { ['narrow'] };
 has '+info_message'           => default => 'Update profile information';
+has '+title'                  => default => 'User Profile';
 has '+use_init_obj_over_item' => default => TRUE;
 
 has '+init_object' => default => sub {
@@ -98,9 +99,9 @@ has_field 'theme' =>
    type    => 'Select',
    default => 'light',
    options => [
-      { label => 'Dark',   value => 'theme-dark' },
-      { label => 'Light',  value => 'theme-light' },
-      { label => 'System', value => 'theme-system' },
+      { label => 'Dark',   value => 'dark-theme' },
+      { label => 'Light',  value => 'light-theme' },
+      { label => 'System', value => 'system-theme' },
 ];
 
 has_field 'view' =>

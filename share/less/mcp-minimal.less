@@ -1,6 +1,5 @@
-/* Dimensions */
-@row-max-width: 30rem;
 /* Colours */
+@button-border: gainsboro;
 @contrast: whitesmoke;
 @line-border: gray;
 @panel-shadow: gray;
@@ -13,7 +12,22 @@
 @tile-starting: cyan;
 @tile-terminated: darkred;
 @text: black;
+@text-watermark: gray;
 @toggle: gray;
+
+/* Dimensions */
+@row-max-width: 30rem;
+@state-key-gap: 0.5rem;
+
+/* Font Sizes and Weights */
+@state-key-font-size: 0.8rem;
+
+#fonts() {
+    cursive: 'Segoe Print', 'Bradley Hand', 'Chilanka', casual, cursive;
+    mono: 'Cascadia Code', 'Menlo', 'DejaVu Sans Mono', ui-monospace, monospace;
+    sans: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+    serif: 'DejaVu Serif', 'Sitka Small', serif;
+}
 .state-container {
     position: relative;
     .diagram-container {
@@ -82,4 +96,23 @@
 }
 .input-field .job-state {
     text-transform: uppercase;
+}
+.state-key {
+    align-items: baseline; display: inline-flex; gap: @state-key-gap;
+    .job-state-list {
+        display: flex; gap: @state-key-gap; list-style: none; margin: 0;
+        padding: 0;
+        .job-state-item {
+            display: inline-block;
+            .job-tile {
+                border: 2px inset @button-border; border-radius: 5px;
+                font-size: (@state-key-font-size - 0.1rem); padding: 0.25rem;
+                text-transform: uppercase;
+            }
+        }
+    }
+    .state-key-label {
+        color: @text-watermark; font-family: #fonts[sans];
+        font-size: @state-key-font-size;
+    }
 }

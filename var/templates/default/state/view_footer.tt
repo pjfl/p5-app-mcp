@@ -1,0 +1,11 @@
+<div></div>
+<div class="state-key">
+   <span class="state-key-label">State Key</span><ul class="job-state-list">
+[%- FOREACH state IN config.job_states -%]
+<li class="job-state-item">
+   <span class="job-tile [% state %]">[% state | ucfirst %]</span>
+</li>
+[%- END -%]
+  </ul>
+</div>
+<div class="site">[% footer = skin _ '/site/footer.tt'; INCLUDE $footer %]</div>

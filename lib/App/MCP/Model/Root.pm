@@ -53,6 +53,27 @@ sub default : Auth('none') {
    return;
 }
 
+sub footer : Auth('none') {
+   my ($self, $context, $moniker, $method) = @_;
+
+   my $session   = $context->session;
+   my $templates = $context->views->{html}->templates;
+
+   $context->stash(page => { layout => 'site/footer' });
+
+   my $action = "${moniker}/footer";
+   my $footer = $templates->catdir($session->skin)->catfile("${action}.tt");
+
+   $context->stash(page => { layout => $action }) if $footer->exists;
+
+   $action = "${moniker}/${method}_footer";
+   $footer = $templates->catdir($session->skin)->catfile("${action}.tt");
+
+   $context->stash(page => { layout => $action }) if $footer->exists;
+
+   return;
+}
+
 sub login : Auth('none') Nav('Login') {
    my ($self, $context) = @_;
 
@@ -346,7 +367,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2024 Peter Flanigan. All rights reserved
+Copyright (c) 2025 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

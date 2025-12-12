@@ -47,6 +47,7 @@ sub dispatch_request { build_routes
    'GET      + /access_denied + ?*'          => 'page/root/base/access_denied',
    'GET      + /changes + ?*'                => 'page/root/base/changes',
    'GET      + /configuration + ?*'          => 'page/root/base/configuration',
+   'GET      + /footer/** + ?*'              => 'page/footer',
    'GET|POST + /login + ?*'                  => 'page/root/base/login',
    'POST     + /logout + ?*'                 => 'page/root/logout',
    'GET|POST + /register/* | /register + ?*' => 'page/root/base/register',

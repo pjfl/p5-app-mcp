@@ -8,7 +8,7 @@ use File::DataClass::Types      qw( ArrayRef Bool CodeRef Directory File HashRef
                                     NonZeroPositiveInt Object Path PositiveInt
                                     SimpleStr Str Undef );
 use App::MCP::Util              qw( distname );
-use Class::Usul::Cmd::Util      qw( decrypt );
+use Class::Usul::Cmd::Util      qw( decrypt now_dt );
 use English                     qw( -no_match_vars );
 use File::DataClass::IO         qw( io );
 use Web::Components::Util       qw( fqdn );
@@ -127,6 +127,17 @@ has 'connect_info' =>
 
       return [$self->dsn, $self->db_username, $password, $self->db_extra];
    };
+
+=item C<copyright_year>
+
+Year displayed in the copyright string. Defaults to the current year
+
+=cut
+
+has 'copyright_year' =>
+   is      => 'ro',
+   isa     => Str,
+   default => sub { now_dt->strftime('%Y') };
 
 =item C<cron_log_interval>
 
@@ -288,6 +299,21 @@ symbols used when generating HTML
 =cut
 
 has 'icons' => is => 'ro', isa => Str, default => 'img/icons.svg';
+
+=item C<job_states>
+
+An array reference containing the list of defined job states
+
+=cut
+
+has 'job_states' =>
+   is      => 'ro',
+   isa     => ArrayRef,
+   default => sub {
+      return [
+         qw(active hold failed finished inactive running started terminated)
+      ];
+   };
 
 =item C<keywords>
 
@@ -917,7 +943,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2024 Peter Flanigan. All rights reserved
+Copyright (c) 2025 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

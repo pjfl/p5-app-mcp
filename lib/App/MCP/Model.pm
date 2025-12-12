@@ -50,7 +50,9 @@ has 'table_manager' =>
 sub root : Auth('none') {
    my ($self, $context) = @_;
 
-   my $args    = { context => $context, model => $self };
+   my $args = {
+      context => $context, footer_action => 'page/footer', model => $self
+   };
    my $nav     = Web::Components::Navigation->new($args);
    my $session = $context->session;
 
@@ -132,7 +134,7 @@ Peter Flanigan, C<< <pjfl@cpan.org> >>
 
 =head1 License and Copyright
 
-Copyright (c) 2024 Peter Flanigan. All rights reserved
+Copyright (c) 2025 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See L<perlartistic>

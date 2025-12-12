@@ -1,5 +1,7 @@
 Revision history for App::MCP
 
+0.6.1     2025-12-12 00:35:29
+          - Updating copyright year and releasing
           - Renamed away most table View classes
           - Added field groups to job edit form
           - Added configurable local fonts

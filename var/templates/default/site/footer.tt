@@ -1,3 +1,13 @@
-<footer id="footer">
-  <span class="version-number">v[% version %]</span>
-</footer>
+[% IF config.footer_links;
+      '<span></span>';
+      FOR link IN config.footer_links;
+      IF link.2; href = link.1; ELSE; href = uri_for_action(link.1); END;
+      '<a href="' _ href _ '">';
+      '<span class="secondary-link">' _ link.0 _ '</span></a>';
+      END;
+   ELSE;
+      '<span></span>';
+   END;
+%]
+<span class="copyright">© [% config.copyright_year %] RoxSoft, Ltd.
+<span class="version-number">v[% version %]</span></span>
