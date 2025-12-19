@@ -8,10 +8,10 @@ extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Searchable';
 with    'HTML::StateTable::Role::CheckAll';
-with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Active';
+with    'HTML::StateTable::Role::Form';
 
-has '+active_control_location' => default => 'BottomLeft';
+has '+active_control_location' => default => 'BottomRight';
 
 has '+caption' => default => 'User List';
 
@@ -78,7 +78,7 @@ has_column 'timezone' =>
 
 has_column 'check' =>
    cell_traits => ['Checkbox'],
-   label       => SPC,
+   label       => 'Select',
    value       => 'id';
 
 use namespace::autoclean -except => TABLE_META;

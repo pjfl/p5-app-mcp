@@ -4,7 +4,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 # Version
 
-Describes version v0.5.$Rev: 72 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
+Describes version v0.6.$Rev: 1 $ of [App::MCP](https://metacpan.org/pod/App%3A%3AMCP)
 
 # Synopsis
 
@@ -183,7 +183,7 @@ Peter Flanigan, `<pjfl@cpan.org>`
 
 # License and Copyright
 
-Copyright (c) 2024 Peter Flanigan. All rights reserved
+Copyright (c) 2025 Peter Flanigan. All rights reserved
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself. See [perlartistic](https://metacpan.org/pod/perlartistic)

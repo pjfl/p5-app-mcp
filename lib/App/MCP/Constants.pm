@@ -9,16 +9,16 @@ use HTML::StateTable::Constants       ( );
 use HTML::Forms::Constants            ( );
 use Web::ComposableRequest::Constants ( );
 
-our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
-                  JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_NOW SQL_TRUE STATE_ENUM
-                  TRANSITION_ENUM VARCHAR_MAX_SIZE );
-
 my $exception_class = 'App::MCP::Exception';
 
 Class::Usul::Cmd::Constants->Exception_Class($exception_class);
 HTML::StateTable::Constants->Exception_Class($exception_class);
 HTML::Forms::Constants->Exception_Class($exception_class);
 Web::ComposableRequest::Constants->Exception_Class($exception_class);
+
+our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
+                  JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_NOW SQL_TRUE STATE_ENUM
+                  TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
 sub import {
    my $class       = shift;

@@ -1,7 +1,7 @@
 package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
-use File::DataClass::Types qw( Directory );
+use File::DataClass::Types qw( ArrayRef Directory );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
@@ -75,6 +75,17 @@ has 'formatter' =>
    isa     => class_type('App::MCP::Markdown'),
    default => sub { App::MCP::Markdown->new( tab_width => 3 ) };
 
+=item C<projects>
+
+=cut
+
+has 'projects' =>
+   is      => 'ro',
+   isa     => ArrayRef,
+   default => sub {
+      return [qw(HTML-Filter HTML-Forms HTML-StateTable Web-Components)];
+   };
+
 =item C<templatedir>
 
 =cut
@@ -134,10 +145,25 @@ sub install : method {
    return OK;
 }
 
+=item make_all - Run JS and CSS production methods
+
+A convienience method which calls the other three front end file production
+methods
+
+=cut
+
+sub make_all : method {
+   my $self = shift;
+
+   $self->make_css;
+   $self->make_js;
+   return OK;
+}
+
 =item make_css - Make concatenated CSS file
 
-Run automatically if L<App::Burp> is running. It concatenates multiple CSS files
-into a single one
+Run automatically if L<App::Burp> is running. It calls C<make-less> and then
+concatenates multiple CSS files into a single one
 
 =cut
 
@@ -146,6 +172,7 @@ sub make_css : method {
    my $dir   = io['share', 'css'];
    my @files = ();
 
+   $self->make_less;
    $dir->filter(sub { m{ \.css \z }mx })->visit(sub { push @files, shift });
 
    my $skin   = $self->config->skin;
@@ -157,22 +184,6 @@ sub make_css : method {
    my $options = { leader => 'CLI.make_css' };
 
    $self->info("Concatenated ${count} files to ${file}", $options);
-   return OK;
-}
-
-=item make_fe - Run JS and CSS production methods
-
-A convienience method which calls the other three front end file production
-methods
-
-=cut
-
-sub make_fe : method {
-   my $self = shift;
-
-   $self->make_less;
-   $self->make_css;
-   $self->make_js;
    return OK;
 }
 
@@ -188,6 +199,7 @@ sub make_js : method {
    my $dir   = io['share', 'js'];
    my @files = ();
 
+   $self->_populate_share_files($dir, 'js');
    $dir->filter(sub { m{ \.js \z }mx })->visit(sub { push @files, shift });
 
    my $prefix = $self->config->prefix;
@@ -213,6 +225,7 @@ sub make_less : method {
    my $dir   = io['share', 'less'];
    my @files = ();
 
+   $self->_populate_share_files($dir, 'less');
    $dir->filter(sub { m{ \.less \z }mx })->visit(sub { push @files, shift });
    ensure_class_loaded('CSS::LESS');
 
@@ -374,6 +387,47 @@ sub _load_stash {
 
    $stash->{quote} = $quote;
    return $stash;
+}
+
+sub _populate_share_files {
+   my ($self, $dest, $extn) = @_;
+
+   my @files  = ();
+   my $mtimes = {};
+
+   $dest->filter(sub { m{ \.${extn} \z }mx })->visit(sub { push @files, shift});
+   $mtimes->{$_->basename} = $_->stat->{mtime} for (@files);
+
+   for my $source ($self->_qualified_share_files($extn)) {
+      next if exists $mtimes->{$source->basename}
+         && $mtimes->{$source->basename} >= $source->stat->{mtime};
+
+      $source->copy($dest);
+   }
+
+   return;
+}
+
+sub _qualified_share_files {
+   my ($self, $extn) = @_;
+
+   my $proj_parent = $self->config->appldir->parent->parent;
+   my @files       = ();
+
+   for my $project (@{$self->projects}) {
+      my $proj_dir = $proj_parent->catdir($project);
+
+      next unless $proj_dir->exists;
+
+      my $source = $proj_dir->catdir(qw(master share), $extn);
+
+      next unless $source->exists;
+
+      $source->filter(sub { m{ \.${extn} \z }mx })
+         ->visit(sub { push @files, shift});
+   }
+
+   return @files;
 }
 
 sub _qualify_assets {

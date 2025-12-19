@@ -37,7 +37,7 @@ WCom.MCP.StateDiagram = (function() {
          const className = (this.type == 'box') ? 'box-tile' : 'job-tile';
          const jobTile = this.h.div({ className, id }, content);
          jobTile.classList.add(this.stateName);
-         this.jobTile = this.addReplace(container, 'jobTile', jobTile);
+         this.jobTile = this.addOrReplace(container, jobTile, this.jobTile);
       }
       _has_nodes() {
          return this.nodes[0] ? true : false;

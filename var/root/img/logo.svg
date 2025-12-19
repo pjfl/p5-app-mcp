@@ -3,7 +3,7 @@
 <svg fill="#000000" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
 	 viewBox="0 0 512 512" xml:space="preserve">
 <g>
-	<g>
+	<g stroke="currentColor">
 		<path d="M432.825,232.247v42.227h-84.454v-31.67h-21.113v-47.505h-36.948v-63.437c0.881,0.055,1.762,0.097,2.639,0.097h21.113
 			c12.03,0,23.276-4.685,31.673-13.192c8.509-8.398,13.193-19.645,13.193-31.674c0-24.74-20.126-44.866-44.866-44.866h-21.113
 			c-12.03,0-23.276,4.685-31.673,13.192c-1.969,1.943-3.723,4.045-5.272,6.269c-8.099-11.744-21.638-19.46-36.952-19.46h-21.113
@@ -23,47 +23,47 @@
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<path d="M200.577,279.753v142.516h110.845V279.753H200.577z M295.588,406.433h-79.175V295.588h79.175V406.433z"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="229.608" y="311.423" width="52.784" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="229.608" y="343.093" width="52.784" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="229.608" y="374.763" width="21.113" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="261.278" y="374.763" width="21.113" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="192.66" y="79.175" width="31.67" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="287.67" y="79.175" width="31.67" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="97.649" y="311.423" width="47.505" height="15.835"/>
 	</g>
 </g>
 <g>
-	<g>
+	<g stroke="currentColor">
 		<rect x="366.845" y="311.423" width="47.505" height="15.835"/>
 	</g>
 </g>

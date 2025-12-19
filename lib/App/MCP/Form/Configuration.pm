@@ -60,7 +60,7 @@ after 'after_build_fields' => sub {
 sub _encode_ref {
    my ($self, $v) = @_;
 
-   my $string = $self->json_parser->pretty->encode($v);
+   my $string = $self->json_pretty_print($v);
 
    return $string;
 }

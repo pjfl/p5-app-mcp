@@ -1,4 +1,6 @@
-/* Colours */
+/* @author  pjfl@cpan.org (Peter Flanigan)
+ * @version 0.1.18
+ * Colours */
 /* Dimensions */
 /* Font Sizes and Weights */
 .filter-container {
@@ -224,7 +226,7 @@
 }
 .filter-container .node-rule-wrapper .node-rule-box .node-rule-title-wrapper .node-rule-title {
   flex-grow: 2;
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica', system-ui, sans-serif;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
   margin: 0;
@@ -237,7 +239,7 @@
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
   cursor: pointer;
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica', system-ui, sans-serif;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-weight: bold;
   padding: 0 0.25rem;
 }
@@ -272,7 +274,7 @@
 .filter-container .node-rule-wrapper .node-rule-box .type-name,
 .filter-container .node-rule-wrapper .node-rule-box .type-negate,
 .filter-container .node-rule-wrapper .node-rule-box .type-operation {
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica', system-ui, sans-serif;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
 }
 .filter-container .node-rule-wrapper .node-rule-box .type-event,
 .filter-container .node-rule-wrapper .node-rule-box .type-negate {
@@ -326,7 +328,7 @@
   transition: border 500ms, color 500ms;
 }
 .filter-container .rule-editor .node-rule-edit-container button span {
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica', system-ui, sans-serif;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.7rem;
   font-weight: 415;
   letter-spacing: 0.1rem;
@@ -375,7 +377,7 @@
   padding: 0 1rem;
 }
 .filter-container .rule-editor .node-rule-edit-container .node-rule-edit .node-rule-edit-title {
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica', system-ui, sans-serif;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   margin-left: -2px;
   white-space: nowrap;
 }
@@ -398,7 +400,7 @@
   margin-right: 0.5rem;
 }
 .filter-container .type-container label {
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica', system-ui, sans-serif;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
   line-height: 1rem;
   padding-right: 0.5rem;
@@ -513,11 +515,13 @@
   position: absolute;
   right: 0.25rem;
 }
-/* Colours */
+/* @author  pjfl@cpan.org (Peter Flanigan)
+ * @version 0.1.95
+ * Colours */
 /* Dimensions */
 /* Font Sizes and Weights */
 form.classic {
-  --label-width: 8rem;
+  --label-width: 8.5rem;
   --form-bg-semitrans: hsl(from var(--bg-lighter) h s l / 0.25);
   background: var(--form-bg-semitrans);
   border-radius: 5px;
@@ -561,12 +565,12 @@ form.classic.shiny .form-wrapper {
 }
 form.classic.narrow,
 form.classic .form-wrapper.narrow {
-  --label-width: 5rem;
+  --label-width: 5.5rem;
 }
 form.classic.wide .form-wrapper,
 form.classic .form-wrapper.wide {
   max-width: unset;
-  --label-width: 13rem;
+  --label-width: 14rem;
 }
 form.classic > .alert-info,
 form.classic .form-wrapper > .alert-info,
@@ -627,7 +631,7 @@ form.classic .form-wrapper .form-title {
   text-transform: uppercase;
 }
 form.classic .input-field {
-  padding-bottom: 0.5rem;
+  padding: 0.1875rem 0 0.3125rem;
   position: relative;
 }
 form.classic .input-field.fixed {
@@ -637,17 +641,17 @@ form.classic .input-field.fixed {
   grid-template-columns: var(--label-width) min-content min-content;
   grid-template-areas: "label input selector" "blank alert alert";
   justify-items: start;
-  min-width: 12rem;
+  min-width: 13rem;
   row-gap: 0.25rem;
 }
 form.classic .input-field.fixed.collapse:not(.hide):not(.input-datastructure) {
   grid-template-columns: min-content min-content min-content;
 }
 form.classic .input-field.fixed.expand:not(.hide):not(.input-datastructure) {
-  grid-template-columns: 13rem min-content min-content;
+  grid-template-columns: 14rem min-content min-content;
 }
 form.classic .input-field.fixed.shrink:not(.hide):not(.input-datastructure) {
-  grid-template-columns: 5rem min-content min-content;
+  grid-template-columns: 5.5rem min-content min-content;
 }
 form.classic .input-field.fixed.label-right {
   grid-template-columns: min-content auto var(--label-width);
@@ -710,6 +714,9 @@ form.classic .input-field:has(input:valid) .field-label::after,
 form.classic .input-field:has(select:valid) .field-label::after,
 form.classic .input-field:has(textarea:valid) .field-label::after {
   content: ' ';
+}
+form.classic .input-field:has(.alert-info.top) {
+  grid-template-areas: "blank alert alert" "label input selector";
 }
 form.classic .input-field:hover span.field-label,
 form.classic .input-field:has(input:focus) span.field-label,
@@ -806,7 +813,7 @@ form.classic .input-field textarea {
   box-sizing: content-box;
   min-height: 3lh;
   max-width: 40rem;
-  min-width: 20rem;
+  min-width: 18rem;
   overflow: auto;
   padding: 0.25rem;
 }
@@ -954,12 +961,12 @@ form.classic .input-selector button span.icon-wrapper svg {
 form.classic .data-structure a.form-button,
 form.classic .input-button a.form-button,
 form.classic .input-selector a.form-button {
-  padding: 0.125rem 0.75rem 0.1875rem;
+  padding: 0.0625rem 0.75rem 0.25rem;
 }
 form.classic .data-structure button,
 form.classic .input-button button,
 form.classic .input-selector button {
-  padding: 0.25rem 0.75rem;
+  padding: 0.1875rem 0.75rem 0.3125rem;
 }
 form.classic .data-structure button[disabled=disabled],
 form.classic .input-button button[disabled=disabled],
@@ -968,6 +975,12 @@ form.classic .data-structure button[disabled=disabled]::after,
 form.classic .input-button button[disabled=disabled]::after,
 form.classic .input-selector button[disabled=disabled]::after {
   background: var(--button-bg-disabled);
+}
+form.classic .data-structure {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
 }
 form.classic .digit-input-wrapper {
   display: flex;
@@ -982,10 +995,6 @@ form.classic .ds-form {
   overscroll-behavior-inline: contain;
   scroll-behavior: smooth;
 }
-form.classic .ds-form.horizontal.snaps-inline,
-form.classic .ds-form.vertical.snaps-inline {
-  scroll-snap-type: inline mandatory;
-}
 form.classic .ds-form.horizontal.snaps-inline > *,
 form.classic .ds-form.vertical.snaps-inline > * {
   scroll-snap-align: start;
@@ -996,10 +1005,16 @@ form.classic .ds-form.horizontal {
   max-width: 21rem;
   padding-right: 0.25rem;
 }
+form.classic .ds-form.horizontal.snaps-inline {
+  scroll-snap-type: inline mandatory;
+}
 form.classic .ds-form.vertical {
-  max-height: 40rem;
+  max-height: 60vh;
   overflow-y: auto;
   padding-right: 0.75rem;
+}
+form.classic .ds-form.vertical.snaps-inline {
+  scroll-snap-type: block mandatory;
 }
 form.classic .ds-form .ds-header {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
@@ -1106,9 +1121,6 @@ form.classic .ds-form .ds-tag-label {
   font-size: 0.8rem;
   margin-right: 0.25rem;
 }
-form.classic .form-page.hide {
-  display: none;
-}
 form.classic .input-boolean:has(.label-checkbox) {
   align-items: center !important;
 }
@@ -1172,10 +1184,16 @@ form.classic .input-button.expand {
 form.classic .input-button.expand button {
   flex: 2;
 }
+form.classic .input-button.left {
+  justify-content: left;
+}
 form.classic .input-button.right {
   margin-right: 0 !important;
   position: absolute;
   right: 1rem;
+}
+form.classic .input-colour {
+  align-items: center !important;
 }
 form.classic .input-datetime input.tile {
   background: var(--bg-lightest);
@@ -1192,17 +1210,18 @@ form.classic .input-display span {
   font-size: 0.8rem;
   grid-area: input;
   max-width: 20rem;
+  min-width: 10rem;
   padding: 0.25rem;
 }
 form.classic .input-display span.breaking-text {
-  min-width: 15rem;
   white-space: break-spaces;
 }
 form.classic .input-display span.code {
-  min-width: 15rem;
   white-space: unset;
 }
-form.classic .input-display span.datetime {
+form.classic .input-display span.datetime,
+form.classic .input-display span.identity,
+form.classic .input-display span.version {
   white-space: nowrap;
 }
 form.classic .input-display span.tile {
@@ -1246,14 +1265,26 @@ form.classic .input-immutable h4,
 form.classic .input-immutable h5 {
   margin: 0.5rem 0;
 }
-form.classic .input-immutable p,
-form.classic .input-immutable pre code {
-  font-size: 0.8rem;
-  line-height: 1rem;
+form.classic .input-immutable a {
+  color: seagreen;
+}
+form.classic .input-immutable code,
+form.classic .input-immutable p {
+  line-height: 1.25rem;
   max-width: 50rem;
 }
-form.classic .input-immutable pre code {
+form.classic .input-immutable code {
+  font-family: 'Cascadia Code', 'Menlo', 'DejaVu Sans Mono', ui-monospace, monospace;
   display: inline-block;
+  font-size: 0.8rem;
+}
+form.classic .input-immutable p {
+  font-size: 1rem;
+}
+form.classic .input-immutable p code {
+  font-size: 0.9rem;
+}
+form.classic .input-immutable pre {
   white-space: break-spaces;
 }
 form.classic .input-integer .digit {
@@ -1314,6 +1345,23 @@ form.classic .page-list li.selected {
   border-bottom: 1px solid transparent;
   color: black;
 }
+form.classic .page-wrapper {
+  display: flex;
+  overflow: clip;
+  position: relative;
+}
+form.classic .page-wrapper .form-page {
+  opacity: 1;
+  position: relative;
+  transition: opacity 0.5s;
+}
+form.classic .page-wrapper .form-page.fade {
+  opacity: 0;
+  position: absolute;
+}
+form.classic .page-wrapper .form-page.hide {
+  display: none;
+}
 .form-error {
   background: lightpink;
   border: 1px solid gray;
@@ -1372,6 +1420,9 @@ form.classic .page-list li.selected {
 .form-messages .alert-error-message {
   margin-left: -0.25rem;
 }
+.modal .attachment {
+  box-shadow: none;
+}
 .modal .filemanager {
   margin: 0;
   min-width: 10rem;
@@ -1385,7 +1436,9 @@ form.classic .page-list li.selected {
   min-width: 16rem;
   padding: 0;
 }
-/* Breaks */
+/* @author  pjfl@cpan.org (Peter Flanigan)
+ * @version 0.2.25
+ * Breaks */
 /* Colours */
 /* Dimensions */
 /* Font Sizes and Weights */
@@ -2062,7 +2115,7 @@ body {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
   line-height: 1.375rem;
-  padding: 0.125rem 1rem 0 0.5rem;
+  padding: 0.0625rem 1rem 0.0625rem 0.5rem;
 }
 .state-table .search-box .search-wrapper .search-button {
   display: inline-block;
@@ -2199,11 +2252,11 @@ body {
 .state-table .table-form button,
 .state-table .dialog-form button {
   margin-right: 0.5rem;
-  padding: 0.25rem 0.75rem;
+  padding: 0.1875rem 0.75rem 0.3125rem;
 }
 .state-table .table-form a.table-button {
   margin-right: 0.5rem;
-  padding: 0.125rem 0.75rem 0.1875rem;
+  padding: 0.0625rem 0.75rem 0.25rem;
 }
 .state-table .table-form .table-button.right {
   position: absolute;
@@ -2401,7 +2454,9 @@ body {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
 }
-/* Breaks */
+/* @author  pjfl@cpan.org (Peter Flanigan)
+ * @version 0.13.30
+ * Breaks */
 /* Colours */
 /* Dimensions */
 /* Font Sizes and Weights */
@@ -2486,6 +2541,10 @@ body.text-light .sidebar .nav-list .drop-menu,
 body.dark-theme .sidebar .nav-list .drop-menu {
   color: whitesmoke;
 }
+body.text-light .nav-title img,
+body.dark-theme .nav-title img {
+  color: whitesmoke;
+}
 body.text-light .state-table .preference-columns td,
 body.dark-theme .state-table .preference-columns td {
   color: black;
@@ -2493,10 +2552,6 @@ body.dark-theme .state-table .preference-columns td {
 body.text-light .state-table .dialog-input select,
 body.dark-theme .state-table .dialog-input select {
   color: black;
-}
-body.text-light .version-number,
-body.dark-theme .version-number {
-  color: ivory;
 }
 @media (max-width: 480px) {
   body {
@@ -2551,6 +2606,16 @@ main .layout-container h5 {
   margin: 1rem;
   text-wrap: balance;
 }
+main .layout-container h1 label,
+main .layout-container h2 label,
+main .layout-container h3 label,
+main .layout-container h4 label,
+main .layout-container h5 label {
+  display: inline-block;
+  margin-right: 0.5rem;
+  min-width: 5rem;
+  text-align: right;
+}
 main .layout-container h1 .content,
 main .layout-container h2 .content,
 main .layout-container h3 .content,
@@ -2562,6 +2627,7 @@ main .layout-container h5 .content {
 main .layout-container .layout {
   display: flex;
   padding: 0.5rem;
+  position: relative;
 }
 main .layout-container .layout.centred {
   justify-content: center;
@@ -2572,6 +2638,8 @@ main .layout-container .layout.left {
 main .layout-container .layout .panel {
   display: flex;
   gap: 1rem;
+  opacity: 1;
+  transition: opacity 1s;
 }
 main .layout-container .layout .panel .block-container {
   display: flex;
@@ -2579,16 +2647,36 @@ main .layout-container .layout .panel .block-container {
   gap: 1rem;
   justify-content: space-between;
 }
+main .layout-container .layout .panel.fade {
+  opacity: 0;
+}
+main .layout-container .layout .panel.loading,
+main .layout-container .layout .panel.unloading {
+  position: absolute;
+}
 @media (max-width: 480px) {
   main .layout-container .layout .panel {
     flex-direction: column;
   }
 }
-footer {
+footer .footer-container {
   align-items: baseline;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   padding: 0.5rem;
+}
+footer .footer-container a {
+  padding: 0 0.125rem;
+  text-decoration: none;
+}
+footer .footer-container .copyright,
+footer .footer-container .secondary-link {
+  color: gray;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  white-space: nowrap;
 }
 .navigation li.global,
 .sidebar li.global {
@@ -2683,7 +2771,7 @@ footer {
 .navigation .nav-control a,
 .sidebar .nav-control a {
   display: inline-block;
-  padding: 0.5rem 0.375rem;
+  padding: 0.375rem 0.375rem 0.625rem;
 }
 .navigation .nav-control img,
 .sidebar .nav-control img {
@@ -2713,6 +2801,7 @@ footer {
   position: absolute;
   right: 0;
   text-align: left;
+  top: 2.4275rem;
   transition: all ease-in-out 500ms;
 }
 .navigation .nav-control .nav-panel:hover,
@@ -3008,7 +3097,7 @@ footer {
 }
 .navigation::before {
   background: var(--bg-base);
-  border-top: 0.5rem;
+  border-left: 1px solid hsl(from gray h s l / 0.5);
   border-top-left-radius: 20px;
   content: '';
   display: inline-block;
@@ -3017,7 +3106,8 @@ footer {
 }
 @media (max-width: 480px) {
   .navigation::before {
-    width: 1rem;
+    border-bottom: 1px solid hsl(from gray h s l / 0.5);
+    width: 3.5rem !important;
   }
 }
 .navigation.nav-link-icon::before {
@@ -3032,6 +3122,7 @@ footer {
 }
 .navigation .nav-list.global {
   align-items: flex-start;
+  column-gap: 1rem;
   display: inline-flex;
 }
 .navigation .nav-list.global li.global a,
@@ -3049,6 +3140,8 @@ footer {
   }
 }
 .navigation .nav-menu {
+  border-bottom: 1px solid hsl(from gray h s l / 0.5);
+  border-right: 1px solid hsl(from gray h s l / 0.5);
   border-bottom-right-radius: 10px;
   display: flex;
   flex-grow: 2;
@@ -3061,7 +3154,7 @@ footer {
 }
 .navigation .nav-title {
   align-items: center;
-  border-top: 0.5rem solid var(--bg-base);
+  background: linear-gradient(180deg, var(--bg-base) 0.4375rem, gray, transparent 0.53125rem);
   column-gap: 0.25rem;
   display: flex;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
@@ -3071,25 +3164,28 @@ footer {
 }
 .navigation .nav-title::before {
   border-top-left-radius: 10px;
-  box-shadow: inset 0.5rem 0 var(--bg-base);
+  border-left: 1px solid hsl(from gray h s l / 0.5);
+  border-top: 1px solid gray;
+  box-shadow: -3px -3px 3px var(--bg-base);
+  box-sizing: content-box;
   content: '';
-  display: inline-block;
-  margin-left: -0.5rem;
-  height: 100%;
-  width: 1rem;
+  height: 2.5rem;
+  width: 0.5rem;
+  transform: translate(-0.0635rem, 0.2rem);
 }
 .navigation .nav-title::after {
-  background: linear-gradient(70deg, transparent 50%, var(--bg-base) 50%);
+  background: linear-gradient(70deg, transparent 48%, gray, var(--bg-base) 52%);
   content: '';
   display: inline-block;
   height: 2.5rem;
-  width: 40px;
-}
-.navigation .nav-title .title-text {
-  line-height: 1.5rem;
+  transform: translate(0, 0.2rem);
+  width: 1rem;
 }
 .sidebar::after {
-  background: linear-gradient(to bottom, var(--bg-base), transparent);
+  background: linear-gradient(to bottom, hsl(from gray h s l / 0.5), transparent), linear-gradient(to bottom, var(--bg-base), transparent), linear-gradient(to bottom, hsl(from gray h s l / 0.5), transparent);
+  background-position-x: left, center, right;
+  background-repeat: no-repeat;
+  background-size: 1px 100%, calc(100% - 2px) 100%, 1px 100%;
   content: '';
   display: block;
   height: 5rem;
@@ -3187,9 +3283,24 @@ footer {
     padding-top: 0;
   }
 }
+.sidebar .nav-menu {
+  border-left: 1px solid hsl(from gray h s l / 0.5);
+  border-right: 1px solid hsl(from gray h s l / 0.5);
+}
+.contact-page {
+  max-width: 50rem;
+}
+.contact-page .contact-header {
+  align-items: center;
+  display: flex;
+  column-gap: 0.5rem;
+}
 .documentation {
   counter-reset: subheader;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+}
+.documentation a {
+  color: seagreen;
 }
 .documentation h1 {
   font-size: 1.25rem;
@@ -3312,6 +3423,9 @@ footer {
 .messages-panel .message-item.hide {
   display: none;
 }
+.messages-panel:empty {
+  display: none;
+}
 .modal-outer-wrapper {
   bottom: 0;
   left: 0;
@@ -3402,7 +3516,7 @@ footer {
   cursor: pointer;
   display: inline-block;
   overflow: hidden;
-  padding: 0.25rem 0.75rem;
+  padding: 0.1875rem 0.75rem 0.3125rem;
   position: relative;
   text-decoration: none;
   transition: border 500ms, color 500ms;
@@ -3486,9 +3600,8 @@ footer {
 }
 .flame-container {
   display: inline-block;
-  width: 120px;
-  height: 80px;
-  padding: 15px 0 0 20px;
+  width: 60px;
+  height: 60px;
   overflow: hidden;
 }
 .flame-container .animation-container {
@@ -3503,7 +3616,7 @@ footer {
   border-top-left-radius: 50%;
   border-bottom-left-radius: 50%;
   border-bottom-right-radius: 50%;
-  transform: rotate(-45deg) scale(1, 1);
+  transform: rotate(-45deg) scale(0.75, 0.75);
 }
 .flame-container .animation-container .yellow {
   left: 15px;
@@ -3539,7 +3652,7 @@ footer {
   position: absolute;
 }
 .flame-container .animation-container .blue {
-  bottom: -25px;
+  bottom: -5px;
   left: 25px;
   width: 10px;
   height: 10px;
@@ -3573,14 +3686,4 @@ footer {
   100% {
     transform: rotate(1deg);
   }
-}
-.footer a {
-  text-decoration: none;
-}
-.footer .copyright,
-.footer .secondary-link {
-  color: gray;
-  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
-  font-size: 0.8rem;
-  opacity: 0.8;
 }

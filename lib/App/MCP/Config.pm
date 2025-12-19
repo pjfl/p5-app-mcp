@@ -2,16 +2,16 @@ package App::MCP::Config;
 
 use utf8; # -*- coding: utf-8; -*-
 
-use Class::Usul::Cmd::Constants qw( FALSE NUL TRUE );
-use File::DataClass::Types      qw( ArrayRef Bool CodeRef Directory File HashRef
-                                    LoadableClass NonEmptySimpleStr
-                                    NonZeroPositiveInt Object Path PositiveInt
-                                    SimpleStr Str Undef );
-use App::MCP::Util              qw( distname );
-use Class::Usul::Cmd::Util      qw( decrypt now_dt );
-use English                     qw( -no_match_vars );
-use File::DataClass::IO         qw( io );
-use Web::Components::Util       qw( fqdn );
+use App::MCP::Constants    qw( FALSE NUL TRUE );
+use File::DataClass::Types qw( ArrayRef Bool CodeRef Directory File HashRef
+                               LoadableClass NonEmptySimpleStr
+                               NonZeroPositiveInt Object Path PositiveInt
+                               SimpleStr Str Undef );
+use App::MCP::Util         qw( distname );
+use Class::Usul::Cmd::Util qw( decrypt now_dt );
+use English                qw( -no_match_vars );
+use File::DataClass::IO    qw( io );
+use Web::Components::Util  qw( fqdn );
 use App::MCP;
 use Moo;
 
@@ -58,7 +58,7 @@ has 'appclass' => is => 'ro', isa => Str, required => TRUE;
 
 =item C<appldir>
 
-A synonym for 'home'
+A synonym for C<home>
 
 =cut
 
@@ -179,7 +179,7 @@ has 'db_username' => is => 'ro', isa => Str, default => 'mcp';
 
 =item C<deployment>
 
-Defaults to C<development>. Should be overridden in the local configuration
+Defaults to B<development>. Should be overridden in the local configuration
 file. Used to modify the server output depending on deployment environment.
 For example, any value not C<development> will prevent the rendering of an
 exception to the end user
@@ -187,6 +187,15 @@ exception to the end user
 =cut
 
 has 'deployment' => is => 'ro', isa => Str, default => 'development';
+
+=item C<default_base_colour>
+
+Defaults to B<bisque>. Used as the base colour for page rendering. Can be
+changed via the user F<Profile> form
+
+=cut
+
+has 'default_base_colour' => is => 'ro', isa => Str, default => 'bisque';
 
 =item C<default_route>
 
@@ -243,11 +252,20 @@ has 'documentation' =>
 
 =item C<dsn>
 
-String used to select a database type and specific database by name
+String used to select the database driver and specific database by name
 
 =cut
 
 has 'dsn' => is => 'ro', isa => Str, default => 'dbi:Pg:dbname=schedule';
+
+=item C<enable_advanced>
+
+Boolean which defaults to B<false>. If true the F<Profile> form will show the
+advanced options
+
+=cut
+
+has 'enable_advanced' => is => 'ro', isa => Bool, default => FALSE;
 
 =item C<encoding>
 
@@ -325,7 +343,8 @@ has 'keywords' => is => 'ro', isa => Str, default => 'enterprise scheduler';
 
 =item C<library_class>
 
-A non empty simple string which defaults to B<App::MCP::SSHLibrary>.
+A non empty simple string which defaults to the
+L<SSH library|App::MCP::SSHLibrary>.
 
 =cut
 
@@ -344,7 +363,7 @@ has 'local_tz' => is => 'ro', isa => Str, default => 'Europe/London';
 
 =item C<lock_attributes>
 
-Configuration options for L<IPC::SRLock>
+Configuration options for the L<lock manager|IPC::SRLock>
 
 =cut
 
@@ -458,7 +477,7 @@ has 'max_ssh_workers' =>
 
 =item C<mount_point>
 
-A non empty simple string which defaults to B</>.
+A non empty simple string which defaults to B</mcp>.
 
 =cut
 
@@ -475,7 +494,7 @@ has 'name' => is => 'ro', isa => Str, default => 'Master Control Program';
 =item C<navigation>
 
 Hash reference of configuration attributes applied the
-L<Web::Components::Navigation> object
+L<navigation|Web::Components::Navigation> object
 
 =cut
 
@@ -546,7 +565,7 @@ has 'redirect' => is => 'ro', isa => SimpleStr, default => 'job/list';
 
 =item C<redis>
 
-Configuration hash reference used to configure the connection to the Redis
+Configuration hash reference used to configure the connection to the L<Redis>
 cache
 
 =cut
@@ -555,7 +574,7 @@ has 'redis' => is => 'ro', isa => HashRef, default => sub { {} };
 
 =item registration
 
-Boolean which defaults false. If true user registration is allowed otherwise
+Boolean which defaults B<false>. If true user registration is allowed otherwise
 it is unavailable
 
 =cut
@@ -565,7 +584,8 @@ has 'registration' => is => 'ro', isa => Bool, coerce => TRUE, default => FALSE;
 =item C<request>
 
 Hash reference passed to the request object factory constructor by the
-component loader. Includes;
+component loader. Includes; C<max_messages>, C<prefix>, C<request_roles>,
+C<serialise_session_attr>, and C<session_attr>
 
 =over 3
 
@@ -621,6 +641,7 @@ has 'request' =>
             menu_location => [ Str, 'header' ],
             realm         => [ Str, NUL ],
             role          => [ Str, NUL ],
+            shiny         => [ Bool, FALSE ],
             skin          => [ Str, $self->skin ],
             theme         => [ Str, 'light' ],
             timezone      => [ Str, $self->local_tz ],
@@ -693,7 +714,7 @@ has 'scrubber' =>
 
 =item C<server>
 
-A non empty simple string which defaults to B<Twiggy>. The Plack server class
+A non empty simple string which defaults to B<Twiggy>. The L<Plack> server class
 used for the event listener
 
 =cut
@@ -707,7 +728,7 @@ has 'server' =>
 =item C<servers>
 
 An array reference of non empty simple strings that defaults to
-B<[ fully_qualified_domain_name_of_this_host ]>
+the domain name of this host
 
 =cut
 
@@ -740,25 +761,25 @@ has 'sqldir' =>
 
 =item C<state_cookie>
 
-Array reference used to instantiate the session state cookie. See
-L<Plack::Session::State::Cookie>
+A hash reference used to instantiate the
+L<session state cookie|Plack::Session::State::Cookie>
 
 =cut
 
 has 'state_cookie' =>
    is      => 'lazy',
-   isa     => ArrayRef,
+   isa     => HashRef,
    default => sub {
       my $self = shift;
 
-      return [
+      return {
          expires     => 7_776_000,
          httponly    => TRUE,
          path        => $self->mount_point,
          samesite    => 'None',
          secure      => TRUE,
          session_key => $self->prefix . '_session',
-      ];
+      };
    };
 
 =item C<ssh_dir>
@@ -809,7 +830,7 @@ has 'tempdir' =>
 
 =item C<template_wrappers>
 
-Defines the names of the C<site/html> and C<site/wrapper> templates used to
+Defines the names of the F<site/html> and F<site/wrapper> templates used to
 produce all the pages
 
 =cut
@@ -831,10 +852,32 @@ has 'token_lifetime' => is => 'ro', isa => PositiveInt, default => 3_600;
 
 =item C<user>
 
-Configuration options for the C<User> result class. Includes C<load_factor>
-used in the encrypting of passwords, C<default_password> and C<default_role>
-used when creating new users, C<min_name_len> minimum user name length, and
-C<min_password_len> minumum password length
+Configuration options for the F<User> result class. Includes; C<load_factor>,
+C<default_password>, C<default_role>, C<min_name_len>, and C<min_password_len>
+
+=over 3
+
+=item C<load_factor>
+
+Used in the encrypting of passwords
+
+=item C<default_password>
+
+Used when creating new users
+
+=item C<default_role>
+
+Used when creating new users
+
+=item C<min_name_len>
+
+Minimum user name length
+
+=item C<min_password_len>
+
+Minumum password length
+
+=back
 
 =cut
 
@@ -865,7 +908,7 @@ has 'vardir' =>
 
 =item C<wcom_resources>
 
-Names of the JS management objects
+Names of the JS utility functions and management objects
 
 =cut
 
@@ -883,8 +926,8 @@ has 'wcom_resources' =>
 
 =item web_components
 
-Configuration hash reference for L<Web::Components> loaded from the
-F<Contoller>, F<Model>, and F<View> subdirectories of the application
+Configuration hash reference for the L<MVC framework|Web::Components> loaded
+from the F<Contoller>, F<Model>, and F<View> subdirectories of the application
 namespace
 
 =cut

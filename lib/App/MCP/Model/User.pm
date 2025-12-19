@@ -153,20 +153,21 @@ sub view : Auth('manager') Nav('View User') {
 
    my $user    = $context->stash('user');
    my $buttons = [{
-      action    => $context->uri_for_action('user/edit', [$user->id]),
+      action    => $context->uri_for_action('user/list'),
       method    => 'get',
       selection => 'disable_on_select',
-      value     => 'Edit',
+      value     => 'List',
    },{
       action    => $context->uri_for_action('user/profile', [$user->id]),
       method    => 'get',
       selection => 'disable_on_select',
       value     => 'Profile',
    },{
-      action    => $context->uri_for_action('user/delete', [$user->id]),
+      action    => $context->uri_for_action('user/edit', [$user->id]),
       classes   => 'right',
+      method    => 'get',
       selection => 'disable_on_select',
-      value     => 'Delete',
+      value     => 'Edit',
    }];
    my $options = {
       add_columns  => ['Time Zone' => $context->time_zone],

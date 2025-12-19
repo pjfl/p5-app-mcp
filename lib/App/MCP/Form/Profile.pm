@@ -9,6 +9,7 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
+with    'App::MCP::Role::UpdatingSession';
 
 has '+form_wrapper_class'     => default => sub { ['narrow'] };
 has '+info_message'           => default => 'Update profile information';
@@ -45,24 +46,28 @@ has_field 'timezone' => type => 'Timezone';
 
 has_field 'enable_2fa' =>
    type   => 'Boolean',
-   info   =>
-      'Additional security questions should be answered if 2FA is enabled',
    label  => 'Enable 2FA',
    toggle => { -checked => ['mobile_phone', 'postcode'] };
 
 has_field 'mobile_phone' =>
-   type  => 'PosInteger',
-   label => 'Mobile #',
-   size  => 12,
-   title => 'Additional security question used by 2FA token reset';
+   type     => 'PosInteger',
+   info     =>
+      'Additional security questions should be answered if 2FA is enabled',
+   info_top => TRUE,
+   label    => 'Mobile #',
+   size     => 12,
+   title    => 'Additional security question used by 2FA token reset';
 
 has_field 'postcode' =>
    size  => 9,
    title => 'Additional security question used by 2FA token reset';
 
+has_field '_g2' => type => 'Group';
+
 has_field 'skin' =>
-   type    => 'Select',
-   options => [
+   type        => 'Select',
+   field_group => '_g2',
+   options     => [
       { label => 'Default', value => 'default' },
       { label => 'None',    value => 'none' },
    ];
@@ -70,6 +75,16 @@ has_field 'skin' =>
 sub default_skin {
    return shift->context->config->skin;
 }
+
+has_field 'theme' =>
+   type        => 'Select',
+   default     => 'light',
+   field_group => '_g2',
+   options     => [
+      { label => 'Dark',   value => 'dark-theme' },
+      { label => 'Light',  value => 'light-theme' },
+      { label => 'System', value => 'system-theme' },
+];
 
 has_field '_g1' => type => 'Group';
 
@@ -95,14 +110,18 @@ has_field 'link_display' =>
       { label => 'Text', value => 'text' },
    ];
 
-has_field 'theme' =>
-   type    => 'Select',
-   default => 'light',
-   options => [
-      { label => 'Dark',   value => 'dark-theme' },
-      { label => 'Light',  value => 'light-theme' },
-      { label => 'System', value => 'system-theme' },
-];
+has_field '_g3' => type => 'Group', info => 'Advanced Options';
+
+has_field 'base_colour' =>
+   type        => 'Colour',
+   field_group => '_g3',
+   label       => 'Base Colour',
+   options     => [];
+
+has_field 'shiny' =>
+   type        => 'Boolean',
+   field_group => '_g3',
+   label       => 'Enable Shiny';
 
 has_field 'view' =>
    type          => 'Link',
@@ -113,13 +132,22 @@ has_field 'view' =>
 has_field 'submit' => type => 'Button';
 
 after 'after_build_fields' => sub {
-   my $self = shift;
+   my $self    = shift;
+   my $context = $self->context;
 
    unless ($self->user->enable_2fa) {
       $self->field('enable_2fa')->hide_info(TRUE);
       $self->field('mobile_phone')->add_wrapper_class('hide');
       $self->field('postcode')->add_wrapper_class('hide');
    }
+
+   $self->field('_g3')->inactive(TRUE) unless $context->config->enable_advanced;
+
+   my $field  = $self->field('base_colour');
+   my $colour = $context->config->default_base_colour;
+
+   $field->default($colour);
+   push @{$field->options}, { value => $colour };
 
    my $view = $self->context->uri_for_action('user/view', [$self->user->id]);
 
@@ -130,38 +158,29 @@ after 'after_build_fields' => sub {
 };
 
 sub validate {
-   my $self       = shift;
-   my $enable_2fa = $self->field('enable_2fa')->value ? TRUE : FALSE;
-   my $user       = $self->user;
-   my $value      = $user->profile_value;
+   my $self   = shift;
+   my $user   = $self->user;
+   my $value  = $user->profile_value;
+   my @fields = (qw(base_colour enable_2fa link_display menu_location
+                    mobile_phone postcode shiny skin theme timezone));
 
-   $value->{enable_2fa}    = $enable_2fa ? json_bool TRUE : json_bool FALSE;
-   $value->{link_display}  = $self->field('link_display')->value;
-   $value->{menu_location} = $self->field('menu_location')->value;
-   $value->{mobile_phone}  = $self->field('mobile_phone')->value;
-   $value->{postcode}      = $self->field('postcode')->value;
-   $value->{skin}          = $self->field('skin')->value;
-   $value->{theme}         = $self->field('theme')->value;
-   $value->{timezone}      = $self->field('timezone')->value;
+   for my $field_name (@fields) {
+      $value->{$field_name} = $self->field($field_name)->value;
+   }
+
+   my $session = $self->context->session;
+
+   $self->update_session($session, $value) if $session->id == $user->id;
+
+   $user->totp_enable($value->{enable_2fa});
+   $value->{enable_2fa} = json_bool $value->{enable_2fa};
+   $value->{shiny}      = json_bool $value->{shiny};
 
    $self->context->model('Preference')->update_or_create({
       name => 'profile', user_id => $user->id, value => $value
    }, {
       key  => 'preferences_user_id_name_uniq'
    });
-
-   $user->totp_enable($enable_2fa);
-
-   my $session = $self->context->session;
-
-   if ($session->id == $user->id) {
-      $session->enable_2fa($enable_2fa);
-      $session->link_display($value->{link_display});
-      $session->menu_location($value->{menu_location});
-      $session->skin($value->{skin});
-      $session->theme($value->{theme});
-      $session->timezone($value->{timezone});
-   }
 
    return;
 }

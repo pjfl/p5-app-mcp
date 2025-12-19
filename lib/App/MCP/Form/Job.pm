@@ -97,7 +97,7 @@ has_field 'permissions' =>
 
 has_field 'condition' =>
    type => 'TextArea',
-   cols => 38,
+   cols => 36,
    tags => { nospellcheck => TRUE };
 
 has_field '_g5' => type => 'Group';
@@ -145,7 +145,7 @@ has_field 'host' =>
 
 has_field 'command' =>
    type     => 'TextArea',
-   cols     => 38,
+   cols     => 36,
    required => TRUE,
    tags     => { nospellcheck => TRUE };
 

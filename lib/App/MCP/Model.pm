@@ -50,11 +50,12 @@ has 'table_manager' =>
 sub root : Auth('none') {
    my ($self, $context) = @_;
 
-   my $args = {
-      context => $context, footer_action => 'page/footer', model => $self
-   };
-   my $nav     = Web::Components::Navigation->new($args);
    my $session = $context->session;
+   my $nav     = Web::Components::Navigation->new({
+      context       => $context,
+      footer_action => 'page/footer',
+      model         => $self,
+   });
 
    $nav->list('_control');
 

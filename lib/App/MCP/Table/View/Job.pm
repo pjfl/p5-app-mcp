@@ -12,15 +12,16 @@ has '+form_buttons' => default => sub {
    my $context = $self->context;
 
    return [{
+      action    => $context->uri_for_action('job/list'),
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Jobs',
+   },{
       action    => $context->uri_for_action('job/edit', [$self->result->id]),
+      classes   => 'right',
       method    => 'get',
       selection => 'disable_on_select',
       value     => 'Edit',
-   },{
-      action    => $context->uri_for_action('job/delete', [$self->result->id]),
-      classes   => 'right',
-      selection => 'disable_on_select',
-      value     => 'Delete',
    }];
 };
 

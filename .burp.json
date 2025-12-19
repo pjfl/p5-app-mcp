@@ -2,8 +2,13 @@
    "exclude": "\\.\\#.+ | \\.git.+",
    "watchers": {
       "\\.burp\\.json": [ "burp", "restart" ],
-      "share/js/.+\\.js": [ "bin/mcp-cli", "--quiet", "make-js" ],
-      "share/css/.+\\.css": [ "bin/mcp-cli", "--quiet", "make-css" ],
-      "share/less/.+\\.less": [ "bin/mcp-cli", "--quiet", "make-less" ]
+      "/home/laz/Projects/HTML-Filter/master/share/js/[^#]+\\.js": [ "bin/mcp-cli", "--quiet", "make-js" ],
+      "/home/laz/Projects/HTML-Forms/master/share/js/[^#]+\\.js": [ "bin/mcp-cli", "--quiet", "make-js" ],
+      "/home/laz/Projects/HTML-StateTable/master/share/js/[^#]+\\.js": [ "bin/mcp-cli", "--quiet", "make-js" ],
+      "/home/laz/Projects/Web-Components/master/share/js/[^#]+\\.js": [ "bin/mcp-cli", "--quiet", "make-js" ],
+      "/home/laz/Projects/HTML-Filter/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
+      "/home/laz/Projects/HTML-Forms/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
+      "/home/laz/Projects/HTML-StateTable/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
+      "/home/laz/Projects/Web-Components/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ]
    }
 }

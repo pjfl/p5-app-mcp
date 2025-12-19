@@ -26,7 +26,12 @@ sub base : Auth('none') {
    return;
 }
 
-sub access_denied : Auth('none') {}
+sub access_denied : Auth('none') {
+   my ($self, $context) = @_;
+
+   $self->error($context, UnauthorisedAccess);
+   return;
+}
 
 sub changes : Auth('none') Nav('Changes') {
    my ($self, $context) = @_;

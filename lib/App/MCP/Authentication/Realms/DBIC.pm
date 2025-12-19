@@ -7,6 +7,8 @@ use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw Unspecified );
 use Moo;
 
+with 'App::MCP::Role::UpdatingSession';
+
 has 'authenticate_method' => is => 'ro', isa => Str, default => 'authenticate';
 
 has 'find_user_method' => is => 'ro', isa => Str, default => 'find_by_key';
@@ -51,19 +53,9 @@ sub to_session {
 
    $session->realm($self->realm) if $session->can('realm');
 
-   my $user    = $args->{user} or return;
-   my $profile = $user->profile_value;
+   my $user = $args->{user} or return;
 
-   for my $key (grep { $_ ne 'authenticated' } keys %{$profile}) {
-      my $value       = $profile->{$key};
-      my $value_class = blessed $value;
-
-      if ($value_class && $value_class eq 'JSON::PP::Boolean') {
-         $value = "${value}" ? TRUE : FALSE;
-      }
-
-      $session->$key($value) if defined $value && $session->can($key);
-   }
+   $self->update_session($session, $user->profile_value);
 
    $session->email($user->email)          if $session->can('email');
    $session->id($user->id)                if $session->can('id');

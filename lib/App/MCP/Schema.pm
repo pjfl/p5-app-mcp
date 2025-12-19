@@ -7,10 +7,10 @@ use App::MCP::Util              qw( distname trigger_input_handler );
 use Class::Usul::Cmd::Util      qw( decrypt encrypt ensure_class_loaded
                                     now_dt trim );
 use File::DataClass::IO         qw( io );
+use Web::Components::Util       qw( load_file dump_file );
 use Unexpected::Functions       qw( throw PathNotFound Unspecified );
 use Archive::Tar;
 use Data::Record;
-use File::DataClass::Schema;
 use Format::Human::Bytes;
 use Try::Tiny;
 use Moo;
@@ -94,10 +94,6 @@ has 'user_password' =>
 
       return decrypt NUL, $password;
    };
-
-has '_file_schema' =>
-   is      => 'lazy',
-   default => sub { File::DataClass::Schema->new(storage_class => 'Any') };
 
 has '_dbname' =>
    is      => 'lazy',
@@ -225,7 +221,7 @@ sub dump_jobs : method {
    my $data     = $self->schema->resultset( 'Job' )->dump( $job_spec );
    my $count    = @{ $data };
 
-   $self->_file_schema->dump({ data => { jobs => $data }, path => $path });
+   dump_file($path, { data => { jobs => $data });
    $self->info( "Dumped [_1] jobs matching '[_2]' to '[_3]'",
                 { args => [ $count, $job_spec, $path ] } );
    return OK;
@@ -262,7 +258,7 @@ sub install : method {
 sub load_jobs : method {
    my $self  = shift;
    my $path  = $self->next_argv // 'jobs.json';
-   my $data  = $self->_file_schema->load($path);
+   my $data  = load_file($path);
    my $rs    = $self->schema->resultset( 'Job' );
    my $count = $rs->load( $self->_authenticated_user_info, $data->{jobs} );
 
@@ -578,11 +574,11 @@ sub _local_config {
    my $path = $file->exists ? $file : $config->config_home->child("${file}");
 
    if ($data) {
-      $self->_file_schema->dump({ path => $path->assert, data => $data });
+      dump_file($path->assert, $data);
       return $data;
    }
 
-   return $self->_file_schema->load($path) // {} if $path->exists;
+   return load_file($path, TRUE) // {} if $path->exists;
 
    return {};
 }
@@ -598,7 +594,7 @@ sub _populate_class {
 
    $self->output("Populating ${class}");
 
-   my $data   = $self->_file_schema->load($path) // {};
+   my $data   = load_file($path) // {};
    my $fields = [split SPC, $data->{fields}];
    my @rows   = map { [ map { _unquote(trim $_) } $split->records($_) ] }
                    @{ $data->{rows} };

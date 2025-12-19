@@ -55,6 +55,11 @@ has 'session' =>
    default  => sub { shift->request->session },
    weak_ref => TRUE;
 
+has 'shiny' =>
+   is      => 'lazy',
+   isa     => Bool,
+   default => sub { shift->session->shiny ? TRUE : FALSE };
+
 has 'time_zone' =>
    is      => 'lazy',
    isa     => Str,

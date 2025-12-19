@@ -27,7 +27,10 @@ lib/App/MCP/Worker
 share/css
 share/less/h*
 share/less/wcom*
-share/js/wcom-0-lib.js
+share/js/wcom-1*
+share/js/wcom-2*
+share/js/wcom-3*
+share/js/wcom-4*
 t/ipc_srlock*
 var/bugs
 var/etc/app-mcp-local.json
