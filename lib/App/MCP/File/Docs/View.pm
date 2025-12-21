@@ -17,6 +17,10 @@ sub get {
 
    my $formatter = App::MCP::Markdown->new();
 
+   $markdown =~ s{\\}{}gmx;
+
+   $markdown = 'Nothing found' if length $markdown < 2;
+
    return $formatter->markdown($markdown);
 }
 

@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Better configuration display with data2markup
           - JSON role now has a pretty printer
 
 0.6.1     2025-12-12 00:35:29

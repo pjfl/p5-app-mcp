@@ -2,7 +2,7 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.6.%d', q$Rev: 2 $ =~ /\d+/gmx );
+use version; our $VERSION = qv( sprintf '0.6.%d', q$Rev: 3 $ =~ /\d+/gmx );
 
 use Class::Usul::Cmd::Util qw( ns_environment );
 
@@ -32,11 +32,15 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.6.$Rev: 2 $ of L<App::MCP>
+Describes version v0.6.$Rev: 3 $ of L<App::MCP>
 
 =head1 Synopsis
 
+   use MCP;
+
 =head1 Description
+
+Dependency and time based job scheduler
 
 =head1 Installation
 
@@ -139,12 +143,15 @@ administration password to complete this step
 By default the development server will run at http://localhost:5000 and can be
 started in the foreground with:
 
-   plackup bin/mcp-listener
+   plackup bin/mcp-server
 
 Users must authenticate against the C<User> table in the database.  The default
 user is C<mcp> password C<mcp>. You should change that via the change password
-page, the link for which is on the user settings menu. To start the
-production server in the background listening on a Unix socket:
+page, the link for which is on the user settings menu
+
+=head2 Service Startup
+
+To start the production server in the background listening on a Unix socket:
 
    bin/mcp-daemon start
 
@@ -168,7 +175,7 @@ for this method of deployment
 
 =head1 Subroutines/Methods
 
-Defines the following methods;
+Defines the following class methods;
 
 =over 3
 
@@ -179,6 +186,12 @@ Defines the following methods;
 Looks up the environment variable and returns it's value. Also acts as a
 mutator if provided with an optional new value. Uppercases and prefixes
 the environment variable key
+
+=item C<schema_version>
+
+   $version = App::MCP->schema_version;
+
+Returns the version number of the current schema
 
 =back
 
@@ -194,7 +207,7 @@ Help for command line options can be found be running:
    bin/mcp-cli help <method>
 
 The C<list-methods> command is available to all of the application programs
-(except C<mcp-listener>)
+(except C<mcp-server>)
 
 =head1 Dependencies
 

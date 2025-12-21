@@ -516,7 +516,7 @@
   right: 0.25rem;
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.1.95
+ * @version 0.1.97
  * Colours */
 /* Dimensions */
 /* Font Sizes and Weights */
@@ -1258,6 +1258,73 @@ form.classic .input-hidden.input-error {
 form.classic .input-hidden.input-error .alert-error {
   max-width: 18rem;
 }
+form.classic .input-immutable.documentation .comma {
+  color: sienna;
+  font-size: 1rem;
+  padding-right: 0.5rem;
+}
+form.classic .input-immutable.documentation .separator {
+  color: sienna;
+  font-size: 1rem;
+  padding: 0 0.5rem;
+}
+form.classic .input-immutable.documentation .start-array,
+form.classic .input-immutable.documentation .start-inline-array,
+form.classic .input-immutable.documentation .end-array,
+form.classic .input-immutable.documentation .end-inline-array,
+form.classic .input-immutable.documentation .start-object,
+form.classic .input-immutable.documentation .start-inline-object,
+form.classic .input-immutable.documentation .end-object,
+form.classic .input-immutable.documentation .end-inline-object {
+  color: sienna;
+  font-size: 0.8rem;
+}
+form.classic .input-immutable.documentation .key {
+  color: gray;
+  display: inline-block;
+  font-size: 1rem;
+  min-width: 7rem;
+}
+form.classic .input-immutable.documentation .value {
+  display: inline-block;
+  font-family: 'DejaVu Serif', 'Sitka Small', serif;
+  font-size: 0.8rem;
+}
+form.classic .input-immutable.documentation .start-object,
+form.classic .input-immutable.documentation .end-object,
+form.classic .input-immutable.documentation .end-array,
+form.classic .input-immutable.documentation .break {
+  display: block;
+}
+form.classic .input-immutable.documentation .data > .array,
+form.classic .input-immutable.documentation .end-inline-object,
+form.classic .input-immutable.documentation .inline-entry,
+form.classic .input-immutable.documentation .inline-object {
+  display: inline-block;
+}
+form.classic .input-immutable.documentation .data,
+form.classic .input-immutable.documentation .object,
+form.classic .input-immutable.documentation .start-inline-array .level_2 {
+  padding-left: 2rem;
+}
+form.classic .input-immutable.documentation .start-array {
+  padding-right: 0.5rem;
+}
+form.classic .input-immutable.documentation .start-inline-array,
+form.classic .input-immutable.documentation .start-inline-object {
+  display: inline-block;
+  padding-right: 0.5rem;
+}
+form.classic .input-immutable.documentation .end-inline-array {
+  display: inline-block;
+  padding-left: 0.5rem;
+}
+form.classic .input-immutable.documentation .entry:has(> .level_3) > .key {
+  min-width: 5rem !important;
+}
+form.classic .input-immutable.documentation .object:has(.entry > .object .level_3) > .entry .key {
+  min-width: 7rem;
+}
 form.classic .input-immutable h1,
 form.classic .input-immutable h2,
 form.classic .input-immutable h3,
@@ -1286,6 +1353,9 @@ form.classic .input-immutable p code {
 }
 form.classic .input-immutable pre {
   white-space: break-spaces;
+}
+form.classic .input-immutable p:has(.start-object) {
+  margin-bottom: 0;
 }
 form.classic .input-integer .digit {
   border-left: none;
@@ -2455,7 +2525,7 @@ body {
   font-size: 0.8rem;
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.30
+ * @version 0.13.31
  * Breaks */
 /* Colours */
 /* Dimensions */
@@ -2924,6 +2994,18 @@ footer .footer-container .secondary-link {
   font-size: medium;
   text-align: left;
 }
+.navigation .nav-list li.mobile .nav-panel,
+.sidebar .nav-list li.mobile .nav-panel {
+  background: var(--bg-light);
+  border: 1px solid gray;
+  border-radius: 5px;
+  position: absolute;
+  transform: translate(100%, -2.25rem);
+}
+.navigation .nav-list li.mobile .nav-panel.hide,
+.sidebar .nav-list li.mobile .nav-panel.hide {
+  display: none;
+}
 .navigation .nav-list li.control a,
 .sidebar .nav-list li.control a,
 .navigation .nav-list li.context a,
@@ -3017,7 +3099,6 @@ footer .footer-container .secondary-link {
   left: -0.5rem;
   max-height: 85vh;
   max-height: 85dvh;
-  overflow: auto;
   position: absolute;
   z-index: 6;
 }
@@ -3053,8 +3134,9 @@ footer .footer-container .secondary-link {
 }
 .navigation .nav-mobile .nav-list.mobile .drop-menu,
 .sidebar .nav-mobile .nav-list.mobile .drop-menu {
-  color: gray;
-  padding-left: 0.5rem;
+  color: seagreen;
+  display: block;
+  padding: 0.5rem;
 }
 .navigation .nav-mobile .nav-list.selected .context.selected::before,
 .sidebar .nav-mobile .nav-list.selected .context.selected::before {
