@@ -15,7 +15,10 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+info_message' => default => 'Current runtime configuration parameters';
+has '+info_message' => default =>
+     'Current runtime configuration parameters.  Attributes in the '
+   . 'configuration file will override the default attribute constructors '
+   . 'in the \'Config\' class';
 has '+title'        => default => 'Configuration';
 
 has '_formatter' =>
@@ -53,7 +56,7 @@ after 'after_build_fields' => sub {
       }
 
       $s;
-   } @{$attr};
+   } @{_shuffle($attr)};
 
    $self->field('configuration')->html($self->_formatter->markdown($content));
    return;
@@ -68,6 +71,17 @@ sub _pod2markdown {
    $parser->parse_string_document("=pod\n\n${pod}\n\n=cut\n");
 
    return $markdown;
+}
+
+sub _shuffle {
+   my $attrs = shift;
+
+   my $tmp = $attrs->[2];
+
+   $attrs->[2] = $attrs->[0];
+   $attrs->[0] = $tmp;
+
+   return $attrs;
 }
 
 use namespace::autoclean -except => META;

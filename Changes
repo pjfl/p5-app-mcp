@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Renamed LESS and JS files
           - Better configuration display with data2markup
           - JSON role now has a pretty printer
 

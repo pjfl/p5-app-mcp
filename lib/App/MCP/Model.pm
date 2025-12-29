@@ -39,10 +39,9 @@ has 'table_manager' =>
       my $appclass = $self->config->appclass;
 
       return HTML::StateTable::Manager->new({
-         log          => $self->log,
-         namespace    => "${appclass}::Table",
-         page_manager => $self->config->wcom_resources->{navigation},
-         view_name    => 'table',
+         log       => $self->log,
+         namespace => "${appclass}::Table",
+         view_name => 'table',
       });
    };
 

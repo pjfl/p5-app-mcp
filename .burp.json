@@ -9,6 +9,8 @@
       "/home/laz/Projects/HTML-Filter/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
       "/home/laz/Projects/HTML-Forms/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
       "/home/laz/Projects/HTML-StateTable/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
-      "/home/laz/Projects/Web-Components/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ]
+      "/home/laz/Projects/Web-Components/master/share/less/[^#]+\\.less": [ "bin/mcp-cli", "--quiet", "make-css" ],
+      "share/js/wcom-90-mcp.js": [ "bin/mcp-cli", "-q", "make-js"],
+      "share/less/wcom-90-mcp.less": [ "bin/mcp-cli", "-q", "make-css"]
    }
 }

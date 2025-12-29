@@ -7,8 +7,10 @@
 [% content %]
       </div>
     </div>
-    <footer id="footer" class="footer"><div class="footer-container">
+    <footer id="[% nav.footer_id %]" class="footer">
+      <div class="footer-container">
 [% footer = skin _ '/site/footer.tt'; INCLUDE $footer %]
-    </div></footer>
+      </div>
+    </footer>
   </div>
 </main>

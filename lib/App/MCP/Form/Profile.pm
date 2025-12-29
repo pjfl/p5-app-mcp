@@ -112,16 +112,18 @@ has_field 'link_display' =>
 
 has_field '_g3' => type => 'Group', info => 'Advanced Options';
 
+has_field 'rel_colour' =>
+   type        => 'Boolean',
+   field_group => '_g3',
+   label       => 'Relative Colours';
+
 has_field 'base_colour' =>
    type        => 'Colour',
    field_group => '_g3',
    label       => 'Base Colour',
    options     => [];
 
-has_field 'shiny' =>
-   type        => 'Boolean',
-   field_group => '_g3',
-   label       => 'Enable Shiny';
+has_field 'bling' => type => 'Boolean', label => 'Enable Bling';
 
 has_field 'view' =>
    type          => 'Link',
@@ -141,7 +143,10 @@ after 'after_build_fields' => sub {
       $self->field('postcode')->add_wrapper_class('hide');
    }
 
-   $self->field('_g3')->inactive(TRUE) unless $context->config->enable_advanced;
+   unless ($context->config->enable_advanced) {
+      $self->field('_g3')->inactive(TRUE);
+      $self->field('bling')->inactive(TRUE);
+   }
 
    my $field  = $self->field('base_colour');
    my $colour = $context->config->default_base_colour;
@@ -161,8 +166,8 @@ sub validate {
    my $self   = shift;
    my $user   = $self->user;
    my $value  = $user->profile_value;
-   my @fields = (qw(base_colour enable_2fa link_display menu_location
-                    mobile_phone postcode shiny skin theme timezone));
+   my @fields = (qw(base_colour bling enable_2fa link_display menu_location
+                    mobile_phone postcode rel_colour skin theme timezone));
 
    for my $field_name (@fields) {
       $value->{$field_name} = $self->field($field_name)->value;
@@ -173,8 +178,9 @@ sub validate {
    $self->update_session($session, $value) if $session->id == $user->id;
 
    $user->totp_enable($value->{enable_2fa});
+   $value->{bling}      = json_bool $value->{bling};
    $value->{enable_2fa} = json_bool $value->{enable_2fa};
-   $value->{shiny}      = json_bool $value->{shiny};
+   $value->{rel_colour} = json_bool $value->{rel_colour};
 
    $self->context->model('Preference')->update_or_create({
       name => 'profile', user_id => $user->id, value => $value

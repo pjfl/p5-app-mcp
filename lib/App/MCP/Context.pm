@@ -88,12 +88,14 @@ has '_stash' =>
       my $skin   = $self->session->skin || $self->config->skin;
 
       return {
+         bling              => $self->session->bling ? 'bling' : NUL,
          chartlibrary       => 'js/highcharts.js',
          favicon            => 'img/favicon.ico',
          javascript         => "js/${prefix}.js",
+         relative_colour    => $self->session->rel_colour ? 'relative' : NUL,
          session_updated    => $self->session->updated,
-         stylesheet         => "css/${prefix}-${skin}.css",
          skin               => $skin,
+         stylesheet         => "css/${prefix}-${skin}.css",
          theme              => $self->session->theme,
          verification_token => $self->verification_token,
          version            => App::MCP->VERSION

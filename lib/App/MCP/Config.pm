@@ -634,14 +634,16 @@ has 'request' =>
          serialise_session_attr => [ qw( id realm role ) ],
          tempdir => $self->tempdir,
          session_attr => {
+            base_colour   => [ Str, $self->default_base_colour ],
+            bling         => [ Bool, FALSE ],
             email         => [ Str, NUL ],
             enable_2fa    => [ Bool, FALSE ],
             id            => [ PositiveInt, 0 ],
             link_display  => [ Str, 'both' ],
             menu_location => [ Str, 'header' ],
             realm         => [ Str, NUL ],
+            rel_colour    => [ Bool, FALSE ],
             role          => [ Str, NUL ],
-            shiny         => [ Bool, FALSE ],
             skin          => [ Str, $self->skin ],
             theme         => [ Str, 'light' ],
             timezone      => [ Str, $self->local_tz ],
@@ -773,7 +775,7 @@ has 'state_cookie' =>
       my $self = shift;
 
       return {
-         expires     => 7_776_000,
+         expires     => $self->state_cookie_lifetime,
          httponly    => TRUE,
          path        => $self->mount_point,
          samesite    => 'None',
@@ -781,6 +783,18 @@ has 'state_cookie' =>
          session_key => $self->prefix . '_session',
       };
    };
+
+=item C<state_cookie_lifetime>
+
+An immutable positive integer. Number of seconds before the session
+cookie will expire. Defaults to ninety days
+
+=cut
+
+has 'state_cookie_lifetime' =>
+   is      => 'ro',
+   isa     => PositiveInt,
+   default => 7_776_000;
 
 =item C<ssh_dir>
 
@@ -920,7 +934,7 @@ has 'wcom_resources' =>
          downloadable => 'WCom.Table.Role.Downloadable',
          form_util    => 'WCom.Form.Util',
          modal        => 'WCom.Modal',
-         navigation   => 'WCom.Navigation.manager',
+         navigation   => 'WCom.Navigation',
       };
    };
 

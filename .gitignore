@@ -25,8 +25,11 @@ bin/mcp-worker
 lib/App/MCP/Worker.pm
 lib/App/MCP/Worker
 share/css
-share/less/h*
-share/less/wcom*
+share/less/wcom-0*
+share/less/wcom-1*
+share/less/wcom-2*
+share/less/wcom-3*
+share/less/wcom-4*
 share/js/wcom-1*
 share/js/wcom-2*
 share/js/wcom-3*

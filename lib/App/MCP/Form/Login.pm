@@ -70,18 +70,18 @@ has_field 'totp_reset' =>
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
-
-   $self->add_form_element_class('shiny') if $context->shiny;
-   $self->set_form_element_attr('novalidate', 'novalidate');
-
+   my $config  = $context->config;
    my $session = $context->session;
+
+   $self->add_form_element_class('bling') if $session->bling;
+   $self->set_form_element_attr('novalidate', 'novalidate');
 
    unless ($session->enable_2fa) {
       $self->field('auth_code')->add_wrapper_class('hide');
       $self->field('totp_reset')->add_wrapper_class('hide');
    }
 
-   my $util             = $context->config->wcom_resources->{form_util};
+   my $util             = $config->wcom_resources->{form_util};
    my $change_js        = "${util}.fieldChange";
    my $change_fields    = ['login', 'password_reset', 'totp_reset'];
    my $showif_js        = "${util}.showIfRequired";

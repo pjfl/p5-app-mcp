@@ -1,5 +1,10 @@
-// -*- coding: utf-8; -*-
-// Package WCom.StateDiagram
+/** -*- coding: utf-8; -*-
+    @file MCP - State Diagram
+    @classdesc Displays the current state of jobs in the schedule
+    @author pjfl@cpan.org (Peter Flanigan)
+    @version 0.6.3
+    @alias WCom/StateDiagram
+*/
 if (!WCom.MCP) WCom.MCP = {};
 WCom.MCP.StateDiagram = (function() {
    const dsName       = 'stateConfig';
@@ -297,8 +302,10 @@ WCom.MCP.StateDiagram = (function() {
          this._isConstructing = false;
       }
    }
+   const manager = new Manager();
    return {
-      manager: new Manager()
+      isConstructing: manager.isConstructing.bind(manager),
+      scan: manager.scan.bind(manager)
    };
 })();
 

@@ -232,7 +232,8 @@ sub make_less : method {
    my $prefix = $self->config->prefix;
    my $file   = "${prefix}.css";
    my $out    = io([qw( share css ), $file])->assert_open('a')->truncate(0);
-   my $count  =()= map  { $out->append(CSS::LESS->new()->compile($_->all)) }
+   my $lessc  = CSS::LESS->new(include_paths => ["${dir}"]);
+   my $count  =()= map  { $out->append($lessc->compile($_->all)) }
                    sort { $a->name cmp $b->name } @files;
    my $options = { name => 'CLI.make_less' };
 

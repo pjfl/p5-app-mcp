@@ -11,6 +11,7 @@ sub update_session {
       my $value = $profile->{$key};
 
       $value = "${value}"    if blessed $value;
+      warn "$key $value\n";
       $session->$key($value) if defined $value && $session->can($key);
    }
 

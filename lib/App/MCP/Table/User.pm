@@ -40,11 +40,6 @@ has '+searchable_control_location' => default => 'TopRight';
 
 set_table_name 'user';
 
-has_column 'id' =>
-   cell_traits => ['Numeric'],
-   label       => 'ID',
-   width       => '3rem';
-
 has_column 'user_name' =>
    label      => 'User Name',
    link       => sub {

@@ -71,7 +71,7 @@ has_field 'owner_name' =>
    label         => 'Owner',
    noupdate      => TRUE,
    readonly      => TRUE,
-   size          => 9,
+   size          => 8,
    value         => 'owner_rel.user_name';
 
 has_field 'group_rel' =>
@@ -97,7 +97,7 @@ has_field 'permissions' =>
 
 has_field 'condition' =>
    type => 'TextArea',
-   cols => 36,
+   cols => 32,
    tags => { nospellcheck => TRUE };
 
 has_field '_g5' => type => 'Group';
@@ -136,7 +136,7 @@ has_field 'user_name' =>
    default       => 'mcp',
    field_group   => '_g4',
    required      => TRUE,
-   size          => 9;
+   size          => 8;
 
 has_field 'host' =>
    default     => 'localhost',
@@ -145,11 +145,11 @@ has_field 'host' =>
 
 has_field 'command' =>
    type     => 'TextArea',
-   cols     => 36,
+   cols     => 32,
    required => TRUE,
    tags     => { nospellcheck => TRUE };
 
-has_field 'directory' => size => 36;
+has_field 'directory' => size => 32;
 
 has_field '_g3' => type => 'Group';
 
