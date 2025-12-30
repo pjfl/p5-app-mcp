@@ -27,6 +27,15 @@ sub base {
    return;
 }
 
+sub configuration : Auth('admin') Nav('Configuration') {
+   my ($self, $context) = @_;
+
+   my $options = { context => $context };
+
+   $context->stash(form => $self->new_form('Configuration', $options));
+   return;
+}
+
 sub list : Nav('Docs') {
    my ($self, $context) = @_;
 

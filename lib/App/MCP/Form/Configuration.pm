@@ -16,10 +16,11 @@ extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
 has '+info_message' => default =>
-     'Current runtime configuration parameters.  Attributes in the '
-   . 'configuration file will override the default attribute constructors '
-   . 'in the \'Config\' class';
-has '+title'        => default => 'Configuration';
+   'Current runtime parameters.  Attributes in the configuration ' .
+   'file will override the default attribute constructors ' .
+   'in the configuration class';
+
+has '+title' => default => 'Configuration';
 
 has '_formatter' =>
    is      => 'lazy',

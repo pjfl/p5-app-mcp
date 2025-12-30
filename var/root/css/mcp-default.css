@@ -38,8 +38,8 @@ body {
   --bg-light: linen;
   --bg-base: bisque;
   --bg-dark: khaki;
-  --bg-darker: sienna;
-  --bg-darkest: black;
+  --bg-darker: sandybrown;
+  --bg-darkest: sienna;
   --body-bg: linear-gradient(135deg, transparent, var(--bg-base));
   --button-bg: linear-gradient(0deg, var(--bg-base), var(--bg-lighter));
   --button-bg-disabled: linear-gradient(0deg, gainsboro, var(--bg-lighter));
@@ -61,10 +61,10 @@ body:has(aside.nav-link-text) {
   grid-template-columns: 6.5rem 1fr;
 }
 body.relative {
-  --bg-lighter: hsl(from var(--bg-base) h s calc(l * 1.1));
-  --bg-light: hsl(from var(--bg-base) h s calc(l * 1.07));
-  --bg-dark: hsl(from var(--bg-base) h s calc(l * 0.85));
-  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.37));
+  --bg-lighter: hsl(from var(--bg-base) h s calc(l * 1.07));
+  --bg-light: hsl(from var(--bg-base) h s calc(l * 1.04));
+  --bg-dark: hsl(from var(--bg-base) h s calc(l * 0.9));
+  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.7));
 }
 body.dark-theme form.classic label,
 body.dark-theme form.classic legend {
@@ -75,15 +75,6 @@ body.dark-theme form.classic .alert-info {
   color: black;
 }
 body.dark-theme .messages-panel .message-item {
-  background: var(--bg-darker) !important;
-  color: whitesmoke !important;
-}
-body.dark-theme .navigation li.global[data-title]:hover::after,
-body.dark-theme .sidebar li.global[data-title]:hover::after {
-  background: var(--bg-darker) !important;
-}
-body.dark-theme .navigation .nav-control a[data-title]:hover::after,
-body.dark-theme .sidebar .nav-control a[data-title]:hover::after {
   background: var(--bg-darker) !important;
 }
 body.dark-theme .navigation .nav-list .drop-menu,
@@ -235,7 +226,7 @@ footer .footer-container .session-time {
 }
 .navigation li.global:hover[data-title]::after,
 .sidebar li.global:hover[data-title]::after {
-  background: var(--bg-dark);
+  background: var(--bg-darker);
   border: 1px solid gray;
   border-radius: 5px;
   content: attr(data-title);
@@ -331,7 +322,7 @@ footer .footer-container .session-time {
 }
 .navigation .nav-control[data-title]:hover::after,
 .sidebar .nav-control[data-title]:hover::after {
-  background: var(--bg-dark);
+  background: var(--bg-darker);
   border: 1px solid gray;
   border-radius: 5px;
   content: attr(data-title);
@@ -1841,12 +1832,12 @@ form.classic .ds-form .ds-field img {
   object-fit: contain;
 }
 form.classic .ds-form .ds-field input[readonly=readonly] {
-  background: var(--bg-base) !important;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
 }
 form.classic .ds-form .ds-field input[readonly=readonly].input-datetime {
+  background: var(--bg-base);
   margin-left: -0.25rem;
 }
 form.classic .ds-form .ds-field-group {
@@ -1854,13 +1845,7 @@ form.classic .ds-form .ds-field-group {
 }
 form.classic .ds-form .ds-field-group.vertical {
   flex-direction: column;
-}
-form.classic .ds-form .ds-input.input-text[readonly=readonly] {
-  background: var(--bg-lighter-semitrans);
-  border: 0;
-  border-radius: 0;
-  color: black;
-  padding: 0;
+  row-gap: 0.5rem;
 }
 form.classic .ds-form .ds-output {
   box-sizing: content-box;
@@ -2008,7 +1993,7 @@ form.classic .input-display span {
   font-size: 0.9rem;
   grid-area: input;
   max-width: 24rem;
-  min-width: 10rem;
+  min-width: 12rem;
   padding: 0.1875rem 0.25rem;
 }
 form.classic .input-display span.breaking-text {

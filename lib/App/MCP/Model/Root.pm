@@ -40,15 +40,6 @@ sub changes : Auth('none') Nav('Changes') {
    return;
 }
 
-sub configuration : Auth('admin') Nav('Configuration') {
-   my ($self, $context) = @_;
-
-   my $options = { context => $context };
-
-   $context->stash(form => $self->new_form('Configuration', $options));
-   return;
-}
-
 sub default : Auth('none') {
    my ($self, $context) = @_;
 
@@ -61,13 +52,12 @@ sub default : Auth('none') {
 sub footer : Auth('none') {
    my ($self, $context, $moniker, $method) = @_;
 
-   my $session   = $context->session;
-   my $templates = $context->views->{html}->templates;
-
    $context->stash(page => { layout => 'site/footer' });
 
-   my $action = "${moniker}/footer";
-   my $footer = $templates->catdir($session->skin)->catfile("${action}.tt");
+   my $action    = "${moniker}/footer";
+   my $session   = $context->session;
+   my $templates = $context->views->{html}->templates;
+   my $footer    = $templates->catdir($session->skin)->catfile("${action}.tt");
 
    $context->stash(page => { layout => $action }) if $footer->exists;
 
@@ -104,12 +94,14 @@ sub login : Auth('none') Nav('Login') {
    my $form    = $self->new_form('Login', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $message  = ['User [_1] logged in', $context->session->username];
+      my $default  = $context->uri_for_action($self->config->redirect);
+      my $name     = $context->session->username;
       my $wanted   = $context->session->wanted;
-      my $location = $wanted ? new_uri $context->request->scheme, $wanted
-                   : $context->uri_for_action($self->config->redirect);
+      my $location = new_uri $context->request->scheme, $wanted if $wanted;
+      my $message  = 'User [_1] logged in';
 
-      $context->stash(redirect $location, $message);
+      $self->log->info('Address ' . $context->request->address, $context);
+      $context->stash(redirect $location || $default, [$message, $name]);
       $context->session->wanted(NUL);
    }
 

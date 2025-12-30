@@ -32,7 +32,7 @@ has_field 'password' =>
 
 has_field 'auth_code' =>
    type          => 'Digits',
-   label         => 'Auth. Code',
+   label         => 'OTP Code',
    label_top     => TRUE,
    size          => 6,
    title         => 'Enter the Authenticator code',
@@ -62,7 +62,7 @@ has_field 'totp_reset' =>
    disabled      => TRUE,
    element_attr  => { 'data-field-depends' => ['user_name'] },
    html_name     => 'submit',
-   label         => 'Reset Auth.',
+   label         => 'Reset OTP',
    title         => 'Request a TOTP reset',
    value         => 'totp_reset',
    wrapper_class => ['input-button expand'];

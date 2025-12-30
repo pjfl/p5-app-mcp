@@ -13,8 +13,6 @@ extends 'Web::Components::Model';
 with    'App::MCP::Role::Authorisation';
 with    'App::MCP::Role::Schema';
 
-has '+context_class' => default => 'App::MCP::Context';
-
 has 'form_manager' =>
    is      => 'lazy',
    isa     => class_type('HTML::Forms::Manager'),

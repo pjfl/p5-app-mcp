@@ -111,7 +111,9 @@ sub _get_leader {
 sub _log {
    my ($self, $level, $leader, $message, $context) = @_;
 
-   if (blessed $message && $message->isa('App::MCP::Context')) {
+   my $config = $self->config;
+
+   if (blessed $message && $message->isa($config->context_class)) {
       $context = $message;
       $message = 'No message supplied';
    }
@@ -124,7 +126,9 @@ sub _log {
 
    ($leader, $message) = $self->_get_leader($message, $context) unless $leader;
 
-   if (my $maxlen = $self->config->log_message_maxlen) {
+   if ($config->can('log_message_maxlen') && $config->log_message_maxlen) {
+      my $maxlen = $config->log_message_maxlen;
+
       if (length $message > $maxlen) {
          $message = (substr $message, 0, $maxlen) . '...';
       }
@@ -137,8 +141,6 @@ sub _log {
    $self->csv_parser->combine(
       escape_formula $now, $level, $username, $leader, $message
    );
-
-   my $config = $self->config;
 
    if ($config->can('logfile') && $config->logfile) {
       $config->logfile->appendln($self->csv_parser->string)->flush;

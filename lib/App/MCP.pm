@@ -2,7 +2,7 @@ package App::MCP;
 
 use 5.010001;
 use strictures;
-use version; our $VERSION = qv( sprintf '0.6.%d', q$Rev: 4 $ =~ /\d+/gmx );
+use version; our $VERSION = qv(sprintf '0.6.%d', q$Rev: 5 $ =~ /\d+/gmx);
 
 use Class::Usul::Cmd::Util qw( ns_environment );
 
@@ -13,7 +13,7 @@ sub env_var {
 }
 
 sub schema_version {
-   return '0.5.71';
+   return qv('0.5.71');
 }
 
 1;
@@ -32,7 +32,7 @@ App::MCP - Master Control Program - Dependency and time based job scheduler
 
 =head1 Version
 
-Describes version v0.6.$Rev: 4 $ of L<App::MCP>
+Describes version v0.6.$Rev: 5 $ of L<App::MCP>
 
 =head1 Synopsis
 

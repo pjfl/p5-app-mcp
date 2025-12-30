@@ -1,7 +1,5 @@
 package App::MCP::Config;
 
-use utf8; # -*- coding: utf-8; -*-
-
 use App::MCP::Constants    qw( FALSE NUL TRUE );
 use File::DataClass::Types qw( ArrayRef Bool CodeRef Directory File HashRef
                                LoadableClass NonEmptySimpleStr
@@ -128,6 +126,22 @@ has 'connect_info' =>
       return [$self->dsn, $self->db_username, $password, $self->db_extra];
    };
 
+=item C<context_class>
+
+An immutable string which defaults to L<App::MCP::Context>. The loadable
+classname of the context class
+
+=cut
+
+has 'context_class' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub {
+      my $appclass = shift->appclass;
+
+      return "${appclass}::Context";
+   };
+
 =item C<copyright_year>
 
 Year displayed in the copyright string. Defaults to the current year
@@ -162,8 +176,8 @@ has 'db_extra' =>
 =item C<db_password>
 
 Password used to connect to the database. This has no default. It should be
-set using the command C<bin/mcp-schema --store-password> before the application
-is started
+set using the command C<bin/mcp-schema store-password> before the application
+is started by the same user as the one which will be running the application
 
 =cut
 

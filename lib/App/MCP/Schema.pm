@@ -217,11 +217,11 @@ sub backup : method {
 sub dump_jobs : method {
    my $self     = shift;
    my $job_spec = $self->next_argv // '%';
-   my $path     = $self->next_argv // 'jobs.json';
+   my $path     = io $self->next_argv // 'jobs.json';
    my $data     = $self->schema->resultset( 'Job' )->dump( $job_spec );
    my $count    = @{ $data };
 
-   dump_file($path, { data => { jobs => $data });
+   dump_file($path, { jobs => $data });
    $self->info( "Dumped [_1] jobs matching '[_2]' to '[_3]'",
                 { args => [ $count, $job_spec, $path ] } );
    return OK;
@@ -257,7 +257,7 @@ sub install : method {
 
 sub load_jobs : method {
    my $self  = shift;
-   my $path  = $self->next_argv // 'jobs.json';
+   my $path  = io $self->next_argv // 'jobs.json';
    my $data  = load_file($path);
    my $rs    = $self->schema->resultset( 'Job' );
    my $count = $rs->load( $self->_authenticated_user_info, $data->{jobs} );

@@ -36,9 +36,10 @@ sub dispatch_request { build_routes
    'GET      + /user/* + ?*'            => 'user/root/base/view',
    'GET      + /user + ?*'              => 'user/root/base/list',
 
-   'GET      + /doc/select + ?*' => 'doc/root/base/select',
-   'GET      + /doc/*.* + ?*'    => 'doc/root/base/view',
-   'GET      + /doc + ?*'        => 'doc/root/base/list',
+   'GET      + /doc/configuration + ?*' => 'doc/root/base/configuration',
+   'GET      + /doc/select + ?*'        => 'doc/root/base/select',
+   'GET      + /doc/*.* + ?*'           => 'doc/root/base/view',
+   'GET      + /doc + ?*'               => 'doc/root/base/list',
 
    'POST     + /logfile/*/clear + ?*' => 'logfile/root/clear_cache',
    'GET      + /logfile/*.* + ?*'     => 'logfile/root/base/view',
@@ -46,7 +47,6 @@ sub dispatch_request { build_routes
 
    'GET      + /access_denied + ?*'          => 'page/root/base/access_denied',
    'GET      + /changes + ?*'                => 'page/root/base/changes',
-   'GET      + /configuration + ?*'          => 'page/root/base/configuration',
    'GET      + /footer/** + ?*'              => 'page/footer',
    'GET|POST + /login + ?*'                  => 'page/root/base/login',
    'POST     + /logout + ?*'                 => 'page/root/logout',
