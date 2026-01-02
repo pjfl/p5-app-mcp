@@ -1,4 +1,4 @@
-package App::MCP::Model::Root;
+package App::MCP::Model::Misc;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_OK );
@@ -14,22 +14,22 @@ with    'Web::Components::Role';
 with    'App::MCP::Role::Redis';
 with    'App::MCP::Role::SendMessage';
 
-has '+moniker' => default => 'page';
+has '+moniker' => default => 'misc';
 
 has '+redis_client_name' => default => 'job_stash';
 
 sub base : Auth('none') {
-   my ($self, $context, $id_or_name) = @_;
+   my ($self, $context) = @_;
 
-   $self->_stash_user($context, $id_or_name) if $id_or_name;
    $context->stash('nav')->finalise;
    return;
 }
 
-sub access_denied : Auth('none') {
-   my ($self, $context) = @_;
+sub user : Auth('none') {
+   my ($self, $context, $id_or_name) = @_;
 
-   $self->error($context, UnauthorisedAccess);
+   $self->_stash_user($context, $id_or_name) if $id_or_name;
+   $context->stash('nav')->finalise;
    return;
 }
 
@@ -40,10 +40,31 @@ sub changes : Auth('none') Nav('Changes') {
    return;
 }
 
+sub create_user : Auth('none') {
+   my ($self, $context, $token) = @_;
+
+   my $stash = $self->redis_client->get($token)
+      or return $self->error($context, UnknownToken, [$token]);
+   my $args  = {
+      email            => $stash->{email},
+      name             => $stash->{username},
+      password         => $stash->{password},
+      password_expired => TRUE,
+      role_id          => $stash->{role_id},
+   };
+   my $user    = $context->model('User')->create($args);
+   my $changep = $context->uri_for_action('misc/password', [$user->id]);
+   my $message = 'User [_1] created';
+
+   $context->stash(redirect $changep, [$message, "${user}"]);
+   $self->redis_client->remove($token);
+   return;
+}
+
 sub default : Auth('none') {
    my ($self, $context) = @_;
 
-   my $default = $context->uri_for_action($self->config->redirect);
+   my $default = $context->uri_for_action($self->config->default_action);
 
    $context->stash(redirect $default, ['Redirecting to [_1]', $default]);
    return;
@@ -72,29 +93,11 @@ sub footer : Auth('none') {
 sub login : Auth('none') Nav('Login') {
    my ($self, $context) = @_;
 
-   my $params    = $context->get_body_parameters;
-   my $username  = $params->{user_name};
-   my $submitter = $params->{_submit} // NUL;
-
-   if ($submitter eq 'password_reset') {
-      $self->_stash_user($context, $username) if $username;
-      $self->password_reset($context);
-      return;
-   }
-
-   if ($submitter eq 'totp_reset') {
-      my $args  = [$username, 'reset'];
-      my $reset = $context->uri_for_action('page/totp_reset', $args);
-
-      $context->stash(redirect $reset, []);
-      return;
-   }
-
    my $options = { context => $context, log => $self->log };
    my $form    = $self->new_form('Login', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $default  = $context->uri_for_action($self->config->redirect);
+      my $default  = $context->uri_for_action($self->config->default_action);
       my $name     = $context->session->username;
       my $wanted   = $context->session->wanted;
       my $location = new_uri $context->request->scheme, $wanted if $wanted;
@@ -105,7 +108,29 @@ sub login : Auth('none') Nav('Login') {
       $context->session->wanted(NUL);
    }
 
-   $context->stash(form => $form);
+   $context->stash(form => $form, page => { layout => 'misc/login' });
+   return;
+}
+
+sub login_dispatch : Auth('none') {
+   my ($self, $context) = @_;
+
+   my $params = $context->get_body_parameters;
+
+   if ($params->{_submit} && $params->{_submit} eq 'password_reset') {
+      $self->_stash_user($context, $params->{user_name});
+      $self->password_reset($context);
+      return;
+   }
+
+   if ($params->{_submit} && $params->{_submit} eq 'totp_reset') {
+      $context->stash(redirect $context->uri_for_action(
+         'misc/totp_reset', [$params->{user_name}]
+      ), ['Redirecting to OTP request form']);
+      return;
+   }
+
+   $self->login($context);
    return;
 }
 
@@ -114,11 +139,11 @@ sub logout : Auth('view') Nav('Logout') {
 
    return unless $self->verify_form_post($context);
 
-   my $login   = $context->uri_for_action('page/login');
-   my $message = ['User [_1] logged out', $context->session->username];
+   my $login   = $context->uri_for_action('misc/login');
+   my $message = 'User [_1] logged out';
 
    $context->logout;
-   $context->stash(redirect $login, $message);
+   $context->stash(redirect $login, [$message, $context->session->username]);
    return;
 }
 
@@ -139,15 +164,15 @@ sub not_found : Auth('none') {
 sub password : Auth('none') Nav('Change Password') {
    my ($self, $context) = @_;
 
-   my $user    = $context->stash('user') or return;
+   my $user    = $context->stash('user');
    my $options = { context => $context, item => $user, log => $self->log };
    my $form    = $self->new_form('ChangePassword', $options);
 
    if ($form->process( posted => $context->posted )) {
-      my $default = $context->uri_for_action($self->config->redirect);
-      my $message = ['User [_1] changed password', $form->item->user_name];
+      my $default = $context->uri_for_action($self->config->default_action);
+      my $message = 'User [_1] changed password';
 
-      $context->stash(redirect $default, $message);
+      $context->stash(redirect $default, [$message, "${user}"]);
    }
 
    $context->stash(form => $form);
@@ -155,53 +180,60 @@ sub password : Auth('none') Nav('Change Password') {
 }
 
 sub password_reset : Auth('none') {
-   my ($self, $context, $userid, $token) = @_;
+   my ($self, $context, $token) = @_;
 
-   my $user    = $context->stash('user') or return;
-   my $changep = $context->uri_for_action('page/password', [$user->id]);
+   return unless $self->verify_form_post($context);
 
-   if (!$context->posted && $token && $token ne 'reset') {
-      my $stash = $self->redis_client->get($token)
-         or return $self->error($context, UnknownToken, [$token]);
+   my $user = $context->stash('user');
 
-      $user->update({password => $stash->{password}, password_expired => TRUE});
+   unless ($user->can_email) {
+      my $login   = $context->uri_for_action('misc/login');
+      my $message = 'User [_1] no email address';
 
-      my $message = ['User [_1] password reset', "${user}"];
-
-      $context->stash(redirect $changep, $message);
-      $self->redis_client->remove($token);
+      $context->stash(redirect $login, [$message, "${user}"]);
       return;
    }
 
-   return unless $context->posted;
-   return unless $self->verify_form_post($context);
+   my $job     = $self->_create_reset_email($context, $user);
+   my $changep = $context->uri_for_action('misc/password', [$user->id]);
+   my $message = 'User [_1] password reset request [_2] created';
 
-   my $job     = $self->_create_reset_email($context) or return;
-   my $text    = 'User [_1] password reset request [_2] created';
-   my $message = [$text, "${user}", $job->job_name];
+   $context->stash(redirect $changep, [$message, "${user}", "${job}"]);
+   return;
+}
 
-   $context->stash(redirect $changep, $message);
+sub password_update : Auth('none') {
+   my ($self, $context, $token) = @_;
+
+   my $stash = $self->redis_client->get($token)
+      or return $self->error($context, UnknownToken, [$token]);
+   my $user  = $context->stash('user');
+
+   $user->update({ password => $stash->{password}, password_expired => TRUE });
+
+   my $changep = $context->uri_for_action('misc/password', [$user->id]);
+   my $message = 'User [_1] password reset and expired';
+
+   $context->stash(redirect $changep, [$message, "${user}"]);
+   $self->redis_client->remove($token);
    return;
 }
 
 sub register : Auth('none') Nav('Register') {
-   my ($self, $context, $token) = @_;
+   my ($self, $context) = @_;
 
    return $self->error($context, UnauthorisedAccess)
       unless $self->config->registration;
-
-   return $self->_create_user($context, $token)
-      if !$context->posted && $token;
 
    my $options = { context => $context, log => $self->log };
    my $form    = $self->new_form('Register', $options);
 
    if ($form->process(posted => $context->posted)) {
       my $job     = $context->stash->{job};
-      my $login   = $context->uri_for_action('page/login');
-      my $message = ['Registration request [_1] dispatched', $job->job_name];
+      my $login   = $context->uri_for_action('misc/login');
+      my $message = 'Registration request [_1] created';
 
-      $context->stash(redirect $login, $message);
+      $context->stash(redirect $login, [$message, "${job}"]);
       return;
    }
 
@@ -209,54 +241,55 @@ sub register : Auth('none') Nav('Register') {
    return;
 }
 
+sub totp : Auth('none') {
+   my ($self, $context, $token) = @_;
+
+   return $self->error($context, UnknownToken, [$token])
+      unless $self->redis_client->get($token);
+
+   my $user    = $context->stash('user');
+   my $options = { context => $context, user => $user };
+
+   $context->stash(form => $self->new_form('TOTP::Secret', $options));
+   $self->redis_client->remove($token);
+   return;
+}
+
 sub totp_reset : Auth('none') {
-   my ($self, $context, $userid, $token) = @_;
+   my ($self, $context) = @_;
 
-   my $user    = $context->stash('user') or return;
+   my $user    = $context->stash('user');
    my $options = { context => $context, log => $self->log, user => $user };
-
-   if (!$context->posted && $token && $token ne 'reset') {
-      my $stash = $self->redis_client->get($token)
-         or return $self->error($context, UnknownToken, [$token]);
-
-      $context->stash(form => $self->new_form('TOTP::Secret', $options));
-      $self->redis_client->remove($token);
-      return;
-   }
-
-   my $form = $self->new_form('TOTP::Reset', $options);
+   my $form    = $self->new_form('TOTP::Reset', $options);
 
    if ($form->process(posted => $context->posted)) {
       my $job     = $context->stash->{job};
-      my $login   = $context->uri_for_action('page/login');
-      my $message = 'User [_1] TOTP reset request [_2] dispatched';
+      my $login   = $context->uri_for_action('misc/login');
+      my $message = 'User [_1] TOTP reset request [_2] created';
 
-      $context->stash(redirect $login, [$message, "${user}", $job->job_name]);
+      $context->stash(redirect $login, [$message, "${user}", "${job}"]);
    }
 
    $context->stash(form => $form);
+   return;
+}
+
+sub unauthorised : Auth('none') {
+   my ($self, $context) = @_;
+
+   $self->error($context, UnauthorisedAccess);
    return;
 }
 
 # Private methods
 sub _create_reset_email {
-   my ($self, $context) = @_;
-
-   my $user = $context->stash('user');
-
-   unless ($user->can_email) {
-      my $login   = $context->uri_for_action('page/login');
-      my $message = ['User [_1] no email address', "${user}"];
-
-      $context->stash(redirect $login, $message);
-      return;
-   }
+   my ($self, $context, $user) = @_;
 
    my $token   = create_token;
-   my $actionp = 'page/password_reset';
+   my $actionp = 'misc/password_reset';
    my $link    = $context->uri_for_action($actionp, [$user->id, $token]);
    my $passwd  = substr create_token, 0, 12;
-   my $options = {
+   my $params  = {
       application => $self->config->name,
       link        => "${link}",
       password    => $passwd,
@@ -266,31 +299,10 @@ sub _create_reset_email {
    };
    my $job;
 
-   try   { $job = $self->send_message($context, $token, $options) }
+   try   { $job = $self->send_message($context, $token, $params) }
    catch { $self->error($context, $_) };
 
    return $job;
-}
-
-sub _create_user {
-   my ($self, $context, $token) = @_;
-
-   my $stash = $self->redis_client->get($token)
-      or return $self->error($context, UnknownToken, [$token]);
-   my $args  = {
-      email            => $stash->{email},
-      name             => $stash->{username},
-      password         => $stash->{password},
-      password_expired => TRUE,
-      role_id          => $stash->{role_id},
-   };
-   my $user    = $context->model('User')->create($args);
-   my $changep = $context->uri_for_action('page/password', [$user->id]);
-   my $message = ['User [_1] created', $user->user_name];
-
-   $context->stash(redirect $changep, $message);
-   $self->redis_client->remove($token);
-   return;
 }
 
 sub _stash_user {
@@ -315,11 +327,11 @@ __END__
 
 =head1 Name
 
-App::MCP::Model::Root - One-line description of the modules purpose
+App::MCP::Model::Misc - One-line description of the modules purpose
 
 =head1 Synopsis
 
-   use App::MCP::Model::Root;
+   use App::MCP::Model::Misc;
    # Brief but working code examples
 
 =head1 Description

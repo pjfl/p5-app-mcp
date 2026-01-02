@@ -50,23 +50,23 @@ sub root : Auth('none') {
    my $session = $context->session;
    my $nav     = Web::Components::Navigation->new({
       context       => $context,
-      footer_action => 'page/footer',
+      footer_action => 'misc/footer',
       model         => $self,
    });
 
    $nav->list('_control');
 
    if ($session->authenticated) {
-      $nav->item('page/changes');
-      $nav->item('page/password', [$session->id]);
+      $nav->item('misc/changes');
+      $nav->item('misc/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);
       $nav->item('user/totp', [$session->id]) if $session->enable_2fa;
-      $nav->item(formpost, 'page/logout');
+      $nav->item(formpost, 'misc/logout');
    }
    else {
-      $nav->item('page/login');
-      $nav->item('page/password', [$session->id]);
-      $nav->item('page/register', []) if $self->config->registration;
+      $nav->item('misc/login');
+      $nav->item('misc/password', [$session->id]);
+      $nav->item('misc/register', []) if $self->config->registration;
    }
 
    $context->stash($self->navigation_key => $nav);

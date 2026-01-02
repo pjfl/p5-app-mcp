@@ -10,19 +10,26 @@ use HTML::Forms::Moo;
 
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
-with    'App::MCP::Role::SendMessage';
 
 has '+name'         => default => 'TOTP_Reset';
 has '+title'        => default => 'TOTP Reset Request';
 has '+info_message' => default => 'Answer the security questions';
 has '+no_update'    => default => TRUE;
 
+has 'config' => is => 'lazy', default => sub { shift->context->config };
+
 has 'user' =>
    is       => 'ro',
    isa      => class_type('App::MCP::Schema::Schedule::Result::User'),
    required => TRUE;
 
+with 'App::MCP::Role::SendMessage';
+
 has_field 'name' => type => 'Display', label => 'User Name';
+
+sub default_name {
+   my $user = shift->user; return "${user}";
+}
 
 has_field 'password' => type => 'Password', required => TRUE;
 
@@ -36,10 +43,6 @@ has_field 'postcode' => required => TRUE, size => 8;
 
 has_field 'submit' => type => 'Button';
 
-sub default_name {
-   my $self = shift; return $self->user->name;
-}
-
 sub validate {
    my $self   = shift;
    my $user   = $self->user;
@@ -51,13 +54,13 @@ sub validate {
       my $field = $self->field('mobile_phone');
       my $value = $field->value;
 
-      $field->add_error($value ? 'Invalid' : 'Required')
+      $field->add_error($value ? 'Invalid response' : 'Required')
          unless $value && $value == $user->mobile_phone;
 
       $field = $self->field('postcode');
       $value = $field->value;
 
-      $field->add_error($value ? 'Invalid' : 'Required')
+      $field->add_error($value ? 'Invalid response' : 'Required')
          unless $value && $value eq $user->postcode;
 
       unless ($self->result->has_errors) {
@@ -68,8 +71,8 @@ sub validate {
    catch_class [
       'Authentication' => sub { $passwd->add_error($_->original) },
       '*' => sub {
-         $self->add_form_error(["${_}"]);
-         $self->log->alert("${_}", $self->context) if $self->has_log;
+         $self->add_form_error($_->original);
+         $self->log->alert($_->original, $self->context) if $self->has_log;
       }
    ];
 
@@ -81,9 +84,9 @@ sub _create_email {
 
    my $token   = create_token;
    my $context = $self->context;
-   my $actionp = 'page/totp_reset';
+   my $actionp = 'misc/totp_reset';
    my $link    = $context->uri_for_action($actionp, [$user->id, $token]);
-   my $options = {
+   my $params  = {
       application => $context->config->name,
       link        => "${link}",
       recipients  => [$user->id],
@@ -91,7 +94,7 @@ sub _create_email {
       template    => 'totp_reset.md',
    };
 
-   return $self->send_message($context, $token, $options);
+   return $self->send_message($context, $token, $params);
 }
 
 use namespace::autoclean -except => META;

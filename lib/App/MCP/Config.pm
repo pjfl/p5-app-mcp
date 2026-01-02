@@ -202,6 +202,14 @@ exception to the end user
 
 has 'deployment' => is => 'ro', isa => Str, default => 'development';
 
+=item C<default_action>
+
+The default action path to redirect to after logging in, changing password etc.
+
+=cut
+
+has 'default_action' => is => 'ro', isa => SimpleStr, default => 'job/list';
+
 =item C<default_base_colour>
 
 Defaults to B<bisque>. Used as the base colour for page rendering. Can be
@@ -568,14 +576,6 @@ Used as a prefix when creating identifiers
 =cut
 
 has 'prefix' => is => 'ro', isa => Str, default => 'mcp';
-
-=item C<redirect>
-
-The default action path to redirect to after logging in, changing password etc.
-
-=cut
-
-has 'redirect' => is => 'ro', isa => SimpleStr, default => 'job/list';
 
 =item C<redis>
 

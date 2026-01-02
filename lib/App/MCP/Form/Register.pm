@@ -11,16 +11,16 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
+has 'config' => is => 'lazy', default => sub { shift->context->config };
+
+with 'App::MCP::Role::JSONParser';
+with 'App::MCP::Role::SendMessage';
+
 has '+name'         => default => 'Register';
 has '+title'        => default => 'Registration Request';
 has '+info_message' => default => 'Answer the registration questions';
 has '+item_class'   => default => 'User';
 has '+no_update'    => default => TRUE;
-
-has 'config' => is => 'lazy', default => sub { shift->context->config };
-
-with 'App::MCP::Role::JSONParser';
-with 'App::MCP::Role::SendMessage';
 
 has_field 'user_name' => label => 'User Name', required => TRUE;
 
@@ -36,14 +36,14 @@ after 'after_build_fields' => sub {
    my $self = shift;
    my $attr = $self->field('user_name')->element_attr;
 
-   $attr->{minlength} = $self->context->config->user->{min_name_len};
+   $attr->{minlength} = $self->config->user->{min_name_len};
    return;
 };
 
 sub validate {
    my $self   = shift;
    my $rs     = $self->context->model($self->item_class);
-   my $config = $self->context->config;
+   my $config = $self->config;
    my $name   = $self->field('user_name');
    my $email  = $self->field('email');
 
@@ -76,7 +76,7 @@ sub _create_email {
 
    my $token   = create_token;
    my $context = $self->context;
-   my $link    = $context->uri_for_action('page/register', [$token]);
+   my $link    = $context->uri_for_action('misc/register', [$token]);
    my $passwd  = substr create_token, 0, 12;
    my $options = {
       application => $context->config->name,

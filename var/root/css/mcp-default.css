@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.34
+ * @version 0.13.35
  */
 /* Breaks */
 /* Colours */
@@ -7,10 +7,10 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.32
+ * @version 0.13.36
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.34
+ * @version 0.13.35
  */
 /* Breaks */
 /* Colours */
@@ -143,11 +143,11 @@ main .layout-container h5 {
   margin: 1rem;
   text-wrap: balance;
 }
-main .layout-container h1 label,
-main .layout-container h2 label,
-main .layout-container h3 label,
-main .layout-container h4 label,
-main .layout-container h5 label {
+main .layout-container h1 label.separator,
+main .layout-container h2 label.separator,
+main .layout-container h3 label.separator,
+main .layout-container h4 label.separator,
+main .layout-container h5 label.separator {
   display: inline-block;
   margin-right: 0.5rem;
   min-width: 5rem;
@@ -1287,10 +1287,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.1.100
+ * @version 0.2.1
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.34
+ * @version 0.13.35
  */
 /* Breaks */
 /* Colours */
@@ -2312,7 +2312,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.1.21
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.34
+ * @version 0.13.35
  */
 /* Breaks */
 /* Colours */
@@ -2832,7 +2832,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.2.28
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.34
+ * @version 0.13.35
  */
 /* Breaks */
 /* Colours */

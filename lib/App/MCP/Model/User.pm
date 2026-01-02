@@ -12,25 +12,30 @@ with    'Web::Components::Role';
 has '+moniker' => default => 'user';
 
 sub base : Auth('view') {
+   my ($self, $context) = @_;
+
+   $context->stash('nav')->list('user')->item('user/create')->finalise;
+
+   return;
+}
+
+sub user : Auth('view') Capture(1) {
    my ($self, $context, $userid) = @_;
 
-   my $nav = $context->stash('nav')->list('user')->item('user/create');
+   my $session = $context->session;
+   my $args = { username => $userid, options => { prefetch => 'profile' } };
+   my $user = $context->find_user($args, $session->realm);
 
-   if ($userid) {
-      my $session = $context->session;
-      my $args = { username => $userid, options => { prefetch => 'profile' } };
-      my $user = $context->find_user($args, $session->realm);
+   return $self->error($context, UnknownUser, [$userid]) unless $user;
 
-      return $self->error($context, UnknownUser, [$userid]) unless $user;
+   return $self->error($context, UnauthorisedAccess)
+      unless $user->is_authorised($session, ['admin', 'manager']);
 
-      return $self->error($context, UnauthorisedAccess)
-         unless $user->is_authorised($session, ['admin', 'manager']);
+   $context->stash(user => $user);
 
-      $context->stash(user => $user);
-      $nav->crud('user', $userid);
-   }
+   my $nav = $context->stash('nav')->list('user')->crud('user', $user->id);
 
-   $nav->finalise;
+   $nav->item('user/create')->finalise;
    return;
 }
 
@@ -121,7 +126,7 @@ sub remove : Auth('admin') {
 
    return unless $self->verify_form_post($context);
 
-   my $value = $context->request->body_parameters->{data} or return;
+   my $value = $context->get_body_parameters->{data} or return;
    my $rs    = $context->model('User');
    my $count = 0;
 
@@ -170,7 +175,7 @@ sub view : Auth('manager') Nav('View User') {
       value     => 'Edit',
    }];
    my $options = {
-      add_columns  => ['Time Zone' => $context->time_zone],
+      add_columns  => ['Time Zone' => $user->timezone],
       caption      => 'View User',
       context      => $context,
       form_buttons => $buttons,

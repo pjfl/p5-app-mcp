@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Reworked controllers to use captures
           - Breakpoint
           - Renamed LESS and JS files
           - Better configuration display with data2markup

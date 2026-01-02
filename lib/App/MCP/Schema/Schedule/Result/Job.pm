@@ -1,5 +1,7 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
+use overload '""' => sub { $_[0]->_as_string },
+             '+'  => sub { $_[0]->_as_number }, fallback => 1;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS CRONTAB_FIELD_NAMES FALSE
@@ -265,6 +267,14 @@ sub validation_attributes {
 }
 
 # Private methods
+sub _as_number {
+   return shift->id;
+}
+
+sub _as_string {
+   return shift->job_name;
+}
+
 sub _create_conditions {
    my ($self, $job) = @_;
 

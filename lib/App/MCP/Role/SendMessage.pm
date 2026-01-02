@@ -17,7 +17,7 @@ sub send_message {
    my $program = $context->config->bin->catfile("${prefix}-cli");
    my $command = "${program} -o token=${token} send_message email";
    my $name    = 'send_message' . substr $token, 24, 8;
-   my $args    = {
+   my $options = {
       command      => $command,
       delete_after => TRUE,
       group_id     => $context->session->{role_id},
@@ -28,7 +28,7 @@ sub send_message {
       user_name    => $prefix,
    };
 
-   return $context->model('Job')->create($args);
+   return $context->model('Job')->create($options);
 }
 
 use namespace::autoclean;

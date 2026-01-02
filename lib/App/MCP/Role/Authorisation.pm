@@ -26,7 +26,7 @@ sub is_authorised {
 
    return TRUE if $user_role eq $role;
 
-   $context->stash(redirect $context->uri_for_action('page/access_denied'), []);
+   $context->stash(redirect $context->uri_for_action('misc/unauthorised'), []);
 
    return FALSE;
 }
@@ -35,7 +35,7 @@ sub is_authorised {
 sub _redirect2login {
    my ($self, $context) = @_;
 
-   my $login   = $context->uri_for_action('page/login');
+   my $login   = $context->uri_for_action('misc/login');
    my $wanted  = $context->request->uri;
    my $session = $context->session;
    my $method  = $context->endpoint;
