@@ -11,7 +11,12 @@ extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::HighlightRow';
 with    'HTML::StateTable::Role::Tag';
-with    'App::MCP::Role::FileMeta';
+
+has 'meta_home' => is => 'ro', required => TRUE;
+
+has 'meta_share' => is => 'ro', required => TRUE;
+
+with 'App::MCP::Role::FileMeta';
 
 has 'directory' =>
    is       => 'lazy',
@@ -20,7 +25,7 @@ has 'directory' =>
    default  => sub {
       my $self = shift;
 
-      return $self->meta_directory($self->context, $self->_directory);
+      return $self->meta_directory($self->_directory);
    };
 
 has 'extensions' => is => 'ro', isa => Str, default => 'pm';
@@ -39,8 +44,6 @@ has '+form_control_location' =>
    default => sub { [qw(TopLeft BottomLeft BottomRight)] };
 
 has '+icons' => default => sub { shift->context->icons_uri->as_string };
-
-has '+meta_config_attr' => default => 'documentation';
 
 has '+paging' => default => FALSE;
 

@@ -6,42 +6,22 @@ use HTML::StateTable::Util      qw( escape_formula );
 use Unexpected::Functions       qw( throw );
 use Moo::Role;
 
+requires qw( meta_home meta_share );
+
 with 'App::MCP::Role::CSVParser';
 
-has 'meta_config_attr' => is => 'lazy', isa => Str, default => 'filemanager';
-
-sub meta_add {
-   my ($self, $context, $basedir, $filename, $args) = @_;
-
-   $args //= {};
-   $args->{owner} //= $context->session->username;
-   $args->{shared} //= FALSE;
-   $self->csv_parser->combine(
-      escape_formula $filename, $args->{owner}, $args->{shared}
-   );
-
-   my $mdir  = $self->meta_directory($context, $basedir);
-   my $dfile = $mdir->catfile('.directory');
-
-   $dfile->appendln($self->csv_parser->string);
-   $dfile->flush;
-   return;
-}
-
 sub meta_directory {
-   my ($self, $context, $basedir) = @_;
+   my ($self, $basedir) = @_;
 
-   my $home = $self->meta_home($context);
+   return $self->meta_home unless $basedir;
 
-   return $home unless $basedir;
-
-   return $home->catdir($self->meta_to_path($basedir));
+   return $self->meta_home->catdir($self->meta_to_path($basedir));
 }
 
 sub meta_get_files { # Unused
-   my ($self, $context, $extensions) = @_;
+   my ($self, $extensions) = @_;
 
-   my $home     = $self->meta_home($context)->clone;
+   my $home     = $self->meta_home->clone;
    my $filter   = sub { m{ \. (?: $extensions ) \z }mx };
    my $iterator = $home->deep->filter($filter)->iterator({});
    my $files    = [];
@@ -56,12 +36,12 @@ sub meta_get_files { # Unused
    return $files;
 }
 
-sub meta_get_header {
-   my ($self, $context, $selected) = @_;
+sub meta_get_csv_header {
+   my ($self, $selected) = @_;
 
    $selected = $self->meta_to_path($selected);
 
-   my $file = $self->meta_directory($context)->child($selected);
+   my $file = $self->meta_directory->child($selected);
 
    return [] unless $file->exists;
 
@@ -77,54 +57,30 @@ sub meta_get_header {
 }
 
 sub meta_get_owner {
-   my ($self, $context, $basedir, $filename) = @_;
+   my ($self, $basedir, $filename) = @_;
 
-   my $mdir = $self->meta_directory($context, $basedir);
+   my $mdir = $self->meta_directory($basedir);
    my $meta = $self->_meta_get($mdir)->{$filename};
 
    return $meta ? $meta->{owner} : NUL;
 }
 
 sub meta_get_shared {
-   my ($self, $context, $basedir, $filename) = @_;
+   my ($self, $basedir, $filename) = @_;
 
-   my $mdir = $self->meta_directory($context, $basedir);
+   my $mdir = $self->meta_directory($basedir);
    my $meta = $self->_meta_get($mdir)->{$filename};
 
    return $meta ? $meta->{shared} : NUL;
 }
 
-sub meta_home {
-   my ($self, $context) = @_;
-
-   return $self->_meta_get_config($context)->{directory};
-}
-
 sub meta_move {
-   my ($self, $context, $basedir, $from, $filename) = @_;
+   my ($self, $default_owner, $basedir, $from, $filename) = @_;
 
    my $meta = $self->_meta_get($from->parent)->{$from->basename};
 
-   $self->meta_remove($from);
-   $self->meta_add($context, $basedir, $filename, $meta);
-   return;
-}
-
-sub meta_remove {
-   my ($self, $from) = @_;
-
-   my $dfile = $from->parent->catfile('.directory');
-
-   return unless $dfile->exists;
-
-   my $lines = join NUL, grep {
-      my $fields = $self->_meta_fields($_);
-
-      $fields->{name} ne $from->basename ? TRUE : FALSE
-   } $dfile->getlines;
-
-   $dfile->buffer($lines)->write;
-   $dfile->flush;
+   $self->_meta_remove($from);
+   $self->_meta_add($default_owner, $basedir, $filename, $meta);
    return;
 }
 
@@ -137,22 +93,22 @@ sub meta_scrub {
 }
 
 sub meta_set_shared {
-   my ($self, $context, $basedir, $filename, $value) = @_;
+   my ($self, $default_owner, $basedir, $filename, $value) = @_;
 
-   my $mdir = $self->meta_directory($context, $basedir);
-   my $meta = $self->_meta_get($mdir)->{$filename};
-   my $file = $mdir->catfile($filename);
+   my $mdir  = $self->meta_directory($basedir);
+   my $meta  = $self->_meta_get($mdir)->{$filename};
+   my $file  = $mdir->catfile($filename);
 
    $meta->{shared} = $value ? TRUE : FALSE;
-   $self->meta_remove($file);
-   $self->meta_add($context, $basedir, $filename, $meta);
+   $self->_meta_remove($file);
+   $self->_meta_add($default_owner, $basedir, $filename, $meta);
    return $value;
 }
 
-sub meta_share {
-   my ($self, $context, $path) = @_;
+sub meta_share_file {
+   my ($self, $path) = @_;
 
-   my $linkpath = $self->_meta_get_linkpath($context, $path);
+   my $linkpath = $self->_meta_get_linkpath($path);
 
    $linkpath->assert_filepath;
    symlink $path->as_string, $linkpath->as_string;
@@ -167,14 +123,14 @@ sub meta_to_uri {
    my ($self, @args) = @_; return _to_uri(join '!', grep { $_ } @args);
 }
 
-sub meta_unshare {
-   my ($self, $context, $path) = @_;
+sub meta_unshare_file {
+   my ($self, $path) = @_;
 
-   my $linkpath = $self->_meta_get_linkpath($context, $path);
+   my $linkpath = $self->_meta_get_linkpath($path);
 
    return unless $linkpath->exists;
 
-   my $sharedir = $self->_meta_get_config($context)->{sharedir};
+   my $sharedir = $self->meta_share;
    my $dir      = $linkpath->parent;
 
    $linkpath->unlink;
@@ -189,6 +145,24 @@ sub meta_unshare {
 }
 
 # Private methods
+sub _meta_add {
+   my ($self, $default_owner, $basedir, $filename, $args) = @_;
+
+   $args //= {};
+   $args->{owner} //= $default_owner;
+   $args->{shared} //= FALSE;
+   $self->csv_parser->combine(
+      escape_formula $filename, $args->{owner}, $args->{shared}
+   );
+
+   my $mdir  = $self->meta_directory($basedir);
+   my $dfile = $mdir->catfile('.directory');
+
+   $dfile->appendln($self->csv_parser->string);
+   $dfile->flush;
+   return;
+}
+
 sub _meta_fields {
    my ($self, $line) = @_;
 
@@ -231,26 +205,31 @@ sub _meta_get {
    return $meta;
 }
 
-sub _meta_get_config {
-   my ($self, $context) = @_;
-
-   my $config_attr = $self->meta_config_attr;
-
-   return $context->config->$config_attr()
-      if $context->can('config') && $context->config->can($config_attr);
-
-   return $context->$config_attr() if $context->can($config_attr);
-
-   throw 'No file meta configuration found';
-}
-
 sub _meta_get_linkpath {
-   my ($self, $context, $path) = @_;
+   my ($self, $path) = @_;
 
-   my $sharedir = $self->_meta_get_config($context)->{sharedir};
-   my $relpath  = $path->abs2rel($self->meta_directory($context));
+   my $sharedir = $self->meta_share;
+   my $relpath  = $path->abs2rel($self->meta_directory);
 
    return $sharedir->catfile($relpath);
+}
+
+sub _meta_remove {
+   my ($self, $from) = @_;
+
+   my $dfile = $from->parent->catfile('.directory');
+
+   return unless $dfile->exists;
+
+   my $lines = join NUL, grep {
+      my $fields = $self->_meta_fields($_);
+
+      $fields->{name} ne $from->basename ? TRUE : FALSE
+   } $dfile->getlines;
+
+   $dfile->buffer($lines)->write;
+   $dfile->flush;
+   return;
 }
 
 # Private functions

@@ -253,25 +253,6 @@ has 'deflate_types' =>
       ];
    };
 
-=item C<documentation>
-
-A hash reference of parameters used to configure the documentation viewer
-
-=cut
-
-has 'documentation' =>
-   is      => 'lazy',
-   isa     => HashRef,
-   default => sub {
-      my $self = shift;
-
-      return {
-         directory  => $self->bin->parent->catdir('lib'),
-         extensions => 'pm',
-         sharedir   => $self->rootdir->catdir('file')
-      };
-   };
-
 =item C<dsn>
 
 String used to select the database driver and specific database by name
@@ -964,8 +945,15 @@ has 'web_components' =>
    is      => 'lazy',
    isa     => HashRef,
    default => sub {
+      my $self = shift;
+
       return {
-         'Model::State' => { max_jobs => 1_000 }
+         'Model::Documentation' => {
+            extensions => 'pm',
+            meta_home  => $self->bin->parent->catdir('lib'),
+            meta_share => $self->rootdir->catdir('file')
+         },
+         'Model::State' => { max_jobs => 1_000 },
       };
    };
 
