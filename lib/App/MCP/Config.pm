@@ -373,7 +373,7 @@ Configuration options for the L<lock manager|IPC::SRLock>
 has 'lock_attributes' =>
    is      => 'lazy',
    isa     => HashRef,
-   default => sub { { redis => $_[0]->redis, type => 'redis' } };
+   default => sub { { redis => shift->redis, type => 'redis' } };
 
 =item log_message_maxlen
 
@@ -949,9 +949,8 @@ has 'web_components' =>
 
       return {
          'Model::Documentation' => {
-            extensions => 'pm',
-            meta_home  => $self->bin->parent->catdir('lib'),
-            meta_share => $self->rootdir->catdir('file')
+            file_home  => $self->bin->parent->catdir('lib'),
+            file_share => $self->rootdir->catdir('file')
          },
          'Model::State' => { max_jobs => 1_000 },
       };

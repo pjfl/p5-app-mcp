@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Better object model form FileMeta
           - Configure documentation through the Model
           - Reworked controllers to use captures
           - Breakpoint

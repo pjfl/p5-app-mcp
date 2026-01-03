@@ -11,12 +11,7 @@ extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::HighlightRow';
 with    'HTML::StateTable::Role::Tag';
-
-has 'meta_home' => is => 'ro', required => TRUE;
-
-has 'meta_share' => is => 'ro', required => TRUE;
-
-with 'App::MCP::Role::FileMeta';
+with    'App::MCP::Role::FileMeta';
 
 has 'directory' =>
    is       => 'lazy',
@@ -25,7 +20,7 @@ has 'directory' =>
    default  => sub {
       my $self = shift;
 
-      return $self->meta_directory($self->_directory);
+      return $self->file->directory($self->_directory);
    };
 
 has 'extensions' => is => 'ro', isa => Str, default => 'pm';
@@ -179,7 +174,7 @@ sub _build_tag_names {
    my $self  = shift;
    my $names = ['Home'];
 
-   push @{$names}, split m{ / }mx, $self->meta_to_path($self->_directory)
+   push @{$names}, split m{ / }mx, $self->file->to_path($self->_directory)
       if $self->_directory;
 
    my $tuples = [];
@@ -189,7 +184,7 @@ sub _build_tag_names {
       my $params = {};
 
       unless ($name eq 'Home') {
-         $directory = $self->meta_to_uri($directory, $name);
+         $directory = $self->file->to_uri($directory, $name);
          $params = { directory => $directory };
       }
 
@@ -207,9 +202,9 @@ sub _build_tag_names {
 sub _qualified_directory {
    my ($self, $result) = @_;
 
-   return $self->meta_to_uri($self->_directory) unless $result;
+   return $self->file->to_uri($self->_directory) unless $result;
 
-   return $self->meta_to_uri($self->_directory, $result->uri_arg);
+   return $self->file->to_uri($self->_directory, $result->uri_arg);
 }
 
 use namespace::autoclean -except => TABLE_META;
