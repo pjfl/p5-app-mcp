@@ -64,7 +64,7 @@ body.relative {
   --bg-lighter: hsl(from var(--bg-base) h s calc(l * 1.07));
   --bg-light: hsl(from var(--bg-base) h s calc(l * 1.04));
   --bg-dark: hsl(from var(--bg-base) h s calc(l * 0.9));
-  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.7));
+  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.6));
 }
 body.dark-theme form.classic label,
 body.dark-theme form.classic legend {
@@ -174,15 +174,17 @@ main .layout-container .layout.left {
 }
 main .layout-container .layout .panel {
   display: flex;
+  flex-direction: column;
   gap: 1rem;
   opacity: 1;
   transition: opacity 1s;
 }
 main .layout-container .layout .panel .block-container {
+  align-items: center;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 1rem;
-  justify-content: space-between;
+  justify-content: space-evenly;
 }
 main .layout-container .layout .panel.fade {
   opacity: 0;

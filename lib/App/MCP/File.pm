@@ -3,27 +3,30 @@ package App::MCP::File;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use File::DataClass::Types qw( Directory Path );
 use HTML::StateTable::Util qw( escape_formula );
-use Unexpected::Functions  qw( throw );
+use Unexpected::Functions  qw( throw Unspecified );
 use Moo;
 
 with 'App::MCP::Role::CSVParser';
 
-has 'home' => is => 'ro', isa => Directory, required => TRUE;
+has 'home' => is => 'lazy', isa => Directory, required => TRUE;
 
-has 'share' => is => 'ro', isa => Path, required => TRUE;
+has 'share' => is => 'lazy', isa => Path, required => TRUE;
 
 sub add_meta {
-   my ($self, $default_owner, $basedir, $filename, $args) = @_;
+   my ($self, $path, $filename, $meta) = @_;
 
-   $args //= {};
-   $args->{owner} //= $default_owner;
-   $args->{shared} //= FALSE;
+   throw Unspecified, ['filename'] unless $filename;
+
+   $meta //= {};
+
+   throw Unspecified, ['owner'] unless $meta->{owner};
+
+   $meta->{shared} //= FALSE;
    $self->csv_parser->combine(
-      escape_formula $filename, $args->{owner}, $args->{shared}
+      escape_formula $filename, $meta->{owner}, $meta->{shared}
    );
 
-   my $mdir  = $self->directory($basedir);
-   my $dfile = $mdir->catfile('.directory');
+   my $dfile = $self->directory($path)->catfile('.directory');
 
    $dfile->appendln($self->csv_parser->string);
    $dfile->flush;
@@ -31,15 +34,17 @@ sub add_meta {
 }
 
 sub directory {
-   my ($self, $basedir) = @_;
+   my ($self, $path) = @_;
 
-   return $self->home unless $basedir;
+   return $self->home unless $path;
 
-   return $self->home->catdir($self->to_path($basedir));
+   return $self->home->catdir($self->to_path($path));
 }
 
 sub get_files { # Unused
    my ($self, $extensions) = @_;
+
+   throw Unspecified, ['extensions'] unless $extensions;
 
    my $home     = $self->home->clone;
    my $filter   = sub { m{ \. (?: $extensions ) \z }mx };
@@ -59,6 +64,8 @@ sub get_files { # Unused
 sub get_csv_header {
    my ($self, $selected) = @_;
 
+   throw Unspecified, ['selected'] unless $selected;
+
    $selected = $self->to_path($selected);
 
    my $file = $self->directory->child($selected);
@@ -76,30 +83,54 @@ sub get_csv_header {
 }
 
 sub get_owner {
-   my ($self, $basedir, $filename) = @_;
+   my ($self, $path, $filename) = @_;
 
-   my $mdir = $self->directory($basedir);
-   my $meta = $self->_get_meta($mdir, $filename);
+   my $meta = $self->_get_meta($self->directory($path), $filename);
 
    return $meta ? $meta->{owner} : NUL;
 }
 
 sub get_shared {
-   my ($self, $basedir, $filename) = @_;
+   my ($self, $path, $filename) = @_;
 
-   my $mdir = $self->directory($basedir);
-   my $meta = $self->_get_meta($mdir, $filename);
+   my $meta = $self->_get_meta($self->directory($path), $filename);
 
    return $meta ? $meta->{shared} : NUL;
 }
 
-sub move {
-   my ($self, $default_owner, $basedir, $from, $filename) = @_;
+sub move_meta {
+   my ($self, $from, $path, $filename, $default) = @_;
 
-   my $meta = $self->_get_meta($from->parent, $from->basename);
+   my $meta = $self->_get_meta($from->parent, $from->basename) // {};
 
-   $self->_remove_meta($from);
-   $self->add_meta($default_owner, $basedir, $filename, $meta);
+   $meta->{owner} //= $default->{owner}
+      if $default && defined $default->{owner} && !defined $meta->{owner};
+
+   $self->remove_meta($from);
+   $self->add_meta($path, $filename, $meta);
+   return;
+}
+
+sub remove_meta {
+   my ($self, $from) = @_;
+
+   my $dir   = $from->parent;
+   my $dfile = $dir->catfile('.directory');
+
+   return unless $dfile->exists;
+
+   my $lines = join NUL, grep {
+      my $fields = $self->_fields($_);
+
+      $fields->{name} ne $from->basename ? TRUE : FALSE
+   } $dfile->getlines;
+
+   if (length $lines > 1) {
+      $dfile->buffer($lines)->write;
+      $dfile->flush;
+   }
+   else { $dfile->unlink }
+
    return;
 }
 
@@ -112,16 +143,20 @@ sub scrub {
 }
 
 sub set_shared {
-   my ($self, $default_owner, $basedir, $filename, $value) = @_;
+   my ($self, $path, $filename, $default) = @_;
 
-   my $mdir  = $self->directory($basedir);
-   my $meta  = $self->_get_meta($mdir, $filename);
-   my $file  = $mdir->catfile($filename);
+   my $mdir = $self->directory($path);
+   my $meta = $self->_get_meta($mdir, $filename) // {};
+   my $file = $mdir->catfile($filename);
 
-   $meta->{shared} = $value ? TRUE : FALSE;
-   $self->_remove_meta($file);
-   $self->add_meta($default_owner, $basedir, $filename, $meta);
-   return $value;
+   $meta->{owner} //= $default->{owner}
+      if $default && defined $default->{owner} && !defined $meta->{owner};
+
+   $meta->{shared} = $default->{shared} ? TRUE : FALSE;
+   $self->remove_meta($file);
+   $self->add_meta($path, $filename, $meta);
+
+   return $meta->{shared};
 }
 
 sub share_file {
@@ -178,21 +213,28 @@ sub _fields {
    };
 }
 
+sub _get_linkpath {
+   my ($self, $path) = @_;
+
+   return $self->share->catfile($path->abs2rel($self->directory));
+}
+
 my $cache = {};
 
 sub _get_meta {
-   my ($self, $mdir, $filename) = @_;
+   my ($self, $directory, $filename) = @_;
 
-   my $dfile = $mdir->catfile('.directory');
-   my $meta  = {};
+   my $dfile = $directory->catfile('.directory');
 
    return unless $dfile->exists;
 
    my $mtime = $dfile->stat->{mtime};
-   my $dname = $mdir->as_string;
+   my $dname = $directory->as_string;
 
    return $cache->{$dname}->{$filename} if exists $cache->{$dname}
        && $mtime == $cache->{$dname}->{_mtime};
+
+   my $meta = {};
 
    for my $line ($dfile->getlines) {
       my $fields = { %{$self->_fields($line)} };
@@ -205,33 +247,6 @@ sub _get_meta {
    $cache->{$dname} = $meta;
 
    return $meta->{$filename};
-}
-
-sub _get_linkpath {
-   my ($self, $path) = @_;
-
-   my $sharedir = $self->share;
-   my $relpath  = $path->abs2rel($self->directory);
-
-   return $sharedir->catfile($relpath);
-}
-
-sub _remove_meta {
-   my ($self, $from) = @_;
-
-   my $dfile = $from->parent->catfile('.directory');
-
-   return unless $dfile->exists;
-
-   my $lines = join NUL, grep {
-      my $fields = $self->_fields($_);
-
-      $fields->{name} ne $from->basename ? TRUE : FALSE
-   } $dfile->getlines;
-
-   $dfile->buffer($lines)->write;
-   $dfile->flush;
-   return;
 }
 
 # Private functions
