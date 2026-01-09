@@ -9,18 +9,25 @@ with 'Web::Components::ReverseMap';
 has '+moniker' => default => 'z_root';
 
 sub dispatch_request { build_routes
-   'GET|POST + /api/**.* + ?*' => 'api/root/dispatch',
+   'GET      + /api/diagram/*/preference + ?*'    => 'api/diagram/preference',
+   'GET      + /api/form/*/field/*/validate + ?*' => 'api/form/field/validate',
+   'GET      + /api/messages/collect + ?*'        => 'api/collect_messages',
+   'POST     + /api/run/*/create_event + ?*'      => 'api/runid/create_event',
+   'POST     + /api/session/*/create_job + ?*'    => 'api/sessionid/create_job',
+   'GET      + /api/object/*/fetch + ?*'          => 'api/object/fetch',
+   'POST     + /api/table/*/action + ?*'          => 'api/table/action',
+   'GET|POST + /api/table/*/preference + ?*'      => 'api/table/preference',
 
-   'GET      + /job/*/history/run/* | /job/*/history/run + ?*'
-                                                   => 'history/root/base/view',
-   'GET      + /job/*/history | /job/history + ?*' => 'history/root/base/list',
-
-   'GET|POST + /job/create + ?*'   => 'job/root/base/create',
-   'GET|POST + /job/select + ?*'   => 'job/root/base/select',
-   'POST     + /job/*/delete + ?*' => 'job/root/base/delete',
-   'GET|POST + /job/*/edit + ?*'   => 'job/root/base/edit',
-   'GET      + /job/* + ?*'        => 'job/root/base/view',
-   'GET      + /job + ?*'          => 'job/root/base/list',
+   'GET|POST + /job/create + ?*'          => 'job/root/base/create',
+   'GET      + /job/history + ?*'         => 'history/root/base/list',
+   'GET|POST + /job/select + ?*'          => 'job/root/base/select',
+   'POST     + /job/*/delete + ?*'        => 'job/root/base/delete',
+   'GET|POST + /job/*/edit + ?*'          => 'job/root/base/edit',
+   'GET      + /job/*/history + ?*'       => 'history/root/jobid/joblist',
+   'GET      + /job/*/run/*/history + ?*' => 'history/root/jobid/runid/runview',
+   'GET      + /job/*/run/history + ?*'   => 'history/root/jobid/view',
+   'GET      + /job/* + ?*'               => 'job/root/base/view',
+   'GET      + /job + ?*'                 => 'job/root/base/list',
 
    'GET|POST + /state/*/edit + ?*' => 'state/root/base/edit',
    'GET      + /state        + ?*' => 'state/root/base/view',

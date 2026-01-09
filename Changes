@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - API rewrite
           - Finished FileMeta signature improvements
           - Better object model form FileMeta
           - Configure documentation through the Model

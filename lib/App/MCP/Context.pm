@@ -67,18 +67,6 @@ has 'time_zone' =>
 
 has 'views' => is => 'ro', isa => HashRef, default => sub { {} };
 
-has '_api_routes' =>
-   is      => 'lazy',
-   isa     => HashRef,
-   default => sub {
-      my $self   = shift;
-      my $models = $self->models;
-
-      return {} unless exists $models->{api};
-
-      return $models->{api}->can('routes') ? $models->{api}->routes : {};
-   };
-
 has '_stash' =>
    is      => 'lazy',
    isa     => HashRef,
@@ -229,8 +217,6 @@ sub view {
 # Private methods
 sub _action_path2uri {
    my ($self, $action) = @_;
-
-   return $self->_api_routes->{$action} if exists $self->_api_routes->{$action};
 
    for my $controller (keys %{$self->controllers}) {
       my $map = $self->controllers->{$controller}->action_path_map;

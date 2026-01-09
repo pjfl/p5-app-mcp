@@ -12,9 +12,9 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+name'         => default => 'Login';
 has '+info_message' => default => 'Stop! You have your papers?';
 has '+item_class'   => default => 'User';
+has '+name'         => default => 'Login';
 has '+title'        => default => 'Login';
 
 has_field 'name' =>
@@ -27,9 +27,10 @@ has_field 'name' =>
    title        => 'Enter your user name or email address';
 
 has_field 'password' =>
-   type      => 'Password',
-   label_top => TRUE,
-   required  => TRUE;
+   type         => 'Password',
+   autocomplete => TRUE,
+   label_top    => TRUE,
+   required     => TRUE;
 
 has_field 'auth_code' =>
    type          => 'Digits',
@@ -53,7 +54,7 @@ has_field 'password_reset' =>
    disabled      => TRUE,
    element_attr  => { 'data-field-depends' => ['user_name'] },
    html_name     => 'submit',
-   label         => 'Forgot Password?',
+   label         => 'Reset Password',
    title         => 'Send password reset email',
    value         => 'password_reset',
    wrapper_class => ['input-button expand'];
@@ -90,7 +91,7 @@ after 'after_build_fields' => sub {
    my $showif_fields    = ['auth_code','totp_reset'];
    my $unrequire_fields = ['auth_code', 'password'];
 
-   my $action  = 'api/object_fetch';
+   my $action  = 'api/fetch';
    my $params  = { class => 'User', property => 'enable_2fa' };
    my $uri     = $context->uri_for_action($action, ['property'], $params);
    my $options = { id => 'user_name', url => "${uri}" };

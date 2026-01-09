@@ -204,14 +204,14 @@ after 'after_build_fields' => sub {
       icons    => $self->_icons,
       target   => 'parent_name',
       title    => 'Select Parent',
-      url      => $selector
+      url      => $selector,
    });
 
    $self->field('parent_name')->selector("${modal}.createSelector(${args})");
    return;
 };
 
-sub validate {
+before 'update_model' => sub {
    my $self = shift;
 
    if ($self->item) { $self->field('owner')->value($self->item->owner) }
@@ -229,7 +229,7 @@ sub validate {
    $perms->value(oct $perms->value);
 
    return;
-}
+};
 
 use namespace::autoclean -except => META;
 

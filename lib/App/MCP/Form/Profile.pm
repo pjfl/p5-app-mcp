@@ -162,7 +162,7 @@ after 'after_build_fields' => sub {
    return;
 };
 
-sub validate {
+sub update_model {
    my $self   = shift;
    my $user   = $self->user;
    my $value  = $user->profile_value;

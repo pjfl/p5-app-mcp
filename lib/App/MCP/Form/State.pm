@@ -9,7 +9,7 @@ use App::MCP::Workflow;
 use Moo;
 use HTML::Forms::Moo;
 
-extends 'HTML::Forms::Model::DBIC';
+extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
 has '+do_form_wrapper'    => default => FALSE;
@@ -49,6 +49,10 @@ sub options_signal {
    return [ map { $_, _to_label($_) } sort map { $_->name } @transitions ];
 }
 
+has_field 'submit' =>
+   type          => 'Button',
+   wrapper_class => ['input-button', 'inline', 'right'];
+
 has_field 'view' =>
    type          => 'Link',
    label         => 'View',
@@ -60,10 +64,6 @@ has_field 'history' =>
    label         => 'History',
    element_class => ['form-button pageload'],
    wrapper_class => ['input-button', 'inline'];
-
-has_field 'submit' =>
-   type          => 'Button',
-   wrapper_class => ['input-button', 'inline', 'right'];
 
 after 'after_build_fields' => sub {
    my $self       = shift;
@@ -92,11 +92,8 @@ after 'after_build_fields' => sub {
    return;
 };
 
-sub validate {
-   my $self = shift;
-
-   return unless $self->validated;
-
+sub update_model {
+   my $self    = shift;
    my $context = $self->context;
    my $signal  = $self->field('signal')->value;
    my $args    = { job_id => $self->item->id, transition => $signal };

@@ -28,7 +28,7 @@ sub base : Auth('none') {
 sub user : Auth('none') {
    my ($self, $context, $id_or_name) = @_;
 
-   $self->_stash_user($context, $id_or_name) if $id_or_name;
+   $self->_stash_user($context, $id_or_name);
    $context->stash('nav')->finalise;
    return;
 }
@@ -168,7 +168,7 @@ sub password : Auth('none') Nav('Change Password') {
    my $options = { context => $context, item => $user, log => $self->log };
    my $form    = $self->new_form('ChangePassword', $options);
 
-   if ($form->process( posted => $context->posted )) {
+   if ($form->process(posted => $context->posted)) {
       my $default = $context->uri_for_action($self->config->default_action);
       my $message = 'User [_1] changed password';
 

@@ -11,24 +11,59 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
+has '+form_wrapper_class' => default => sub { ['narrow'] };
+has '+name'               => default => 'Register';
+has '+info_message'       => default => 'Answer the registration questions';
+has '+item_class'         => default => 'User';
+has '+title'              => default => 'Registration Request';
+
 has 'config' => is => 'lazy', default => sub { shift->context->config };
+
+has 'resultset' =>
+   is      => 'lazy',
+   default => sub {
+      my $self = shift;
+
+      return $self->context->model($self->item_class);
+   };
 
 with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::SendMessage';
 
-has '+name'         => default => 'Register';
-has '+title'        => default => 'Registration Request';
-has '+info_message' => default => 'Answer the registration questions';
-has '+item_class'   => default => 'User';
-has '+no_update'    => default => TRUE;
+has_field 'user_name' =>
+   label               => 'User Name',
+   required            => TRUE,
+   validate_inline     => TRUE,
+   validate_when_empty => TRUE;
 
-has_field 'user_name' => label => 'User Name', required => TRUE;
+sub validate_user_name {
+   my $self = shift;
+   my $name = $self->field('user_name');
+
+   $name->add_error("User name '[_1]' too short", $name->value)
+      if length $name->value < $self->config->user->{min_name_len};
+
+   $name->add_error("User name '[_1]' not unique", $name->value)
+      if $self->resultset->find({ user_name => $name->value });
+
+   return;
+}
 
 has_field 'email' =>
    type                => 'Email',
    required            => TRUE,
    validate_inline     => TRUE,
    validate_when_empty => TRUE;
+
+sub validate_email {
+   my $self  = shift;
+   my $email = $self->field('email');
+
+   $email->add_error("Email address '[_1]' not unique", $email->value)
+      if $self->resultset->find({ email => $email->value });
+
+   return;
+}
 
 has_field 'submit' => type => 'Button';
 
@@ -40,27 +75,12 @@ after 'after_build_fields' => sub {
    return;
 };
 
-sub validate {
-   my $self   = shift;
-   my $rs     = $self->context->model($self->item_class);
-   my $config = $self->config;
-   my $name   = $self->field('user_name');
-   my $email  = $self->field('email');
+sub update_model {
+   my $self  = shift;
+   my $name  = $self->field('user_name');
+   my $email = $self->field('email');
 
-   $name->add_error("User name '[_1]' not unique", $name->value)
-      if $rs->find({ name => $name->value });
-
-   $name->add_error("User name '[_1]' too short", $name->value)
-      if length $name->value < $config->user->{min_name_len};
-
-   $email->add_error('Email address [_1] not unique', [$email->value])
-      if $rs->find({ email => $email->value });
-
-   return if $self->result->has_errors;
-
-   try {
-      $self->context->stash(job => $self->_create_email($name, $email));
-   }
+   try { $self->context->stash(job => $self->_create_email($name, $email)) }
    catch_class [
       '*' => sub {
          $self->add_form_error($_);
@@ -75,11 +95,10 @@ sub _create_email {
    my ($self, $name, $email) = @_;
 
    my $token   = create_token;
-   my $context = $self->context;
-   my $link    = $context->uri_for_action('misc/register', [$token]);
+   my $link    = $self->context->uri_for_action('misc/register', [$token]);
    my $passwd  = substr create_token, 0, 12;
    my $options = {
-      application => $context->config->name,
+      application => $self->config->name,
       email       => $email->value,
       link        => "${link}",
       password    => $passwd,
@@ -89,7 +108,7 @@ sub _create_email {
       username    => $name->value,
    };
 
-   return $self->send_message($context, $token, $options);
+   return $self->send_message($self->context, $token, $options);
 }
 
 use namespace::autoclean -except => META;

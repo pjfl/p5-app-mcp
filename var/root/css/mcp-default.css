@@ -2044,7 +2044,7 @@ form.classic .input-hidden.input-error .alert-error {
   max-width: 18rem;
 }
 form.classic .input-immutable.documentation {
-  height: 70vh;
+  height: 80vh;
   overflow-y: auto;
   overscroll-behavior-inline: contain;
   scroll-behavior: smooth;

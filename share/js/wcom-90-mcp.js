@@ -69,9 +69,9 @@ WCom.MCP.StateDiagram = (function() {
                dragConstraints: { top: 56, left: 72 },
                dropCallback: function() {
                   const { top, left } = modal.position();
-                  positionAbsolute.y = Math.trunc(top);
-                  positionAbsolute.x = Math.trunc(left);
-                  prefs.set({ positionAbsolute });
+                  prefs.set({ positionAbsolute:
+                              { x: Math.trunc(left), y: Math.trunc(top) }
+                  });
                }.bind(modal),
                icons: this.diagram.icons,
                id: 'job_state_modal',

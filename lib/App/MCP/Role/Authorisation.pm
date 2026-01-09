@@ -31,6 +31,26 @@ sub is_authorised {
    return FALSE;
 }
 
+sub method_args {
+   my ($self, $context, $action, $uri_args) = @_;
+
+   my $captures = _get_captures($context, $action);
+
+   return $uri_args unless $captures;
+
+   my $method_args = [];
+
+   for (1 .. $captures) {
+      my $arg = shift @{$uri_args};
+
+      last unless defined $arg;
+
+      push @{$method_args}, $arg;
+   }
+
+   return $method_args;
+}
+
 # Private methods
 sub _redirect2login {
    my ($self, $context) = @_;
@@ -62,6 +82,18 @@ sub _get_action_auth {
    my $attr = eval { $context->get_attributes($action) };
 
    return $attr->{Auth}->[-1] if $attr && defined $attr->{Auth};
+
+   return;
+}
+
+sub _get_captures {
+   my ($context, $action) = @_;
+
+   return unless $action;
+
+   my $attr = eval { $context->get_attributes($action) };
+
+   return $attr->{Capture}->[-1] if $attr && defined $attr->{Capture};
 
    return;
 }

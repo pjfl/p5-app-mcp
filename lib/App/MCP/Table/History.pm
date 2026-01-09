@@ -9,7 +9,7 @@ with    'HTML::StateTable::Role::Configurable';
 
 has '+caption' => default => 'Job History List';
 
-has '+configurable_action' => default => 'api/table_preference';
+has '+configurable_action' => default => 'api/preference';
 
 has '+configurable_control_location' => default => 'TopRight';
 
@@ -51,7 +51,7 @@ has_column 'runid' =>
       my $context = $self->table->context;
       my $args    = [$self->result->job_id, $self->result->runid];
 
-      return $context->uri_for_action('history/view', $args);
+      return $context->uri_for_action('history/runview', $args);
    };
 
 has_column 'started' => cell_traits => ['DateTime'];

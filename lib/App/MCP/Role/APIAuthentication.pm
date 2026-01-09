@@ -111,6 +111,25 @@ sub exchange_keys : Auth('none') {
    return;
 }
 
+sub get_session {
+   my ($self, $id) = @_;
+
+   throw Unspecified, ['session id'] unless $id;
+
+   my $session = $Sessions->{$id}
+      or throw 'Session [_1 ] not found', [$id], rv => HTTP_UNAUTHORIZED;
+   my $max_age = $session->{max_age};
+   my $now     = time;
+
+   if ($max_age and $now - $session->{last_used} > $max_age) {
+      delete $Sessions->{$id};
+      throw 'Session [_1] expired', [$id], rv => HTTP_UNAUTHORIZED;
+   }
+
+   $session->{last_used} = $now;
+   return $session;
+}
+
 # Private methods
 sub _find_or_create_session {
    my ($self, $user) = @_;
@@ -144,25 +163,6 @@ sub _find_user_from {
    throw AccountInactive, [$self->name] unless $user->active;
 
    return $user;
-}
-
-sub _get_session {
-   my ($self, $id) = @_;
-
-   throw Unspecified, ['session id'] unless $id;
-
-   my $session = $Sessions->{$id}
-      or throw 'Session [_1 ] not found', [$id], rv => HTTP_UNAUTHORIZED;
-   my $max_age = $session->{max_age};
-   my $now     = time;
-
-   if ($max_age and $now - $session->{last_used} > $max_age) {
-      delete $Sessions->{$id};
-      throw 'Session [_1] expired', [$id], rv => HTTP_UNAUTHORIZED;
-   }
-
-   $session->{last_used} = $now;
-   return $session;
 }
 
 1;

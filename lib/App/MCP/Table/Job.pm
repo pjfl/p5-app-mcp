@@ -13,7 +13,7 @@ with    'HTML::StateTable::Role::Downloadable';
 
 has '+caption' => default => 'Jobs List';
 
-has '+configurable_action' => default => 'api/table_preference';
+has '+configurable_action' => default => 'api/preference';
 
 has '+configurable_control_location' => default => 'TopRight';
 
