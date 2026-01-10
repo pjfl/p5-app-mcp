@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds API logger endpoint
           - API rewrite
           - Finished FileMeta signature improvements
           - Better object model form FileMeta

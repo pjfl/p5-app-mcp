@@ -51,6 +51,7 @@ sub root : Auth('none') {
    my $nav     = Web::Components::Navigation->new({
       context       => $context,
       footer_action => 'misc/footer',
+      logger_action => 'api/logger',
       model         => $self,
    });
 

@@ -11,6 +11,7 @@ has '+moniker' => default => 'z_root';
 sub dispatch_request { build_routes
    'GET      + /api/diagram/*/preference + ?*'    => 'api/diagram/preference',
    'GET      + /api/form/*/field/*/validate + ?*' => 'api/form/field/validate',
+   'POST     + /api/level/*/log + ?*'             => 'api/loglevel/logger',
    'GET      + /api/messages/collect + ?*'        => 'api/collect_messages',
    'POST     + /api/run/*/create_event + ?*'      => 'api/runid/create_event',
    'POST     + /api/session/*/create_job + ?*'    => 'api/sessionid/create_job',

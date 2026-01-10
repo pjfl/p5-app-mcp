@@ -61,10 +61,11 @@ has 'redis' =>
     is      => 'lazy',
     isa     => class_type('Redis'),
     default => sub {
-      my $self   = shift;
-      my $params = { %{$self->config} };
+      my $self = shift;
 
-      throw 'No Redis config' unless scalar keys %{$params};
+      throw 'No Redis config' unless scalar keys %{$self->config};
+
+      my $params = { %{$self->config}, name => $self->client_name };
 
       throw 'No recognisable Redis config' unless exists $params->{sentinel}
          || exists $params->{server} || exists $params->{socket};
@@ -89,10 +90,7 @@ has 'redis' =>
          return TRUE;
       };
 
-      my $r = Redis->new(%{$params});
-
-      $r->client_setname($self->client_name);
-      return $r;
+      return Redis->new(%{$params});
    };
 
 =back
