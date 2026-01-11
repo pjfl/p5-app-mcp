@@ -83,13 +83,13 @@ after 'after_build_fields' => sub {
       $self->field('totp_reset')->add_wrapper_class('hide');
    }
 
-   my $util             = $config->wcom_resources->{form_util};
-   my $change_js        = "${util}.fieldChange";
-   my $showif_js        = "${util}.showIfRequired";
-   my $unrequire_js     = "${util}.unrequire";
-   my $change_fields    = ['login', 'password_reset', 'totp_reset'];
-   my $showif_fields    = ['auth_code','totp_reset'];
-   my $unrequire_fields = ['auth_code', 'password'];
+   my $util        = $config->wcom_resources->{form_util};
+   my $change_js   = "${util}.fieldChange";
+   my $showif_js   = "${util}.showIfRequired";
+   my $unreq_js    = "${util}.unrequire";
+   my $change_flds = ['login', 'password_reset', 'totp_reset'];
+   my $showif_flds = ['auth_code','totp_reset'];
+   my $unreq_flds  = ['auth_code', 'password'];
 
    my $action  = 'api/fetch';
    my $params  = { class => 'User', property => 'enable_2fa' };
@@ -97,25 +97,24 @@ after 'after_build_fields' => sub {
    my $options = { id => 'user_name', url => "${uri}" };
 
    $self->field('name')->element_attr->{javascript} = {
-      onblur  => make_handler($showif_js, $options, $showif_fields),
-      oninput => make_handler($change_js, { id => 'user_name' }, $change_fields)
+      onblur  => make_handler($showif_js, $options, $showif_flds),
+      oninput => make_handler($change_js, { id => 'user_name' }, $change_flds)
    };
 
    $self->field('password')->element_attr->{javascript} = {
-      oninput => make_handler($change_js, { id => 'password' }, $change_fields)
+      oninput => make_handler($change_js, { id => 'password' }, $change_flds)
    };
 
    $self->field('auth_code')->element_attr->{javascript} = {
-      onblur  => make_handler($change_js, { id => 'auth_code' }, $change_fields)
+      onblur  => make_handler($change_js, { id => 'auth_code' }, $change_flds)
    };
 
-   $options = { allowDefault => TRUE };
    $self->field('password_reset')->element_attr->{javascript} = {
-      onclick => make_handler($unrequire_js, $options, $unrequire_fields)
+      onclick => make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds)
    };
 
    $self->field('totp_reset')->element_attr->{javascript} = {
-      onclick => make_handler($unrequire_js, $options, $unrequire_fields)
+      onclick => make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds)
    };
 
    return;

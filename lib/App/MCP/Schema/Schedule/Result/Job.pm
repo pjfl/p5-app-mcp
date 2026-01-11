@@ -14,8 +14,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
                                truncate varchar_data_type );
-use Class::Usul::Cmd::Util qw( is_member );
-use Ref::Util              qw( is_arrayref );
+use Ref::Util              qw( is_arrayref is_plain_hashref );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( throw UnknownJob );
 use Algorithm::Cron;
@@ -336,19 +335,27 @@ sub _is_permitted {
 
    return TRUE if $perms & $mask->[2];
 
-   my $user;
+   my ($group, $owner);
 
-   if (blessed $id_or_user) { $user = $id_or_user }
+   if (blessed $id_or_user) {
+      $owner = $id_or_user->id;
+      $group = $id_or_user->role_id;
+   }
+   elsif (is_plain_hashref $id_or_user) {
+      $owner = $id_or_user->{owner};
+      $group = $id_or_user->{group};
+   }
    else {
       my $user_rs = $self->result_source->schema->resultset('User');
+      my $user    = $user_rs->find_by_key($id_or_user, { prefetch => 'role' });
 
-      $user = $user_rs->find($id_or_user, { prefetch => 'role' });
+      $owner = $user->id;
+      $group = $user->role_id;
    }
 
-   return TRUE if $perms & $mask->[1]
-      and is_member($self->group, map { $_->id } $user->role);
+   return TRUE if $perms & $mask->[1] and $self->group == $group;
 
-   return TRUE if $perms & $mask->[0] and $self->owner == $user->id;
+   return TRUE if $perms & $mask->[0] and $self->owner == $owner;
 
    return FALSE;
 }

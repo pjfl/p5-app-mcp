@@ -13,7 +13,7 @@ sub find_by_key {
 
    return $self->find($role_key, $options) if $role_key =~ m{ \A \d+ \z }mx;
 
-   return $self->search({ 'rolename' => $role_key }, $options)->single;
+   return $self->search({ 'role_name' => $role_key }, $options)->single;
 }
 
 1;

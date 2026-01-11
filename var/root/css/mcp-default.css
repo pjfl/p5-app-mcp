@@ -1290,7 +1290,7 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.3
+ * @version 0.2.4
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
  * @version 0.13.38
@@ -2126,15 +2126,16 @@ form.classic .input-immutable.documentation .entry:has(> .level_3) > .key {
 form.classic .input-immutable.documentation .object:has(.entry > .object .level_3) > .entry .key {
   min-width: 7rem;
 }
+form.classic .input-immutable a {
+  color: seagreen;
+  text-decoration: none;
+}
 form.classic .input-immutable h1,
 form.classic .input-immutable h2,
 form.classic .input-immutable h3,
 form.classic .input-immutable h4,
 form.classic .input-immutable h5 {
   margin: 0.5rem 0;
-}
-form.classic .input-immutable a {
-  color: seagreen;
 }
 form.classic .input-immutable code,
 form.classic .input-immutable p {
@@ -2920,6 +2921,7 @@ body {
 .state-table table:not(.object-view, .preference-columns) {
   border-collapse: collapse;
   margin: 0.25rem auto 0.5rem;
+  min-width: 15rem;
   position: relative;
 }
 .state-table table:not(.object-view, .preference-columns) tr {
@@ -2988,6 +2990,9 @@ body {
 .state-table table:not(.object-view, .preference-columns) td.checkbox,
 .state-table table:not(.object-view, .preference-columns) td:has(svg.icon) {
   text-align: center;
+}
+.state-table table:not(.object-view, .preference-columns) td.checkbox {
+  width: 1rem;
 }
 .state-table table:not(.object-view, .preference-columns) td.datetime {
   text-align: right;

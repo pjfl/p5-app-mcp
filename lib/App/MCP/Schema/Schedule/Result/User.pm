@@ -6,8 +6,8 @@ use overload '""' => sub { $_[0]->_as_string },
 use App::MCP::Constants        qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types          qw( Bool HashRef Int Object );
 use App::MCP::Util             qw( base64_encode boolean_data_type
-                                   foreign_key_data_type get_salt new_salt
-                                   serial_data_type random_digest
+                                   create_totp_token foreign_key_data_type
+                                   get_salt new_salt serial_data_type
                                    text_data_type truncate varchar_data_type );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
 use Scalar::Util               qw( blessed );
@@ -148,7 +148,7 @@ sub authenticate {
 
    throw IncorrectPassword, [$self] unless $self->password eq $supplied;
 
-   return TRUE if !$self->totp_secret || $for_update;
+   return TRUE if !$self->enable_2fa || $for_update;
 
    throw Unspecified, ['OTP Code'] unless $code;
 
@@ -170,15 +170,18 @@ sub deactivate {
    my $self = shift; $self->active(FALSE); return $self->update;
 }
 
+sub enable_2fa {
+   my ($self, $value) = @_; return $self->_profile('enable_2fa', $value);
+}
+
 sub encrypt_password {
    my ($self, $password, $stored) = @_;
-
-   my $username = $self->user_name;
 
    if ($password =~ m{ \A \{ 5054 \} }mx
        or (defined $stored and $stored =~ m{ \A \$ 5054 \$ }mx)) {
       $password =~ s{ \A \{ 5054 \} }{}mx;
 
+      my $username = $self->user_name;
       my $salt     = $stored ? get_salt $stored : new_salt '5054', '00';
       my $srp      = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
       my $verifier = $srp->compute_verifier($username, $password, $salt);
@@ -190,10 +193,6 @@ sub encrypt_password {
    my $salt = $stored ? get_salt $stored : new_salt '2a', $lf;
 
    return bcrypt($password, $salt);
-}
-
-sub enable_2fa {
-   my ($self, $value) = @_; return $self->_profile('enable_2fa', $value);
 }
 
 sub execute {
@@ -250,20 +249,21 @@ sub timezone {
    my ($self, $value) = @_; return $self->_profile('timezone', $value);
 }
 
-sub totp_enable {
+sub totp_secret {
    my ($self, $enabled) = @_;
 
-   if ($enabled) {
-      $self->totp_secret(substr random_digest->b64digest, 0, 16)
-         unless $self->totp_secret;
-   }
-   else { $self->totp_secret(NUL) }
+   my $secret = $self->_profile('totp_secret');
 
-   return $self->totp_secret;
-}
+   return $secret unless defined $enabled;
 
-sub totp_secret {
-   my ($self, $value) = @_; return $self->_profile('totp_secret', $value);
+   my $current = $secret ? TRUE : FALSE;
+
+   return $self->_profile('totp_secret', create_totp_token)
+      if $enabled && !$current;
+
+   return $self->_profile('totp_secret', NUL) if $current && !$enabled;
+
+   return $secret;
 }
 
 sub update {

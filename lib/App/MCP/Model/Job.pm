@@ -1,6 +1,7 @@
 package App::MCP::Model::Job;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
+use Unexpected::Types      qw( HashRef );
 use App::MCP::Util         qw( redirect redirect2referer );
 use Unexpected::Functions  qw( UnauthorisedAccess UnknownJob );
 use Moo;
@@ -11,28 +12,35 @@ with    'Web::Components::Role';
 
 has '+moniker' => default => 'job';
 
+has 'role_map' => is => 'ro', isa => HashRef, default => sub { {} };
+
 # Public methods
 sub base : Auth('view') {
+   my ($self, $context) = @_;
+
+   $context->stash('nav')->list('job')->item('job/create')->finalise;
+   return;
+}
+
+sub jobid : Auth('view') Capture(1) {
    my ($self, $context, $jobid) = @_;
+
+   my $options = { prefetch => [qw(parent_box owner_rel group_rel)] };
+   my $job     = $context->model('Job')->find_by_key($jobid, $options);
+
+   return $self->error($context, UnknownJob, [$jobid]) unless $job;
+
+   my $role_id  = $self->_get_role_id($context);
+   my $identity = { owner => $context->session->id, group => $role_id };
+
+   return $self->error($context, UnauthorisedAccess)
+      unless $job->is_readable_by($identity);
+
+   $context->stash(job => $job);
 
    my $nav = $context->stash('nav')->list('job')->item('job/create');
 
-   if ($jobid) {
-      my $options = { prefetch => [qw(parent_box owner_rel group_rel)] };
-      my $job     = $context->model('Job')->find_by_key($jobid, $options);
-
-      return $self->error($context, UnknownJob, [$jobid]) unless $job;
-
-      my $user = $self->_get_user($context);
-
-      return $self->error($context, UnauthorisedAccess)
-         unless $job->is_readable_by($user);
-
-      $context->stash(job => $job, user => $user);
-      $nav->crud('job', $jobid);
-   }
-
-   $nav->finalise;
+   $nav->crud('job', $job->id)->finalise;
    return;
 }
 
@@ -116,8 +124,6 @@ sub remove {
    my $rs    = $context->model('Job');
    my $names = [];
 
-   $context->stash(user => $self->_get_user($context));
-
    for my $job (grep { $_ } map { $rs->find($_) } @{$value->{selector}}) {
       return $self->error($context, UnauthorisedAccess)
          unless $self->_can_update($context, $job);
@@ -161,23 +167,29 @@ sub view : Auth('view') Nav('View Job') {
 sub _can_update {
    my ($self, $context, $job) = @_;
 
-   my $session = $context->session;
-   my $role    = $session->role || NUL;
-   my $user    = $context->stash('user');
+   my $session  = $context->session;
+   my $role     = $session->role || NUL;
+   my $role_id  = $self->_get_role_id($context);
+   my $identity = { owner => $session->id, group => $role_id };
 
    return FALSE if $role eq 'view';
    return TRUE  if $role eq 'admin' || $role eq 'manager';
-   return TRUE  if $user && $job->is_writable_by($user);
+   return TRUE  if $job->is_writable_by($identity);
    return FALSE;
 }
 
-sub _get_user {
+sub _get_role_id {
    my ($self, $context) = @_;
 
-   my $options = { prefetch => 'role' };
-   my $user_id = $context->session->id;
+   my $role_name = $context->session->role or return 0;
 
-   return $context->model('User')->find_by_key($user_id, $options);
+   return $self->role_map->{$role_name} if exists $self->role_map->{$role_name};
+
+   my $role = $context->model('Role')->find_by_key($role_name);
+
+   $self->role_map->{$role_name} = $role->id if $role;
+
+   return $role ? $role->id : 0;
 }
 
 1;

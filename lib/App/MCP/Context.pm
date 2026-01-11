@@ -16,7 +16,7 @@ use Moo;
 
 with 'App::MCP::Role::Schema';
 
-has 'action' => is => 'ro', isa => Str, predicate => 'has_action';
+has 'action' => is => 'rw', isa => Str, predicate => 'has_action';
 
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 

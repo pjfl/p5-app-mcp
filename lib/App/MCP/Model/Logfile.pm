@@ -29,7 +29,7 @@ sub base : Auth('admin') {
 }
 
 sub clear_cache : Auth('admin') {
-   my ($self, $context, $api_ns, $logfile) = @_;
+   my ($self, $context, $logfile) = @_;
 
    return $self->error($context, Unspecified, ['logfile']) unless $logfile;
 

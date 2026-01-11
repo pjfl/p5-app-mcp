@@ -93,6 +93,8 @@ sub footer : Auth('none') {
 sub login : Auth('none') Nav('Login') {
    my ($self, $context) = @_;
 
+   $context->action('misc/login');
+
    my $options = { context => $context, log => $self->log };
    my $form    = $self->new_form('Login', $options);
 
@@ -181,6 +183,8 @@ sub password : Auth('none') Nav('Change Password') {
 
 sub password_reset : Auth('none') {
    my ($self, $context, $token) = @_;
+
+   $context->action('misc/password_reset');
 
    return unless $self->verify_form_post($context);
 

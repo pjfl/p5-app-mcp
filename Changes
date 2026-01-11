@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Model updates using Capture
           - Adds API logger endpoint
           - API rewrite
           - Finished FileMeta signature improvements
