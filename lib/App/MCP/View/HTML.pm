@@ -1,7 +1,7 @@
 package App::MCP::View::HTML;
 
 use HTML::Forms::Constants qw( TRUE );
-use App::MCP::Util         qw( dt_from_epoch dt_human encode_for_html );
+use App::MCP::Util         qw( dt_from_epoch dt_human encode_for_html includes);
 use Encode                 qw( encode );
 use HTML::Entities         qw( encode_entities );
 use HTML::Forms::Util      qw( process_attrs );
@@ -49,7 +49,8 @@ sub _add_tt_functions {
 
    weaken $context;
 
-   my $tz = $context->time_zone;
+   my $tz       = $context->time_zone;
+   my $features = [@{$context->session->features}];
 
    return {
       %{$context->stash},
@@ -58,6 +59,7 @@ sub _add_tt_functions {
       dt_user         => sub { my $dt = shift; $dt->set_time_zone($tz); $dt },
       encode_entities => \&encode_entities,
       encode_for_html => \&encode_for_html,
+      feature         => sub { includes shift, $features },
       process_attrs   => \&process_attrs,
       status_message  => \&status_message,
       uri_for         => sub { $context->request->uri_for(@_) },

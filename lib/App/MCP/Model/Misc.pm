@@ -120,8 +120,8 @@ sub login_dispatch : Auth('none') {
    my $params = $context->get_body_parameters;
 
    if ($params->{_submit} && $params->{_submit} eq 'password_reset') {
-      $self->_stash_user($context, $params->{user_name});
-      $self->password_reset($context);
+      $self->password_reset($context)
+         if $self->_stash_user($context, $params->{user_name});
       return;
    }
 
@@ -318,7 +318,7 @@ sub _stash_user {
    return $self->error($context, UnknownUser, [$id_or_name]) unless $user;
 
    $context->stash(user => $user);
-   return;
+   return TRUE;
 }
 
 1;

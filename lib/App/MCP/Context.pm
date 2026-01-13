@@ -76,11 +76,10 @@ has '_stash' =>
       my $skin   = $self->session->skin || $self->config->skin;
 
       return {
-         bling              => $self->session->bling ? 'bling' : NUL,
          chartlibrary       => 'js/highcharts.js',
          favicon            => 'img/favicon.ico',
+         features           => $self->session->features,
          javascript         => "js/${prefix}.js",
-         relative_colour    => $self->session->rel_colour ? 'relative' : NUL,
          session_updated    => $self->session->updated,
          skin               => $skin,
          stylesheet         => "css/${prefix}-${skin}.css",

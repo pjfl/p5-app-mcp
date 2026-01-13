@@ -11,6 +11,7 @@ use Digest                     qw( );
 use English                    qw( -no_match_vars );
 use File::DataClass::IO        qw( io );
 use HTML::Entities             qw( encode_entities );
+use List::Util                 qw( any );
 use JSON::MaybeXS              qw( encode_json );
 use Scalar::Util               qw( weaken );
 use Time::Duration             qw( concise duration );
@@ -23,8 +24,8 @@ use DateTime::Format::Human;
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
    concise_duration create_token create_totp_token created_timestamp_data_type
    distname dt_from_epoch dt_human encode_for_html enumerated_data_type
-   foreign_key_data_type formpost get_hashed_pw get_salt new_salt new_uri
-   nullable_foreign_key_data_type nullable_varchar_data_type
+   foreign_key_data_type formpost get_hashed_pw get_salt includes new_salt
+   new_uri nullable_foreign_key_data_type nullable_varchar_data_type
    numerical_data_type numerical_id_data_type redirect redirect2referer
    serial_data_type set_on_create_datetime_data_type strip_parent_name
    terminate text_data_type trigger_input_handler trigger_output_handler
@@ -248,6 +249,12 @@ sub get_hashed_pw ($) {
    my @parts = split m{ [\$] }mx, $_[0];
 
    return substr $parts[-1], 22;
+}
+
+sub includes ($$) {
+   my ($wanted, $list) = @_;
+
+   return (any { $_ eq $wanted } @{$list}) ? $wanted : q();
 }
 
 sub get_salt ($) {

@@ -27,10 +27,10 @@ sub validate_user_name {
    my $self = shift;
    my $name = $self->field('user_name');
 
-   $name->add_error("User name '[_1]' too short", $name->value)
+   $name->add_error("User name '[_1]' too short", $name->value || '<empty>')
       if length $name->value < $self->config->user->{min_name_len};
 
-   $name->add_error("User name '[_1]' not unique", $name->value)
+   $name->add_error("User name '[_1]' not unique", $name->value || '<empty>')
       if $self->resultset->find({ user_name => $name->value });
 
    return;

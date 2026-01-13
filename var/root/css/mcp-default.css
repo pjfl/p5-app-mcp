@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.38
+ * @version 0.13.40
  */
 /* Breaks */
 /* Colours */
@@ -8,10 +8,10 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.38
+ * @version 0.13.40
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.38
+ * @version 0.13.40
  */
 /* Breaks */
 /* Colours */
@@ -66,7 +66,7 @@ body.relative {
   --bg-lighter: hsl(from var(--bg-base) h s calc(l * 1.07));
   --bg-light: hsl(from var(--bg-base) h s calc(l * 1.04));
   --bg-dark: hsl(from var(--bg-base) h s calc(l * 0.9));
-  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.6));
+  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.7));
 }
 body.dark-theme form.classic label,
 body.dark-theme form.classic legend {
@@ -1290,10 +1290,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.4
+ * @version 0.2.5
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.38
+ * @version 0.13.40
  */
 /* Breaks */
 /* Colours */
@@ -1325,9 +1325,10 @@ form.classic {
     --angle: 360deg;
   }
 }
-form.classic.bling::after {
+form.classic.radar::before,
+form.classic.radar::after {
   animation: 3s spin linear infinite;
-  background: conic-gradient(from var(--angle), transparent 70%, var(--bg-base));
+  background: conic-gradient(from var(--angle), transparent 90%, var(--bg-base));
   border-radius: 5px;
   content: '';
   height: 100%;
@@ -1338,11 +1339,79 @@ form.classic.bling::after {
   width: 100%;
   z-index: -1;
 }
-form.classic.bling:focus-within::after {
-  background: conic-gradient(from var(--angle), transparent 70%, seagreen);
+form.classic.radar::after {
+  animation-delay: 1.5s;
 }
-form.classic.bling .form-wrapper {
+form.classic.radar:focus-within::before,
+form.classic.radar:focus-within::after {
+  background: conic-gradient(from var(--angle), transparent 90%, var(--bg-dark));
+}
+form.classic.radar .form-wrapper {
   background: var(--bg-lighter);
+}
+form.classic.droplets {
+  --shadow-darkest-semitrans: hsl(from var(--bg-darkest) h s l / 0.1);
+  --shadow-lightest-semitrans: hsl(from var(--bg-lightest) h s l / 0.9);
+  border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
+  box-shadow: inset 20px 20px 20px var(--shadow-darkest-semitrans), 25px 35px 20px var(--shadow-darkest-semitrans), 25px 30px 30px var(--shadow-darkest-semitrans), inset -20px -20px 25px var(--shadow-lightest-semitrans);
+  height: 20rem;
+  transform: translate(-10rem, 3rem);
+  transition: 0.25s;
+  width: 20rem;
+}
+form.classic.droplets::before,
+form.classic.droplets::after {
+  border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
+}
+form.classic.droplets:hover {
+  border-radius: 50%;
+}
+form.classic.droplets:hover::before,
+form.classic.droplets:hover::after {
+  border-radius: 50%;
+}
+form.classic.droplets .droplet {
+  align-items: center;
+  background: var(--bg-dark);
+  border-radius: 44% 56% 65% 35% / 57% 58% 42% 43%;
+  box-shadow: inset 10px 10px 10px var(--shadow-darkest-semitrans), 15px 25px 10px var(--shadow-darkest-semitrans), 15px 20px 20px var(--shadow-darkest-semitrans), inset -10px -10px 15px var(--shadow-lightest-semitrans);
+  color: whitesmoke;
+  display: flex;
+  font-size: 0.8em;
+  height: 7rem;
+  justify-content: center;
+  letter-spacing: 0.01em;
+  line-height: 1.5rem;
+  padding: 0 0.5rem;
+  position: absolute;
+  text-align: center;
+  text-decoration: none;
+  transition: 0.25s;
+}
+form.classic.droplets .droplet:hover {
+  border-radius: 50%;
+}
+form.classic.droplets .droplet:nth-child(1 of .droplet) {
+  offset: circle(17rem) calc(-9% + (0 * 9%)) 0deg;
+}
+form.classic.droplets .droplet:nth-child(2 of .droplet) {
+  offset: circle(17rem) calc(-9% + (1 * 9%)) 0deg;
+}
+form.classic.droplets .droplet:nth-child(3 of .droplet) {
+  offset: circle(17rem) calc(-9% + (2 * 9%)) 0deg;
+}
+form.classic.droplets .form-wrapper {
+  border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
+  height: 19rem;
+  padding: 2rem 3.5rem 0 0;
+  transform: translateY(0.5rem);
+  width: 19rem;
+}
+form.classic.droplets .form-wrapper .alert-info {
+  text-align: right;
+}
+form.classic.droplets .input-field.floating {
+  justify-content: right;
 }
 form.classic.narrow,
 form.classic .form-wrapper.narrow {
@@ -1365,6 +1434,7 @@ form.classic .alert {
   font-size: 0.8rem;
 }
 form.classic .compound-field {
+  align-items: flex-start;
   display: flex;
   column-gap: 0.5rem;
   flex-wrap: wrap;
@@ -1384,7 +1454,7 @@ form.classic .compound-field input:not([type=submit]) {
   max-width: 12rem !important;
 }
 form.classic .compound-field .alert-info {
-  background: var(--bg-dark);
+  background: var(--bg-darker);
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
   left: calc(var(--label-width) + 0.5rem);
@@ -1406,9 +1476,6 @@ form.classic .form-wrapper {
   margin: 0;
   padding: 0 1rem 0.5rem;
   position: relative;
-}
-form.classic .form-wrapper:has(.input-field.floating) .input-button button {
-  margin-top: 1rem;
 }
 form.classic .form-wrapper .form-title {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
@@ -1478,7 +1545,7 @@ form.classic .input-field.floating input.digit:last-child {
   border-top-right-radius: 50px;
 }
 form.classic .input-field.hide {
-  display: none !important;
+  display: none;
   opacity: 0;
 }
 form.classic .input-field.inline:not(.hide) {
@@ -1597,7 +1664,7 @@ form.classic .input-field select.select-multiple option {
   padding: 0.125rem;
 }
 form.classic .input-field select.select-multiple option[selected=selected] {
-  background: var(--bg-base);
+  background: var(--bg-dark);
 }
 form.classic .input-field textarea {
   box-sizing: content-box;
@@ -1613,18 +1680,26 @@ form.classic .input-field textarea:focus {
 }
 form.classic .input-field .alert {
   border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
   display: block;
   grid-area: alert;
   max-width: 18rem;
   min-width: 10rem;
   padding: 0.4375rem 0.5rem 0.3175rem;
 }
-form.classic .input-field .alert-error {
+form.classic .input-field .alert:empty {
+  display: none;
+}
+form.classic .input-field .alert:has(.alert-error) {
   background: lightpink;
-  box-shadow: 3px 3px 3px gray;
+}
+form.classic .input-field .alert:has(.alert-info) {
+  background: var(--bg-dark);
+}
+form.classic .input-field .alert-error {
+  display: inline-block;
 }
 form.classic .input-field .alert-info {
-  background: var(--bg-dark);
   box-shadow: 3px 3px 3px gray;
   margin-left: -2px;
   min-width: 12.5rem;
@@ -1712,6 +1787,20 @@ form.classic .input-button button:hover::before,
 form.classic .input-selector button:hover::before {
   opacity: 1;
 }
+form.classic .data-structure a.form-button[disabled=disabled],
+form.classic .input-button a.form-button[disabled=disabled],
+form.classic .input-selector a.form-button[disabled=disabled],
+form.classic .data-structure button[disabled=disabled],
+form.classic .input-button button[disabled=disabled],
+form.classic .input-selector button[disabled=disabled],
+form.classic .data-structure a.form-button[disabled=disabled]::after,
+form.classic .input-button a.form-button[disabled=disabled]::after,
+form.classic .input-selector a.form-button[disabled=disabled]::after,
+form.classic .data-structure button[disabled=disabled]::after,
+form.classic .input-button button[disabled=disabled]::after,
+form.classic .input-selector button[disabled=disabled]::after {
+  background: var(--button-bg-disabled);
+}
 form.classic .data-structure a.form-button span,
 form.classic .input-button a.form-button span,
 form.classic .input-selector a.form-button span,
@@ -1753,15 +1842,8 @@ form.classic .input-selector button span.icon-wrapper svg {
 form.classic .data-structure a.form-button,
 form.classic .input-button a.form-button,
 form.classic .input-selector a.form-button {
-  padding: 0.0625rem 0.75rem 0.25rem;
-}
-form.classic .data-structure button[disabled=disabled],
-form.classic .input-button button[disabled=disabled],
-form.classic .input-selector button[disabled=disabled],
-form.classic .data-structure button[disabled=disabled]::after,
-form.classic .input-button button[disabled=disabled]::after,
-form.classic .input-selector button[disabled=disabled]::after {
-  background: var(--button-bg-disabled);
+  height: 1.75rem;
+  padding: 0 0.75rem 0.3125rem;
 }
 form.classic .data-structure {
   align-items: flex-start;
@@ -1857,6 +1939,7 @@ form.classic .ds-form .ds-output {
   margin-right: 0.25rem;
 }
 form.classic .ds-form .ds-reorderable {
+  cursor: pointer;
   margin: auto;
   padding-left: 0.5rem;
 }
@@ -1965,8 +2048,11 @@ form.classic .input-button.expand {
   padding-left: 2px;
   padding-right: 2px;
 }
+form.classic .input-button.expand a.form-button,
 form.classic .input-button.expand button {
   flex: 2;
+  text-align: center;
+  margin-top: 1rem;
 }
 form.classic .input-button.left {
   justify-content: left;
@@ -2317,7 +2403,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.1.21
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.38
+ * @version 0.13.40
  */
 /* Breaks */
 /* Colours */
@@ -2838,7 +2924,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.2.28
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.38
+ * @version 0.13.40
  */
 /* Breaks */
 /* Colours */

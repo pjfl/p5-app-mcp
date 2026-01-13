@@ -2,7 +2,7 @@ package App::MCP::Form::Login;
 
 use HTML::Forms::Constants qw( FALSE META TRUE );
 use HTML::Forms::Util      qw( make_handler );
-use App::MCP::Util         qw( redirect );
+use App::MCP::Util         qw( includes redirect );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( catch_class );
 use Try::Tiny;
@@ -30,7 +30,8 @@ has_field 'password' =>
    type         => 'Password',
    autocomplete => TRUE,
    label_top    => TRUE,
-   required     => TRUE;
+   required     => TRUE,
+   title        => 'Enter your password';
 
 has_field 'auth_code' =>
    type          => 'Digits',
@@ -46,28 +47,34 @@ has_field 'login' =>
    element_attr  => { 'data-field-depends' => [qw(user_name password)] },
    html_name     => 'submit',
    label         => 'Login',
-   value         => 'login',
-   wrapper_class => ['input-button expand'];
+   value         => 'login';
+
+has_field 'register' =>
+   type          => 'Link',
+   element_attr  => { 'data-field-depends' => ['!user_name'] },
+   element_class => ['form-button'],
+   label         => 'Register',
+   title         => 'Register for a login account',
+   wrapper_class => ['input-button'];
 
 has_field 'password_reset' =>
    type          => 'Button',
+   allow_default => TRUE,
    disabled      => TRUE,
    element_attr  => { 'data-field-depends' => ['user_name'] },
    html_name     => 'submit',
-   label         => 'Reset Password',
+   label         => 'Password Reset',
    title         => 'Send password reset email',
-   value         => 'password_reset',
-   wrapper_class => ['input-button expand'];
+   value         => 'password_reset';
 
 has_field 'totp_reset' =>
    type          => 'Button',
    disabled      => TRUE,
    element_attr  => { 'data-field-depends' => ['user_name'] },
    html_name     => 'submit',
-   label         => 'Reset OTP',
-   title         => 'Request a TOTP reset',
-   value         => 'totp_reset',
-   wrapper_class => ['input-button expand'];
+   label         => 'OTP Reset',
+   title         => 'Request an OTP reset',
+   value         => 'totp_reset';
 
 after 'after_build_fields' => sub {
    my $self    = shift;
@@ -75,7 +82,6 @@ after 'after_build_fields' => sub {
    my $config  = $context->config;
    my $session = $context->session;
 
-   $self->add_form_element_class('bling') if $session->bling;
    $self->set_form_element_attr('novalidate', 'novalidate');
 
    unless ($session->enable_2fa) {
@@ -87,35 +93,51 @@ after 'after_build_fields' => sub {
    my $change_js   = "${util}.fieldChange";
    my $showif_js   = "${util}.showIfRequired";
    my $unreq_js    = "${util}.unrequire";
-   my $change_flds = ['login', 'password_reset', 'totp_reset'];
+   my $change_flds = [qw(login register password_reset totp_reset)];
    my $showif_flds = ['auth_code','totp_reset'];
    my $unreq_flds  = ['auth_code', 'password'];
 
-   my $action  = 'api/fetch';
    my $params  = { class => 'User', property => 'enable_2fa' };
-   my $uri     = $context->uri_for_action($action, ['property'], $params);
+   my $uri     = $context->uri_for_action('api/fetch', ['property'], $params);
    my $options = { id => 'user_name', url => "${uri}" };
 
    $self->field('name')->element_attr->{javascript} = {
       onblur  => make_handler($showif_js, $options, $showif_flds),
       oninput => make_handler($change_js, { id => 'user_name' }, $change_flds)
    };
-
    $self->field('password')->element_attr->{javascript} = {
       oninput => make_handler($change_js, { id => 'password' }, $change_flds)
    };
-
    $self->field('auth_code')->element_attr->{javascript} = {
       onblur  => make_handler($change_js, { id => 'auth_code' }, $change_flds)
    };
-
    $self->field('password_reset')->element_attr->{javascript} = {
       onclick => make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds)
    };
-
    $self->field('totp_reset')->element_attr->{javascript} = {
       onclick => make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds)
    };
+
+   $uri = $context->uri_for_action('misc/register');
+   $self->field('register')->href($uri->as_string);
+
+   if (includes 'droplets', $session->features) {
+      $self->set_tag('legend', NUL);
+      $self->add_form_element_class('droplets');
+      $self->field('register')->add_wrapper_class('droplet');
+      $self->field('password_reset')->add_wrapper_class('droplet');
+      $self->field('totp_reset')->add_wrapper_class('droplet');
+   }
+   else {
+      $self->field('register')->inactive(TRUE);
+
+      for my $field_name (@{$change_flds}) {
+         $self->field($field_name)->add_wrapper_class('expand');
+      }
+   }
+
+   $self->add_form_element_class('radar')
+      if includes 'radar', $session->features;
 
    return;
 };

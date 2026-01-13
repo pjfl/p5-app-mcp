@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds user features
           - Model updates using Capture
           - Adds API logger endpoint
           - API rewrite
