@@ -92,21 +92,26 @@ sub update_model {
 sub _create_email {
    my ($self, $name, $email) = @_;
 
-   my $token   = create_token;
-   my $link    = $self->context->uri_for_action('misc/register', [$token]);
-   my $passwd  = substr create_token, 0, 12;
-   my $options = {
-      application => $self->config->name,
+   my $token     = create_token;
+   my $config    = $self->config;
+   my $context   = $self->context;
+   my $passwd    = substr create_token, 0, 12;
+   my $link      = $context->uri_for_action('misc/register', [$token]);
+   my $role_name = $config->user->{default_role} // 'view';
+   my $role      = $context->model('Role')->find({ name => $role_name });
+   my $options   = {
+      application => $config->name,
       email       => $email->value,
       link        => "${link}",
       password    => $passwd,
       recipients  => [$email->value],
+      role_id     => $role->id,
       subject     => 'User Registration',
       template    => 'register_user.md',
       username    => $name->value,
    };
 
-   return $self->send_message($self->context, $token, $options);
+   return $self->send_message($context, $token, $options);
 }
 
 use namespace::autoclean -except => META;

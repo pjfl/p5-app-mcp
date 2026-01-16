@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.40
+ * @version 0.13.41
  */
 /* Breaks */
 /* Colours */
@@ -8,10 +8,10 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.40
+ * @version 0.13.41
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.40
+ * @version 0.13.41
  */
 /* Breaks */
 /* Colours */
@@ -43,9 +43,9 @@ body {
   --bg-darker: sandybrown;
   --bg-darkest: hsl(0, 0%, 20%);
   --body-bg: linear-gradient(135deg, transparent, var(--bg-base));
-  --button-bg: linear-gradient(0deg, var(--bg-base), var(--bg-lighter));
-  --button-bg-disabled: linear-gradient(0deg, gainsboro, var(--bg-lighter));
-  --button-bg-highlight: radial-gradient(limegreen, transparent, transparent);
+  --btn-bg: linear-gradient(0deg, var(--bg-base), var(--bg-lighter));
+  --btn-bg-disabled: linear-gradient(0deg, gainsboro, var(--bg-lighter));
+  --btn-bg-highlight: radial-gradient(limegreen, transparent, transparent);
   background: var(--body-bg);
   display: grid;
   grid-template-areas: 'header header' 'sidebar main';
@@ -66,30 +66,38 @@ body.relative {
   --bg-lighter: hsl(from var(--bg-base) h s calc(l * 1.07));
   --bg-light: hsl(from var(--bg-base) h s calc(l * 1.04));
   --bg-dark: hsl(from var(--bg-base) h s calc(l * 0.9));
-  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.7));
+  --bg-darker: hsl(from var(--bg-base) h s calc(l * 0.49));
 }
 body.dark-theme form.classic label,
 body.dark-theme form.classic legend {
   color: whitesmoke;
 }
 body.dark-theme form.classic select,
-body.dark-theme form.classic .alert-info {
+body.dark-theme form.classic .alert-info,
+body.dark-theme form.classic select.select-multiple option {
   color: black;
+}
+body.dark-theme .footer .secondary-link {
+  color: whitesmoke;
 }
 body.dark-theme .messages-panel .message-item {
   background: var(--bg-darker) !important;
 }
 body.dark-theme .navigation .nav-list .drop-menu,
-body.dark-theme .sidebar .nav-list .drop-menu {
+body.dark-theme .sidebar .nav-list .drop-menu,
+body.dark-theme .navigation .nav-title img,
+body.dark-theme .sidebar .nav-title img {
   color: whitesmoke;
 }
-body.dark-theme .nav-title img {
-  color: whitesmoke;
+body.dark-theme .state-table .active-control-label,
+body.dark-theme .state-table .page-control li,
+body.dark-theme .state-table .page-size-control,
+body.dark-theme .state-table .page-size-control a,
+body.dark-theme .state-table .preference-link {
+  color: whitesmoke !important;
 }
+body.dark-theme .state-table .dialog-input select,
 body.dark-theme .state-table .preference-columns td {
-  color: black;
-}
-body.dark-theme .state-table .dialog-input select {
   color: black;
 }
 @media (max-width: 480px) {
@@ -1087,7 +1095,7 @@ footer .footer-container .session-time {
 }
 .modal-outer-wrapper .modal .modal-header .modal-close {
   align-items: center;
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 3px;
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
@@ -1111,7 +1119,7 @@ footer .footer-container .session-time {
 }
 .modal-outer-wrapper .modal modal-header .button,
 .modal-outer-wrapper .modal .modal-footer .button {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px outset gainsboro;
   border-radius: 50px;
   color: seagreen;
@@ -1125,7 +1133,7 @@ footer .footer-container .session-time {
 }
 .modal-outer-wrapper .modal modal-header .button::before,
 .modal-outer-wrapper .modal .modal-footer .button::before {
-  background: var(--button-bg-highlight);
+  background: var(--btn-bg-highlight);
   content: '';
   display: block;
   height: 3rem;
@@ -1140,7 +1148,7 @@ footer .footer-container .session-time {
 }
 .modal-outer-wrapper .modal modal-header .button::after,
 .modal-outer-wrapper .modal .modal-footer .button::after {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 50px;
   content: '';
   inset: 3px;
@@ -1160,7 +1168,7 @@ footer .footer-container .session-time {
 .modal-outer-wrapper .modal .modal-footer .button[disabled=disabled],
 .modal-outer-wrapper .modal modal-header .button[disabled=disabled]::after,
 .modal-outer-wrapper .modal .modal-footer .button[disabled=disabled]::after {
-  background: var(--button-bg-disabled);
+  background: var(--btn-bg-disabled);
 }
 .modal-outer-wrapper .modal modal-header .button span,
 .modal-outer-wrapper .modal .modal-footer .button span {
@@ -1290,10 +1298,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.5
+ * @version 0.2.6
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.40
+ * @version 0.13.41
  */
 /* Breaks */
 /* Colours */
@@ -1354,10 +1362,10 @@ form.classic.droplets {
   --shadow-lightest-semitrans: hsl(from var(--bg-lightest) h s l / 0.9);
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
   box-shadow: inset 20px 20px 20px var(--shadow-darkest-semitrans), 25px 35px 20px var(--shadow-darkest-semitrans), 25px 30px 30px var(--shadow-darkest-semitrans), inset -20px -20px 25px var(--shadow-lightest-semitrans);
-  height: 20rem;
   transform: translate(-10rem, 3rem);
   transition: 0.25s;
-  width: 20rem;
+  height: 21rem;
+  width: 21rem;
 }
 form.classic.droplets::before,
 form.classic.droplets::after {
@@ -1392,23 +1400,41 @@ form.classic.droplets .droplet:hover {
   border-radius: 50%;
 }
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
-  offset: circle(17rem) calc(-9% + (0 * 9%)) 0deg;
+  offset: circle(17rem) calc(-9% + (0 * 9%)) 5deg;
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
   offset: circle(17rem) calc(-9% + (1 * 9%)) 0deg;
 }
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
-  offset: circle(17rem) calc(-9% + (2 * 9%)) 0deg;
+  offset: circle(17rem) calc(-9% + (2 * 9%)) -5deg;
 }
 form.classic.droplets .form-wrapper {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
-  height: 19rem;
+  height: 20rem;
   padding: 2rem 3.5rem 0 0;
-  transform: translateY(0.5rem);
-  width: 19rem;
-}
-form.classic.droplets .form-wrapper .alert-info {
   text-align: right;
+  transform: translateY(0.5rem);
+  width: 20rem;
+}
+form.classic.droplets .form-wrapper legend {
+  text-align: left;
+}
+form.classic.droplets .form-wrapper .alert-info,
+form.classic.droplets .form-wrapper .form-messages {
+  text-align: right;
+}
+form.classic.droplets .form-wrapper .form-messages {
+  display: none;
+}
+form.classic.droplets .form-wrapper .form-title {
+  background: var(--bg-dark);
+  border-radius: 44% 56% 65% 35% / 57% 58% 42% 43%;
+  box-shadow: inset 10px 10px 10px var(--shadow-darkest-semitrans), 15px 25px 10px var(--shadow-darkest-semitrans), 15px 20px 20px var(--shadow-darkest-semitrans), inset -10px -10px 15px var(--shadow-lightest-semitrans);
+  height: 4rem;
+  offset: circle(17rem at -90% 0%) 0% -5deg;
+  padding: 1.25rem 0 0 0.5rem;
+  position: absolute;
+  width: 5rem;
 }
 form.classic.droplets .input-field.floating {
   justify-content: right;
@@ -1578,6 +1604,9 @@ form.classic .input-field:has(input:focus) span.field-label,
 form.classic .input-field:has(input:valid) span.field-label {
   top: -0.25rem;
 }
+form.classic .input-field > .checkbox-wrapper {
+  grid-area: input;
+}
 form.classic .input-field span.field-label {
   border: 2px solid transparent;
   padding: 0.125rem 0.25rem;
@@ -1610,7 +1639,7 @@ form.classic .input-field input[type=text] {
   padding: 0.125rem 0.25rem;
 }
 form.classic .input-field input[type=file]::file-selector-button {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px outset gainsboro;
   border-radius: 50px;
   color: seagreen;
@@ -1631,6 +1660,7 @@ form.classic .input-field input:not([type=file], .digit) {
   height: 1.75rem;
 }
 form.classic .input-field input[readonly=readonly] {
+  background: var(--bg-lightest);
   color: gray;
 }
 form.classic .input-field input[readonly=readonly][type=datetime-local]:not(.tile) {
@@ -1649,7 +1679,7 @@ form.classic .input-field input:not([type=checkbox], [type=submit], .digit):not(
   min-width: 4rem;
 }
 form.classic .input-field select {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px inset gainsboro;
   max-width: 12rem;
   min-width: 4rem;
@@ -1659,12 +1689,24 @@ form.classic .input-field select:not(.select-multiple) option {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
 }
+form.classic .input-field select.select-multiple {
+  resize: vertical;
+}
 form.classic .input-field select.select-multiple option {
+  background: hsl(0, 48%, 53%);
   min-width: 8rem;
   padding: 0.125rem;
 }
 form.classic .input-field select.select-multiple option[selected=selected] {
-  background: var(--bg-dark);
+  background: hsl(147, 29%, 62%);
+}
+form.classic .input-field select.select-multiple option:first-child {
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+form.classic .input-field select.select-multiple option:last-child {
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
 }
 form.classic .input-field textarea {
   box-sizing: content-box;
@@ -1700,6 +1742,7 @@ form.classic .input-field .alert-error {
   display: inline-block;
 }
 form.classic .input-field .alert-info {
+  background: var(--bg-darker);
   box-shadow: 3px 3px 3px gray;
   margin-left: -2px;
   min-width: 12.5rem;
@@ -1716,6 +1759,50 @@ form.classic .input-field .field-label .label-sep-after {
   position: absolute;
   right: 0.25rem;
 }
+form.classic .checkbox-wrapper {
+  display: flex;
+  isolation: isolate;
+  padding: 2px 0;
+  position: relative;
+}
+form.classic .checkbox-wrapper::before {
+  background: hsl(0, 48%, 53%);
+  border: 2px inset gainsboro;
+  border-radius: 10px;
+  content: '';
+  display: block;
+  position: absolute;
+  height: 1.25rem;
+  left: 0;
+  width: 40px;
+  z-index: 1;
+}
+form.classic .checkbox-wrapper::after {
+  background: var(--btn-bg);
+  border: 2px inset gainsboro;
+  border-radius: 10px;
+  content: '';
+  display: block;
+  position: absolute;
+  height: 1.25rem;
+  left: 0;
+  width: 20px;
+  z-index: 2;
+}
+form.classic .checkbox-wrapper:has(input[type=checkbox]:checked)::before {
+  background: hsl(147, 29%, 62%);
+}
+form.classic .checkbox-wrapper:has(input[type=checkbox]:checked)::after {
+  left: 20px;
+}
+form.classic .checkbox-wrapper input[type=checkbox] {
+  height: 1.25rem;
+  margin: 0;
+  opacity: 0;
+  position: relative;
+  width: 40px;
+  z-index: 3;
+}
 form.classic .data-structure,
 form.classic .input-button,
 form.classic .input-selector {
@@ -1727,7 +1814,7 @@ form.classic .input-selector a.form-button,
 form.classic .data-structure button,
 form.classic .input-button button,
 form.classic .input-selector button {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px outset gainsboro;
   border-radius: 50px;
   color: seagreen;
@@ -1744,7 +1831,7 @@ form.classic .input-selector a.form-button::before,
 form.classic .data-structure button::before,
 form.classic .input-button button::before,
 form.classic .input-selector button::before {
-  background: var(--button-bg-highlight);
+  background: var(--btn-bg-highlight);
   content: '';
   display: block;
   height: 3rem;
@@ -1763,7 +1850,7 @@ form.classic .input-selector a.form-button::after,
 form.classic .data-structure button::after,
 form.classic .input-button button::after,
 form.classic .input-selector button::after {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 50px;
   content: '';
   inset: 3px;
@@ -1799,7 +1886,7 @@ form.classic .input-selector a.form-button[disabled=disabled]::after,
 form.classic .data-structure button[disabled=disabled]::after,
 form.classic .input-button button[disabled=disabled]::after,
 form.classic .input-selector button[disabled=disabled]::after {
-  background: var(--button-bg-disabled);
+  background: var(--btn-bg-disabled);
 }
 form.classic .data-structure a.form-button span,
 form.classic .input-button a.form-button span,
@@ -1959,7 +2046,7 @@ form.classic .ds-form .ds-remove {
 }
 form.classic .ds-form .ds-remove .ds-remove-icon {
   align-items: center;
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 3px;
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
@@ -1993,51 +2080,6 @@ form.classic .input-boolean:has(.label-checkbox) {
 }
 form.classic .input-boolean:has(input:focus) .checkbox-wrapper::before {
   outline: 1px solid darkorange;
-}
-form.classic .input-boolean .checkbox-wrapper {
-  display: flex;
-  grid-area: input;
-  isolation: isolate;
-  padding: 2px 0;
-  position: relative;
-}
-form.classic .input-boolean .checkbox-wrapper::before {
-  background: firebrick;
-  border: 2px inset gainsboro;
-  border-radius: 10px;
-  content: '';
-  display: block;
-  position: absolute;
-  height: 1.25rem;
-  left: 0;
-  width: 40px;
-  z-index: 1;
-}
-form.classic .input-boolean .checkbox-wrapper::after {
-  background: var(--button-bg);
-  border: 2px inset gainsboro;
-  border-radius: 10px;
-  content: '';
-  display: block;
-  position: absolute;
-  height: 1.25rem;
-  left: 0;
-  width: 20px;
-  z-index: 2;
-}
-form.classic .input-boolean .checkbox-wrapper:has(input[type=checkbox]:checked)::before {
-  background: seagreen;
-}
-form.classic .input-boolean .checkbox-wrapper:has(input[type=checkbox]:checked)::after {
-  left: 20px;
-}
-form.classic .input-boolean .checkbox-wrapper input[type=checkbox] {
-  height: 1.25rem;
-  margin: 0;
-  opacity: 0;
-  position: relative;
-  width: 40px;
-  z-index: 3;
 }
 form.classic .input-button {
   align-items: center;
@@ -2274,6 +2316,46 @@ form.classic .input-select:has(.select-multiple) {
 form.classic .input-select:has(.select-multiple) label.select-multiple {
   padding-top: 0.4375rem;
 }
+form.classic .input-select .checkbox-group,
+form.classic .input-select .radio-group {
+  background: var(--btn-bg);
+  border: 2px inset gainsboro;
+  border-radius: 5px;
+  list-style: none;
+  margin: 0;
+  padding: 0.1875rem 0.25rem;
+}
+form.classic .input-select .checkbox-group li,
+form.classic .input-select .radio-group li {
+  align-items: center;
+  column-gap: 0.5rem;
+  display: grid;
+  grid-template-areas: "label box";
+  grid-template-columns: 1fr auto;
+  justify-items: flex-start;
+}
+form.classic .input-select .checkbox-group li input[type=checkbox],
+form.classic .input-select .radio-group li input[type=checkbox],
+form.classic .input-select .checkbox-group li input[type=radio],
+form.classic .input-select .radio-group li input[type=radio] {
+  margin: 0;
+}
+form.classic .input-select .checkbox-group li .button-label,
+form.classic .input-select .radio-group li .button-label,
+form.classic .input-select .checkbox-group li .checkbox-label,
+form.classic .input-select .radio-group li .checkbox-label {
+  font-family: 'DejaVu Serif', 'Sitka Small', serif;
+  font-size: 0.9rem;
+  font-weight: normal;
+  grid-area: label;
+  white-space: nowrap;
+}
+form.classic .input-select .checkbox-group li .button-wrapper,
+form.classic .input-select .radio-group li .button-wrapper,
+form.classic .input-select .checkbox-group li .checkbox-wrapper,
+form.classic .input-select .radio-group li .checkbox-wrapper {
+  grid-area: box;
+}
 form.classic .input-selector button {
   grid-area: selector;
   padding: 0.1875rem 0.75rem 0.3125rem;
@@ -2400,10 +2482,10 @@ form.classic .page-wrapper .form-page .input-button.right {
   padding: 0;
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.1.21
+ * @version 0.1.23
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.40
+ * @version 0.13.41
  */
 /* Breaks */
 /* Colours */
@@ -2644,7 +2726,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   white-space: nowrap;
 }
 .filter-container .node-rule-wrapper .node-rule-box .node-rule-title-wrapper .node-rule-remove-button {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 3px;
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
@@ -2723,7 +2805,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   padding: 0 0.5rem 0.5rem;
 }
 .filter-container .rule-editor .node-rule-edit-container button {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px outset gainsboro;
   border-radius: 50px;
   color: seagreen;
@@ -2752,7 +2834,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   color: black;
 }
 .filter-container .rule-editor .node-rule-edit-container button::before {
-  background: var(--button-bg-highlight);
+  background: var(--btn-bg-highlight);
   content: '';
   display: block;
   height: 3rem;
@@ -2769,7 +2851,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   opacity: 1;
 }
 .filter-container .rule-editor .node-rule-edit-container button::after {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 50px;
   content: '';
   inset: 3px;
@@ -2778,7 +2860,7 @@ form.classic .page-wrapper .form-page .input-button.right {
 }
 .filter-container .rule-editor .node-rule-edit-container button[disabled=disabled],
 .filter-container .rule-editor .node-rule-edit-container button[disabled=disabled]::after {
-  background: var(--button-bg-disabled);
+  background: var(--btn-bg-disabled);
 }
 .filter-container .rule-editor .node-rule-edit-container .node-rule-edit {
   border-collapse: separate;
@@ -2859,7 +2941,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   z-index: 3;
 }
 .filter-container .type-container .checkbox-wrapper::after {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px inset gainsboro;
   border-radius: 10px;
   content: '';
@@ -2875,7 +2957,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   left: 20px;
 }
 .filter-container .type-container .checkbox-wrapper::before {
-  background: firebrick;
+  background: hsl(0, 48%, 53%);
   border: 2px inset gainsboro;
   border-radius: 10px;
   content: '';
@@ -2888,7 +2970,7 @@ form.classic .page-wrapper .form-page .input-button.right {
   z-index: 1;
 }
 .filter-container .type-container .checkbox-wrapper:has(input[type=checkbox]:checked)::before {
-  background: seagreen;
+  background: hsl(147, 29%, 62%);
 }
 .filter-container .type-container.type-date-absolute-date,
 .filter-container .type-container.type-date-absolute-time-zone {
@@ -2921,10 +3003,10 @@ form.classic .page-wrapper .form-page .input-button.right {
   right: 0.25rem;
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.28
+ * @version 0.2.31
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.40
+ * @version 0.13.41
  */
 /* Breaks */
 /* Colours */
@@ -3287,7 +3369,7 @@ body {
   position: relative;
 }
 .state-table .dialog-close {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 3px;
   box-shadow: 2px 2px 2px gray;
   color: firebrick;
@@ -3345,7 +3427,7 @@ body {
   text-align: left;
 }
 .state-table .dialog-form .checkbox::before {
-  background: firebrick;
+  background: hsl(0, 48%, 53%);
   border: 2px inset gainsboro;
   border-radius: 10px;
   content: '';
@@ -3357,7 +3439,7 @@ body {
   z-index: 1;
 }
 .state-table .dialog-form .checkbox::after {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px inset gainsboro;
   border-radius: 10px;
   content: '';
@@ -3370,7 +3452,7 @@ body {
   z-index: 2;
 }
 .state-table .dialog-form .checkbox:has(input[type=checkbox]:checked)::before {
-  background: seagreen;
+  background: hsl(147, 29%, 62%);
 }
 .state-table .dialog-form .checkbox:has(input[type=checkbox]:checked)::after {
   left: 28px;
@@ -3405,7 +3487,7 @@ body {
   top: 2px;
 }
 .state-table .dialog-input select {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 5px;
   font-family: 'DejaVu Serif', 'Sitka Small', serif;
   font-size: 0.8rem;
@@ -3557,7 +3639,7 @@ body {
   height: 1.75rem;
 }
 .state-table .search-box .search-wrapper:hover .search-display {
-  background: var(--button-bg);
+  background: var(--btn-bg);
 }
 .state-table .search-box .search-wrapper:hover .search-field {
   max-width: 20rem;
@@ -3565,7 +3647,7 @@ body {
 }
 .state-table .search-box .search-wrapper:has(.search-field:focus) .search-display,
 .state-table .search-box .search-wrapper:has(.search-field:not(:placeholder-shown)) .search-display {
-  background: var(--button-bg);
+  background: var(--btn-bg);
 }
 .state-table .search-box .search-wrapper .search-field {
   color: inherit;
@@ -3615,7 +3697,7 @@ body {
   width: 0;
 }
 .state-table .search-box .search-wrapper .search-hidden .search-display {
-  background: var(--button-bg-disabled);
+  background: var(--btn-bg-disabled);
   border: 2px outset gainsboro;
   border-radius: 50px 0 0 50px;
   color: gray;
@@ -3643,9 +3725,6 @@ body {
   display: inline-block;
   height: 20px;
   width: 20px;
-}
-.state-table .search-messages:empty {
-  display: none;
 }
 .state-table .section-row {
   background: gainsboro;
@@ -3678,6 +3757,9 @@ body {
   padding: 0.25rem 0.5rem;
   text-align: center;
 }
+.state-table .status-messages:empty {
+  display: none;
+}
 .state-table .status-messages a {
   color: seagreen;
   cursor: pointer;
@@ -3697,7 +3779,7 @@ body {
 .state-table .table-form .table-button,
 .state-table .table-form button,
 .state-table .dialog-form button {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border: 2px outset gainsboro;
   border-radius: 50px;
   color: seagreen;
@@ -3711,7 +3793,7 @@ body {
 .state-table .table-form .table-button::after,
 .state-table .table-form button::after,
 .state-table .dialog-form button::after {
-  background: var(--button-bg);
+  background: var(--btn-bg);
   border-radius: 50px;
   content: '';
   inset: 3px;
@@ -3721,7 +3803,7 @@ body {
 .state-table .table-form .table-button::before,
 .state-table .table-form button::before,
 .state-table .dialog-form button::before {
-  background: var(--button-bg-highlight);
+  background: var(--btn-bg-highlight);
   content: '';
   display: block;
   height: 3rem;
@@ -3778,7 +3860,7 @@ body {
 .state-table .table-form button[disabled=disabled]::after,
 .state-table .dialog-form button[disabled=disabled],
 .state-table .dialog-form button[disabled=disabled]::after {
-  background: var(--button-bg-disabled);
+  background: var(--btn-bg-disabled);
 }
 .state-table .top-left-control,
 .state-table .top-right-control {

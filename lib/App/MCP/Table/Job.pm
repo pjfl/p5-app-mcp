@@ -5,8 +5,8 @@ use Moo;
 use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
-with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Searchable';
+with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Filterable';
 with    'HTML::StateTable::Role::Downloadable';

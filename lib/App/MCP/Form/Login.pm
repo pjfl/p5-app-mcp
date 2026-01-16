@@ -1,6 +1,6 @@
 package App::MCP::Form::Login;
 
-use HTML::Forms::Constants qw( FALSE META TRUE );
+use HTML::Forms::Constants qw( FALSE META NUL TRUE );
 use HTML::Forms::Util      qw( make_handler );
 use App::MCP::Util         qw( includes redirect );
 use Scalar::Util           qw( blessed );
@@ -15,7 +15,7 @@ with    'HTML::Forms::Role::Defaults';
 has '+info_message' => default => 'Stop! You have your papers?';
 has '+item_class'   => default => 'User';
 has '+name'         => default => 'Login';
-has '+title'        => default => 'Login';
+has '+title'        => default => 'Sign In';
 
 has_field 'name' =>
    autocomplete => TRUE,
@@ -46,14 +46,14 @@ has_field 'login' =>
    disabled      => TRUE,
    element_attr  => { 'data-field-depends' => [qw(user_name password)] },
    html_name     => 'submit',
-   label         => 'Login',
+   label         => 'Submit',
    value         => 'login';
 
 has_field 'register' =>
    type          => 'Link',
    element_attr  => { 'data-field-depends' => ['!user_name'] },
    element_class => ['form-button'],
-   label         => 'Register',
+   label         => 'Sign Up',
    title         => 'Register for a login account',
    wrapper_class => ['input-button'];
 
@@ -122,7 +122,6 @@ after 'after_build_fields' => sub {
    $self->field('register')->href($uri->as_string);
 
    if (includes 'droplets', $session->features) {
-      $self->set_tag('legend', NUL);
       $self->add_form_element_class('droplets');
       $self->field('register')->add_wrapper_class('droplet');
       $self->field('password_reset')->add_wrapper_class('droplet');

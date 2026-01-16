@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Uses auto_widget_size on profile feature field
           - Adds user features
           - Model updates using Capture
           - Adds API logger endpoint

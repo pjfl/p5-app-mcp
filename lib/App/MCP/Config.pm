@@ -47,8 +47,9 @@ Defines the following attributes;
 
 =item C<appclass>
 
-The application class name. Required by component loader to find controllers,
-models, and views
+The application class name. Required by the MVC
+L<Components|Web::Components::Loader> loader to find controllers, models, and
+views
 
 =cut
 
@@ -97,7 +98,8 @@ has 'clock_tick_interval' =>
 
 =item C<component_loader>
 
-Configuration parameters used by the component loader
+Configuration parameters used by the MVC
+L<Components|Web::Components::Loader> loader
 
 =cut
 
@@ -128,8 +130,8 @@ has 'connect_info' =>
 
 =item C<context_class>
 
-An immutable string which defaults to L<App::MCP::Context>. The loadable
-classname of the context class
+An immutable string which defaults to L<App::MCP::Context>. The
+loadable classname of the context class
 
 =cut
 
@@ -347,7 +349,7 @@ has 'keywords' => is => 'ro', isa => Str, default => 'enterprise scheduler';
 =item C<library_class>
 
 A non empty simple string which defaults to the
-L<SSH library|App::MCP::SSHLibrary>.
+L<SSH|App::MCP::SSHLibrary> library.
 
 =cut
 
@@ -366,7 +368,7 @@ has 'local_tz' => is => 'ro', isa => Str, default => 'Europe/London';
 
 =item C<lock_attributes>
 
-Configuration options for the L<lock manager|IPC::SRLock>
+Configuration options for the L<Lock|IPC::SRLock> object
 
 =cut
 
@@ -497,7 +499,7 @@ has 'name' => is => 'ro', isa => Str, default => 'Master Control Program';
 =item C<navigation>
 
 Hash reference of configuration attributes applied the
-L<navigation|Web::Components::Navigation> object
+L<Navigation|Web::Components::Navigation> object
 
 =cut
 
@@ -561,7 +563,7 @@ has 'prefix' => is => 'ro', isa => Str, default => 'mcp';
 =item C<redis>
 
 Configuration hash reference used to configure the connection to the L<Redis>
-cache
+server
 
 =cut
 
@@ -757,8 +759,8 @@ has 'sqldir' =>
 
 =item C<state_cookie>
 
-A hash reference used to instantiate the
-L<session state cookie|Plack::Session::State::Cookie>
+A hash reference used to instantiate the session state
+L<Cookie|Plack::Session::State::Cookie>
 
 =cut
 
@@ -934,9 +936,9 @@ has 'wcom_resources' =>
 
 =item web_components
 
-Configuration hash reference for the L<MVC framework|Web::Components> loaded
-from the F<Contoller>, F<Model>, and F<View> subdirectories of the application
-namespace
+Configuration hash reference for the MVC L<Components|Web::Components>
+framework loaded from the F<Contoller>, F<Model>, and F<View> subdirectories of
+the application namespace
 
 =cut
 

@@ -43,21 +43,23 @@ sub changes : Auth('none') Nav('Changes') {
 sub create_user : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $stash = $self->redis_client->get($token)
-      or return $self->error($context, UnknownToken, [$token]);
-   my $args  = {
+   my $stash = $self->redis_client->get($token);
+
+   return $self->error($context, UnknownToken, [$token]) unless $stash;
+
+   $self->redis_client->remove($token);
+
+   my $user = $context->model('User')->create({
       email            => $stash->{email},
       name             => $stash->{username},
       password         => $stash->{password},
       password_expired => TRUE,
       role_id          => $stash->{role_id},
-   };
-   my $user    = $context->model('User')->create($args);
+   });
    my $changep = $context->uri_for_action('misc/password', [$user->id]);
    my $message = 'User [_1] created';
 
    $context->stash(redirect $changep, [$message, "${user}"]);
-   $self->redis_client->remove($token);
    return;
 }
 
@@ -251,11 +253,11 @@ sub totp : Auth('none') {
    return $self->error($context, UnknownToken, [$token])
       unless $self->redis_client->get($token);
 
-   my $user    = $context->stash('user');
-   my $options = { context => $context, user => $user };
+   $self->redis_client->remove($token);
+
+   my $options = { context => $context, user => $context->stash('user') };
 
    $context->stash(form => $self->new_form('TOTP::Secret', $options));
-   $self->redis_client->remove($token);
    return;
 }
 
