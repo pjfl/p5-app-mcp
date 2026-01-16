@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Replaces unreliable canvas with SVG on state diagram
           - Uses auto_widget_size on profile feature field
           - Adds user features
           - Model updates using Capture

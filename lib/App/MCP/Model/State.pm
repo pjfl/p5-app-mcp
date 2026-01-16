@@ -80,8 +80,7 @@ sub view : Auth('view') Nav('State|info') {
    my $data_uri  = $context->uri_for_action('state/view', [], $params);
    my $wcom      = $self->config->wcom_resources->{navigation};
    my $name      = 'state-diagram';
-   my $action    = 'api/preference';
-   my $prefs_uri = $context->uri_for_action($action, [$name]);
+   my $prefs_uri = $context->uri_for_action('api/preference', [$name]);
 
    $context->stash(state_config => {
       'data-uri'     => $data_uri->as_string,

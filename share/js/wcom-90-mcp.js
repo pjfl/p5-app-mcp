@@ -60,18 +60,17 @@ WCom.MCP.StateDiagram = (function() {
       _renderLink() {
          const onclick = function(event) {
             event.preventDefault();
-            let modal = this.diagram.modal;
             const prefs = this.diagram.prefs;
             const positionAbsolute = prefs.positionAbsolute;
+            let modal = this.diagram.modal;
             if (modal && modal.open) modal.close();
             modal = Modal.create({
                backdrop: { noMask: true },
                dragConstraints: { top: 56, left: 72 },
                dropCallback: function() {
                   const { top, left } = modal.position();
-                  prefs.set({ positionAbsolute:
-                              { x: Math.trunc(left), y: Math.trunc(top) }
-                  });
+                  const position = { x: Math.trunc(left), y: Math.trunc(top) };
+                  prefs.set({ positionAbsolute: position });
                }.bind(modal),
                icons: this.diagram.icons,
                id: 'job_state_modal',
@@ -159,25 +158,73 @@ WCom.MCP.StateDiagram = (function() {
       }
    }
    Object.assign(ResultSet.prototype, Utils.Bitch);
+   /** @class
+       @classdesc Creates an SVG onto which lines can be drawn. This exists
+          because the browser canvas element is unreliable
+       @param {element} container
+   */
+   class Canvas {
+      constructor(container) {
+         this.container = container;
+         this._lines = [];
+         this._height = 0;
+         this._width = 0;
+         this._x = 0;
+         this._y = 0;
+      }
+      height(h) {
+         if (h != undefined) this._height = h;
+         return this._height;
+      }
+      lineTo(x, y) {
+         this._lines.push([this._x, this._y, x, y]);
+         this._x = x;
+         this._y = y;
+      }
+      moveTo(x, y) {
+         this._x = x;
+         this._y = y;
+      }
+      render(className) {
+         this.className = className;
+         this._panel = this.h.div({ className });
+         this.container.insertBefore(this._panel, this.container.firstChild);
+      }
+      reset() {
+         this._lines = [];
+         this._x = 0;
+         this._y = 0;
+      }
+      stroke() {
+         let paths = '';
+         for (const [fromx, fromy, tox, toy] of this._lines) {
+            paths += `M${fromx} ${fromy} L${tox} ${toy} `;
+         }
+         const attrs = { height: this._height, width: this._width };
+         const html = `<svg ${Object.keys(attrs).filter(attr => attrs[attr]).map(attr => `${attr}="${attrs[attr]}"`).join(' ')}><g stroke="currentColor" stroke-width="1"><path d="${paths}"/></g></svg>`;
+         const svg = this.h.frag(html);
+         const panel = this.h.div({ className: this.className }, svg);
+         this._panel = this.addOrReplace(this.container, panel, this._panel);
+      }
+      width(w) {
+         if (w != undefined) this._width = w;
+         return this._width;
+      }
+   }
+   Object.assign(Canvas.prototype, Utils.Markup);
    class DependencyGraph {
       constructor(diagram) {
          this.diagram = diagram;
          this.index = [];
          this.jobs = [];
          this.container = this.diagram.container;
-         this.canvas = this.h.canvas({ className: 'dependencies' });
-         this.container.insertBefore(this.canvas, this.container.firstChild);
-         this.canvas.addEventListener('contextlost', (event) => {
-            event.preventDefault();
-            console.warn('State diagram canvas lost context');
-         });
-         this.context = this.canvas.getContext('2d');
+         this.canvas = new Canvas(this.container);
+         this.canvas.render('dependencies');
       }
       render() {
-         if (!(this.canvas.getContext && this.jobs[0])) return;
-         // TODO: Switch to background grads if the problem with canvas persists
-         this.canvas.height = this.container.offsetHeight;
-         this.canvas.width = this.container.offsetWidth;
+         if (!this.jobs[0]) return;
+         this.canvas.height(this.container.offsetHeight);
+         this.canvas.width(this.container.offsetWidth);
          const { top, left } = this.h.getOffset(this.container);
          const containerTop = top;
          const containerLeft = left;
@@ -190,8 +237,7 @@ WCom.MCP.StateDiagram = (function() {
             job.bottom = bottom - containerTop;
             job.left = left - containerLeft;
          }
-         this.context.reset();
-         this.context.beginPath();
+         this.canvas.reset();
          for (const job of this.jobs) {
             if (!job.dependsOn[0]) continue;
             const parent = this.index[job.parentId];
@@ -208,12 +254,11 @@ WCom.MCP.StateDiagram = (function() {
                   x: job.left + Math.round((job.right - job.left) / 2),
                   y: job.top,
                };
-               this.context.moveTo(from.x, from.y);
-               this.context.lineTo(to.x, to.y);
+               this.canvas.moveTo(from.x, from.y);
+               this.canvas.lineTo(to.x, to.y);
             }
          }
-         this.context.closePath();
-         this.context.stroke();
+         this.canvas.stroke();
       }
    }
    Object.assign(DependencyGraph.prototype, Utils.Markup);
@@ -278,7 +323,7 @@ WCom.MCP.StateDiagram = (function() {
       }
    }
    Object.assign(Diagram.prototype, Utils.Markup);
-   class Manager {
+   class Factory {
       constructor() {
          this.diagrams = {};
          Utils.Event.registerOnload(this.scan.bind(this));
@@ -302,10 +347,10 @@ WCom.MCP.StateDiagram = (function() {
          this._isConstructing = false;
       }
    }
-   const manager = new Manager();
+   const factory = new Factory();
    return {
-      isConstructing: manager.isConstructing.bind(manager),
-      scan: manager.scan.bind(manager)
+      isConstructing: factory.isConstructing.bind(factory),
+      scan: factory.scan.bind(factory)
    };
 })();
 
