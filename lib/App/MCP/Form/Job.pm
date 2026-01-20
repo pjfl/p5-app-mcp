@@ -54,7 +54,7 @@ has_field 'type' =>
 has_field 'parent_id' => type => 'Hidden', field_group => '_g1';
 
 has_field 'parent_name' =>
-   type        => 'Selector',
+   type        => 'SelectOne',
    display_as  => '...',
    label       => 'Parent Box',
    field_group => '_g1',
@@ -199,15 +199,11 @@ after 'after_build_fields' => sub {
    }
 
    my $selector = $context->uri_for_action('job/select', [], {});
-   my $modal    = $context->config->wcom_resources->{modal};
-   my $args     = $self->json_parser->encode({
-      icons    => $self->_icons,
-      target   => 'parent_name',
-      title    => 'Select Parent',
-      url      => $selector,
-   });
+   my $parent   = $self->field('parent_name');
 
-   $self->field('parent_name')->selector("${modal}.createSelector(${args})");
+   $parent->icons($self->_icons);
+   $parent->modal($context->config->wcom_resources->{modal});
+   $parent->selector_url("${selector}");
    return;
 };
 

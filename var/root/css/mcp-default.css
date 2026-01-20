@@ -51,9 +51,9 @@ body {
   grid-template-areas: 'header header' 'sidebar main';
   grid-template-columns: 7.5rem 1fr;
   grid-template-rows: auto 1fr;
+  margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  margin: 0;
   padding: 0;
 }
 body:has(aside.nav-link-icon) {
@@ -74,7 +74,8 @@ body.dark-theme form.classic legend {
 }
 body.dark-theme form.classic select,
 body.dark-theme form.classic .alert-info,
-body.dark-theme form.classic select.select-multiple option {
+body.dark-theme form.classic select.select-multiple option,
+body.dark-theme form.classic .checkbox-group label {
   color: black;
 }
 body.dark-theme .footer .secondary-link {
@@ -1362,10 +1363,9 @@ form.classic.droplets {
   --shadow-lightest-semitrans: hsl(from var(--bg-lightest) h s l / 0.9);
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
   box-shadow: inset 20px 20px 20px var(--shadow-darkest-semitrans), 25px 35px 20px var(--shadow-darkest-semitrans), 25px 30px 30px var(--shadow-darkest-semitrans), inset -20px -20px 25px var(--shadow-lightest-semitrans);
+  padding-top: 0.5rem;
   transform: translate(-10rem, 3rem);
   transition: 0.25s;
-  height: 21rem;
-  width: 21rem;
 }
 form.classic.droplets::before,
 form.classic.droplets::after {
@@ -1400,27 +1400,25 @@ form.classic.droplets .droplet:hover {
   border-radius: 50%;
 }
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
-  offset: circle(17rem) calc(-9% + (0 * 9%)) 5deg;
+  offset: circle(17rem) calc(-7% + (0 * 9%)) 5deg;
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
-  offset: circle(17rem) calc(-9% + (1 * 9%)) 0deg;
+  offset: circle(17rem) calc(-7% + (1 * 9%)) 0deg;
 }
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
-  offset: circle(17rem) calc(-9% + (2 * 9%)) -5deg;
+  offset: circle(17rem) calc(-7% + (2 * 9%)) -5deg;
 }
 form.classic.droplets .form-wrapper {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
-  height: 20rem;
-  padding: 2rem 3.5rem 0 0;
+  padding: 2.75rem 2rem 0 2rem;
   text-align: right;
-  transform: translateY(0.5rem);
-  width: 20rem;
 }
 form.classic.droplets .form-wrapper legend {
   text-align: left;
 }
 form.classic.droplets .form-wrapper .alert-info,
 form.classic.droplets .form-wrapper .form-messages {
+  padding: 0.25rem 0.5rem 0.25rem 0;
   text-align: right;
 }
 form.classic.droplets .form-wrapper .form-messages {
@@ -1431,10 +1429,14 @@ form.classic.droplets .form-wrapper .form-title {
   border-radius: 44% 56% 65% 35% / 57% 58% 42% 43%;
   box-shadow: inset 10px 10px 10px var(--shadow-darkest-semitrans), 15px 25px 10px var(--shadow-darkest-semitrans), 15px 20px 20px var(--shadow-darkest-semitrans), inset -10px -10px 15px var(--shadow-lightest-semitrans);
   height: 4rem;
-  offset: circle(17rem at -90% 0%) 0% -5deg;
+  offset: circle(12rem at -90% 0%) 0% -5deg;
   padding: 1.25rem 0 0 0.5rem;
   position: absolute;
   width: 5rem;
+}
+form.classic.droplets .input-field:not(.droplet) button {
+  margin-bottom: 1rem;
+  margin-top: 0.25rem;
 }
 form.classic.droplets .input-field.floating {
   justify-content: right;
@@ -1553,7 +1555,7 @@ form.classic .input-field.floating {
 }
 form.classic .input-field.floating input {
   height: 1.75rem;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
   max-width: 12rem !important;
   outline: transparent;
 }
@@ -1602,7 +1604,7 @@ form.classic .input-field:has(.alert-info.top) {
 form.classic .input-field:hover span.field-label,
 form.classic .input-field:has(input:focus) span.field-label,
 form.classic .input-field:has(input:valid) span.field-label {
-  top: -0.25rem;
+  top: -0.5rem;
 }
 form.classic .input-field > .checkbox-wrapper {
   grid-area: input;
@@ -1611,7 +1613,7 @@ form.classic .input-field span.field-label {
   border: 2px solid transparent;
   padding: 0.125rem 0.25rem;
   position: absolute;
-  top: 1.3175rem;
+  top: 1.125rem;
   transition: top 0.5s;
   translate: 0.5rem;
 }
@@ -1629,8 +1631,11 @@ form.classic .input-field select:focus:not(.digit),
 form.classic .input-field textarea:focus:not(.digit) {
   outline: 1px solid darkorange;
 }
+form.classic .input-field input {
+  background: var(--bg-lightest);
+}
 form.classic .input-field input:focus {
-  background: var(--bg-base);
+  background: white;
 }
 form.classic .input-field input[type=date],
 form.classic .input-field input[type=email],
@@ -1690,10 +1695,15 @@ form.classic .input-field select:not(.select-multiple) option {
   font-size: 0.8rem;
 }
 form.classic .input-field select.select-multiple {
+  background: var(--bg-lightest);
   resize: vertical;
+}
+form.classic .input-field select.select-multiple:focus {
+  background: white;
 }
 form.classic .input-field select.select-multiple option {
   background: hsl(0, 48%, 53%);
+  border-bottom: 1px dashed gray;
   min-width: 8rem;
   padding: 0.125rem;
 }
@@ -1705,10 +1715,12 @@ form.classic .input-field select.select-multiple option:first-child {
   border-top-right-radius: 3px;
 }
 form.classic .input-field select.select-multiple option:last-child {
+  border-bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
 }
 form.classic .input-field textarea {
+  background: var(--bg-lightest);
   box-sizing: content-box;
   border: 2px inset gainsboro;
   min-height: 3lh;
@@ -1718,7 +1730,7 @@ form.classic .input-field textarea {
   padding: 0.25rem;
 }
 form.classic .input-field textarea:focus {
-  background: var(--bg-base);
+  background: white;
 }
 form.classic .input-field .alert {
   border-radius: 5px;
@@ -1728,6 +1740,7 @@ form.classic .input-field .alert {
   max-width: 18rem;
   min-width: 10rem;
   padding: 0.4375rem 0.5rem 0.3175rem;
+  text-align: left;
 }
 form.classic .input-field .alert:empty {
   display: none;
@@ -1820,6 +1833,7 @@ form.classic .input-selector button {
   color: seagreen;
   cursor: pointer;
   display: inline-block;
+  margin: 0 2px;
   overflow: hidden;
   position: relative;
   text-decoration: none;
@@ -2356,9 +2370,35 @@ form.classic .input-select .checkbox-group li .checkbox-wrapper,
 form.classic .input-select .radio-group li .checkbox-wrapper {
   grid-area: box;
 }
+form.classic .input-select .checkbox-group li .button-wrapper:has(input:focus)::before,
+form.classic .input-select .radio-group li .button-wrapper:has(input:focus)::before,
+form.classic .input-select .checkbox-group li .checkbox-wrapper:has(input:focus)::before,
+form.classic .input-select .radio-group li .checkbox-wrapper:has(input:focus)::before {
+  outline: 1px solid darkorange;
+}
 form.classic .input-selector button {
   grid-area: selector;
   padding: 0.1875rem 0.75rem 0.3125rem;
+}
+form.classic .input-selector .selectmany-group {
+  background: var(--btn-bg);
+  border: 2px inset gainsboro;
+  border-radius: 5px;
+  list-style: none;
+  margin: 0;
+  overflow-x: auto;
+  padding: 0.1875rem 0.25rem;
+}
+form.classic .input-selector .selectmany-group .item-label {
+  color: black;
+  display: inline-block;
+  font-family: 'DejaVu Serif', 'Sitka Small', serif;
+  font-size: 0.9rem;
+  font-weight: normal;
+  grid-area: label;
+  min-width: 5rem;
+  white-space: nowrap;
+  width: 100%;
 }
 form.classic .input-textarea:has(.field-label) {
   align-items: flex-start !important;
@@ -2480,6 +2520,98 @@ form.classic .page-wrapper .form-page .input-button.right {
   margin: 0;
   min-width: 16rem;
   padding: 0;
+}
+.selector .selectmany-group {
+  background: var(--bg-lightest);
+  border: 2px inset gainsboro;
+  border-radius: 5px;
+  list-style: none;
+  margin: 0;
+  overflow-x: auto;
+  padding: 0.1875rem 0.25rem;
+}
+.selector .selectmany-group li {
+  align-items: center;
+  column-gap: 0.5rem;
+  display: grid;
+  grid-template-areas: "label box";
+  grid-template-columns: 1fr auto;
+  justify-items: flex-start;
+}
+.selector .selectmany-group li input[type=checkbox],
+.selector .selectmany-group li input[type=radio] {
+  margin: 0;
+}
+.selector .selectmany-group li .button-label,
+.selector .selectmany-group li .checkbox-label {
+  font-family: 'DejaVu Serif', 'Sitka Small', serif;
+  font-size: 0.9rem;
+  font-weight: normal;
+  grid-area: label;
+  white-space: nowrap;
+}
+.selector .selectmany-group li .button-wrapper,
+.selector .selectmany-group li .checkbox-wrapper {
+  grid-area: box;
+}
+.selector .selectmany-group li .button-wrapper:has(input:focus)::before,
+.selector .selectmany-group li .checkbox-wrapper:has(input:focus)::before {
+  outline: 1px solid darkorange;
+}
+.selector .selectmany-group .item-label {
+  color: black;
+  display: inline-block;
+  font-family: 'DejaVu Serif', 'Sitka Small', serif;
+  font-size: 0.9rem;
+  font-weight: normal;
+  grid-area: label;
+  min-width: 5rem;
+  white-space: nowrap;
+  width: 100%;
+}
+.selector .selectmany-group .checkbox-wrapper {
+  display: flex;
+  isolation: isolate;
+  padding: 2px 0;
+  position: relative;
+}
+.selector .selectmany-group .checkbox-wrapper::before {
+  background: hsl(0, 48%, 53%);
+  border: 2px inset gainsboro;
+  border-radius: 10px;
+  content: '';
+  display: block;
+  position: absolute;
+  height: 1.25rem;
+  left: 0;
+  width: 40px;
+  z-index: 1;
+}
+.selector .selectmany-group .checkbox-wrapper::after {
+  background: var(--btn-bg);
+  border: 2px inset gainsboro;
+  border-radius: 10px;
+  content: '';
+  display: block;
+  position: absolute;
+  height: 1.25rem;
+  left: 0;
+  width: 20px;
+  z-index: 2;
+}
+.selector .selectmany-group .checkbox-wrapper:has(input[type=checkbox]:checked)::before {
+  background: hsl(147, 29%, 62%);
+}
+.selector .selectmany-group .checkbox-wrapper:has(input[type=checkbox]:checked)::after {
+  left: 20px;
+}
+.selector .selectmany-group .checkbox-wrapper input[type=checkbox] {
+  height: 1.25rem;
+  margin: 0;
+  opacity: 0;
+  position: relative;
+  width: 40px;
+  z-index: 3;
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
  * @version 0.1.23
