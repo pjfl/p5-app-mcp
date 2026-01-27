@@ -1,7 +1,8 @@
 package App::MCP::View::HTML;
 
 use HTML::Forms::Constants qw( TRUE );
-use App::MCP::Util         qw( dt_from_epoch dt_human encode_for_html includes);
+use App::MCP::Util         qw( dt_from_epoch dt_human encode_for_html );
+use Class::Usul::Cmd::Util qw( includes );
 use Encode                 qw( encode );
 use HTML::Entities         qw( encode_entities );
 use HTML::Forms::Util      qw( process_attrs );

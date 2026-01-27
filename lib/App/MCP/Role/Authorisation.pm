@@ -8,27 +8,26 @@ use Moo::Role;
 sub is_authorised {
    my ($self, $context, $action) = @_;
 
-   my $role = _get_action_auth($context, $action) // 'edit';
+   my $auth = _get_action_auth($context, $action) // 'edit';
 
-   return TRUE if $role eq 'none';
+   return TRUE if $auth eq 'none';
 
    my $session = $context->session;
 
    return $self->_redirect2login($context) unless $session->authenticated;
 
-   return TRUE if $role eq 'view';
+   return $self->_redirect2unauthorised($context, 'Bad IP Address')
+      unless $self->_valid_ip($context);
+
+   return TRUE if $auth eq 'view';
 
    my $user_role = $session->role or throw NoUserRole, [$session->username];
 
    return TRUE if $user_role eq 'admin';
+   return TRUE if $user_role eq 'manager' and $auth eq 'edit';
+   return TRUE if $user_role eq $auth;
 
-   return TRUE if $user_role eq 'manager' and $role eq 'edit';
-
-   return TRUE if $user_role eq $role;
-
-   $context->stash(redirect $context->uri_for_action('misc/unauthorised'), []);
-
-   return FALSE;
+   return $self->_redirect2unauthorised($context, 'Not Allowed');
 }
 
 sub method_args {
@@ -69,6 +68,27 @@ sub _redirect2login {
       && _get_nav_label($context, $action);
 
    $context->stash(redirect $login, ['Authentication required']);
+
+   return FALSE;
+}
+
+sub _redirect2unauthorised {
+   my ($self, $context, $reason) = @_;
+
+   my $action = $self->config->default_actions->{unauthorised};
+
+   $context->stash(redirect $context->uri_for_action($action), [$reason]);
+
+   return FALSE;
+}
+
+sub _valid_ip {
+   my ($self, $context) = @_;
+
+   my $request = $context->request;
+   my $session = $context->session;
+
+   return TRUE if $request->remote_address eq $session->address;
 
    return FALSE;
 }

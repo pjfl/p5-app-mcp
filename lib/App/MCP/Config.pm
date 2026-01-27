@@ -582,7 +582,7 @@ has 'registration' => is => 'ro', isa => Bool, coerce => TRUE, default => FALSE;
 
 Hash reference passed to the request object factory constructor by the
 component loader. Includes; C<max_messages>, C<prefix>, C<request_roles>,
-C<serialise_session_attr>, and C<session_attr>
+C<serialise_attr>, and C<session_attr>
 
 =over 3
 
@@ -599,7 +599,7 @@ See 'prefix'
 
 List of roles to be applied to the request class base
 
-=item serialise_session_attr
+=item serialise_attr
 
 List of session attributes that are included for serialisation to the CSRF
 token
@@ -620,17 +620,17 @@ has 'request' =>
       my $self = shift;
 
       return {
-         appclass      => $self->appclass,
-         max_messages  => $self->max_messages,
-         max_sess_time => $self->max_web_session_time,
-         prefix        => $self->prefix,
-         request_roles => [
+         max_messages   => $self->max_messages,
+         max_sess_time  => $self->max_web_session_time,
+         prefix         => $self->prefix,
+         request_roles  => [
             qw(L10N Session JSON Cookie Headers Compat Authen::HTTP)
          ],
-         scrubber => $self->scrubber,
-         serialise_session_attr => [ qw( id realm role ) ],
-         tempdir => $self->tempdir,
-         session_attr => {
+         scrubber       => $self->scrubber,
+         serialise_attr => [ qw( address id realm role ) ],
+         tempdir        => $self->tempdir,
+         session_attr   => {
+            address       => [ Str, NUL ],
             base_colour   => [ Str, $self->default_base_colour ],
             email         => [ Str, NUL ],
             enable_2fa    => [ Bool, FALSE ],
@@ -903,6 +903,16 @@ has 'user' =>
          min_password_len => 3,
       };
    };
+
+=item C<valid_ips>
+
+Defaults to an empty array reference. If populated with hash references will
+be used to limit access by IP address. Each hash reference contains the keys;
+C<range-start>, and (optionally) C<range-end>
+
+=cut
+
+has 'valid_ips' => is => 'ro', isa => ArrayRef[HashRef], default => sub { [] };
 
 =item C<vardir>
 

@@ -10,10 +10,12 @@ use App::MCP::Util             qw( base64_encode boolean_data_type
                                    get_salt new_salt serial_data_type
                                    text_data_type truncate varchar_data_type );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
+use Net::IP::Match::Regexp     qw( create_iprange_regexp match_ip );
 use Scalar::Util               qw( blessed );
 use Unexpected::Functions      qw( throw AccountInactive IncorrectAuthCode
-                                   IncorrectPassword PasswordDisabled
-                                   PasswordExpired UnknownRole Unspecified );
+                                   IncorrectPassword InvalidIPAddress
+                                   PasswordDisabled PasswordExpired UnknownRole
+                                   Unspecified );
 use Auth::GoogleAuth;
 use Crypt::SRP;
 use DBIx::Class::Moo::ResultClass;
@@ -65,6 +67,11 @@ $class->might_have('profile' => "${result}::Preference", sub {
    };
 });
 
+has '_config' =>
+   is      => 'lazy',
+   isa     => Object,
+   default => sub { shift->result_source->schema->config };
+
 has 'api_execution_allowed' =>
    is      => 'lazy',
    isa     => HashRef,
@@ -77,9 +84,9 @@ has 'default_role_id' =>
    isa     => Int,
    default => sub {
       my $self      = shift;
-      my $schema    = $self->result_source->schema;
-      my $role_name = $schema->config->user->{default_role};
-      my $role      = $schema->resultset('Role')->find({ name => $role_name });
+      my $role_name = $self->_config->user->{default_role};
+      my $role_rs   = $self->result_source->schema->resultset('Role');
+      my $role      = $role_rs->find({ name => $role_name });
 
       throw UnknownRole, [$role_name] unless $role;
 
@@ -96,14 +103,14 @@ has 'profile_value' =>
       return $profile ? $profile->value : {};
    };
 
-has 'totp_authenticator' =>
+has 'authenticator' =>
    is      => 'lazy',
    isa     => Object,
    default => sub {
       my $self = shift;
 
       return Auth::GoogleAuth->new({
-         issuer => $self->result_source->schema->config->prefix,
+         issuer => $self->_config->prefix,
          key_id => $self->user_name,
          secret => $self->totp_secret,
       });
@@ -152,8 +159,7 @@ sub authenticate {
 
    throw Unspecified, ['OTP Code'] unless $code;
 
-   throw IncorrectAuthCode, [$self]
-      unless $self->totp_authenticator->verify($code);
+   throw IncorrectAuthCode, [$self] unless $self->authenticator->verify($code);
 
    return TRUE;
 }
@@ -189,7 +195,7 @@ sub encrypt_password {
       return $salt.base64_encode($verifier);
    }
 
-   my $lf   = $self->result_source->schema->config->user->{load_factor};
+   my $lf   = $self->_config->user->{load_factor};
    my $salt = $stored ? get_salt $stored : new_salt '2a', $lf;
 
    return bcrypt($password, $salt);
@@ -279,6 +285,25 @@ sub update {
    return $self->next::method;
 }
 
+sub valid_ips {
+   my ($self, $value) = @_; return $self->_profile('valid_ips', $value);
+}
+
+sub validate_address {
+   my ($self, $address) = @_;
+
+   throw Unspecified, ['address'] unless $address;
+
+   if ($self->valid_ips && $self->valid_ips->[0]) {
+      return if $self->_validate_address($address, $self->valid_ips);
+   }
+   elsif ($self->_config->valid_ips && $self->_config->valid_ips->[0]) {
+      return if $self->_validate_address($address, $self->_config->valid_ips);
+   }
+
+   throw InvalidIPAddress, [$self];
+}
+
 sub validation_attributes {
    return { # Keys: constraints, fields, and filters (all hashes)
       constraints    => {
@@ -328,6 +353,20 @@ sub _profile {
    }
 
    return $profile->{$key};
+}
+
+sub _validate_address {
+   my ($self, $address, $valid_ips) = @_;
+
+   for my $ip (@{$valid_ips}) {
+      my $end = $ip->{'range-end'};
+      my $re  = $end ? create_iprange_regexp($ip->{'range-start'}, $end)
+                     : create_iprange_regexp($ip->{'range-start'});
+
+      return TRUE if match_ip($address, $re);
+   }
+
+   return FALSE;
 }
 
 use namespace::autoclean;

@@ -1,8 +1,9 @@
 package App::MCP::Form::Login;
 
 use HTML::Forms::Constants qw( FALSE META NUL TRUE );
+use Class::Usul::Cmd::Util qw( includes );
 use HTML::Forms::Util      qw( make_handler );
-use App::MCP::Util         qw( includes redirect );
+use App::MCP::Util         qw( redirect );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( catch_class );
 use Try::Tiny;
@@ -100,23 +101,23 @@ after 'after_build_fields' => sub {
    my $params  = { class => 'User', property => 'enable_2fa' };
    my $uri     = $context->uri_for_action('api/fetch', ['property'], $params);
    my $options = { id => 'user_name', url => "${uri}" };
+   my $handler = make_handler($showif_js, $options, $showif_flds);
 
-   $self->field('name')->element_attr->{javascript} = {
-      onblur  => make_handler($showif_js, $options, $showif_flds),
-      oninput => make_handler($change_js, { id => 'user_name' }, $change_flds)
-   };
-   $self->field('password')->element_attr->{javascript} = {
-      oninput => make_handler($change_js, { id => 'password' }, $change_flds)
-   };
-   $self->field('auth_code')->element_attr->{javascript} = {
-      onblur  => make_handler($change_js, { id => 'auth_code' }, $change_flds)
-   };
-   $self->field('password_reset')->element_attr->{javascript} = {
-      onclick => make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds)
-   };
-   $self->field('totp_reset')->element_attr->{javascript} = {
-      onclick => make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds)
-   };
+   $self->field('name')->add_handler('blur', $handler);
+   $handler = make_handler($change_js, { id => 'user_name' }, $change_flds);
+   $self->field('name')->add_handler('input', $handler);
+
+   $handler = make_handler($change_js, { id => 'password' }, $change_flds);
+   $self->field('password')->add_handler('input', $handler);
+
+   $handler = make_handler($change_js, { id => 'auth_code' }, $change_flds);
+   $self->field('auth_code')->add_handler('blur', $handler);
+
+   $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
+   $self->field('password_reset')->add_handler('click', $handler);
+
+   $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
+   $self->field('totp_reset')->add_handler('click', $handler);
 
    $uri = $context->uri_for_action('misc/register');
    $self->field('register')->href($uri->as_string);
@@ -175,20 +176,25 @@ sub validate {
    my $passwd  = $self->field('password');
    my $code    = $self->field('auth_code');
 
-   $args = { user => $user, password => $passwd->value, code => $code->value };
+   $args = {
+      address  => $context->request->remote_address,
+      code     => $code->value,
+      password => $passwd->value,
+      user     => $user,
+   };
 
    try {
       $context->logout;
       $context->authenticate($args, $realm);
       $context->set_authenticated($args, $realm);
    }
-   catch_class $self->_handlers($user, $passwd, $code);
+   catch_class $self->_exception_handlers($user, $passwd, $code);
 
    return;
 }
 
 # Private methods
-sub _handlers {
+sub _exception_handlers {
    my ($self, $user, $passwd, $code) = @_;
 
    my $context = $self->context;

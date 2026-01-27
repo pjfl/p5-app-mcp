@@ -23,8 +23,8 @@ sub user : Auth('view') Capture(1) {
    my ($self, $context, $userid) = @_;
 
    my $session = $context->session;
-   my $args = { username => $userid, options => { prefetch => 'profile' } };
-   my $user = $context->find_user($args, $session->realm);
+   my $args    = { username => $userid, options => { prefetch => 'profile' } };
+   my $user    = $context->find_user($args, $session->realm);
 
    return $self->error($context, UnknownUser, [$userid]) unless $user;
 
@@ -47,9 +47,9 @@ sub create : Auth('admin') Nav('Create User') {
 
    if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('user/view', [$form->item->id]);
-      my $message = ['User [_1] created', $form->item->user_name];
+      my $message = 'User [_1] created';
 
-      $context->stash(redirect $view, $message);
+      $context->stash(redirect $view, [$message, $form->item->user_name]);
    }
 
    $context->stash(form => $form);
@@ -80,10 +80,11 @@ sub edit : Auth('admin') Nav('Edit User') {
    my $form    = $self->new_form('User', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $view    = $context->uri_for_action('user/view', [$user->id]);
-      my $message = ['User [_1] updated', $form->item->user_name];
+      my $params  = { 'current-page' => $form->current_page };
+      my $edit    = $context->uri_for_action('user/edit', [$user->id], $params);
+      my $message = 'User [_1] updated';
 
-      $context->stash(redirect $view, $message);
+      $context->stash(redirect $edit, [$message, $form->item->user_name]);
    }
 
    $context->stash(form => $form);

@@ -26,7 +26,7 @@ after 'after_build_fields' => sub {
 
    $path = $config->config_home->catfile('Changes') unless $path->exists;
 
-   my $content = join "\n", map {
+   my $content = join "\n", map { $_ =~ s{ \A ([ ]*)? \- }{}mx; $_ } map {
       $_ =~ m{ \A \S+ }mx ? $_ !~ m{ \A \d }mx ? "### ${_}" : "#### ${_}" : $_
    } $path->getlines;
 

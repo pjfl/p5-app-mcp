@@ -2,6 +2,7 @@ package App::MCP::Form::Register;
 
 use HTML::Forms::Constants qw( EXCEPTION_CLASS FALSE META TRUE );
 use App::MCP::Util         qw( create_token redirect );
+use Class::Usul::Cmd::Util qw( includes );
 use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( catch_class );
 use Try::Tiny;
@@ -11,11 +12,10 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+form_wrapper_class' => default => sub { ['narrow'] };
-has '+info_message'       => default => 'Answer the registration questions';
-has '+item_class'         => default => 'User';
-has '+name'               => default => 'Register';
-has '+title'              => default => 'Registration Request';
+has '+info_message' => default => 'Answer the sign up questions';
+has '+item_class'   => default => 'User';
+has '+name'         => default => 'Register';
+has '+title'        => default => 'Sign Up';
 
 has 'config' => is => 'lazy', default => sub { shift->context->config };
 
@@ -66,10 +66,20 @@ sub validate_email {
 has_field 'submit' => type => 'Button';
 
 after 'after_build_fields' => sub {
-   my $self = shift;
-   my $attr = $self->field('user_name')->element_attr;
+   my $self    = shift;
+   my $name    = $self->field('user_name');
+   my $session = $self->context->session;
 
-   $attr->{minlength} = $self->config->user->{min_name_len};
+   $name->element_attr->{minlength} = $self->config->user->{min_name_len};
+
+   $self->add_form_wrapper_class('narrow');
+
+   $self->add_form_element_class('droplets')
+      if includes 'droplets', $session->features;
+
+   $self->add_form_element_class('radar')
+      if includes 'radar', $session->features;
+
    return;
 };
 

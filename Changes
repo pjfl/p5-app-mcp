@@ -1,5 +1,7 @@
 Revision history for App::MCP
 
+          - Adds IP address validation
+          - Adds button_pressed to Context object
           - Job form uses SelectOne field type
           - Replaces unreliable canvas with SVG on state diagram
           - Uses auto_widget_size on profile feature field

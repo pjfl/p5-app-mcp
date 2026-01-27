@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.41
+ * @version 0.13.42
  */
 /* Breaks */
 /* Colours */
@@ -8,10 +8,10 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.41
+ * @version 0.13.42
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.41
+ * @version 0.13.42
  */
 /* Breaks */
 /* Colours */
@@ -1299,10 +1299,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.6
+ * @version 0.2.8
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.41
+ * @version 0.13.42
  */
 /* Breaks */
 /* Colours */
@@ -1400,17 +1400,22 @@ form.classic.droplets .droplet:hover {
   border-radius: 50%;
 }
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
-  offset: circle(17rem) calc(-7% + (0 * 9%)) 5deg;
+  right: -7rem;
+  top: -3rem;
+  transform: rotate(5deg);
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
-  offset: circle(17rem) calc(-7% + (1 * 9%)) 0deg;
+  right: -13rem;
+  top: 6rem;
 }
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
-  offset: circle(17rem) calc(-7% + (2 * 9%)) -5deg;
+  bottom: -4rem;
+  right: -9rem;
+  transform: rotate(-5deg);
 }
 form.classic.droplets .form-wrapper {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
-  padding: 2.75rem 2rem 0 2rem;
+  padding: 2.75rem 2.5rem 0 2.5rem;
   text-align: right;
 }
 form.classic.droplets .form-wrapper legend {
@@ -1418,21 +1423,23 @@ form.classic.droplets .form-wrapper legend {
 }
 form.classic.droplets .form-wrapper .alert-info,
 form.classic.droplets .form-wrapper .form-messages {
-  padding: 0.25rem 0.5rem 0.25rem 0;
-  text-align: right;
-}
-form.classic.droplets .form-wrapper .form-messages {
-  display: none;
+  align-items: center;
+  text-align: center;
 }
 form.classic.droplets .form-wrapper .form-title {
   background: var(--bg-dark);
   border-radius: 44% 56% 65% 35% / 57% 58% 42% 43%;
   box-shadow: inset 10px 10px 10px var(--shadow-darkest-semitrans), 15px 25px 10px var(--shadow-darkest-semitrans), 15px 20px 20px var(--shadow-darkest-semitrans), inset -10px -10px 15px var(--shadow-lightest-semitrans);
   height: 4rem;
-  offset: circle(12rem at -90% 0%) 0% -5deg;
-  padding: 1.25rem 0 0 0.5rem;
+  left: -3rem;
+  padding: 1.25rem 1rem;
   position: absolute;
-  width: 5rem;
+  top: -3rem;
+  transform: rotate(-5deg);
+  white-space: nowrap;
+}
+form.classic.droplets .input-field:not(.droplet) {
+  text-align: left;
 }
 form.classic.droplets .input-field:not(.droplet) button {
   margin-bottom: 1rem;
@@ -1470,13 +1477,20 @@ form.classic .compound-field {
   row-gap: 0.5rem;
 }
 form.classic .compound-field:has(.alert-info) {
-  margin-top: 2rem;
+  margin-top: 2.5rem;
 }
 form.classic .compound-field.hide {
   display: none;
 }
 form.classic .compound-field.right {
   justify-content: right;
+}
+form.classic .compound-field.section {
+  border-bottom: 1px dashed gray;
+  margin-bottom: 0.5rem;
+}
+form.classic .compound-field.section .alert-info {
+  left: 0;
 }
 form.classic .compound-field input:not([type=submit]) {
   max-width: 12rem !important;
@@ -1555,7 +1569,7 @@ form.classic .input-field.floating {
 }
 form.classic .input-field.floating input {
   height: 1.75rem;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   max-width: 12rem !important;
   outline: transparent;
 }
@@ -1604,7 +1618,7 @@ form.classic .input-field:has(.alert-info.top) {
 form.classic .input-field:hover span.field-label,
 form.classic .input-field:has(input:focus) span.field-label,
 form.classic .input-field:has(input:valid) span.field-label {
-  top: -0.5rem;
+  top: -0.25rem;
 }
 form.classic .input-field > .checkbox-wrapper {
   grid-area: input;
@@ -1613,7 +1627,7 @@ form.classic .input-field span.field-label {
   border: 2px solid transparent;
   padding: 0.125rem 0.25rem;
   position: absolute;
-  top: 1.125rem;
+  top: 1.3125rem;
   transition: top 0.5s;
   translate: 0.5rem;
 }
@@ -1735,10 +1749,11 @@ form.classic .input-field textarea:focus {
 form.classic .input-field .alert {
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
-  display: block;
+  display: inline-block;
   grid-area: alert;
+  margin-right: 3px;
   max-width: 18rem;
-  min-width: 10rem;
+  min-width: 6rem;
   padding: 0.4375rem 0.5rem 0.3175rem;
   text-align: left;
 }
@@ -1752,7 +1767,7 @@ form.classic .input-field .alert:has(.alert-info) {
   background: var(--bg-dark);
 }
 form.classic .input-field .alert-error {
-  display: inline-block;
+  display: block;
 }
 form.classic .input-field .alert-info {
   background: var(--bg-darker);
@@ -1950,7 +1965,6 @@ form.classic .data-structure {
   align-items: flex-start;
   display: flex;
   flex-direction: column;
-  row-gap: 0.5rem;
 }
 form.classic .data-structure button {
   padding: 0.25rem 0.75rem;
@@ -1960,6 +1974,7 @@ form.classic .digit-input-wrapper {
   grid-area: input;
 }
 form.classic .ds-form {
+  align-items: flex-start;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -1990,10 +2005,21 @@ form.classic .ds-form.vertical.snaps-inline {
   scroll-snap-type: block mandatory;
 }
 form.classic .ds-form .ds-header {
+  background: var(--bg-dark);
+  border-radius: 5px;
+  column-gap: 0.5rem;
+  display: flex;
+  box-shadow: 3px 3px 3px gray;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
-  padding-top: 0.2rem;
+  padding: 0.25rem 0.875rem;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+form.classic .ds-form .ds-header .ds-header-cell:empty {
+  display: none;
 }
 form.classic .ds-form .ds-row {
   background: var(--bg-base);
@@ -2013,6 +2039,11 @@ form.classic .ds-form .ds-field {
 form.classic .ds-form .ds-field.hide {
   display: none;
 }
+form.classic .ds-form .ds-field.ipaddress input,
+form.classic .ds-form .ds-field .input-ipaddress {
+  max-width: 15ch;
+  text-align: right;
+}
 form.classic .ds-form .ds-field img {
   aspect-ratio: 16 / 9;
   inline-size: 100%;
@@ -2028,6 +2059,7 @@ form.classic .ds-form .ds-field input[readonly=readonly].input-datetime {
   margin-left: -0.25rem;
 }
 form.classic .ds-form .ds-field-group {
+  column-gap: 0.5rem;
   display: flex;
 }
 form.classic .ds-form .ds-field-group.vertical {
@@ -2042,7 +2074,7 @@ form.classic .ds-form .ds-output {
 form.classic .ds-form .ds-reorderable {
   cursor: pointer;
   margin: auto;
-  padding-left: 0.5rem;
+  padding: 0 0.25rem;
 }
 form.classic .ds-form .ds-reorderable .knob {
   display: block;
@@ -2386,8 +2418,13 @@ form.classic .input-selector .selectmany-group {
   border-radius: 5px;
   list-style: none;
   margin: 0;
+  min-height: 2rem;
+  min-width: 3rem;
   overflow-x: auto;
   padding: 0.1875rem 0.25rem;
+}
+form.classic .input-selector .selectmany-group:empty {
+  display: none;
 }
 form.classic .input-selector .selectmany-group .item-label {
   color: black;
@@ -2464,34 +2501,17 @@ form.classic .page-wrapper .form-page .input-button.right {
   margin: 0.5rem 0 !important;
 }
 .form-messages {
-  display: inline-flex;
+  align-items: flex-start;
+  display: flex;
   flex-direction: column;
+  gap: 0.25rem;
   padding-bottom: 0.5rem;
 }
 .form-messages:empty {
   display: none;
 }
-.form-messages .alert .card {
-  font-family: 'DejaVu Serif', 'Sitka Small', serif;
-  font-weight: normal;
-  margin-top: 0.25rem;
-  max-width: 50rem;
-  padding: 0 0.25rem;
-}
-.form-messages .alert .card p {
-  margin: 0;
-  max-height: 6rem;
-  overflow: hidden;
-  position: relative;
-}
-.form-messages .alert .card p.long::after {
-  background: linear-gradient(to right, transparent, lightpink 80%);
-  bottom: 0;
-  content: '';
-  height: 1rem;
-  position: absolute;
-  right: 0;
-  width: 100%;
+.form-messages .alert {
+  display: inline-block;
 }
 .form-messages .alert-error,
 .form-messages .alert-error-message,
@@ -2501,9 +2521,27 @@ form.classic .page-wrapper .form-page .input-button.right {
   box-shadow: 3px 3px 3px gray;
   padding: 0.4375rem 0.25rem 0.3175rem;
 }
-.form-messages .alert-error,
-.form-messages .alert-error-message {
-  margin-left: -0.25rem;
+.form-messages .card {
+  font-family: 'DejaVu Serif', 'Sitka Small', serif;
+  font-weight: normal;
+  margin-top: 0.25rem;
+  max-width: 50rem;
+  padding: 0 0.25rem;
+}
+.form-messages .card p {
+  margin: 0;
+  max-height: 6rem;
+  overflow: hidden;
+  position: relative;
+}
+.form-messages .card p.long::after {
+  background: linear-gradient(to right, transparent, lightpink 80%);
+  bottom: 0;
+  content: '';
+  height: 1rem;
+  position: absolute;
+  right: 0;
+  width: 100%;
 }
 .modal .attachment {
   box-shadow: none;
@@ -2617,7 +2655,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.1.23
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.41
+ * @version 0.13.42
  */
 /* Breaks */
 /* Colours */
@@ -3138,7 +3176,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.2.31
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.41
+ * @version 0.13.42
  */
 /* Breaks */
 /* Colours */

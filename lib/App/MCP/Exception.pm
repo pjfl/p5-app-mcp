@@ -110,6 +110,9 @@ has_exception 'IncorrectAuthCode' => parents => ['Authentication'],
 has_exception 'IncorrectPassword' => parents => ['Authentication'],
    error   => 'User [_1] authentication failed', rv => HTTP_UNAUTHORIZED;
 
+has_exception 'InvalidIPAddress' => parents => ['Authentication'],
+   error   => 'User [_1] invalid IP address';
+
 has_exception 'PasswordDisabled' => parents => ['Authentication'],
    error   => 'User [_1] password disabled', rv => HTTP_UNAUTHORIZED;
 
