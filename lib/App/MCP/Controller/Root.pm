@@ -68,7 +68,7 @@ sub dispatch_request { build_routes
    'GET    + ?*'       => 'misc/root/default',
    'HEAD   + ?*'       => 'misc/root/not_found',
    'PUT    + ?*'       => 'misc/root/not_found',
-   'POST   + ?*'       => 'misc/root/not_found',
+   'POST   + ?*'       => 'misc/root/base/login_dispatch',
    'DELETE + ?*'       => 'misc/root/not_found',
 }
 

@@ -3,10 +3,8 @@ package App::MCP::Context;
 use attributes ();
 
 use App::MCP::Constants     qw( EXCEPTION_CLASS FALSE NUL TRUE );
-use Unexpected::Types       qw( ArrayRef Bool HashRef Maybe Str );
-use Class::Usul::Cmd::Types qw( ConfigProvider );
+use Class::Usul::Cmd::Types qw( ConfigProvider Int Str );
 use HTML::Forms::Util       qw( get_token verify_token );
-use List::Util              qw( pairs );
 use Ref::Util               qw( is_arrayref is_coderef is_hashref );
 use Scalar::Util            qw( blessed );
 use Type::Utils             qw( class_type );
@@ -14,13 +12,9 @@ use Unexpected::Functions   qw( throw NoMethod UnknownModel );
 use App::MCP::Response;
 use Moo;
 
-with 'App::MCP::Role::Schema';
-
-has 'action' => is => 'rw', isa => Str, predicate => 'has_action';
+extends 'Web::Components::Context';
 
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
-
-has 'controllers' => is => 'ro', isa => HashRef, default => sub { {} };
 
 has 'icons_uri' =>
    is      => 'lazy',
@@ -31,45 +25,22 @@ has 'icons_uri' =>
       return $self->request->uri_for($self->config->icons);
    };
 
-has 'models' => is => 'ro', isa => HashRef, default => sub { {} };
-
-has 'posted' =>
-   is      => 'lazy',
-   isa     => Bool,
-   default => sub { lc shift->request->method eq 'post' ? TRUE : FALSE };
-
-has 'request' =>
-   is       => 'ro',
-   isa      => class_type('Web::ComposableRequest::Base'),
-   required => TRUE,
-   weak_ref => TRUE;
-
 has 'response' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Response'),
    default => sub { App::MCP::Response->new };
-
-has 'session' =>
-   is       => 'lazy',
-   isa      => class_type('Web::ComposableRequest::Session'),
-   default  => sub { shift->request->session },
-   weak_ref => TRUE;
-
-has 'shiny' =>
-   is      => 'lazy',
-   isa     => Bool,
-   default => sub { shift->session->shiny ? TRUE : FALSE };
 
 has 'time_zone' =>
    is      => 'lazy',
    isa     => Str,
    default => sub { shift->session->timezone };
 
-has 'views' => is => 'ro', isa => HashRef, default => sub { {} };
-
-has '_stash' =>
+has 'token_lifetime' =>
    is      => 'lazy',
-   isa     => HashRef,
+   isa     => Int,
+   default => sub { shift->config->token_lifetime };
+
+has '+_stash' =>
    default => sub {
       my $self   = shift;
       my $prefix = $self->config->prefix;
@@ -89,19 +60,8 @@ has '_stash' =>
       };
    };
 
+with 'App::MCP::Role::Schema';
 with 'App::MCP::Role::Authentication';
-
-sub button_pressed {
-   return shift->request->body_parameters->{_submit} // FALSE;
-}
-
-sub clear_redirect {
-   return delete shift->stash->{redirect};
-}
-
-sub endpoint {
-   return (split m{ / }mx, shift->stash('method_chain'))[-1];
-}
 
 sub get_attributes {
    my ($self, $action) = @_;
@@ -122,20 +82,10 @@ sub get_attributes {
    return attributes::get($coderef) // {};
 }
 
-sub get_body_parameters {
-   my $self    = shift;
-   my $request = $self->request;
+sub method_chain {
+   my ($self, $action) = @_;
 
-   return { %{$request->body_parameters->mixed // {}} }
-      if $request->isa('Plack::Request');
-
-   return { %{$request->body_parameters // {}} }
-      if $request->isa('Catalyst::Request')
-      || $request->isa('Web::ComposableRequest::Base');
-
-   return $request->parameters if $request->can('parameters');
-
-   return {};
+   return $self->_action_path2methods($action);
 }
 
 sub model {
@@ -145,20 +95,6 @@ sub model {
 }
 
 sub res { shift->response }
-
-sub stash {
-   my ($self, @args) = @_;
-
-   return $self->_stash unless defined $args[0];
-
-   return $self->_stash->{$args[0]} unless defined $args[1];
-
-   for my $pair (pairs @args) {
-      $self->_stash->{$pair->key} = $pair->value;
-   }
-
-   return $self->_stash;
-}
 
 sub uri_for_action {
    my ($self, $action, $args, @params) = @_;
@@ -203,28 +139,36 @@ sub uri_for_action {
 sub verification_token {
    my $self = shift;
 
-   return get_token $self->config->token_lifetime, $self->session->serialise;
+   return get_token $self->token_lifetime, $self->session->serialise;
 }
 
 sub verify_form_post {
    my $self  = shift;
-   my $token = $self->get_body_parameters->{_verify};
+   my $token = $self->body_parameters->{_verify} // NUL;
 
    return verify_token $token, $self->session->serialise;
 }
 
-sub view {
-   my ($self, $view) = @_; return $self->views->{$view};
+# Private methods
+sub _action_path2methods {
+   my ($self, $action) = @_;
+
+   for my $controller (keys %{$self->controllers}) {
+      my $map = $self->controllers->{$controller}->action_path_map;
+
+      return $map->{$action}->{methods} if exists $map->{$action};
+   }
+
+   return 'misc/root/not_found';
 }
 
-# Private methods
 sub _action_path2uri {
    my ($self, $action) = @_;
 
    for my $controller (keys %{$self->controllers}) {
       my $map = $self->controllers->{$controller}->action_path_map;
 
-      return $map->{$action} if exists $map->{$action};
+      return $map->{$action}->{uri} if exists $map->{$action};
    }
 
    return;

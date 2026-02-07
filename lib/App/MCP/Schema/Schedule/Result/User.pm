@@ -295,13 +295,15 @@ sub validate_address {
    throw Unspecified, ['address'] unless $address;
 
    if ($self->valid_ips && $self->valid_ips->[0]) {
-      return if $self->_validate_address($address, $self->valid_ips);
+      throw InvalidIPAddress, [$self]
+         unless $self->_validate_address($address, $self->valid_ips);
    }
    elsif ($self->_config->valid_ips && $self->_config->valid_ips->[0]) {
-      return if $self->_validate_address($address, $self->_config->valid_ips);
+      throw InvalidIPAddress, [$self]
+         unless $self->_validate_address($address, $self->_config->valid_ips);
    }
 
-   throw InvalidIPAddress, [$self];
+   return;
 }
 
 sub validation_attributes {

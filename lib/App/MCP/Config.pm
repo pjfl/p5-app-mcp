@@ -757,6 +757,19 @@ has 'sqldir' =>
    isa     => Directory,
    default => sub { shift->vardir->catdir('sql') };
 
+=item C<ssh_dir>
+
+A directory object reference that defaults to the F<.ssh> directory in the
+applications home directory
+
+=cut
+
+has 'ssh_dir' =>
+   is      => 'lazy',
+   isa     => Directory,
+   coerce  => TRUE,
+   default => sub { shift->appldir->catdir('.ssh') };
+
 =item C<state_cookie>
 
 A hash reference used to instantiate the session state
@@ -782,8 +795,8 @@ has 'state_cookie' =>
 
 =item C<state_cookie_lifetime>
 
-An immutable positive integer. Number of seconds before the session
-cookie will expire. Defaults to ninety days
+A positive integer. Number of seconds before the session cookie will
+expire. Defaults to ninety days
 
 =cut
 
@@ -791,19 +804,6 @@ has 'state_cookie_lifetime' =>
    is      => 'ro',
    isa     => PositiveInt,
    default => 7_776_000;
-
-=item C<ssh_dir>
-
-A directory object reference that defaults to the F<.ssh> directory in the
-users home
-
-=cut
-
-has 'ssh_dir' =>
-   is      => 'lazy',
-   isa     => Directory,
-   coerce  => TRUE,
-   default => sub { shift->appldir->catdir('.ssh') };
 
 =item C<static>
 

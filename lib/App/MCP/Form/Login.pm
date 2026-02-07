@@ -77,50 +77,24 @@ has_field 'totp_reset' =>
    title         => 'Request an OTP reset',
    value         => 'totp_reset';
 
+my $change_flds = [qw(login register password_reset totp_reset)];
+my $showif_flds = ['auth_code','totp_reset'];
+my $unreq_flds  = ['auth_code', 'password'];
+
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
-   my $config  = $context->config;
    my $session = $context->session;
 
    $self->set_form_element_attr('novalidate', 'novalidate');
+
+   $self->add_form_element_class('radar')
+      if includes 'radar', $session->features;
 
    unless ($session->enable_2fa) {
       $self->field('auth_code')->add_wrapper_class('hide');
       $self->field('totp_reset')->add_wrapper_class('hide');
    }
-
-   my $util        = $config->wcom_resources->{form_util};
-   my $change_js   = "${util}.fieldChange";
-   my $showif_js   = "${util}.showIfRequired";
-   my $unreq_js    = "${util}.unrequire";
-   my $change_flds = [qw(login register password_reset totp_reset)];
-   my $showif_flds = ['auth_code','totp_reset'];
-   my $unreq_flds  = ['auth_code', 'password'];
-
-   my $params  = { class => 'User', property => 'enable_2fa' };
-   my $uri     = $context->uri_for_action('api/fetch', ['property'], $params);
-   my $options = { id => 'user_name', url => "${uri}" };
-   my $handler = make_handler($showif_js, $options, $showif_flds);
-
-   $self->field('name')->add_handler('blur', $handler);
-   $handler = make_handler($change_js, { id => 'user_name' }, $change_flds);
-   $self->field('name')->add_handler('input', $handler);
-
-   $handler = make_handler($change_js, { id => 'password' }, $change_flds);
-   $self->field('password')->add_handler('input', $handler);
-
-   $handler = make_handler($change_js, { id => 'auth_code' }, $change_flds);
-   $self->field('auth_code')->add_handler('blur', $handler);
-
-   $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
-   $self->field('password_reset')->add_handler('click', $handler);
-
-   $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
-   $self->field('totp_reset')->add_handler('click', $handler);
-
-   $uri = $context->uri_for_action('misc/register');
-   $self->field('register')->href($uri->as_string);
 
    if (includes 'droplets', $session->features) {
       $self->add_form_element_class('droplets');
@@ -136,9 +110,14 @@ after 'after_build_fields' => sub {
       }
    }
 
-   $self->add_form_element_class('radar')
-      if includes 'radar', $session->features;
+   my $uri = $context->uri_for_action('misc/register');
 
+   $self->field('register')->href($uri->as_string);
+
+   $self->field('register')->inactive(TRUE)
+      unless $context->config->registration;
+
+   $self->_add_field_handlers;
    return;
 };
 
@@ -194,6 +173,38 @@ sub validate {
 }
 
 # Private methods
+sub _add_field_handlers {
+   my $self      = shift;
+   my $context   = $self->context;
+   my $config    = $context->config;
+   my $util      = $config->wcom_resources->{form_util};
+   my $change_js = "${util}.fieldChange";
+   my $showif_js = "${util}.showIfRequired";
+   my $unreq_js  = "${util}.unrequire";
+
+   my $params  = { class => 'User', property => 'enable_2fa' };
+   my $uri     = $context->uri_for_action('api/fetch', ['property'], $params);
+   my $options = { id => 'user_name', url => "${uri}" };
+   my $handler = make_handler($showif_js, $options, $showif_flds);
+
+   $self->field('name')->add_handler('blur', $handler);
+   $handler = make_handler($change_js, { id => 'user_name' }, $change_flds);
+   $self->field('name')->add_handler('input', $handler);
+
+   $handler = make_handler($change_js, { id => 'password' }, $change_flds);
+   $self->field('password')->add_handler('input', $handler);
+
+   $handler = make_handler($change_js, { id => 'auth_code' }, $change_flds);
+   $self->field('auth_code')->add_handler('blur', $handler);
+
+   $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
+   $self->field('password_reset')->add_handler('click', $handler);
+
+   $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
+   $self->field('totp_reset')->add_handler('click', $handler);
+   return;
+}
+
 sub _exception_handlers {
    my ($self, $user, $passwd, $code) = @_;
 

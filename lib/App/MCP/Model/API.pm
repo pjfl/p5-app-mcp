@@ -77,7 +77,7 @@ sub sessionid : Auth('none') Capture(1) {
 sub action : Auth('view') {
    my ($self, $context) = @_;
 
-   my $data = $context->get_body_parameters->{data};
+   my $data = $context->body_parameters->{data};
    my ($moniker, $method) = split m{ / }mx, $data->{action};
 
    if (exists $context->models->{$moniker}) {
@@ -178,7 +178,7 @@ sub logger : Auth('none') {
 
    if ($context->session->username) {
       my $level   = $context->stash('log_level');
-      my $message = $context->get_body_parameters->{data};
+      my $message = $context->body_parameters->{data};
 
       $self->log->$level($message, $context);
    }
@@ -191,7 +191,7 @@ sub preference : Auth('view') {
    my ($self, $context) = @_;
 
    my $name  = $self->_preference_name($context);
-   my $value = $context->get_body_parameters->{data} if $context->posted;
+   my $value = $context->body_parameters->{data} if $context->posted;
    my $pref  = $self->_preference($context, $name, $value);
 
    $self->_stash_response($context, $pref ? $pref->value : {});

@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.42
+ * @version 0.13.44
  */
 /* Breaks */
 /* Colours */
@@ -11,7 +11,7 @@
  * @version 0.13.42
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.42
+ * @version 0.13.44
  */
 /* Breaks */
 /* Colours */
@@ -46,7 +46,7 @@ body {
   --btn-bg: linear-gradient(0deg, var(--bg-base), var(--bg-lighter));
   --btn-bg-disabled: linear-gradient(0deg, gainsboro, var(--bg-lighter));
   --btn-bg-highlight: radial-gradient(limegreen, transparent, transparent);
-  background: var(--body-bg);
+  background: fixed var(--body-bg);
   display: grid;
   grid-template-areas: 'header header' 'sidebar main';
   grid-template-columns: 7.5rem 1fr;
@@ -136,6 +136,9 @@ main {
   position: relative;
   scrollbar-color: darkorange var(--bg-lighter);
   z-index: 1;
+}
+main.grid {
+  background: fixed repeating-linear-gradient(hsl(from gray h s l / 0.25), hsl(from gray h s l / 0.25) 1px, transparent 1px, transparent 40px), fixed repeating-linear-gradient(to right, hsl(from gray h s l / 0.25), hsl(from gray h s l / 0.25) 1px, transparent 1px, transparent 40px);
 }
 main .layout-container {
   display: flex;
@@ -686,7 +689,7 @@ footer .footer-container .session-time {
 }
 .navigation::before {
   background: var(--bg-base);
-  border-left: 1px solid hsl(from gray h s l / 0.5);
+  border-left: 1px solid hsl(from gray h s l / 0.25);
   border-top-left-radius: 20px;
   content: '';
   display: inline-block;
@@ -695,7 +698,7 @@ footer .footer-container .session-time {
 }
 @media (max-width: 480px) {
   .navigation::before {
-    border-bottom: 1px solid hsl(from gray h s l / 0.5);
+    border-bottom: 1px solid hsl(from gray h s l / 0.25);
     width: 3.5rem !important;
   }
 }
@@ -733,8 +736,8 @@ footer .footer-container .session-time {
   }
 }
 .navigation .nav-menu {
-  border-bottom: 1px solid hsl(from gray h s l / 0.5);
-  border-right: 1px solid hsl(from gray h s l / 0.5);
+  border-bottom: 1px solid hsl(from gray h s l / 0.25);
+  border-right: 1px solid hsl(from gray h s l / 0.25);
   border-bottom-right-radius: 10px;
   display: flex;
   flex-grow: 2;
@@ -768,9 +771,9 @@ footer .footer-container .session-time {
 }
 .navigation .nav-title::before {
   border-top-left-radius: 10px;
-  border-left: 1px solid hsl(from gray h s l / 0.5);
-  border-top: 1px solid hsl(from gray h s l / 0.5);
-  box-shadow: -3px -3px 3px var(--bg-base);
+  border-left: 1px solid hsl(from gray h s l / 0.25);
+  border-top: 1px solid hsl(from gray h s l / 0.25);
+  box-shadow: -3px -3px 0px 3px var(--bg-base);
   box-sizing: content-box;
   content: '';
   height: 2.5rem;
@@ -786,7 +789,7 @@ footer .footer-container .session-time {
   width: 1rem;
 }
 .sidebar::after {
-  background: linear-gradient(to bottom, hsl(from gray h s l / 0.5), transparent), linear-gradient(to bottom, var(--bg-base), transparent), linear-gradient(to bottom, hsl(from gray h s l / 0.5), transparent);
+  background: linear-gradient(to bottom, hsl(from gray h s l / 0.25), transparent), linear-gradient(to bottom, var(--bg-base), transparent), linear-gradient(to bottom, hsl(from gray h s l / 0.25), transparent);
   background-position-x: left, center, right;
   background-repeat: no-repeat;
   background-size: 1px 100%, calc(100% - 2px) 100%, 1px 100%;
@@ -895,8 +898,8 @@ footer .footer-container .session-time {
   }
 }
 .sidebar .nav-menu {
-  border-left: 1px solid hsl(from gray h s l / 0.5);
-  border-right: 1px solid hsl(from gray h s l / 0.5);
+  border-left: 1px solid hsl(from gray h s l / 0.25);
+  border-right: 1px solid hsl(from gray h s l / 0.25);
 }
 .contact-page {
   max-width: 50rem;
@@ -1027,6 +1030,7 @@ footer .footer-container .session-time {
   max-width: 16rem;
   padding: 0.5rem;
   transition: opacity 1s;
+  word-wrap: anywhere;
 }
 .messages-panel .message-item.fade {
   opacity: 0;
@@ -1299,10 +1303,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.8
+ * @version 0.2.11
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.42
+ * @version 0.13.44
  */
 /* Breaks */
 /* Colours */
@@ -1401,17 +1405,24 @@ form.classic.droplets .droplet:hover {
 }
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
   right: -7rem;
-  top: -3rem;
+  top: 0.5rem;
   transform: rotate(5deg);
+  z-index: 6;
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
   right: -13rem;
   top: 6rem;
+  z-index: 7;
 }
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
-  bottom: -4rem;
+  bottom: 0;
   right: -9rem;
   transform: rotate(-5deg);
+  z-index: 8;
+}
+form.classic.droplets .droplet .tooltip {
+  left: 0;
+  transform: translateY(calc(1.25rem - 100%));
 }
 form.classic.droplets .form-wrapper {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
@@ -1430,13 +1441,18 @@ form.classic.droplets .form-wrapper .form-title {
   background: var(--bg-dark);
   border-radius: 44% 56% 65% 35% / 57% 58% 42% 43%;
   box-shadow: inset 10px 10px 10px var(--shadow-darkest-semitrans), 15px 25px 10px var(--shadow-darkest-semitrans), 15px 20px 20px var(--shadow-darkest-semitrans), inset -10px -10px 15px var(--shadow-lightest-semitrans);
+  font-size: 1.75rem;
   height: 4rem;
   left: -3rem;
   padding: 1.25rem 1rem;
   position: absolute;
+  text-shadow: 3px 3px 3px var(--bg-darker);
   top: -3rem;
   transform: rotate(-5deg);
   white-space: nowrap;
+}
+form.classic.droplets .form-wrapper .form-title:hover {
+  transform: rotate(-5deg) scale(0.96);
 }
 form.classic.droplets .input-field:not(.droplet) {
   text-align: left;
@@ -1535,11 +1551,14 @@ form.classic .input-field.fixed {
   align-items: baseline;
   column-gap: 0.5rem;
   display: grid;
-  grid-template-columns: var(--label-width) min-content min-content;
+  grid-template-columns: min-content min-content min-content;
   grid-template-areas: "label input selector" "blank alert alert";
   justify-items: start;
   min-width: 13rem;
   row-gap: 0.25rem;
+}
+form.classic .input-field.fixed:has(.field-label) {
+  grid-template-columns: var(--label-width) min-content min-content;
 }
 form.classic .input-field.fixed.collapse:not(.hide):not(.input-datastructure) {
   grid-template-columns: min-content min-content min-content;
@@ -1586,6 +1605,12 @@ form.classic .input-field.floating input.digit:last-child {
   border-bottom-right-radius: 50px;
   border-top-right-radius: 50px;
 }
+form.classic .input-field.floating .tooltip {
+  left: 0;
+}
+form.classic .input-field:has(.alert-info.top) {
+  grid-template-areas: "blank alert alert" "label input selector";
+}
 form.classic .input-field.hide {
   display: none;
   opacity: 0;
@@ -1611,9 +1636,6 @@ form.classic .input-field:has(input:valid) .field-label::after,
 form.classic .input-field:has(select:valid) .field-label::after,
 form.classic .input-field:has(textarea:valid) .field-label::after {
   content: ' ';
-}
-form.classic .input-field:has(.alert-info.top) {
-  grid-template-areas: "blank alert alert" "label input selector";
 }
 form.classic .input-field:hover span.field-label,
 form.classic .input-field:has(input:focus) span.field-label,
@@ -1782,6 +1804,9 @@ form.classic .input-field .field-label {
   line-height: 1rem;
   position: relative;
   white-space: nowrap;
+}
+form.classic .input-field .field-label.right {
+  justify-self: flex-end;
 }
 form.classic .input-field .field-label .label-sep-after {
   position: absolute;
@@ -1965,6 +1990,7 @@ form.classic .data-structure {
   align-items: flex-start;
   display: flex;
   flex-direction: column;
+  grid-area: input;
 }
 form.classic .data-structure button {
   padding: 0.25rem 0.75rem;
@@ -1974,10 +2000,7 @@ form.classic .digit-input-wrapper {
   grid-area: input;
 }
 form.classic .ds-form {
-  align-items: flex-start;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  margin-bottom: 0.25rem;
   padding-bottom: 0.75rem;
   position: relative;
   overscroll-behavior-inline: contain;
@@ -1988,6 +2011,8 @@ form.classic .ds-form.vertical.snaps-inline > * {
   scroll-snap-align: start;
 }
 form.classic .ds-form.horizontal {
+  column-gap: 0.5rem;
+  display: flex;
   flex-direction: row;
   overflow-x: auto;
   max-width: 21rem;
@@ -1997,6 +2022,8 @@ form.classic .ds-form.horizontal.snaps-inline {
   scroll-snap-type: inline mandatory;
 }
 form.classic .ds-form.vertical {
+  display: grid;
+  row-gap: 0.5rem;
   max-height: 60vh;
   overflow-y: auto;
   padding-right: 0.75rem;
@@ -2005,28 +2032,41 @@ form.classic .ds-form.vertical.snaps-inline {
   scroll-snap-type: block mandatory;
 }
 form.classic .ds-form .ds-header {
+  column-gap: 0.5rem;
+  display: grid;
+  grid-auto-flow: column;
   background: var(--bg-dark);
   border-radius: 5px;
-  column-gap: 0.5rem;
-  display: flex;
   box-shadow: 3px 3px 3px gray;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: normal;
-  padding: 0.25rem 0.875rem;
+  padding: 0.25rem 0.5rem;
   position: sticky;
   top: 0;
   z-index: 3;
 }
-form.classic .ds-form .ds-header .ds-header-cell:empty {
-  display: none;
+form.classic .ds-form .ds-header .ds-header-cell {
+  display: inline-block;
+}
+form.classic .ds-form .ds-header .ds-header-cell.boolean {
+  width: 40px;
+}
+form.classic .ds-form .ds-header .ds-header-cell.ipaddress {
+  width: 9rem;
+}
+form.classic .ds-form .ds-header .ds-header-cell.text {
+  min-width: 13rem;
+}
+form.classic .ds-form .ds-header .ds-header-cell.remove {
+  justify-self: start;
+  width: 1.75rem;
 }
 form.classic .ds-form .ds-row {
   background: var(--bg-base);
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
   display: flex;
-  justify-content: space-between;
   padding: 0.5rem;
 }
 form.classic .ds-form .ds-field {
@@ -2058,12 +2098,14 @@ form.classic .ds-form .ds-field input[readonly=readonly].input-datetime {
   background: var(--bg-base);
   margin-left: -0.25rem;
 }
-form.classic .ds-form .ds-field-group {
+form.classic .ds-form .ds-field-group.horizontal {
   column-gap: 0.5rem;
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
 }
 form.classic .ds-form .ds-field-group.vertical {
-  flex-direction: column;
+  display: inline-grid;
+  grid-auto-flow: row;
   row-gap: 0.5rem;
 }
 form.classic .ds-form .ds-output {
@@ -2088,7 +2130,8 @@ form.classic .ds-form .ds-remove {
   border-radius: 5px;
   border-bottom-left-radius: 0;
   border-top-left-radius: 0;
-  padding: 0.125rem 0 0 0.25rem;
+  display: inline-block;
+  padding: 0.125rem 0 0;
 }
 form.classic .ds-form .ds-remove .ds-remove-icon {
   align-items: center;
@@ -2447,6 +2490,7 @@ form.classic .page-list {
   list-style-type: none;
   margin: 0;
   padding: 0.5rem 0;
+  position: relative;
 }
 form.classic .page-list li {
   border-bottom: 1px solid gray;
@@ -2460,6 +2504,7 @@ form.classic .page-list li {
   padding: 0.125rem 0.5rem;
 }
 form.classic .page-list li.selected {
+  background: var(--bg-dark);
   border: 1px solid gray;
   border-bottom: 1px solid transparent;
   color: black;
@@ -2483,6 +2528,28 @@ form.classic .page-wrapper .form-page.hide {
 }
 form.classic .page-wrapper .form-page .input-button.right {
   right: 0;
+}
+form.classic .tooltip {
+  background: var(--bg-darker);
+  border: 1px solid gray;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  color: whitesmoke;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+  font-size: 1rem;
+  left: 8.5rem;
+  min-width: 10rem;
+  padding: 0.5rem;
+  position: absolute;
+  top: 0;
+  transform: translateY(calc(-0.25rem - 100%));
+  z-index: 10;
+}
+form.classic .tooltip.hide {
+  display: none;
+}
+form.classic .tooltip p {
+  margin: 0;
 }
 .form-error {
   background: lightpink;
@@ -2655,7 +2722,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.1.23
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.42
+ * @version 0.13.44
  */
 /* Breaks */
 /* Colours */
@@ -3176,7 +3243,7 @@ form.classic .page-wrapper .form-page .input-button.right {
  * @version 0.2.31
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.42
+ * @version 0.13.44
  */
 /* Breaks */
 /* Colours */
