@@ -31,11 +31,11 @@ sub base : Auth('admin') {
 sub clear_cache : Auth('admin') {
    my ($self, $context, $logfile) = @_;
 
-   return $self->error($context, Unspecified, ['logfile']) unless $logfile;
-
    return unless $self->verify_form_post($context);
 
-   my $path = $context->config->logfile->parent->catfile($logfile);
+   return $self->error($context, Unspecified, ['logfile']) unless $logfile;
+
+   my $path = $self->config->logsdir->catfile($logfile);
 
    return $self->error($context, NotFound, ["${path}"]) unless $path->exists;
 
@@ -62,16 +62,15 @@ sub view : Auth('admin') Nav('View Logfile') {
    return $self->error($context, Unspecified, ['logfile']) unless $logfile;
 
    my $path = $self->config->logsdir->catfile($logfile);
-   my $size = 0;
 
-   $size = $self->_format_number->base2($path->stat->{size})
-      if $path->exists;
+   return $self->error($context, NotFound, ["${path}"]) unless $path->exists;
 
-   my $table_class = $self->_extension2table_class($logfile);
+   my $table_class = $self->_extension2table_class($path->extension);
+   my $size        = $self->_format_number->base2($path->stat->{size});
    my $options     = {
-      caption => "${logfile} File View (${size})",
+      caption => "View ${logfile} (${size})",
       context => $context,
-      logfile => $logfile,
+      path    => $path,
       redis   => $self->redis_client
    };
 
@@ -81,9 +80,9 @@ sub view : Auth('admin') Nav('View Logfile') {
 
 # Private methods
 sub _extension2table_class {
-   my ($self, $logfile) = @_;
+   my ($self, $extension) = @_;
 
-   return 'View::CSV' if $logfile =~ m{ \. csv \z }mx;
+   return 'View::CSV' if $extension eq 'csv';
 
    return 'View::Apache';
 }

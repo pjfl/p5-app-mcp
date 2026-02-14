@@ -13,12 +13,12 @@ has '+form_buttons' => default => sub {
 
    return [{
       action    => $context->uri_for_action('job/list'),
+      classes   => 'left',
       method    => 'get',
       selection => 'disable_on_select',
       value     => 'Jobs',
    },{
       action    => $context->uri_for_action('job/edit', [$self->result->id]),
-      classes   => 'right',
       method    => 'get',
       selection => 'disable_on_select',
       value     => 'Edit',

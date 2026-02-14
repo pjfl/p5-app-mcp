@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Logging class update
           - Context now inherits from Web::Components::Context
           - Adds IP address validation
           - Adds button_pressed to Context object

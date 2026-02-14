@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.44
+ * @version 0.13.46
  */
 /* Breaks */
 /* Colours */
@@ -8,10 +8,10 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.42
+ * @version 0.13.46
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.44
+ * @version 0.13.46
  */
 /* Breaks */
 /* Colours */
@@ -175,6 +175,22 @@ main .layout-container h5 .content {
   font-family: 'DejaVu Serif', 'Sitka Small', serif;
   font-weight: normal;
 }
+main .layout-container .block-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: space-between;
+}
+main .layout-container .inline-container {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: auto 1fr;
+}
+@media (max-width: 480px) {
+  main .layout-container .inline-container {
+    grid-template-columns: 1fr;
+  }
+}
 main .layout-container .layout {
   display: flex;
   padding: 0.5rem;
@@ -186,30 +202,19 @@ main .layout-container .layout.centred {
 main .layout-container .layout.left {
   justify-content: left;
 }
-main .layout-container .layout .panel {
+main .layout-container .panel {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   opacity: 1;
   transition: opacity 1s;
 }
-main .layout-container .layout .panel .block-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: space-evenly;
-}
-main .layout-container .layout .panel.fade {
+main .layout-container .panel.fade {
   opacity: 0;
 }
-main .layout-container .layout .panel.loading,
-main .layout-container .layout .panel.unloading {
+main .layout-container .panel.loading,
+main .layout-container .panel.unloading {
   position: absolute;
-}
-@media (max-width: 480px) {
-  main .layout-container .layout .panel {
-    flex-direction: column;
-  }
 }
 footer .footer-container {
   align-items: baseline;
@@ -761,7 +766,7 @@ footer .footer-container .session-time {
 }
 .navigation .nav-title {
   align-items: center;
-  background: linear-gradient(180deg, var(--bg-base) 0.4375rem, gray, transparent 0.53125rem);
+  background: linear-gradient(180deg, var(--bg-base) 0.4375rem, hsl(from gray h s l / 0.5), transparent 0.53125rem);
   column-gap: 0.25rem;
   display: flex;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
@@ -772,7 +777,7 @@ footer .footer-container .session-time {
 .navigation .nav-title::before {
   border-top-left-radius: 10px;
   border-left: 1px solid hsl(from gray h s l / 0.25);
-  border-top: 1px solid hsl(from gray h s l / 0.25);
+  border-top: 1px solid hsl(from gray h s l / 0.5);
   box-shadow: -3px -3px 0px 3px var(--bg-base);
   box-sizing: content-box;
   content: '';
@@ -781,7 +786,7 @@ footer .footer-container .session-time {
   transform: translate(-0.0635rem, 0.2rem);
 }
 .navigation .nav-title::after {
-  background: linear-gradient(70deg, transparent 48%, gray, var(--bg-base) 52%);
+  background: linear-gradient(70deg, transparent 48%, hsl(from gray h s l / 0.5), var(--bg-base) 52%);
   content: '';
   display: inline-block;
   height: 2.5rem;
@@ -1122,7 +1127,7 @@ footer .footer-container .session-time {
   width: 20px;
   vertical-align: middle;
 }
-.modal-outer-wrapper .modal modal-header .button,
+.modal-outer-wrapper .modal .modal-header .button,
 .modal-outer-wrapper .modal .modal-footer .button {
   background: var(--btn-bg);
   border: 2px outset gainsboro;
@@ -1136,7 +1141,7 @@ footer .footer-container .session-time {
   text-decoration: none;
   transition: border 500ms, color 500ms;
 }
-.modal-outer-wrapper .modal modal-header .button::before,
+.modal-outer-wrapper .modal .modal-header .button::before,
 .modal-outer-wrapper .modal .modal-footer .button::before {
   background: var(--btn-bg-highlight);
   content: '';
@@ -1151,7 +1156,7 @@ footer .footer-container .session-time {
   width: 3rem;
   z-index: 1;
 }
-.modal-outer-wrapper .modal modal-header .button::after,
+.modal-outer-wrapper .modal .modal-header .button::after,
 .modal-outer-wrapper .modal .modal-footer .button::after {
   background: var(--btn-bg);
   border-radius: 50px;
@@ -1160,22 +1165,22 @@ footer .footer-container .session-time {
   position: absolute;
   z-index: 2;
 }
-.modal-outer-wrapper .modal modal-header .button:hover,
+.modal-outer-wrapper .modal .modal-header .button:hover,
 .modal-outer-wrapper .modal .modal-footer .button:hover {
   border: 2px inset gainsboro;
   color: black;
 }
-.modal-outer-wrapper .modal modal-header .button:hover::before,
+.modal-outer-wrapper .modal .modal-header .button:hover::before,
 .modal-outer-wrapper .modal .modal-footer .button:hover::before {
   opacity: 1;
 }
-.modal-outer-wrapper .modal modal-header .button[disabled=disabled],
+.modal-outer-wrapper .modal .modal-header .button[disabled=disabled],
 .modal-outer-wrapper .modal .modal-footer .button[disabled=disabled],
-.modal-outer-wrapper .modal modal-header .button[disabled=disabled]::after,
+.modal-outer-wrapper .modal .modal-header .button[disabled=disabled]::after,
 .modal-outer-wrapper .modal .modal-footer .button[disabled=disabled]::after {
   background: var(--btn-bg-disabled);
 }
-.modal-outer-wrapper .modal modal-header .button span,
+.modal-outer-wrapper .modal .modal-header .button span,
 .modal-outer-wrapper .modal .modal-footer .button span {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.7rem;
@@ -1303,10 +1308,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.11
+ * @version 0.2.14
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.44
+ * @version 0.13.46
  */
 /* Breaks */
 /* Colours */
@@ -1368,7 +1373,7 @@ form.classic.droplets {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
   box-shadow: inset 20px 20px 20px var(--shadow-darkest-semitrans), 25px 35px 20px var(--shadow-darkest-semitrans), 25px 30px 30px var(--shadow-darkest-semitrans), inset -20px -20px 25px var(--shadow-lightest-semitrans);
   padding-top: 0.5rem;
-  transform: translate(-10rem, 3rem);
+  transform: translate(-6rem, 7rem);
   transition: 0.25s;
 }
 form.classic.droplets::before,
@@ -1404,20 +1409,20 @@ form.classic.droplets .droplet:hover {
   border-radius: 50%;
 }
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
-  right: -7rem;
-  top: 0.5rem;
-  transform: rotate(5deg);
+  left: 18rem;
+  top: -4rem;
+  transform: rotate(15deg);
   z-index: 6;
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
-  right: -13rem;
-  top: 6rem;
+  left: 20rem;
+  top: 5rem;
   z-index: 7;
 }
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
-  bottom: 0;
-  right: -9rem;
-  transform: rotate(-5deg);
+  left: 19rem;
+  top: 14rem;
+  transform: rotate(-15deg);
   z-index: 8;
 }
 form.classic.droplets .droplet .tooltip {
@@ -1443,16 +1448,17 @@ form.classic.droplets .form-wrapper .form-title {
   box-shadow: inset 10px 10px 10px var(--shadow-darkest-semitrans), 15px 25px 10px var(--shadow-darkest-semitrans), 15px 20px 20px var(--shadow-darkest-semitrans), inset -10px -10px 15px var(--shadow-lightest-semitrans);
   font-size: 1.75rem;
   height: 4rem;
-  left: -3rem;
   padding: 1.25rem 1rem;
   position: absolute;
   text-shadow: 3px 3px 3px var(--bg-darker);
-  top: -3rem;
-  transform: rotate(-5deg);
   white-space: nowrap;
+  left: -4rem;
+  top: -4rem;
+  transform: rotate(-15deg);
 }
 form.classic.droplets .form-wrapper .form-title:hover {
-  transform: rotate(-5deg) scale(0.96);
+  border-radius: 50%;
+  transform: rotate(-10deg) scale(0.96);
 }
 form.classic.droplets .input-field:not(.droplet) {
   text-align: left;
@@ -1504,9 +1510,13 @@ form.classic .compound-field.right {
 form.classic .compound-field.section {
   border-bottom: 1px dashed gray;
   margin-bottom: 0.5rem;
+  max-width: 50rem;
 }
 form.classic .compound-field.section .alert-info {
   left: 0;
+}
+form.classic .compound-field.section .input-field {
+  min-width: 23rem;
 }
 form.classic .compound-field input:not([type=submit]) {
   max-width: 12rem !important;
@@ -2399,6 +2409,12 @@ form.classic .input-password .reveal {
   cursor: pointer;
   grid-area: selector;
 }
+form.classic .input-password .star.on {
+  color: gold;
+}
+form.classic .input-password .star.off {
+  color: gray;
+}
 form.classic .input-select:has(.select-multiple) {
   align-items: flex-start !important;
 }
@@ -2540,6 +2556,7 @@ form.classic .tooltip {
   left: 8.5rem;
   min-width: 10rem;
   padding: 0.5rem;
+  pointer-events: none;
   position: absolute;
   top: 0;
   transform: translateY(calc(-0.25rem - 100%));
@@ -2550,6 +2567,10 @@ form.classic .tooltip.hide {
 }
 form.classic .tooltip p {
   margin: 0;
+}
+form.classic .tooltip p a {
+  color: whitesmoke;
+  text-decoration: none;
 }
 .form-error {
   background: lightpink;
@@ -2722,7 +2743,7 @@ form.classic .tooltip p {
  * @version 0.1.23
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.44
+ * @version 0.13.46
  */
 /* Breaks */
 /* Colours */
@@ -3243,7 +3264,7 @@ form.classic .tooltip p {
  * @version 0.2.31
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.44
+ * @version 0.13.46
  */
 /* Breaks */
 /* Colours */
@@ -3296,14 +3317,10 @@ body {
 .state-table.object-view .credit-control {
   flex-direction: row;
   gap: 0.5rem;
-  justify-content: flex-start;
+  justify-content: flex-end;
   position: relative;
 }
-.state-table.object-view .credit-control .table-button:last-child {
-  margin-right: 0;
-}
-.state-table.object-view .credit-control .table-button.right {
-  margin-right: 0;
+.state-table.object-view .credit-control .table-button .right {
   right: 0;
 }
 .state-table.object-view .state-table th:first-child a {
@@ -4084,12 +4101,18 @@ body {
 .state-table .table-form a.table-button {
   padding: 0.0625rem 0.75rem 0.25rem;
 }
+.state-table .table-form .table-button.left {
+  position: absolute;
+}
+.state-table .table-form .table-button.left:nth-child(1) {
+  left: 0;
+}
+.state-table .table-form .table-button.left:nth-child(2) {
+  left: 5rem;
+}
 .state-table .table-form .table-button.right {
   position: absolute;
   right: 0.5rem;
-}
-.state-table .table-form .table-button:last-child {
-  margin-right: 0;
 }
 .state-table .table-form .table-button[disabled=disabled],
 .state-table .table-form .table-button[disabled=disabled]::after,
@@ -4127,8 +4150,16 @@ body {
     justify-content: left;
     text-align: left !important;
   }
-  .state-table .chart-container {
-    display: none !important;
+  .state-table .chart-container,
+  .state-table .table-container {
+    display: block !important;
+  }
+}
+@media (max-width: 480px) {
+  .state-table .chart-container,
+  .state-table .table-container {
+    padding-left: 0.5rem;
+    width: 480px;
   }
 }
 .state-table-error {

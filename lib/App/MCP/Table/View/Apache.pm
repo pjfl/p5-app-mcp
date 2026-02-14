@@ -1,7 +1,7 @@
 package App::MCP::Table::View::Apache;
 
 use HTML::StateTable::Constants qw( FALSE NUL SPC TABLE_META TRUE );
-use HTML::StateTable::Types     qw( Str );
+use File::DataClass::Types      qw( File );
 use Type::Utils                 qw( class_type );
 use HTML::StateTable::ResultSet::File::View;
 use Moo;
@@ -29,13 +29,7 @@ has '+form_control_location' => default => 'BottomRight';
 
 has '+icons' => default => sub { shift->context->icons_uri->as_string };
 
-has '+name' => default => sub {
-   my $file = shift->logfile;
-
-   $file =~ s{ \. log \z }{}mx;
-
-   return $file
-};
+has '+name' => default => sub { shift->path->basename };
 
 has '+page_control_location' => default => 'TopLeft';
 
@@ -45,7 +39,7 @@ has '+searchable_control_location' => default => 'TopRight';
 
 has '+title_location' => default => 'inner';
 
-has 'logfile' => is => 'ro', isa => Str, required => TRUE;
+has 'path' => is => 'ro', isa => File, required => TRUE;
 
 has 'redis' =>
    is       => 'ro',
@@ -57,8 +51,7 @@ setup_resultset sub {
    my $config = $self->context->config;
 
    return HTML::StateTable::ResultSet::File::View->new(
-      directory    => $config->logfile->parent,
-      file         => $self->logfile,
+      path         => $self->path,
       redis        => $self->redis,
       result_class => 'App::MCP::File::Result::Apache',
       table        => $self,

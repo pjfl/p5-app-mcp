@@ -33,9 +33,9 @@ sub user : Auth('view') Capture(1) {
 
    $context->stash(user => $user);
 
-   my $nav = $context->stash('nav')->list('user')->crud('user', $user->id);
+   my $nav = $context->stash('nav')->list('user')->item('user/create');
 
-   $nav->item('user/create')->finalise;
+   $nav->crud('user', $user->id)->finalise;
    return;
 }
 
@@ -160,9 +160,10 @@ sub view : Auth('manager') Nav('View User') {
    my $user    = $context->stash('user');
    my $buttons = [{
       action    => $context->uri_for_action('user/list'),
+      classes   => 'left',
       method    => 'get',
       selection => 'disable_on_select',
-      value     => 'List',
+      value     => 'Users',
    },{
       action    => $context->uri_for_action('user/profile', [$user->id]),
       method    => 'get',
@@ -170,7 +171,6 @@ sub view : Auth('manager') Nav('View User') {
       value     => 'Profile',
    },{
       action    => $context->uri_for_action('user/edit', [$user->id]),
-      classes   => 'right',
       method    => 'get',
       selection => 'disable_on_select',
       value     => 'Edit',
