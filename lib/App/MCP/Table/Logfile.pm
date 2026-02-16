@@ -10,7 +10,7 @@ use HTML::StateTable::Moo;
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Form';
 
-has '+caption' => default => 'Logfile List';
+has '+caption' => default => 'List Logfiles';
 
 has '+icons' => default => sub { shift->context->icons_uri->as_string };
 

@@ -91,7 +91,7 @@ sub edit : Auth('admin') Nav('Edit User') {
    return;
 }
 
-sub profile : Auth('view') Nav('Profile') {
+sub profile : Auth('view') Nav('Settings') {
    my ($self, $context) = @_;
 
    my $user = $context->stash('user');
@@ -140,7 +140,7 @@ sub remove : Auth('admin') {
    return;
 }
 
-sub totp : Auth('view') Nav('View TOTP') {
+sub totp : Auth('view') Nav('View OTP') {
    my ($self, $context) = @_;
 
    my $user = $context->stash('user');
@@ -168,7 +168,7 @@ sub view : Auth('manager') Nav('View User') {
       action    => $context->uri_for_action('user/profile', [$user->id]),
       method    => 'get',
       selection => 'disable_on_select',
-      value     => 'Profile',
+      value     => 'Settings',
    },{
       action    => $context->uri_for_action('user/edit', [$user->id]),
       method    => 'get',

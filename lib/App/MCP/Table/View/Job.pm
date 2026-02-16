@@ -5,7 +5,7 @@ use Moo;
 
 extends 'App::MCP::Table::View::Object';
 
-has '+caption' => default => 'Job View';
+has '+caption' => default => 'View Job';
 
 has '+form_buttons' => default => sub {
    my $self    = shift;

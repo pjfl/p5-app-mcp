@@ -11,7 +11,7 @@ with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Filterable';
 with    'HTML::StateTable::Role::Downloadable';
 
-has '+caption' => default => 'Jobs List';
+has '+caption' => default => 'List Jobs';
 
 has '+configurable_action' => default => 'api/preference';
 

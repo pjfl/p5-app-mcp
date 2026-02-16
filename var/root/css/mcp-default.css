@@ -1681,7 +1681,7 @@ form.classic .input-field input {
   background: var(--bg-lightest);
 }
 form.classic .input-field input:focus {
-  background: white;
+  background: whitesmoke;
 }
 form.classic .input-field input[type=date],
 form.classic .input-field input[type=email],
@@ -1745,7 +1745,7 @@ form.classic .input-field select.select-multiple {
   resize: vertical;
 }
 form.classic .input-field select.select-multiple:focus {
-  background: white;
+  background: whitesmoke;
 }
 form.classic .input-field select.select-multiple option {
   background: hsl(0, 48%, 53%);
@@ -1776,7 +1776,7 @@ form.classic .input-field textarea {
   padding: 0.25rem;
 }
 form.classic .input-field textarea:focus {
-  background: white;
+  background: whitesmoke;
 }
 form.classic .input-field .alert {
   border-radius: 5px;

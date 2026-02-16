@@ -6,7 +6,7 @@ use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
 
-has '+caption' => default => 'Job History View';
+has '+caption' => default => 'View Job History';
 
 has '+icons' => default => sub { shift->context->icons_uri->as_string };
 

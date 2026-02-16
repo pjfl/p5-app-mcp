@@ -47,7 +47,7 @@ sub create_user : Auth('none') {
 
    return $self->error($context, UnknownToken, [$token]) unless $stash;
 
-   $self->redis_client->remove($token);
+   $self->redis_client->del($token);
 
    my $user = $context->model('User')->create({
       email            => $stash->{email},
@@ -217,7 +217,7 @@ sub password_update : Auth('none') {
    my $message = 'User [_1] password reset and expired';
 
    $context->stash(redirect $changep, [$message, "${user}"]);
-   $self->redis_client->remove($token);
+   $self->redis_client->del($token);
    return;
 }
 
@@ -249,7 +249,7 @@ sub totp : Auth('none') {
    return $self->error($context, UnknownToken, [$token])
       unless $self->redis_client->get($token);
 
-   $self->redis_client->remove($token);
+   $self->redis_client->del($token);
 
    my $options = { context => $context, user => $context->stash('user') };
 

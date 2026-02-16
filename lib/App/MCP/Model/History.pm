@@ -78,7 +78,7 @@ sub view : Auth('view') Nav('Job History') {
    my $options = { context => $context, job => $job };
 
    if (my $runid = $context->stash('runid')) {
-      $options->{caption} = 'Run History View';
+      $options->{caption} = 'View Run History';
       $options->{runid} = $runid;
    }
    else { $context->stash('nav')->finalise }

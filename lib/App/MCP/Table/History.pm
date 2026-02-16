@@ -7,7 +7,7 @@ use HTML::StateTable::Moo;
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Configurable';
 
-has '+caption' => default => 'Job History List';
+has '+caption' => default => 'List Job History';
 
 has '+configurable_action' => default => 'api/preference';
 

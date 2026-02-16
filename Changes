@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Title/caption text update
           - Logging class update
           - Context now inherits from Web::Components::Context
           - Adds IP address validation

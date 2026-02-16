@@ -13,7 +13,7 @@ with    'App::MCP::Role::UpdatingSession';
 
 has '+form_wrapper_class'     => default => sub { ['narrow'] };
 has '+info_message'           => default => 'Update profile information';
-has '+title'                  => default => 'User Profile';
+has '+title'                  => default => 'User Settings';
 has '+use_init_obj_over_item' => default => TRUE;
 
 has '+init_object' => default => sub {

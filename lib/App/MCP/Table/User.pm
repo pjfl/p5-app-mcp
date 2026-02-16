@@ -13,7 +13,7 @@ with    'HTML::StateTable::Role::Form';
 
 has '+active_control_location' => default => 'BottomRight';
 
-has '+caption' => default => 'User List';
+has '+caption' => default => 'List Users';
 
 has '+configurable_action' => default => 'api/preference';
 
