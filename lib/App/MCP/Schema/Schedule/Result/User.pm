@@ -1,7 +1,7 @@
 package App::MCP::Schema::Schedule::Result::User;
 
-use overload '""' => sub { $_[0]->_as_string },
-             '+'  => sub { $_[0]->_as_number }, fallback => 1;
+use overload '""' => sub { shift->_as_string },
+             '+'  => sub { shift->_as_number }, fallback => 1;
 
 use App::MCP::Constants        qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types          qw( Bool HashRef Int Object );
@@ -76,7 +76,11 @@ has 'api_execution_allowed' =>
    is      => 'lazy',
    isa     => HashRef,
    default => sub {
-      return { enable_2fa => TRUE };
+      return {
+         is_2fa_enabled      => TRUE,
+         is_oauth_enabled    => TRUE,
+         is_password_enabled => TRUE,
+      };
    };
 
 has 'default_role_id' =>
@@ -204,7 +208,7 @@ sub encrypt_password {
 sub execute {
    my ($self, $method) = @_;
 
-   return FALSE unless $self->api_execution_allowed->{$method};
+   return unless exists $self->api_execution_allowed->{$method};
 
    return $self->$method();
 }
@@ -223,6 +227,10 @@ sub insert {
    return $self->next::method;
 }
 
+sub is_2fa_enabled {
+   return shift->enable_2fa ? TRUE : FALSE;
+}
+
 sub is_authorised {
    my ($self, $session, $roles) = @_;
 
@@ -232,6 +240,19 @@ sub is_authorised {
    my $is_authorised = join NUL, grep { $_ eq $role } @{$roles // []};
 
    return $self->id == $session->id || $is_authorised ? TRUE : FALSE;
+}
+
+sub is_oauth_enabled {
+   my $self      = shift;
+   my ($domain)  = reverse split m{ @ }mx, $self->email;
+   my $realms    = $self->_config->authentication->{realms};
+   my $providers = $realms->{OAuth}->{providers};
+
+   return exists $providers->{$domain} ? TRUE : FALSE;
+}
+
+sub is_password_enabled {
+   return !_is_disabled shift->password ? TRUE : FALSE;
 }
 
 sub mobile_phone {
@@ -319,11 +340,11 @@ sub validation_attributes {
 
 # Private methods
 sub _as_number {
-   return $_[0]->id;
+   return shift->id;
 }
 
 sub _as_string {
-   return $_[0]->user_name;
+   return shift->user_name;
 }
 
 sub _encrypt_password_column {

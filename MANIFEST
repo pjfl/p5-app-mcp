@@ -10,6 +10,7 @@ lib/App/MCP.pm
 lib/App/MCP/Application.pm
 lib/App/MCP/Attributes.pm
 lib/App/MCP/Authentication/Realms/DBIC.pm
+lib/App/MCP/Authentication/Realms/OAuth.pm
 lib/App/MCP/CLI.pm
 lib/App/MCP/Config.pm
 lib/App/MCP/Constants.pm
@@ -159,6 +160,7 @@ var/root/img/manager.svg
 var/root/img/thumb.svg
 var/root/js/highcharts.js
 var/root/js/mcp.js
+var/root/js/service-worker.js
 var/share/App-MCP-Worker-0.2.29.tar.gz
 var/share/App-cpanminus.tar.gz
 var/sql/App-MCP-Schema-Schedule-0.5.49-0.5.71-PostgreSQL.sql

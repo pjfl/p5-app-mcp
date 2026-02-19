@@ -121,8 +121,10 @@ has_field 'features' =>
    options          => [
       { label => 'Animation',        value => 'animation' },
       { label => 'Droplets',         value => 'droplets' },
+      { label => 'Notifications',    value => 'notifications' },
       { label => 'Radar',            value => 'radar' },
       { label => 'Relative Colours', value => 'relative' },
+      { label => 'Tooltips',         value => 'tooltips' },
    ];
 
 has_field 'base_colour' =>

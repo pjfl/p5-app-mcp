@@ -1,12 +1,15 @@
 package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
-use File::DataClass::Types qw( ArrayRef Directory );
+use File::DataClass::Types qw( ArrayRef Directory Int );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
-use Unexpected::Functions  qw( throw Timedout UnknownToken Unspecified );
+use Unexpected::Functions  qw( throw Timedout UnknownToken UnknownUser
+                               Unspecified );
+use HTTP::Request::Webpush;
+use HTTP::Tiny;
 use App::MCP::Markdown;
 use Moo;
 use Class::Usul::Cmd::Options;
@@ -51,13 +54,9 @@ Defines the following attributes;
 
 =over 3
 
-=item C<redis_client_name>
-
-=cut
-
-has '+redis_client_name' => default => 'job_stash';
-
 =item C<assetdir>
+
+Subdirectory of the document root containing image files
 
 =cut
 
@@ -68,6 +67,9 @@ has 'assetdir' =>
 
 =item C<formatter>
 
+An instance of the application subclass of L<Text::MultiMarkdown>. A markdown
+formatter
+
 =cut
 
 has 'formatter' =>
@@ -76,6 +78,10 @@ has 'formatter' =>
    default => sub { App::MCP::Markdown->new( tab_width => 3 ) };
 
 =item C<projects>
+
+A list of projects which contain the JS and LESS files used in this
+application. Local copies of these files are made before processing and
+saving under the document root
 
 =cut
 
@@ -88,6 +94,8 @@ has 'projects' =>
 
 =item C<templatedir>
 
+Directory containing email templates in Markdown format
+
 =cut
 
 has 'templatedir' =>
@@ -99,6 +107,36 @@ has 'templatedir' =>
 
       return $vardir->catdir('templates', $self->config->skin, 'site');
    };
+
+=item C<ua_timeout>
+
+Defaults to 30seconds. How long should the HTTP user agent wait for responses
+
+=cut
+
+has 'ua_timeout' => is => 'ro', isa => Int, default => 30;
+
+# Private attributes
+has '_pusher' =>
+   is      => 'lazy',
+   isa     => class_type('HTTP::Request::Webpush'),
+   default => sub {
+      my $self   = shift;
+      my $pusher = HTTP::Request::Webpush->new;
+
+      if (my $json = $self->redis_client->get('service-worker-keys')) {
+         my $keys = $self->json_parser->decode($json);
+
+         $pusher->authbase64($keys->{public}, $keys->{private});
+      }
+
+      return $pusher;
+   };
+
+has '_ua' =>
+   is      => 'lazy',
+   isa     => class_type('HTTP::Tiny'),
+   default => sub { HTTP::Tiny->new(timeout => shift->ua_timeout) };
 
 =back
 
@@ -249,45 +287,13 @@ unimplemented
 =cut
 
 sub send_message : method {
-   my $self     = shift;
-   my $options  = $self->options;
-   my $sink     = $self->next_argv or throw Unspecified, ['message sink'];
-   my $quote    = $self->next_argv ? TRUE : $options->{quote} ? TRUE : FALSE;
-   my $stash    = $self->_load_stash($quote);
-   my $attaches = $self->_qualify_assets(delete $stash->{attachments});
-   my $log_opts = { name => 'CLI.send_message' };
-   my $success;
+   my $self   = shift;
+   my $sink   = $self->next_argv or throw Unspecified, ['message sink'];
+   my $method = "_send_${sink}";
 
-   if ($sink eq 'email') {
-      my $recipients = delete $stash->{recipients};
-      my $rs = $self->schema->resultset('User');
+   throw 'Message sink [_1] unknown', [$sink] unless $self->can($method);
 
-      for my $id_or_email (@{$recipients // []}) {
-         if ($id_or_email =~ m{ @ }mx) { $stash->{email} = $id_or_email }
-         else {
-            my $user = $rs->find_by_key($id_or_email);
-
-            unless ($user) {
-               $self->error("User ${id_or_email} unknown", $log_opts);
-               next;
-            }
-
-            unless ($user->can_email) {
-               $self->error("User ${user} bad email address", $log_opts);
-               next;
-            }
-
-            $stash->{email} = $user->email;
-            $stash->{username} = "${user}";
-         }
-
-         $success = $self->_send_email($stash, $attaches);
-      }
-   }
-   elsif ($sink eq 'sms') { $success = $self->_send_sms($stash) }
-   else { throw 'Message sink [_1] unknown', [$sink] }
-
-   return $success ? OK : FAILED;
+   return $self->$method() ? OK : FAILED;
 }
 
 =item wait_for_file - Waits for the file specified by option 'path'
@@ -367,10 +373,11 @@ sub _install_schema {
 }
 
 sub _load_stash {
-   my ($self, $quote) = @_;
-
-   my $token    = $self->options->{token} or throw Unspecified, ['token'];
-   my $encoded  = $self->redis_client->get($token)
+   my $self     = shift;
+   my $options  = $self->options;
+   my $quote    = $self->next_argv ? TRUE : $options->{quote} ? TRUE : FALSE;
+   my $token    = $options->{token} or throw Unspecified, ['token'];
+   my $encoded  = $self->redis_client->get("send_message-${token}")
       or throw UnknownToken, [$token];
    my $stash    = $self->json_parser->decode($encoded);
    my $template = delete $stash->{template};
@@ -387,6 +394,7 @@ sub _load_stash {
    unlink $template if $tempdir eq substr $template, 0, length $tempdir;
 
    $stash->{quote} = $quote;
+   $stash->{token} = $token;
    return $stash;
 }
 
@@ -452,6 +460,40 @@ sub _qualify_assets {
 }
 
 sub _send_email {
+   my $self       = shift;
+   my $stash      = $self->_load_stash;
+   my $attaches   = $self->_qualify_assets(delete $stash->{attachments});
+   my $user_rs    = $self->schema->resultset('User');
+   my $recipients = delete $stash->{recipients};
+   my $options    = { leader => 'CLI.send_email' };
+   my $success    = TRUE;
+
+   for my $recipient (@{$recipients // []}) {
+      if ($recipient =~ m{ \A \d+ \z }mx) {
+         my $user = $user_rs->find_by_key($recipient);
+
+         unless ($user) {
+            $self->error("User ${recipient} unknown", $options);
+            next;
+         }
+
+         unless ($user->can_email) {
+            $self->error("User ${user} bad email address", $options);
+            next;
+         }
+
+         $stash->{email} = $user->email;
+         $stash->{username} = "${user}";
+      }
+      else { $stash->{email} = $recipient }
+
+      $success = FALSE unless $self->_send_email_single($stash, $attaches);
+   }
+
+   return $success;
+}
+
+sub _send_email_single {
    my ($self, $stash, $attaches) = @_;
 
    my $content  = $stash->{content};
@@ -471,18 +513,61 @@ sub _send_email {
 
    $post->{attachments} = $attaches if $attaches;
 
-   my ($id)    = $self->send_email($post);
+   my ($id) = $self->send_email($post);
 
    return FALSE unless $id;
 
-   my $options = { args => [$stash->{email}, $id], name => 'CLI.send_message' };
+   my $options = { args => [$stash->{email}, $id], name => 'CLI.send_email' };
 
    $self->info('Emailed [_1] message id. [_2]', $options);
 
    return TRUE;
 }
 
+sub _send_notification {
+   my $self      = shift;
+   my $req       = $self->_pusher;
+   my $options   = $self->options;
+   my $recipient = $options->{recipient} or throw Unspecified, ['recipient'];
+   my $user      = $self->schema->resultset('User')->find_by_key($recipient);
+
+   throw UnknownUser, [$recipient] unless $user;
+
+   my $worker_key   = 'service-worker-' . $user->id;
+   my $subscription = $self->redis_client->get($worker_key)
+      or throw 'Recipient [_1] no service worker subscription', ["${user}"];
+
+   $req->subscription($self->json_parser->decode($subscription));
+   $req->subject($options->{subject} // 'something happening');
+   $req->content($options->{content} // 'Something happened');
+   $req->header('TTL' => '90');
+   $req->encode();
+   $req->remove_header('::std_case'); # Strange artifact
+
+   my $params  = { content => $req->content, headers => $req->headers };
+   my $res     = $self->_ua->post($req->uri, $params);
+   my $args    = ["${user}", $options->{subject}];
+   my $context = { args => $args, leader => 'CLI.send_notification' };
+
+   return $self->info('Notified [_1] of [_2]', $context) if $res->{success};
+
+   my $message = $res->{content} // 'No response content';
+
+   if ('{' eq substr $message, 0, 1) {
+      my $decoded = $self->json_parser->decode($message);
+
+      $message = $decoded->{message} // 'No content message';
+   }
+
+   my $error = ($res->{reason} ? $res->{reason} . ': ' : NUL) . $message;
+
+   $self->error($error, $context);
+   return FALSE;
+}
+
 sub _send_sms { ... }
+
+sub _send_sms_single { ... }
 
 sub _strip_comments {
    my ($self, @js) = @_;

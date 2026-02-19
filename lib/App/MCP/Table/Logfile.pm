@@ -41,11 +41,6 @@ has_column 'name' =>
    },
    sortable => TRUE;
 
-has_column 'modified' =>
-   cell_traits => ['DateTime'],
-   label       => 'Modified',
-   sortable    => TRUE;
-
 has_column 'size' =>
    cell_traits => ['Numeric'],
    value       => sub {
@@ -53,6 +48,11 @@ has_column 'size' =>
 
       return $cell->table->format_number->base2($cell->result->size);
    };
+
+has_column 'modified' =>
+   cell_traits => ['DateTime'],
+   label       => 'Modified',
+   sortable    => TRUE;
 
 use namespace::autoclean -except => TABLE_META;
 

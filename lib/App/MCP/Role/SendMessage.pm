@@ -6,12 +6,15 @@ use Moo::Role;
 with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::Redis';
 
-has '+redis_client_name' => is => 'ro', default => 'job_stash';
-
 sub send_message {
    my ($self, $context, $token, $params) = @_;
 
-   $self->redis_client->set($token, $self->json_parser->encode($params));
+   my $keyprefix = delete $params->{keyprefix} or return;
+   my $payload   = $self->json_parser->encode($params);
+   my $cache     = $self->redis_client;
+
+   $cache->set_with_ttl("${keyprefix}-${token}", $payload, 86400);
+   $cache->set_with_ttl("send_message-${token}", $payload, 1800);
 
    my $prefix  = $context->config->prefix;
    my $program = $context->config->bin->catfile("${prefix}-cli");

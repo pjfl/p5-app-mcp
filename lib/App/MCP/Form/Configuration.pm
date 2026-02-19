@@ -1,9 +1,8 @@
 package App::MCP::Form::Configuration;
 
-use Class::Usul::Cmd::Constants qw( DUMP_EXCEPT EXCEPTION_CLASS );
-use HTML::Forms::Constants      qw( FALSE META TRUE );
-use HTML::Entities              qw( encode_entities );
+use HTML::Forms::Constants      qw( EXCEPTION_CLASS FALSE META NUL SPC TRUE );
 use Class::Usul::Cmd::Util      qw( list_attr_of list_methods_of );
+use HTML::Entities              qw( encode_entities );
 use Ref::Util                   qw( is_arrayref is_plain_hashref );
 use Type::Utils                 qw( class_type );
 use HTML::Forms::Util           qw( data2markup );
@@ -35,7 +34,8 @@ after 'after_build_fields' => sub {
    my $self    = shift;
    my $config  = $self->context->config;
    my $methods = list_methods_of $config;
-   my $attr    = [ list_attr_of $config, $methods, DUMP_EXCEPT ];
+   my $except  = [ @{$config->DumpExcept} ];
+   my $attr    = [ list_attr_of $config, $methods, @{$except} ];
    my $is_ref  = sub { is_plain_hashref($_[0]) || is_arrayref($_[0]) };
    my $content = join "\n", map {
       my $t = $_;

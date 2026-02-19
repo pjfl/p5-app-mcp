@@ -1411,18 +1411,21 @@ form.classic.droplets .droplet:hover {
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
   left: 18rem;
   top: -4rem;
-  transform: rotate(15deg);
   z-index: 6;
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
-  left: 20rem;
+  left: -10rem;
   top: 5rem;
-  z-index: 7;
+  z-index: 6;
 }
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
+  left: 21rem;
+  top: 3rem;
+  z-index: 7;
+}
+form.classic.droplets .droplet:nth-child(4 of .droplet) {
   left: 19rem;
-  top: 14rem;
-  transform: rotate(-15deg);
+  top: 11rem;
   z-index: 8;
 }
 form.classic.droplets .droplet .tooltip {
@@ -1618,6 +1621,11 @@ form.classic .input-field.floating input.digit:last-child {
 form.classic .input-field.floating .tooltip {
   left: 0;
 }
+form.classic .input-field.floating:hover span.field-label,
+form.classic .input-field.floating:has(input:focus) span.field-label,
+form.classic .input-field.floating:has(input:not(:placeholder-shown)) span.field-label {
+  top: -0.25rem;
+}
 form.classic .input-field:has(.alert-info.top) {
   grid-template-areas: "blank alert alert" "label input selector";
 }
@@ -1646,11 +1654,6 @@ form.classic .input-field:has(input:valid) .field-label::after,
 form.classic .input-field:has(select:valid) .field-label::after,
 form.classic .input-field:has(textarea:valid) .field-label::after {
   content: ' ';
-}
-form.classic .input-field:hover span.field-label,
-form.classic .input-field:has(input:focus) span.field-label,
-form.classic .input-field:has(input:valid) span.field-label {
-  top: -0.25rem;
 }
 form.classic .input-field > .checkbox-wrapper {
   grid-area: input;

@@ -4,7 +4,11 @@ use App::MCP::Constants   qw( DOT EXCEPTION_CLASS FALSE TRUE );
 use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_CREATED
                               HTTP_NOT_FOUND HTTP_OK);
 use App::MCP::Util        qw( trigger_input_handler );
+use HTML::Forms::Util     qw( json_bool );
+use MIME::Base64          qw( decode_base64url encode_base64url );
+use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw );
+use Crypt::PK::ECC;
 use DateTime::TimeZone;
 use Try::Tiny;
 use Moo;
@@ -12,9 +16,48 @@ use App::MCP::Attributes; # Will do namespace cleaning
 
 extends 'App::MCP::Model';
 with    'Web::Components::Role';
+with    'App::MCP::Role::Redis';
+with    'App::MCP::Role::JSONParser';
 with    'App::MCP::Role::APIAuthentication';
 
 has '+moniker' => default => 'api';
+
+has '_ecc' =>
+   is      => 'lazy',
+   isa     => class_type('Crypt::PK::ECC'),
+   default => sub {
+      my $self  = shift;
+      my $ecc   = Crypt::PK::ECC->new;
+      my $curve = 'prime256v1';
+
+      if (my $encoded = $self->redis_client->get('service-worker-keys')) {
+         my $keys    = $self->json_parser->decode($encoded);
+         my $private = decode_base64url $keys->{private};
+         my $public  = decode_base64url $keys->{public};
+
+         $ecc->import_key_raw($private, $curve);
+         $ecc->import_key_raw($public, $curve);
+      }
+      else {
+         $ecc->generate_key($curve);
+
+         my $public  = encode_base64url $ecc->export_key_raw('public');
+         my $private = encode_base64url $ecc->export_key_raw('private');
+         my $keys    = { public => $public, private => $private };
+         my $encoded = $self->json_parser->encode($keys);
+
+         $self->redis_client->set('service-worker-keys', $encoded);
+      }
+
+      return $ecc;
+};
+
+sub BUILD {
+   my $self = shift;
+
+   $self->_ecc;
+   return;
+}
 
 sub diagram : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
@@ -198,6 +241,38 @@ sub preference : Auth('view') {
    return;
 }
 
+sub push_publickey : Auth('view') {
+   my ($self, $context) = @_;
+
+   my $public = $self->_ecc->export_key_raw('public');
+
+   $self->_stash_response($context, { publickey => encode_base64url $public });
+   return;
+}
+
+sub push_register : Auth('view') {
+   my ($self, $context) = @_;
+
+   my $key          = $context->session->id;
+   my $subscription = $context->body_parameters->{data}->{subscription};
+
+   $subscription = $self->json_parser->encode($subscription);
+   $self->redis_client->set("service-worker-${key}", $subscription);
+   $self->_stash_response($context, { text => 'Service worker registered' });
+   return;
+}
+
+sub push_worker : Auth('none') {
+   my ($self, $context) = @_;
+
+   my @headers = ('Content-Type', 'application/javascript');
+   my $jsdir   = $self->config->root->catdir('js');
+   my $content = $jsdir->catfile('service-worker.js')->slurp;
+
+   $context->stash(response => [200, [@headers], [$content]]);
+   return;
+}
+
 sub validate : Auth('none') {
    my ($self, $context) = @_;
 
@@ -225,15 +300,20 @@ sub _fetch_property {
 
    my $request = $context->request;
    my $class   = $request->query_params->('class');
-   my $prop    = $request->query_params->('property');
+   my $prop    = $request->query_params->('property', { raw => TRUE });
    my $value   = $request->query_params->('value', { raw => TRUE });
-   my $result  = { found => \0 };
+   my $result  = { found => json_bool($prop =~ m{ \A ! }mx ? TRUE : FALSE) };
 
    return $result unless defined $value;
 
-   my $r = $context->model($class)->find_by_key($value);
+   $prop =~ s{ \A ! }{}mx;
 
-   $result->{found} = \1 if $r && $r->execute($prop);
+   my $entity = $context->model($class)->find_by_key($value);
+   my $res;
+
+   $res = $entity->execute($prop) if $entity && $entity->can('execute');
+
+   $result->{found} = json_bool $res if defined $res;
 
    return $result;
 }

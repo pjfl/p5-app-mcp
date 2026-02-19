@@ -65,6 +65,9 @@ has_exception 'NoUserRole' => parents => [$class],
 has_exception 'PageNotFound' => parents => [$class],
    error   => 'Page [_1] not found', rv => HTTP_NOT_FOUND;
 
+has_exception 'RedirectToLocation' => parents => [$class],
+   error   => 'Redirecting to [_2]';
+
 has_exception 'Timedout' => parents => [$class],
    error   => 'Timedout after [_1] seconds waiting for [_2]';
 

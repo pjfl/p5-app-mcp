@@ -3,6 +3,7 @@ package App::MCP::Model::Misc;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_OK );
 use App::MCP::Util         qw( create_token new_uri redirect );
+use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( PageNotFound UnauthorisedAccess
                                UnknownToken UnknownUser );
 use Try::Tiny;
@@ -16,8 +17,6 @@ with    'App::MCP::Role::SendMessage';
 
 has '+moniker' => default => 'misc';
 
-has '+redis_client_name' => default => 'job_stash';
-
 sub base : Auth('none') {
    my ($self, $context) = @_;
 
@@ -25,10 +24,10 @@ sub base : Auth('none') {
    return;
 }
 
-sub user : Auth('none') {
-   my ($self, $context, $id_or_name) = @_;
+sub user : Auth('none') Capture(1) {
+   my ($self, $context, $arg) = @_;
 
-   $self->_stash_user($context, $id_or_name);
+   $self->_stash_user($context, $arg);
    $context->stash('nav')->finalise;
    return;
 }
@@ -43,11 +42,11 @@ sub changes : Auth('none') Nav('Changes') {
 sub create_user : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $stash = $self->redis_client->get($token);
+   my $stash = $self->redis_client->get("create_user-${token}");
 
    return $self->error($context, UnknownToken, [$token]) unless $stash;
 
-   $self->redis_client->del($token);
+   $self->redis_client->del("create_user-${token}");
 
    my $user = $context->model('User')->create({
       email            => $stash->{email},
@@ -98,18 +97,8 @@ sub login : Auth('none') Nav('Sign In') {
    my $options = { context => $context, log => $self->log };
    my $form    = $self->new_form('Login', $options);
 
-   if ($form->process(posted => $context->posted)) {
-      my $default  = $context->uri_for_action($self->config->default_action);
-      my $name     = $context->session->username;
-      my $wanted   = $context->session->wanted;
-      my $location = new_uri $context->request->scheme, $wanted if $wanted;
-      my $address  = $context->request->remote_address;
-      my $message  = 'User [_1] logged in';
-
-      $self->log->info("Address ${address}", $context);
-      $context->stash(redirect $location || $default, [$message, $name]);
-      $context->session->wanted(NUL);
-   }
+   return $self->_redirect_after_login($context)
+      if $form->process(posted => $context->posted);
 
    $context->stash(form => $form);
    return;
@@ -161,6 +150,32 @@ sub not_found : Auth('none') {
    return;
 }
 
+sub oauth : Auth('none') {
+   my ($self, $context) = @_;
+
+   my $args = {
+      address => $context->request->remote_address,
+      params  => { %{$context->request->query_parameters} },
+   };
+
+   try {
+      $context->logout;
+      $args->{user} = $context->find_user($args, 'OAuth');
+      $context->authenticate($args, 'OAuth');
+      $context->set_authenticated($args, 'OAuth');
+      $self->_redirect_after_login($context);
+   }
+   catch {
+      my $action  = $self->config->default_actions->{login};
+      my $login   = $context->uri_for_action($action);
+      my $message = blessed $_ && $_->can('original') ? $_->original : "${_}";
+
+      $context->stash(redirect $login, [$message]);
+   };
+
+   return;
+}
+
 sub password : Auth('none') Nav('Change Password') {
    my ($self, $context) = @_;
 
@@ -207,8 +222,12 @@ sub password_reset : Auth('none') {
 sub password_update : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $stash = $self->redis_client->get($token)
-      or return $self->error($context, UnknownToken, [$token]);
+   my $stash = $self->redis_client->get("password_reset-${token}");
+
+   return $self->error($context, UnknownToken, [$token]) unless $stash;
+
+   $self->redis_client->del("password_reset-${token}");
+
    my $user  = $context->stash('user');
 
    $user->update({ password => $stash->{password}, password_expired => TRUE });
@@ -217,7 +236,6 @@ sub password_update : Auth('none') {
    my $message = 'User [_1] password reset and expired';
 
    $context->stash(redirect $changep, [$message, "${user}"]);
-   $self->redis_client->del($token);
    return;
 }
 
@@ -247,9 +265,9 @@ sub totp : Auth('none') {
    my ($self, $context, $token) = @_;
 
    return $self->error($context, UnknownToken, [$token])
-      unless $self->redis_client->get($token);
+      unless $self->redis_client->get("totp_reset-${token}");
 
-   $self->redis_client->del($token);
+   $self->redis_client->del("totp_reset-${token}");
 
    my $options = { context => $context, user => $context->stash('user') };
 
@@ -293,6 +311,7 @@ sub _create_reset_email {
    my $passwd  = substr create_token, 0, 12;
    my $params  = {
       application => $self->config->name,
+      keyprefix   => 'password_reset',
       link        => "${link}",
       password    => $passwd,
       recipients  => [$user->id],
@@ -305,6 +324,24 @@ sub _create_reset_email {
    catch { $self->error($context, $_) };
 
    return $job;
+}
+
+sub _redirect_after_login {
+   my ($self, $context) = @_;
+
+   my $default  = $context->uri_for_action($self->config->default_action);
+   my $name     = $context->session->username;
+   my $wanted   = $context->session->wanted;
+   my $location = new_uri $context->request->scheme, $wanted if $wanted;
+   my $message  = 'User [_1] logged in';
+
+   $context->stash(redirect $location || $default, [$message, $name]);
+   $context->session->wanted(NUL);
+
+   my $address = $context->request->remote_address;
+
+   $self->log->info("Address ${address}", $context);
+   return;
 }
 
 sub _stash_user {

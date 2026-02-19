@@ -109,6 +109,7 @@ sub update_model {
    my $link    = $context->uri_for_action($actionp, [$user->id, $token]);
    my $params  = {
       application => $context->config->name,
+      keyprefix   => 'totp_reset',
       link        => "${link}",
       recipients  => [$user->id],
       subject     => '2FA Authenticator Reset',

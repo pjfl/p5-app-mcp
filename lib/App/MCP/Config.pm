@@ -15,13 +15,6 @@ use Moo;
 
 with 'Web::Components::ConfigLoader';
 
-my $except = [
-   qw( BUILDARGS BUILD DOES connect_info has_config_file has_config_home
-       has_local_config_file new SSL_VERIFY_NONE )
-];
-
-Class::Usul::Cmd::Constants->Dump_Except($except);
-
 =pod
 
 =encoding utf-8
@@ -63,16 +56,87 @@ A synonym for C<home>
 
 has 'appldir' => is => 'lazy', isa => Directory, default => sub { shift->home };
 
-=item C<authentication>
+=item authentication
 
 Configuration parameters for the plugin authentication system
 
 =cut
 
 has 'authentication' =>
-   is      => 'ro',
-   isa     => HashRef,
-   default => sub { { default_realm => 'DBIC' } };
+   is            => 'lazy',
+   isa           => HashRef,
+   init_arg      => undef,
+   default       => sub {
+      my $self = shift;
+
+      return {
+         default_realm => $self->_default_realm,
+         realms => {
+            OAuth => {
+               providers => {
+                  'gmail.com' => $self->_google_provider_config,
+               },
+            },
+         },
+      };
+   };
+
+=item _default_realm
+
+Defaults to C<DBIC>. Selects default authentication via the users table in
+the database
+
+=cut
+
+has '_default_realm' =>
+   is       => 'ro',
+   isa      => Str,
+   init_arg => 'default_realm',
+   default  => 'DBIC';
+
+has '_google_provider_config' =>
+   is            => 'lazy',
+   isa           => HashRef,
+   documentation => 'NoUpdate',
+   default       => sub {
+      my $self = shift;
+
+      return {
+         access_url    => 'https://oauth2.googleapis.com/token',
+         client_id     => $self->_google_client_id,
+         client_secret => $self->_google_client_secret,
+         name          => 'google',
+         request_key   => 'code',
+         request_url   => 'https://accounts.google.com/o/oauth2/v2/auth',
+         token_key     => 'state',
+      };
+   };
+
+=item _google_client_id
+
+Provided by the Google Cloud Console. The registered identity for this
+application
+
+=cut
+
+has '_google_client_id' =>
+   is       => 'ro',
+   isa      => Str,
+   init_arg => 'gmail_client_id',
+   default  => 'overide_in_local_config';
+
+=item _google_client_secret
+
+Provided by the Google Cloud Console. Secret used to obtain an access token
+from the identity provider
+
+=cut
+
+has '_google_client_secret' =>
+   is       => 'ro',
+   isa      => Str,
+   init_arg => 'gmail_client_secret',
+   default  => 'overide_in_local_config';
 
 =item C<bin>
 
@@ -967,6 +1031,27 @@ has 'web_components' =>
       };
    };
 
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=item DumpExcept
+
+An immutable class attribute. Returns an array reference of symbols that
+should be skipped when introspecting this class
+
+=cut
+
+sub DumpExcept {
+   return [
+      qw( SSL_VERIFY_NONE connect_info has_config_file has_config_home
+          has_local_config_file _config_file_list _dist_indicator_files
+          _find_config _find_home _home_indicator_dirs )
+   ];
+}
+
 use namespace::autoclean;
 
 1;
@@ -974,10 +1059,6 @@ use namespace::autoclean;
 __END__
 
 =back
-
-=head1 Subroutines/Methods
-
-Defines no subroutines or methods
 
 =head1 Diagnostics
 

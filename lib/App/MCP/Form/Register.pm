@@ -112,6 +112,7 @@ sub _create_email {
    my $options   = {
       application => $config->name,
       email       => $email->value,
+      keyprefix   => 'create_user',
       link        => "${link}",
       password    => $passwd,
       recipients  => [$email->value],

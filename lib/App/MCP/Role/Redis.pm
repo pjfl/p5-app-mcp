@@ -21,7 +21,7 @@ has 'redis_client' =>
       );
    };
 
-has 'redis_client_name' => is => 'ro', isa => Str, default => 'unknown';
+has 'redis_client_name' => is => 'ro', isa => Str, default => 'cache';
 
 use namespace::autoclean;
 

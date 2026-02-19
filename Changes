@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds web push notifications and OAuth authentication realm
           - Title/caption text update
           - Logging class update
           - Context now inherits from Web::Components::Context

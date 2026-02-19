@@ -151,6 +151,22 @@ sub set_preserve_ttl {
    return;
 }
 
+=item set_with_ttl( key, value, ttl )
+
+Sets the C<value> on the C<key>. Sets the expiry to C<ttl>
+
+=cut
+
+sub set_with_ttl {
+   my ($self, $key, $value, $ttl) = @_;
+
+   my $redis = $self->redis;
+
+   $redis->set($key, $value) or return;
+   $redis->expire($key, $ttl);
+   return;
+}
+
 use namespace::autoclean;
 
 1;
