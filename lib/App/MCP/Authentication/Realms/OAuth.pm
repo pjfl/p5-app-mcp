@@ -115,9 +115,8 @@ sub _redirect_oauth_provider {
    my ($self, $provider, $user) = @_;
 
    my $token = create_token;
-   my $key   = "oauth-${token}";
 
-   $self->redis_client->set_with_ttl($key, $user->id, 180);
+   $self->redis_client->set_with_ttl("oauth-${token}", $user->id, 180);
 
    my $method  = '_redirect_oauth_' . $provider->{name};
    my $uri     = $self->$method($provider, $token);

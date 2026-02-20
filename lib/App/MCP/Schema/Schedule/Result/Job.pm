@@ -1,7 +1,7 @@
 package App::MCP::Schema::Schedule::Result::Job;
 
-use overload '""' => sub { $_[0]->_as_string },
-             '+'  => sub { $_[0]->_as_number }, fallback => 1;
+use overload '""' => sub { shift->_as_string },
+             '+'  => sub { shift->_as_number }, fallback => 1;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS CRONTAB_FIELD_NAMES FALSE

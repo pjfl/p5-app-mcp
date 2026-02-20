@@ -266,7 +266,7 @@ sub push_worker : Auth('none') {
    my ($self, $context) = @_;
 
    my @headers = ('Content-Type', 'application/javascript');
-   my $jsdir   = $self->config->root->catdir('js');
+   my $jsdir   = $self->config->rootdir->catdir('js');
    my $content = $jsdir->catfile('service-worker.js')->slurp;
 
    $context->stash(response => [200, [@headers], [$content]]);

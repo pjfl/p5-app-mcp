@@ -56,7 +56,7 @@ A synonym for C<home>
 
 has 'appldir' => is => 'lazy', isa => Directory, default => sub { shift->home };
 
-=item authentication
+=item C<authentication>
 
 Configuration parameters for the plugin authentication system
 
@@ -81,7 +81,7 @@ has 'authentication' =>
       };
    };
 
-=item _default_realm
+=item C<_default_realm>
 
 Defaults to C<DBIC>. Selects default authentication via the users table in
 the database
@@ -112,7 +112,7 @@ has '_google_provider_config' =>
       };
    };
 
-=item _google_client_id
+=item C<_google_client_id>
 
 Provided by the Google Cloud Console. The registered identity for this
 application
@@ -125,7 +125,7 @@ has '_google_client_id' =>
    init_arg => 'gmail_client_id',
    default  => 'overide_in_local_config';
 
-=item _google_client_secret
+=item C<_google_client_secret>
 
 Provided by the Google Cloud Console. Secret used to obtain an access token
 from the identity provider

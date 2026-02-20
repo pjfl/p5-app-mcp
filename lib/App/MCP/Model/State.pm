@@ -35,8 +35,6 @@ sub base : Auth('view') {
       $context->stash(job => $job);
    }
 
-#   $nav->container_layout('left') if $context->endpoint eq 'view';
-
    $nav->finalise;
    return;
 }

@@ -27,6 +27,7 @@ has 'resultset' =>
       return $self->context->model($self->item_class);
    };
 
+with 'App::MCP::Role::Redis';
 with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::SendMessage';
 
@@ -109,10 +110,9 @@ sub _create_email {
    my $link      = $context->uri_for_action('misc/register', [$token]);
    my $role_name = $config->user->{default_role} // 'view';
    my $role      = $context->model('Role')->find({ name => $role_name });
-   my $options   = {
+   my $params    = {
       application => $config->name,
       email       => $email->value,
-      keyprefix   => 'create_user',
       link        => "${link}",
       password    => $passwd,
       recipients  => [$email->value],
@@ -121,8 +121,12 @@ sub _create_email {
       template    => 'register_user.md',
       username    => $name->value,
    };
+   my $payload = $self->json_parser->encode($params);
+   my $cache   = $self->redis_client;
 
-   return $self->send_message($context, $token, $options);
+   $cache->set_with_ttl("create_user-${token}", $payload, 259200);
+
+   return $self->send_message($context, $token, $payload);
 }
 
 use namespace::autoclean -except => META;

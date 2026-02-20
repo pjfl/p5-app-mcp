@@ -23,6 +23,8 @@ has 'user' =>
    isa      => class_type('App::MCP::Schema::Schedule::Result::User'),
    required => TRUE;
 
+with 'App::MCP::Role::Redis';
+with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::SendMessage';
 
 has_field 'name' => type => 'Display', label => 'User Name';
@@ -109,14 +111,16 @@ sub update_model {
    my $link    = $context->uri_for_action($actionp, [$user->id, $token]);
    my $params  = {
       application => $context->config->name,
-      keyprefix   => 'totp_reset',
       link        => "${link}",
       recipients  => [$user->id],
-      subject     => '2FA Authenticator Reset',
+      subject     => 'OTP Authenticator Reset',
       template    => 'totp_reset.md',
    };
+   my $payload = $self->json_parser->encode($params);
+   my $cache   = $self->redis_client;
 
-   $context->stash(job => $self->send_message($context, $token, $params));
+   $cache->set_with_ttl("totp_reset-${token}", $payload, 86400);
+   $context->stash(job => $self->send_message($context, $token, $payload));
    return;
 }
 

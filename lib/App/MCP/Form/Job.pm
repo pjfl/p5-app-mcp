@@ -35,7 +35,9 @@ has '_icons' =>
    isa     => Str,
    default => sub { shift->context->icons_uri->as_string };
 
-has_field 'job_name' => required => TRUE;
+has_field 'job_name' =>
+   required => TRUE,
+   title    => 'Job names must be unique';
 
 has_field '_g1' => type => 'Group';
 
@@ -59,7 +61,7 @@ has_field 'parent_name' =>
    label       => 'Parent Box',
    field_group => '_g1',
    noupdate    => TRUE,
-   title       => 'Select Parent';
+   title       => 'Select parent box';
 
 has_field '_g2' => type => 'Group';
 
@@ -72,13 +74,15 @@ has_field 'owner_name' =>
    noupdate      => TRUE,
    readonly      => TRUE,
    size          => 8,
-   value         => 'owner_rel.user_name';
+   value         => 'owner_rel.user_name',
+   title         => 'User owner of the job';
 
 has_field 'group_rel' =>
    type        => 'Select',
    field_group => '_g2',
    label       => 'Group',
-   value       => 'group_rel.role_name';
+   value       => 'group_rel.role_name',
+   title       => 'Group owner of the job';
 
 sub options_group_rel {
    my $self   = shift;
@@ -93,40 +97,47 @@ has_field 'permissions' =>
    type        => 'PosInteger',
    default     => '0750',
    field_group => '_g2',
-   size        => 4;
+   size        => 4,
+   title       => 'User/Group/Other read/write/execute permissions';
 
 has_field 'condition' =>
-   type => 'TextArea',
-   cols => 32,
-   tags => { nospellcheck => TRUE };
+   type  => 'TextArea',
+   cols  => 32,
+   tags  => { nospellcheck => TRUE },
+   title => 'Run the command when this condition evaluates to true';
 
 has_field '_g5' => type => 'Group';
 
 has_field 'crontab_min' =>
    label       => 'Minute',
    field_group => '_g5',
-   size        => 3;
+   size        => 3,
+   title       => "Digits 0-59 or '*'. Comma separated lists";
 
 has_field 'crontab_hour' =>
    label       => 'Hour',
    field_group => '_g5',
-   size        => 3;
+   size        => 3,
+   title       => "Digits 0-23 or '*'. Comma separated lists";
 
 has_field '_g6' => type => 'Group';
 
 has_field 'crontab_mday' =>
    label       => 'Day of Month',
    field_group => '_g6',
-   size        => 3;
+   size        => 3,
+   title       => "Digits 1-31 or '*'. Comma separated lists";
 
 has_field 'crontab_mon' =>
    label       => 'Month',
    field_group => '_g6',
-   size        => 3;
+   size        => 3,
+   title       => "Digits 1-12 or names or '*'. Comma separated lists";
 
 has_field 'crontab_wday' =>
    label => 'Day of Week',
-   size  => 3;
+   size  => 3,
+   title => "Digits 0-7 or names or '*'. Zero is Sunday. Comma separated lists";
 
 has_field '_g4' =>
    type => 'Group',
@@ -136,20 +147,25 @@ has_field 'user_name' =>
    default       => 'mcp',
    field_group   => '_g4',
    required      => TRUE,
-   size          => 8;
+   size          => 8,
+   title         => 'Name of remote user to execute command';
 
 has_field 'host' =>
    default     => 'localhost',
    field_group => '_g4',
-   required    => TRUE;
+   required    => TRUE,
+   title       => 'Name of host on which to execute the command';
 
 has_field 'command' =>
    type     => 'TextArea',
    cols     => 32,
    required => TRUE,
-   tags     => { nospellcheck => TRUE };
+   tags     => { nospellcheck => TRUE },
+   title    => 'Command to execute on the given host';
 
-has_field 'directory' => size => 32;
+has_field 'directory' =>
+   size  => 32,
+   title => 'Make this the working directory when executing the command';
 
 has_field '_g3' => type => 'Group';
 
@@ -159,12 +175,15 @@ has_field 'expected_rv' =>
    field_group         => '_g3',
    label               => 'Expected RV',
    size                => 3,
+   title               => 'The expected return value of the command. '
+                        . 'Higher values trigger an error condition',
    validate_inline     => TRUE,
    validate_when_empty => TRUE;
 
 has_field 'delete_after' =>
    type        => 'Boolean',
-   field_group => '_g3';
+   field_group => '_g3',
+   title       => 'If true delete the job definition after completion';
 
 has_field 'view' =>
    type          => 'Link',
