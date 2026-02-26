@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added password validity options to Config
           - Sets ttl on Redis usage
           - Adds web push notifications and OAuth authentication realm
           - Title/caption text update

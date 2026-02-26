@@ -27,7 +27,7 @@ option 'port' =>
    isa           => NonZeroPositiveInt,
    format        => 'i',
    documentation => 'Port number for the input event listener',
-   default       => sub { $_[0]->config->port },
+   default       => sub { shift->config->port },
    short         => 'p';
 
 # Ignored by the command line
@@ -43,7 +43,7 @@ has 'app' =>
 has 'async_factory' =>
    is      => 'lazy',
    isa     => class_type('Async::IPC'),
-   default => sub { Async::IPC->new(builder => $_[0]) },
+   default => sub { Async::IPC->new(builder => shift) },
    handles => ['loop'];
 
 has 'clock_tick' => is => 'lazy', isa => Object;
@@ -54,13 +54,11 @@ has 'ip_ev_hndlr' => is => 'lazy', isa => Object;
 
 has 'ipc_ssh' => is => 'lazy', isa => Object;
 
-has 'listener' => is => 'lazy', isa => Object;
-
 # Required by Async::IPC
 has 'lock' =>
    is      => 'lazy',
    isa     => class_type('IPC::SRLock'),
-   default => sub { IPC::SRLock->new(builder => $_[0]) };
+   default => sub { IPC::SRLock->new(builder => shift) };
 
 has 'name' =>
    is      => 'lazy',
@@ -68,6 +66,8 @@ has 'name' =>
    default => 'DAEMON';
 
 has 'op_ev_hndlr' => is => 'lazy', isa => Object;
+
+has 'server' => is => 'lazy', isa => Object;
 
 # Construction
 before 'run' => sub {
@@ -178,25 +178,25 @@ sub _build_op_ev_hndlr {
       name         => $name,
       call_ch_mode => 'async',
       before       => sub { $ipc_ssh = $self->ipc_ssh },
+      after        => sub { $ipc_ssh->close },
       on_recv      => [
          sub { $app->output_handler($name, $daemon_pid, $ipc_ssh) }
       ],
-      after        => sub { $ipc_ssh->close },
    );
 }
 
-sub _get_listener_sub {
+sub _get_server_sub {
    my $self     = shift;
    my $config   = $self->config;
    my $port     = $self->port;
    my $appclass = $config->appclass;
    my $prefix   = lc distname $appclass;
-   my $logfile  = "${prefix}-listener-${port}.log";
+   my $logfile  = "${prefix}-server-${port}.log";
    my $args     = {
       '--port'       => $port,
       '--server'     => $config->server,
       '--access-log' => $config->logsdir->catfile($logfile),
-      '--app'        => $config->bin->catfile('mcp-listener'),
+      '--app'        => $config->bin->catfile('mcp-server'),
    };
    my $daemon_pid = $self->pid;
    my $debug      = $self->debug;
@@ -205,7 +205,7 @@ sub _get_listener_sub {
       ensure_class_loaded $appclass;
       $appclass->env_var('daemon_pid', $daemon_pid);
       $appclass->env_var('debug', $debug);
-      $appclass->env_var('listener_port', $port);
+      $appclass->env_var('server_port', $port);
       Plack::Runner->run(%{$args});
       return OK;
    };
@@ -236,14 +236,14 @@ sub _stdio_file {
    return $self->config->tempdir->catfile("${name}.${extn}");
 }
 
-sub _build_listener {
+sub _build_server {
    my $self = shift;
 
    return $self->async_factory->new_notifier(
       type => 'process',
       desc => 'web application server',
-      name => 'listener',
-      code => $self->_get_listener_sub,
+      name => 'server',
+      code => $self->_get_server_sub,
    );
 }
 
@@ -264,7 +264,7 @@ sub _daemon {
    log_info $self, 'Starting event loop';
 
    # Must fork before watching signals
-   $self->listener;
+   $self->server;
    $self->op_ev_hndlr;
    $self->ip_ev_hndlr;
    $self->clock_tick;
@@ -280,7 +280,7 @@ sub _daemon {
    log_info $self, 'Stopping event loop';
 
    $self->clock_tick->stop;
-   $self->listener->stop;
+   $self->server->stop;
    $self->cron->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;

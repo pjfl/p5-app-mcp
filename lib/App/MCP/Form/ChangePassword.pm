@@ -24,10 +24,11 @@ has_field 'old_password' =>
    required => TRUE;
 
 has_field 'password' =>
-   type     => 'Password',
-   label    => 'New Password',
-   required => TRUE,
-   tags     => { reveal => TRUE };
+   type        => 'Password',
+   label       => 'New Password',
+   ne_username => 'user_name',
+   required    => TRUE,
+   tags        => { reveal => TRUE };
 
 has_field '_password' =>
    type           => 'PasswordConf',
@@ -49,6 +50,8 @@ after 'after_build_fields' => sub {
    $field->add_handler('input', make_handler($change_js, $options));
    $field->element_attr->{minlength} = $min;
    $field->element_attr->{title} = "Must be at least ${min} characters long";
+   $field->password_options($config->user->{password_options})
+      if $config->user->{password_options};
    return;
 };
 

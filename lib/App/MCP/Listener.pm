@@ -49,10 +49,10 @@ sub BUILD {
    ensure_class_loaded $class;
 
    my $server = ucfirst($ENV{PLACK_ENV} // NUL);
-   my $port   = $class->env_var('listener_port') // 5_000;
+   my $port   = $class->env_var('server_port') // 5_000;
    my $info   = 'v' . $class->VERSION . " started on port ${port}";
 
-   $self->log->info("LISTENER: ${class} ${server} ${info}");
+   $self->log->info("SERVER: ${class} ${server} ${info}");
    return;
 }
 

@@ -927,7 +927,8 @@ has 'token_lifetime' => is => 'ro', isa => PositiveInt, default => 3_600;
 =item C<user>
 
 Configuration options for the F<User> result class. Includes; C<load_factor>,
-C<default_password>, C<default_role>, C<min_name_len>, and C<min_password_len>
+C<default_password>, C<default_role>, C<min_name_len>, C<min_password_len>,
+and C<password_options>
 
 =over 3
 
@@ -951,6 +952,20 @@ Minimum user name length
 
 Minumum password length
 
+=item C<password_options>
+
+Options include;
+
+=over 3
+
+=item C<mixed_case>
+
+=item C<with_numbers>
+
+=item C<with_punctuation>
+
+=back
+
 =back
 
 =cut
@@ -964,7 +979,8 @@ has 'user' =>
          default_role     => 'view',
          load_factor      => 14,
          min_name_len     => 3,
-         min_password_len => 3,
+         min_password_len => 6,
+         password_options => { with_numbers => TRUE },
       };
    };
 
@@ -1027,7 +1043,10 @@ has 'web_components' =>
             file_home  => $self->bin->parent->catdir('lib'),
             file_share => $self->rootdir->catdir('file')
          },
-         'Model::State' => { max_jobs => 1_000 },
+         'Model::State' => {
+            dom_wait => 250,
+            max_jobs => 1_000,
+         },
       };
    };
 

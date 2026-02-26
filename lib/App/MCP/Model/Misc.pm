@@ -43,14 +43,9 @@ sub changes : Auth('none') Nav('Changes') {
 sub create_user : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $payload = $self->redis_client->get("create_user-${token}");
-
-   return $self->error($context, UnknownToken, [$token]) unless $payload;
-
-   $self->redis_client->del("create_user-${token}");
-
-   my $params  = $self->json_parser->decode($payload);
+   my $params  = $self->_params($context, "create_user-${token}") or return;
    my $options = {
+      active           => TRUE,
       email            => $params->{email},
       name             => $params->{username},
       password         => $params->{password},
@@ -156,16 +151,17 @@ sub not_found : Auth('none') {
 sub oauth : Auth('none') {
    my ($self, $context) = @_;
 
-   my $args = {
-      address => $context->request->remote_address,
-      params  => { %{$context->request->query_parameters} },
+   my $request = $context->request;
+   my $options = {
+      address => $request->remote_address,
+      params  => $request->query_parameters,
    };
 
    try {
       $context->logout;
-      $args->{user} = $context->find_user($args, 'OAuth');
-      $context->authenticate($args, 'OAuth');
-      $context->set_authenticated($args, 'OAuth');
+      $options->{user} = $context->find_user($options, 'OAuth');
+      $context->authenticate($options, 'OAuth');
+      $context->set_authenticated($options, 'OAuth');
       $self->_redirect_after_login($context);
    }
    catch {
@@ -216,16 +212,11 @@ sub password_reset : Auth('none') {
 sub password_update : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $payload = $self->redis_client->get("password_reset-${token}");
+   my $params  = $self->_params($context, "password_reset-${token}") or return;
+   my $options = { password => $params->{password}, password_expired => TRUE };
+   my $user    = $context->stash('user');
 
-   return $self->error($context, UnknownToken, [$token]) unless $payload;
-
-   $self->redis_client->del("password_reset-${token}");
-
-   my $params = $self->json_parser->decode($payload);
-   my $user   = $context->stash('user');
-
-   $user->update({ password => $params->{password}, password_expired => TRUE });
+   $user->update($options);
 
    my $changep = $context->uri_for_action('misc/password', [$user->id]);
    my $message = 'User [_1] password reset and expired';
@@ -259,12 +250,7 @@ sub register : Auth('none') Nav('Sign Up') {
 sub totp : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $payload = $self->redis_client->get("totp_reset-${token}");
-
-   return $self->error($context, UnknownToken, [$token]) unless $payload;
-
-   $self->redis_client->del("totp_reset-${token}");
-
+   my $params  = $self->_params($context, "totp_reset-${token}") or return;
    my $options = { context => $context, user => $context->stash('user') };
 
    $context->stash(form => $self->new_form('TOTP::Secret', $options));
@@ -331,6 +317,18 @@ sub _create_reset_email {
    catch { $self->error($context, $_) };
 
    return $job;
+}
+
+sub _params {
+   my ($self, $context, $key) = @_;
+
+   my $payload = $self->redis_client->get($key);
+
+   return $self->error($context, UnknownToken, [$key]) unless $payload;
+
+   $self->redis_client->del($key);
+
+   return $self->json_parser->decode($payload);
 }
 
 sub _redirect_after_login {
