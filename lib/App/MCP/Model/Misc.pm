@@ -43,7 +43,7 @@ sub changes : Auth('none') Nav('Changes') {
 sub create_user : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $params  = $self->_params($context, "create_user-${token}") or return;
+   my $params  = $self->_fetchp($context, "create_user-${token}") or return;
    my $options = {
       active           => TRUE,
       email            => $params->{email},
@@ -105,17 +105,17 @@ sub login : Auth('none') Nav('Sign In') {
 sub login_dispatch : Auth('none') {
    my ($self, $context) = @_;
 
-   my $user = $context->body_parameters->{user_name};
+   my $name = $context->body_parameters->{user_name};
 
    if ($context->button_pressed eq 'password_reset') {
-      $self->password_reset($context) if $self->_stash_user($context, $user);
+      $self->_password_reset($context) if $self->_stash_user($context, $name);
    }
    elsif ($context->button_pressed eq 'totp_reset') {
-      my $reset = $context->uri_for_action('misc/totp_reset', [$user]);
+      my $reset = $context->uri_for_action('misc/totp_reset', [$name]);
 
       $context->stash(redirect $reset, ['Redirecting to OTP reset']);
    }
-   elsif ($user) { $context->stash(forward => 'misc/login') }
+   elsif ($name) { $context->stash(forward => 'misc/login') }
    else { $context->stash(forward => 'misc/not_found') }
 
    return;
@@ -149,7 +149,7 @@ sub not_found : Auth('none') {
 }
 
 sub oauth : Auth('none') {
-   my ($self, $context) = @_;
+   my ($self, $context, $realm) = @_;
 
    my $request = $context->request;
    my $options = {
@@ -159,9 +159,10 @@ sub oauth : Auth('none') {
 
    try {
       $context->logout;
-      $options->{user} = $context->find_user($options, 'OAuth');
-      $context->authenticate($options, 'OAuth');
-      $context->set_authenticated($options, 'OAuth');
+      $realm = ucfirst $realm;
+      $options->{user} = $context->find_user($options, $realm);
+      $context->authenticate($options, $realm);
+      $context->set_authenticated($options, $realm);
       $self->_redirect_after_login($context);
    }
    catch {
@@ -193,26 +194,10 @@ sub password : Auth('none') Nav('Change Password') {
    return;
 }
 
-sub password_reset : Auth('none') {
-   my ($self, $context, $token) = @_;
-
-   $context->action('misc/password_reset');
-
-   return unless $self->verify_form_post($context);
-
-   my $user    = $context->stash('user');
-   my $job     = $self->_create_reset_email($context, $user) or return;
-   my $changep = $context->uri_for_action('misc/password', [$user->id]);
-   my $message = 'User [_1] password reset request [_2] created';
-
-   $context->stash(redirect $changep, [$message, "${user}", "${job}"]);
-   return;
-}
-
 sub password_update : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $params  = $self->_params($context, "password_reset-${token}") or return;
+   my $params  = $self->_fetchp($context, "password_reset-${token}") or return;
    my $options = { password => $params->{password}, password_expired => TRUE };
    my $user    = $context->stash('user');
 
@@ -250,7 +235,7 @@ sub register : Auth('none') Nav('Sign Up') {
 sub totp : Auth('none') {
    my ($self, $context, $token) = @_;
 
-   my $params  = $self->_params($context, "totp_reset-${token}") or return;
+   my $params  = $self->_fetchp($context, "totp_reset-${token}") or return;
    my $options = { context => $context, user => $context->stash('user') };
 
    $context->stash(form => $self->new_form('TOTP::Secret', $options));
@@ -319,7 +304,7 @@ sub _create_reset_email {
    return $job;
 }
 
-sub _params {
+sub _fetchp {
    my ($self, $context, $key) = @_;
 
    my $payload = $self->redis_client->get($key);
@@ -329,6 +314,22 @@ sub _params {
    $self->redis_client->del($key);
 
    return $self->json_parser->decode($payload);
+}
+
+sub _password_reset {
+   my ($self, $context) = @_;
+
+   $context->action('misc/password_reset');
+
+   return unless $self->verify_form_post($context);
+
+   my $user    = $context->stash('user');
+   my $job     = $self->_create_reset_email($context, $user) or return;
+   my $changep = $context->uri_for_action('misc/password', [$user->id]);
+   my $message = 'User [_1] password reset request [_2] created';
+
+   $context->stash(redirect $changep, [$message, "${user}", "${job}"]);
+   return;
 }
 
 sub _redirect_after_login {

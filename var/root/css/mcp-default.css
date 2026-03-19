@@ -1325,6 +1325,7 @@ form.classic {
   background: var(--bg-lighter-semitrans);
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
+  caret-color: darkorange;
   color: black;
   display: inline-block;
   padding: 0 0.5rem 0.5rem;
@@ -1409,23 +1410,23 @@ form.classic.droplets .droplet:hover {
   border-radius: 50%;
 }
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
-  left: 19rem;
-  top: 11rem;
-  z-index: 8;
-}
-form.classic.droplets .droplet:nth-child(2 of .droplet) {
   left: 18rem;
   top: -4rem;
   z-index: 6;
 }
-form.classic.droplets .droplet:nth-child(3 of .droplet) {
-  left: -10rem;
-  top: 5rem;
-  z-index: 6;
-}
-form.classic.droplets .droplet:nth-child(4 of .droplet) {
+form.classic.droplets .droplet:nth-child(2 of .droplet) {
   left: 21rem;
   top: 3rem;
+  z-index: 7;
+}
+form.classic.droplets .droplet:nth-child(3 of .droplet) {
+  left: 19rem;
+  top: 11rem;
+  z-index: 8;
+}
+form.classic.droplets .droplet:nth-child(4 of .droplet) {
+  left: -10rem;
+  top: 5rem;
   z-index: 7;
 }
 form.classic.droplets .droplet .tooltip {
@@ -3417,6 +3418,7 @@ body {
   text-align: center;
 }
 .state-table table:not(.object-view, .preference-columns) td.checkbox {
+  accent-color: hsl(147, 29%, 62%);
   width: 1rem;
 }
 .state-table table:not(.object-view, .preference-columns) td.datetime {
@@ -3491,6 +3493,7 @@ body {
   white-space: nowrap;
 }
 .state-table .active-control-label input[type=checkbox] {
+  accent-color: hsl(147, 29%, 62%);
   margin: 0 0.25rem;
   position: relative;
   top: 2px;
@@ -3739,6 +3742,7 @@ body {
   line-height: 1rem;
 }
 .state-table .dialog-input input[type=checkbox] {
+  accent-color: hsl(147, 29%, 62%);
   margin: 0 0.25rem 0 0;
   position: relative;
   top: 2px;

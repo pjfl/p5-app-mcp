@@ -2,9 +2,9 @@ package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS NUL );
 use HTTP::Status           qw( HTTP_NOT_FOUND );
-use Unexpected::Types      qw( HashRef );
+use Unexpected::Types      qw( ArrayRef HashRef );
 use Unexpected::Functions  qw( Unknown );
-use Class::Usul::Cmd::Util qw( is_member );
+use Class::Usul::Cmd::Util qw( includes );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( blessed );
 use Web::Components::Util  qw( exception throw );
@@ -31,6 +31,11 @@ has 'event_propagation' =>
       };
    };
 
+has 'initially_active' =>
+   is      => 'ro',
+   isa     => ArrayRef,
+   default => sub { [qw(active running starting)] };
+
 # Public methods
 sub create_and_or_update {
    my ($self, $event) = @_;
@@ -40,22 +45,22 @@ sub create_and_or_update {
    my $state_name = $job_state->name->value;
    my $res;
 
-   try   { $state_name = _workflow()->process_event($state_name, $event) }
+   try   {
+      $state_name = _workflow()->process_event($state_name, $event);
+      $job_state->name($state_name);
+      $job_state->update;
+      $self->_trigger_update_cascade($event);
+   }
    catch {
       my $e = $_;
 
       $e = exception class => Unknown, error => $e
          unless blessed $e and $e->can('class');
 
-      $res = [$event->transition->value, $job->job_name, $e];
+      $res = [$job->job_name, $event->transition->value, $e];
    };
 
-   return $res if $res;
-
-   $job_state->name($state_name);
-   $job_state->update;
-   $self->_trigger_update_cascade($event);
-   return;
+   return $res;
 }
 
 sub find_by_key {
@@ -89,8 +94,7 @@ sub find_or_create {
 
    my $initial_state = 'inactive';
 
-   $initial_state = 'active' if is_member $parent_state,
-      qw(active running starting);
+   $initial_state = 'active' if includes $parent_state, $self->initially_active;
 
    $initial_state = 'running' if $parent_state eq 'running'
       and !$job->condition
@@ -109,9 +113,12 @@ sub _trigger_update_cascade {
    my $ev_rs      = $schema->resultset('Event');
    my $job_rs     = $schema->resultset('Job');
    my $jc_rs      = $schema->resultset('JobCondition');
+   my $where      = {
+      condition => { '=' => undef },
+      parent_id => $event->job->id,
+   };
 
-   for my $job ($job_rs->search({ parent_id => $event->job->id })->all) {
-      next if $job->condition;
+   for my $job ($job_rs->search($where)->all) {
       $ev_rs->create({ job_id => $job->id, transition => $transition });
    }
 

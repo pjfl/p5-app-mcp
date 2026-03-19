@@ -12,12 +12,11 @@ use HTML::Forms::Moo;
 extends 'HTML::Forms';
 with    'HTML::Forms::Role::Defaults';
 
-has '+do_form_wrapper'    => default => FALSE;
-has '+form_element_class' => default => sub { ['narrow'] };
-has '+info_message'       => default => 'Change the current job state';
-has '+is_html5'           => default => TRUE;
-has '+name'               => default => 'state-edit';
-has '+title'              => default => 'State';
+has '+do_form_wrapper' => default => FALSE;
+has '+info_message'    => default => 'Change the current job state';
+has '+is_html5'        => default => TRUE;
+has '+name'            => default => 'state-edit';
+has '+title'           => default => 'State';
 
 has '_workflow' =>
    is      => 'lazy',
@@ -71,6 +70,7 @@ after 'after_build_fields' => sub {
    my $label      = $job->type eq 'job' ? 'Job Name' : 'Box Name';
    my $state_name = $job->state->name;
 
+   $self->add_form_element_class('narrow');
    $self->info_message('Change the current box state') if $job->type eq 'box';
 
    $self->field('job_name')->label($label);

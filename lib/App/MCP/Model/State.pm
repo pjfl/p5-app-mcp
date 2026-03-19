@@ -23,19 +23,22 @@ has 'max_jobs' => is => 'ro', isa => Int, default => 10_000;
 
 # Public methods
 sub base : Auth('view') {
+   my ($self, $context) = @_;
+
+   $context->stash('nav')->list('job')->item('job/create')->finalise;
+
+   return;
+}
+
+sub jobid : Auth('view') Capture(1) {
    my ($self, $context, $jobid) = @_;
 
-   my $nav = $context->stash('nav')->list('job')->item('job/create');
+   my $job = $context->model('Job')->find($jobid, { prefetch => 'state' });
 
-   if ($jobid) {
-      my $job = $context->model('Job')->find($jobid, { prefetch => 'state' });
+   return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
-      return $self->error($context, UnknownJob, [$jobid]) unless $job;
+   $context->stash(job => $job);
 
-      $context->stash(job => $job);
-   }
-
-   $nav->finalise;
    return;
 }
 
@@ -47,13 +50,10 @@ sub edit  {
 
    if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('state/view');
-      my $message = [
-         'Job [_1] event transition [_2] created',
-         $job->job_name,
-         $form->field('signal')->value
-      ];
+      my $signal  = $form->field('signal')->value;
+      my $message = 'Job [_1] event transition [_2] created';
 
-      $context->stash(redirect $view, $message);
+      $context->stash(redirect $view, [$message, $job->job_name, $signal]);
    }
 
    $context->stash(form => $form);
@@ -125,23 +125,6 @@ sub _fetch_jobs {
    return [$jobs->all];
 }
 
-sub _get_job_item {
-   my ($self, $context, $job) = @_;
-
-   my $uri = $context->uri_for_action('state/edit', [$job->id]);
-
-   return {
-      'depends-on' => [split m{ / }mx, $job->dependencies // NUL],
-      'id'         => $job->id,
-      'job-name'   => $job->job_name,
-      'job-uri'    => $uri->as_string,
-      'parent-id'  => $job->parent_id,
-      'path-depth' => $job->path_depth,
-      'state-name' => $job->state->name,
-      'type'       => $job->type,
-   };
-}
-
 sub _get_job_tree {
    my ($self, $context, $params) = @_;
 
@@ -154,7 +137,7 @@ sub _get_job_tree {
 
    try {
       while (my $job = shift @{$all_jobs}) {
-         my $item = $self->_get_job_item($context, $job);
+         my $item = $self->_serialise_job($context, $job);
 
          if ($self->_have_seen_dependencies($seen, $item)) {
             $self->_add_node($nodes, $job, $item);
@@ -202,6 +185,23 @@ sub _have_seen_dependencies {
    }
 
    return TRUE;
+}
+
+sub _serialise_job {
+   my ($self, $context, $job) = @_;
+
+   my $uri = $context->uri_for_action('state/edit', [$job->id]);
+
+   return {
+      'depends-on' => [split m{ / }mx, $job->dependencies // NUL],
+      'id'         => $job->id,
+      'job-name'   => $job->job_name,
+      'job-uri'    => $uri->as_string,
+      'parent-id'  => $job->parent_id,
+      'path-depth' => $job->path_depth,
+      'state-name' => $job->state->name,
+      'type'       => $job->type,
+   };
 }
 
 1;

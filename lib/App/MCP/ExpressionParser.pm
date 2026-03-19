@@ -119,7 +119,7 @@ sub _lex {
 sub _read_skip_ws {
    my ($self, $token, $ns, $identifiers, $recogniser) = @_;
 
-   return $token->[ 2 ] if $token->[0] eq 'SP';
+   return $token->[2] if $token->[0] eq 'SP';
 
    if ($token->[0] eq 'IDENTIFIER') {
       my $sep  = SEPARATOR;

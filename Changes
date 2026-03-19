@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds OAuth for Github
           - Added password validity options to Config
           - Sets ttl on Redis usage
           - Adds web push notifications and OAuth authentication realm

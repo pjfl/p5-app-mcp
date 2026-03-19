@@ -309,14 +309,14 @@ sub _process_event {
 
    my $cols  = { $event->get_inflated_columns };
    my $js_rs = $self->schema->resultset('JobState');
-   my $r     = $js_rs->create_and_or_update($event) or return $cols;
-   my $mesg  = 'Job ' . $r->[1] . ' event ' . $r->[0]
-             . ' rejected - ' . $r->[2]->class;
+   my $fail  = $js_rs->create_and_or_update($event) or return $cols;
+   my $mesg  = 'Job ' . $fail->[0] . ' event ' . $fail->[1]
+             . ' rejected - ' . $fail->[2]->class;
 
    if ($log_method eq 'info') { log_info $self->log, $name, $PID, $mesg }
    else { log_warn $self->log, $name, $PID, $mesg }
 
-   $cols->{rejected} = $r->[2]->class;
+   $cols->{rejected} = $fail->[2]->class;
    return $cols;
 }
 
@@ -324,7 +324,7 @@ sub _process_start_event {
    my ($self, $name, $event, $ipc_ssh) = @_;
 
    my $p_ev    = $self->_process_event($name, $event, 'info');
-   my $success = !$p_ev->{rejected};
+   my $success = $p_ev->{rejected} ? FALSE : TRUE;
 
    if ($success && $event->job->type eq 'job') {
       my ($runid, $token) = $self->_start_job($ipc_ssh, $event->job);
@@ -340,7 +340,7 @@ sub _process_start_event {
 
    $self->schema->resultset('ProcessedEvent')->create($p_ev);
    $event->delete;
-   return $p_ev->{rejected} ? FALSE : TRUE;
+   return $success;
 }
 
 sub _remote_provisioned {

@@ -33,7 +33,7 @@ sub dispatch_request { build_routes
    'GET      + /job/* + ?*'               => 'job/root/jobid/view',
    'GET      + /job + ?*'                 => 'job/root/base/list',
 
-   'GET|POST + /state/*/edit + ?*' => 'state/root/base/edit',
+   'GET|POST + /state/*/edit + ?*' => 'state/root/base/jobid/edit',
    'GET      + /state        + ?*' => 'state/root/base/view',
 
    'GET|POST + /user/create + ?*'       => 'user/root/base/create',
@@ -61,7 +61,7 @@ sub dispatch_request { build_routes
    'POST     + /login + ?*'        => 'misc/root/base/login_dispatch',
    'GET      + /login + ?*'        => 'misc/root/base/login',
    'POST     + /logout + ?*'       => 'misc/root/logout',
-   'GET      + /oauth + ?*'        => 'misc/root/base/oauth',
+   'GET      + /oauth/* + ?*'      => 'misc/root/base/oauth',
    'GET      + /register/* + ?*'   => 'misc/root/base/create_user',
    'GET|POST + /register + ?*'     => 'misc/root/base/register',
    'GET      + /unauthorised + ?*' => 'misc/root/base/unauthorised',

@@ -46,17 +46,10 @@ has_field 'auth_code' =>
 has_field 'login' =>
    type          => 'Button',
    disabled      => TRUE,
-   element_attr  => { 'data-field-depends' => [qw(user_name password)] },
+   element_attr  => { 'data-field-depends' => [qw(user_name)] },
    html_name     => 'submit',
    label         => 'Submit',
    value         => 'login';
-
-has_field 'oauth_login' =>
-   type          => 'Button',
-   html_name     => 'submit',
-   label         => 'OAuth Login',
-   title         => 'Login using an OAuth service provider',
-   value         => 'oauth_login';
 
 has_field 'register' =>
    type          => 'Link',
@@ -104,7 +97,7 @@ after 'after_build_fields' => sub {
    if (includes 'droplets', $session->features) {
       $self->add_form_element_class('droplets');
 
-      my $buttons = [qw(register password_reset totp_reset oauth_login)];
+      my $buttons = [qw(register password_reset totp_reset)];
 
       $self->_add_field_wrapper_class('droplet', $buttons);
 
@@ -113,7 +106,7 @@ after 'after_build_fields' => sub {
       $self->field('register')->href($uri->as_string);
    }
    else {
-      my $buttons = [qw(login register password_reset totp_reset oauth_login)];
+      my $buttons = [qw(login register password_reset totp_reset)];
 
       $self->_add_field_wrapper_class('expand', $buttons);
       $self->field('register')->inactive(TRUE);
@@ -121,7 +114,6 @@ after 'after_build_fields' => sub {
 
    $self->field('register')->inactive(TRUE) unless $config->registration;
 
-   $self->field('oauth_login')->add_wrapper_class('hide');
    $self->_add_field_handlers;
    return;
 };
@@ -131,7 +123,7 @@ around 'validate_form' => sub {
 
    my @modified_fields;
 
-   for my $name (qw(auth_code password)) {
+   for my $name (qw(auth_code)) {
       my $field_obj = $self->field($name);
 
       $field_obj->required(FALSE);
@@ -155,13 +147,19 @@ sub validate {
    my $context = $self->context;
    my $options = { prefetch => ['profile', 'role'] };
    my $args    = { username => $username, options => $options };
-   my $user    = $context->find_user($args, $realm);
-   my $name    = $self->field('name');
+   my $user;
+
+   try   { $user = $context->find_user($args, $realm) }
+   catch { $self->add_form_error($_->original) };
+
+   return if $self->has_form_errors;
+
+   my $name = $self->field('name');
 
    return $name->add_error('User [_1] unknown', $username) unless $user;
 
-   my $passwd  = $self->field('password');
-   my $code    = $self->field('auth_code');
+   my $passwd = $self->field('password');
+   my $code   = $self->field('auth_code');
 
    $args = {
       address  => $context->request->remote_address,
@@ -194,10 +192,8 @@ sub _add_field_handlers {
    my $unreq_flds  = ['auth_code', 'password'];
 
    my $options_2fa = $self->_check_prop('user_name', 'is_2fa_enabled');
-   my $options_oa  = $self->_check_prop('user_name', 'is_oauth_enabled');
    my $options_pwd = $self->_check_prop('user_name', '!is_password_enabled');
    my $handler     = make_handler($showif_js, $options_2fa, $showif_flds)
-            . '; ' . make_handler($showif_js, $options_oa,  ['oauth_login'])
             . '; ' . make_handler($showif_js, $options_pwd, ['password']);
 
    $self->field('name')->add_handler('blur', $handler);
@@ -213,7 +209,6 @@ sub _add_field_handlers {
    $handler = make_handler($unreq_js, { allow_default => TRUE }, $unreq_flds);
    $self->field('password_reset')->add_handler('click', $handler);
    $self->field('totp_reset')->add_handler('click', $handler);
-   $self->field('oauth_login')->add_handler('click', $handler);
    return;
 }
 
@@ -264,7 +259,7 @@ sub _exception_handlers {
          $self->add_form_error($_->original);
          $context->stash(redirect $_->args->[0], [$_->original], $params);
       },
-      'Unspecified'    => sub {
+      'Unspecified' => sub {
          if ($_->args->[0] eq 'Password') { $passwd->add_error($_->original) }
          else { $code->add_error($_->original) }
       },
@@ -282,9 +277,7 @@ sub _get_realm {
 
    my ($username, $realm) = reverse split m{ : }mx, $self->field('name')->value;
 
-   $realm = 'OAuth' if $self->context->button_pressed eq 'oauth_login';
-   $realm = 'OAuth' if $self->field('password')->value eq 'oauth';
-   $realm = 'OAuth' if $realm && $realm eq 'oauth';
+   $realm = ucfirst $realm if $realm;
 
    return ($username, $realm);
 }

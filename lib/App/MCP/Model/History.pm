@@ -21,7 +21,7 @@ sub base : Auth('view') {
 }
 
 sub jobid : Auth('view') Capture(1) {
-   my ($self, $context, $jobid, $runid) = @_;
+   my ($self, $context, $jobid) = @_;
 
    my $job = $context->model('Job')->find_by_key($jobid);
 

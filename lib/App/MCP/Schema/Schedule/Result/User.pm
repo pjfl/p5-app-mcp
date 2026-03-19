@@ -78,7 +78,6 @@ has 'api_execution_allowed' =>
    default => sub {
       return {
          is_2fa_enabled      => TRUE,
-         is_oauth_enabled    => TRUE,
          is_password_enabled => TRUE,
       };
    };
@@ -240,15 +239,6 @@ sub is_authorised {
    my $is_authorised = join NUL, grep { $_ eq $role } @{$roles // []};
 
    return $self->id == $session->id || $is_authorised ? TRUE : FALSE;
-}
-
-sub is_oauth_enabled {
-   my $self      = shift;
-   my ($domain)  = reverse split m{ @ }mx, $self->email;
-   my $realms    = $self->_config->authentication->{realms};
-   my $providers = $realms->{OAuth}->{providers};
-
-   return exists $providers->{$domain} ? TRUE : FALSE;
 }
 
 sub is_password_enabled {

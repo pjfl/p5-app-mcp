@@ -3,7 +3,9 @@ package App::MCP::Role::Authentication;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types      qw( HashRef Object Str );
 use Class::Usul::Cmd::Util qw( ensure_class_loaded );
-use Unexpected::Functions  qw( throw Unspecified );
+use Scalar::Util           qw( blessed weaken );
+use Unexpected::Functions  qw( throw UnknownRealm Unspecified );
+use Try::Tiny;
 use Moo::Role;
 
 requires qw( schema session );
@@ -13,7 +15,7 @@ has '_auth_namespace' =>
    isa     => Str,
    default => 'App::MCP::Authentication::Realms';
 
-has '_auth_realms' => is => 'ro', isa => HashRef[Object], default => sub { {} };
+has '_realms' => is => 'ro', isa => HashRef[Object], default => sub { {} };
 
 sub authenticate {
    my ($self, $args, $realm) = @_;
@@ -63,20 +65,29 @@ sub _find_realm {
 
    throw Unspecified, ['default_realm'] unless $realm;
 
-   return $self->_auth_realms->{$realm} if exists $self->_auth_realms->{$realm};
+   throw UnknownRealm, [$realm] unless exists $config->{realms}->{$realm};
+
+   return $self->_realms->{$realm} if exists $self->_realms->{$realm};
 
    my $ns    = $config->{namespace} // $self->_auth_namespace;
    my $class = $config->{classes}->{$realm} // ucfirst $realm;
 
    $class = ('+' eq substr $realm, 0, 1) ? substr $realm, 1 : "${ns}::${class}";
 
-   ensure_class_loaded $class;
+   try   { ensure_class_loaded $class }
+   catch { throw blessed $_ && $_->can('original') ? $_->original : "${_}" };
+
+   weaken $self;
 
    my $attr = {
-      %{$config->{$realm} // {}}, realm => $realm, schema => $self->schema
+      %{$config->{$realm} // {}},
+      config         => $self->config,
+      realm          => $realm,
+      schema         => $self->schema,
+      uri_for_action => sub { $self->uri_for_action(@_) },
    };
 
-   return $self->_auth_realms->{$realm} = $class->new($attr);
+   return $self->_realms->{$realm} = $class->new($attr);
 }
 
 use namespace::autoclean;
