@@ -72,6 +72,7 @@ has 'authentication' =>
       return {
          default_realm => $self->_default_realm,
          realms => {
+            DBIC   => {},
             Github => { provider => $self->_github_provider_config },
             Google => { provider => $self->_google_provider_config },
          },
@@ -226,10 +227,13 @@ has 'connect_info' =>
    is      => 'lazy',
    isa     => ArrayRef,
    default => sub {
-      my $self     = shift;
-      my $password = decrypt NUL, $self->db_password;
+      my $self       = shift;
+      my $username   = $self->db_username;
+      my $password   = decrypt NUL, $self->db_password;
+      my $attributes = $self->db_attributes;
+      my $extra      = $self->db_connect_extra;
 
-      return [$self->dsn, $self->db_username, $password, $self->db_extra];
+      return [$self->db_dsn, $username, $password, $attributes, $extra];
    };
 
 =item C<context_class>
@@ -268,16 +272,37 @@ between logging messages from the C<cron> process showing it is still active
 
 has 'cron_log_interval' => is => 'ro', isa => PositiveInt, default => 0;
 
-=item C<db_extra>
+=item C<db_attributes>
 
 Additional attributes passed to the database connection method
 
 =cut
 
-has 'db_extra' =>
+has 'db_attributes' =>
    is      => 'ro',
    isa     => HashRef,
    default => sub { { AutoCommit => TRUE } };
+
+=item db_connect_extra
+
+Extra database connection parameters
+
+=cut
+
+has 'db_connect_extra' =>
+   is      => 'ro',
+   isa     => HashRef,
+   default => sub {
+      return { on_connect_do => "set time zone 'UTC'" };
+   };
+
+=item C<db_dsn>
+
+String used to select the database driver and specific database by name
+
+=cut
+
+has 'db_dsn' => is => 'ro', isa => Str, default => 'dbi:Pg:dbname=schedule';
 
 =item C<db_password>
 
@@ -359,18 +384,10 @@ has 'deflate_types' =>
       ];
    };
 
-=item C<dsn>
-
-String used to select the database driver and specific database by name
-
-=cut
-
-has 'dsn' => is => 'ro', isa => Str, default => 'dbi:Pg:dbname=schedule';
-
 =item C<enable_advanced>
 
 Boolean which defaults to B<false>. If true the F<Profile> form will show the
-advanced options
+advanced options for all users
 
 =cut
 
@@ -615,9 +632,12 @@ has 'navigation' =>
       my $self = shift;
 
       return {
-         messages => { 'buffer-limit' => $self->max_messages },
-         title => $self->name,
-         title_abbrev => 'MCP',
+         footer_action  => 'misc/footer',
+         logger_action  => 'api/logger',
+         message_action => 'api/collect_messages',
+         messages       => { 'buffer-limit' => $self->max_messages },
+         title          => $self->name,
+         title_abbrev   => uc $self->prefix,
          %{$self->_navigation},
          global => [
             qw( job/list state/view history/list admin/menu )
@@ -739,6 +759,7 @@ has 'request' =>
             email         => [ Str, NUL ],
             enable_2fa    => [ Bool, FALSE ],
             features      => [ ArrayRef, sub { [] } ],
+            groups        => [ ArrayRef, sub { [] } ],
             id            => [ PositiveInt, 0 ],
             link_display  => [ Str, 'both' ],
             menu_location => [ Str, 'header' ],

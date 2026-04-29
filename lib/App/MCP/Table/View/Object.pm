@@ -2,6 +2,7 @@ package App::MCP::Table::View::Object;
 
 use HTML::StateTable::Constants qw( FALSE SPC TABLE_META TRUE );
 use HTML::StateTable::Types     qw( ArrayRef DBIxClass Str );
+use Scalar::Util                qw( blessed );
 use App::MCP::Object::View;
 use Moo;
 use MooX::HandlesVia;
@@ -10,7 +11,9 @@ use HTML::StateTable::Moo;
 extends 'HTML::StateTable';
 with    'HTML::StateTable::Role::Form';
 
-has '+form_classes' => default => sub { ['classic', 'fieldset'] };
+has '+form_classes' => default => sub { [qw(classic fieldset wide)] };
+has '+form_control_location' => default =>
+   sub { ['BottomLeft', 'BottomRight'] };
 has '+max_width'    => default => '50rem';
 has '+no_count'     => default => TRUE;
 has '+paging'       => default => FALSE;
@@ -25,6 +28,33 @@ has 'add_columns' =>
 has 'result' => is => 'ro', isa => DBIxClass, required => TRUE;
 
 has 'table_class' => is => 'ro', isa => Str, default => 'object-view';
+
+around '_serialise_buttons' => sub {
+   my ($orig, $self) = @_;
+
+   my $context = $self->context;
+   my $buttons = { BottomLeft => [], BottomRight => [] };
+
+   for my $button (@{$orig->($self)}) {
+      my $location = $button->{classes} eq 'left'
+         ? 'BottomLeft' : 'BottomRight';
+
+      if (blessed $button->{action}) { push @{$buttons->{$location}}, $button }
+      else {
+         my $action    = $button->{action}->[0];
+         my ($moniker) = split m{ / }mx, $action;
+         my $model     = $context->models->{$moniker};
+
+         next unless $model->is_authorised($context, $action);
+
+         $button->{action} = $context->uri_for_action(@{$button->{action}});
+         push @{$buttons->{$location}}, $button;
+      }
+   }
+
+   $context->clear_redirect;
+   return $buttons;
+};
 
 setup_resultset sub {
    my $self = shift;

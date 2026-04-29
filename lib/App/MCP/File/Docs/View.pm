@@ -1,25 +1,20 @@
 package App::MCP::File::Docs::View;
 
 use App::MCP::Markdown;
-use HTML::Tiny;
 use Pod::Markdown::Github;
 use Moo;
 
-has '_html' => is => 'ro', default => sub { HTML::Tiny->new };
-
 sub get {
-   my ($self, $path) = @_;
+   my ($self, $context, $path) = @_;
 
    my $parser = Pod::Markdown::Github->new;
 
    $parser->output_string(\my $markdown);
    $parser->parse_file($path->as_string);
 
-   my $formatter = App::MCP::Markdown->new();
+   my $formatter = App::MCP::Markdown->new( tab_width => 3 );
 
-   $markdown =~ s{\\}{}gmx;
-
-   $markdown = 'Nothing found' if length $markdown < 2;
+   $markdown = $formatter->localise_markdown($context, $markdown);
 
    return $formatter->markdown($markdown);
 }

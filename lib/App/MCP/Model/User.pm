@@ -91,7 +91,7 @@ sub edit : Auth('admin') Nav('Edit User') {
    return;
 }
 
-sub profile : Auth('view') Nav('Settings') {
+sub profile : Auth('view') Nav('User Settings') {
    my ($self, $context) = @_;
 
    my $user = $context->stash('user');
@@ -157,33 +157,9 @@ sub totp : Auth('view') Nav('View OTP') {
 sub view : Auth('manager') Nav('View User') {
    my ($self, $context) = @_;
 
-   my $user    = $context->stash('user');
-   my $buttons = [{
-      action    => $context->uri_for_action('user/list'),
-      classes   => 'left',
-      method    => 'get',
-      selection => 'disable_on_select',
-      value     => 'Users',
-   },{
-      action    => $context->uri_for_action('user/profile', [$user->id]),
-      method    => 'get',
-      selection => 'disable_on_select',
-      value     => 'Settings',
-   },{
-      action    => $context->uri_for_action('user/edit', [$user->id]),
-      method    => 'get',
-      selection => 'disable_on_select',
-      value     => 'Edit',
-   }];
-   my $options = {
-      add_columns  => ['Time Zone' => $user->timezone],
-      caption      => 'View User',
-      context      => $context,
-      form_buttons => $buttons,
-      result       => $user
-   };
+   my $options = { context => $context, result => $context->stash('user') };
 
-   $context->stash(table => $self->new_table('View::Object', $options));
+   $context->stash(table => $self->new_table('View::User', $options));
    return;
 }
 

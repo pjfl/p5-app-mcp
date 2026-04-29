@@ -9,6 +9,7 @@ use App::MCP::Util             qw( base64_encode boolean_data_type
                                    create_totp_token foreign_key_data_type
                                    get_salt new_salt serial_data_type
                                    text_data_type truncate varchar_data_type );
+use Class::Usul::Cmd::Util     qw( includes );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
 use Net::IP::Match::Regexp     qw( create_iprange_regexp match_ip );
 use Scalar::Util               qw( blessed );
@@ -183,6 +184,24 @@ sub enable_2fa {
    my ($self, $value) = @_; return $self->_profile('enable_2fa', $value);
 }
 
+sub enable_advanced {
+   my ($self, $value) = @_;
+
+   my $features = $self->features;
+   my $included = includes 'advanced', $features;
+
+   if (defined $value && !$value && $included) {
+      $features = [ grep { $_ ne 'advanced' } @{$features} ];
+      $self->features($features);
+   }
+   elsif ($value && !$included) {
+      push @{$features}, 'advanced';
+      $self->features($features);
+   }
+
+   return includes('advanced', $features) ? TRUE : FALSE;
+}
+
 sub encrypt_password {
    my ($self, $password, $stored) = @_;
 
@@ -210,6 +229,14 @@ sub execute {
    return unless exists $self->api_execution_allowed->{$method};
 
    return $self->$method();
+}
+
+sub features {
+   my ($self, $value) = @_; return $self->_profile('features', $value);
+}
+
+sub groups {
+   my ($self, $value) = @_; return $self->_profile('groups', $value);
 }
 
 sub insert {

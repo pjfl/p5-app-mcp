@@ -1,0 +1,11 @@
+<div id="top" class="application documentation">
+   <div class="entity-index">
+[% table.render %]
+   </div>
+   <div class="entity">
+      <div class="package">
+[% IF documentation;  documentation; ELSE %]<h1>Nothing selected</h1>[% END -%]
+      </div>
+   </div>
+</div>
+

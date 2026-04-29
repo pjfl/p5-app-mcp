@@ -2,6 +2,7 @@ package App::MCP::Form::Profile;
 
 use HTML::Forms::Constants qw( FALSE META TRUE );
 use HTML::Forms::Types     qw( HashRef Object );
+use Class::Usul::Cmd::Util qw( includes );
 use HTML::Forms::Util      qw( json_bool );
 use Type::Utils            qw( class_type );
 use Moo;
@@ -145,14 +146,13 @@ after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
 
+   $self->field('advanced')->inactive(TRUE) unless $self->_advanced_enabled;
+
    unless ($self->user->enable_2fa) {
       $self->field('enable_2fa')->hide_info(TRUE);
       $self->field('mobile_phone')->add_wrapper_class('hide');
       $self->field('postcode')->add_wrapper_class('hide');
    }
-
-   $self->field('advanced_options')->inactive(TRUE)
-      unless $context->config->enable_advanced;
 
    my $field  = $self->field('base_colour');
    my $colour = $context->config->default_base_colour;
@@ -169,15 +169,18 @@ after 'after_build_fields' => sub {
 };
 
 sub update_model {
-   my $self   = shift;
-   my $user   = $self->user;
-   my $value  = $user->profile_value;
-   my @fields = (qw(base_colour enable_2fa features link_display menu_location
-                    mobile_phone postcode skin theme timezone));
+   my $self     = shift;
+   my $user     = $self->user;
+   my $value    = $user->profile_value;
+   my @fields   = (qw(base_colour enable_2fa features link_display menu_location
+                      mobile_phone postcode skin theme timezone));
+   my $advanced = includes 'advanced', $value->{features};
 
    for my $field_name (@fields) {
       $value->{$field_name} = $self->field($field_name)->value;
    }
+
+   push @{$value->{features}}, 'advanced' if $advanced;
 
    my $session = $self->context->session;
 
@@ -193,6 +196,16 @@ sub update_model {
    });
 
    return;
+}
+
+# Private methods
+sub _advanced_enabled {
+   my $self = shift;
+
+   return TRUE if $self->context->session->role eq 'admin';
+   return TRUE if $self->context->config->enable_advanced;
+   return TRUE if includes 'advanced', $self->user->features;
+   return FALSE;
 }
 
 use namespace::autoclean -except => META;

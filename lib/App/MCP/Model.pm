@@ -47,13 +47,9 @@ has 'table_manager' =>
 sub root : Auth('none') {
    my ($self, $context) = @_;
 
+   my $options = { context => $context, model => $self };
+   my $nav     = Web::Components::Navigation->new($options);
    my $session = $context->session;
-   my $nav     = Web::Components::Navigation->new({
-      context       => $context,
-      footer_action => 'misc/footer',
-      logger_action => 'api/logger',
-      model         => $self,
-   });
 
    $nav->list('_control');
 

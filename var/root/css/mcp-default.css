@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.46
+ * @version 0.13.51
  */
 /* Breaks */
 /* Colours */
@@ -8,10 +8,10 @@
 /* Dimensions */
 /* Font Sizes and Weights */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.46
+ * @version 0.13.56
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.46
+ * @version 0.13.51
  */
 /* Breaks */
 /* Colours */
@@ -154,7 +154,6 @@ main .layout-container h3,
 main .layout-container h4,
 main .layout-container h5 {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
-  margin: 1rem;
   text-wrap: balance;
 }
 main .layout-container h1 label.separator,
@@ -193,7 +192,6 @@ main .layout-container .inline-container {
 }
 main .layout-container .layout {
   display: flex;
-  padding: 0.5rem;
   position: relative;
 }
 main .layout-container .layout.centred {
@@ -207,6 +205,7 @@ main .layout-container .panel {
   flex-direction: column;
   gap: 1rem;
   opacity: 1;
+  padding: 0.5rem;
   transition: opacity 1s;
 }
 main .layout-container .panel.fade {
@@ -249,6 +248,7 @@ footer .footer-container .session-time {
   background: var(--bg-darker);
   border: 1px solid gray;
   border-radius: 5px;
+  color: whitesmoke;
   content: attr(data-title);
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
@@ -309,11 +309,6 @@ footer .footer-container .session-time {
 .sidebar li.global > .drop-menu span:not(.icon-wrapper) {
   padding-left: 0.25rem;
 }
-.navigation li.global .drop-menu span,
-.sidebar li.global .drop-menu span {
-  color: gray;
-  cursor: pointer;
-}
 .navigation li.global .nav-panel,
 .sidebar li.global .nav-panel {
   background: var(--bg-light);
@@ -331,6 +326,11 @@ footer .footer-container .session-time {
   overflow-y: visible;
   max-height: 32rem;
 }
+.navigation .drop-menu span,
+.sidebar .drop-menu span {
+  color: gray;
+  cursor: pointer;
+}
 .navigation .nav-control,
 .sidebar .nav-control {
   display: inline-block;
@@ -345,6 +345,7 @@ footer .footer-container .session-time {
   background: var(--bg-darker);
   border: 1px solid gray;
   border-radius: 5px;
+  color: whitesmoke;
   content: attr(data-title);
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
@@ -417,8 +418,8 @@ footer .footer-container .session-time {
 .sidebar .nav-list.context {
   width: 100%;
 }
-.navigation .nav-list.context li.context:has(> a:hover, > form:hover) > .slide-out,
-.sidebar .nav-list.context li.context:has(> a:hover, > form:hover) > .slide-out {
+.navigation .nav-list.context li.context:has(> a:hover, > form:hover, > span:hover) > .slide-out,
+.sidebar .nav-list.context li.context:has(> a:hover, > form:hover, > span:hover) > .slide-out {
   overflow-x: hidden;
   width: 8rem;
 }
@@ -426,8 +427,8 @@ footer .footer-container .session-time {
 .sidebar .nav-list.control {
   width: 10rem;
 }
-.navigation .nav-list.control li.control:has(> a:hover, > form:hover) > .slide-out,
-.sidebar .nav-list.control li.control:has(> a:hover, > form:hover) > .slide-out {
+.navigation .nav-list.control li.control:has(> a:hover, > form:hover, > span:hover) > .slide-out,
+.sidebar .nav-list.control li.control:has(> a:hover, > form:hover, > span:hover) > .slide-out {
   overflow-x: hidden;
   width: 8rem;
 }
@@ -718,7 +719,10 @@ footer .footer-container .session-time {
   top: 0.375rem;
 }
 .navigation .nav-list.context li.context a,
-.navigation .nav-list.context li.context .drop-menu {
+.navigation .nav-list.control li.control a,
+.navigation .nav-list.context li.context .drop-menu,
+.navigation .nav-list.control li.control .drop-menu {
+  display: block;
   padding: 0.5rem !important;
 }
 .navigation .nav-list.global {
@@ -764,13 +768,74 @@ footer .footer-container .session-time {
   top: -0.5rem;
   width: 100%;
 }
+.navigation .nav-tab-bar {
+  display: flex;
+}
+.navigation .nav-tab-bar .icon-wrapper {
+  cursor: pointer;
+  display: inline-block;
+  height: 24px;
+  width: 24px;
+}
+.navigation .nav-tab-bar .icon-wrapper .nav-tab-closeicon {
+  color: firebrick;
+  padding-top: 0.125rem;
+}
+.navigation .nav-tab,
+.navigation .nav-title {
+  background: linear-gradient(180deg, var(--bg-base) 0.4375rem, hsl(from gray h s l / 0.5), transparent 0.53125rem);
+}
+.navigation .nav-tab::after,
+.navigation .nav-title::after {
+  background: linear-gradient(70deg, transparent 48%, hsl(from gray h s l / 0.5), var(--bg-base) 52%);
+  content: '';
+  display: inline-block;
+  height: 2.5rem;
+  transform: translate(0, 0.2rem);
+  width: 1rem;
+}
+.navigation .nav-tab {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+.navigation .nav-tab::before {
+  background: linear-gradient(110deg, var(--bg-base) 48%, hsl(from gray h s l / 0.5), transparent 52%);
+  content: '';
+  display: inline-block;
+  height: 2.5rem;
+  transform: translate(0, 0.2rem);
+  width: 1rem;
+}
+.navigation .nav-tab.unselected {
+  background: var(--bg-base);
+  border: 0;
+  border-bottom: 1px solid hsl(from gray h s l / 0.25);
+}
+.navigation .nav-tab.unselected::before {
+  background: linear-gradient(110deg, var(--bg-base) 50%, transparent 50%);
+}
+.navigation .nav-tab.unselected::after {
+  background: linear-gradient(70deg, transparent 50%, var(--bg-base) 50%);
+}
+.navigation .nav-tab a {
+  color: seagreen;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+  text-decoration: none;
+}
+.navigation .nav-tab-add {
+  align-items: center;
+  background: var(--bg-base);
+  border-bottom: 1px solid hsl(from gray h s l / 0.25);
+  display: flex;
+}
 .navigation .nav-title {
   align-items: center;
-  background: linear-gradient(180deg, var(--bg-base) 0.4375rem, hsl(from gray h s l / 0.5), transparent 0.53125rem);
   column-gap: 0.25rem;
   display: flex;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
-  font-size: larger;
+  font-size: 1.25rem;
+  font-weight: normal;
   height: 3rem;
   justify-content: center;
 }
@@ -785,13 +850,8 @@ footer .footer-container .session-time {
   width: 0.5rem;
   transform: translate(-0.0635rem, 0.2rem);
 }
-.navigation .nav-title::after {
-  background: linear-gradient(70deg, transparent 48%, hsl(from gray h s l / 0.5), var(--bg-base) 52%);
-  content: '';
-  display: inline-block;
-  height: 2.5rem;
-  transform: translate(0, 0.2rem);
-  width: 1rem;
+.navigation .nav-title .title-text {
+  white-space: nowrap;
 }
 .sidebar::after {
   background: linear-gradient(to bottom, hsl(from gray h s l / 0.25), transparent), linear-gradient(to bottom, var(--bg-base), transparent), linear-gradient(to bottom, hsl(from gray h s l / 0.25), transparent);
@@ -821,7 +881,9 @@ footer .footer-container .session-time {
 }
 .sidebar li.global[data-title]:hover::after {
   left: 0;
-  top: -0.4375rem;
+  min-width: 3.5rem;
+  top: -0.5rem;
+  text-align: center;
 }
 .sidebar .nav-list.context li.context.selected::before {
   background: seagreen;
@@ -841,6 +903,7 @@ footer .footer-container .session-time {
   display: flex;
   flex-direction: column;
   min-height: 2rem;
+  padding-top: 0.75rem;
 }
 .sidebar .nav-list.global li.global {
   display: block;
@@ -914,26 +977,35 @@ footer .footer-container .session-time {
   display: flex;
   column-gap: 0.5rem;
 }
+.input-field.documentation h2 {
+  counter-increment: docheader;
+  font-size: 1rem;
+}
+.input-field.documentation h2::before {
+  content: counter(docheader) '. ';
+}
 .documentation {
-  counter-reset: subheader;
+  counter-reset: docheader;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
 }
 .documentation a {
   color: seagreen;
+  text-decoration: none;
 }
-.documentation h1 {
-  font-size: 1.25rem;
+.documentation a:hover {
+  font-style: italic;
 }
-.documentation h2 {
-  counter-increment: subheader;
-  font-size: 1rem;
-}
-.documentation h2::before {
-  content: counter(subheader) '. ';
+.documentation code {
+  background: var(--bg-lighter);
+  font-family: 'Cascadia Code', 'Menlo', 'DejaVu Sans Mono', ui-monospace, monospace;
+  font-size: 0.8rem;
 }
 .documentation h1,
-.documentation h2 {
-  margin: 0 0 0.25rem 0;
+.documentation h2,
+.documentation h3,
+.documentation h4,
+.documentation h5 {
+  margin: 0.25rem 0;
 }
 .documentation p,
 .documentation ul {
@@ -943,15 +1015,158 @@ footer .footer-container .session-time {
 .documentation pre {
   margin: 0 0 1rem 2rem;
 }
-.documentation pre code {
-  font-family: 'Cascadia Code', 'Menlo', 'DejaVu Sans Mono', ui-monospace, monospace;
-  font-size: 0.8rem;
+.documentation tr.highlight {
+  background: var(--bg-dark) !important;
+}
+.documentation.application {
+  --index-width: 18rem;
+  --font-weight-h2: 350;
+}
+.documentation.restapi {
+  --index-width: 28rem;
+  --font-weight-h2: normal;
+}
+.documentation.application,
+.documentation.restapi {
+  padding-right: 0.5rem;
+}
+.documentation.application h1,
+.documentation.restapi h1,
+.documentation.application h2,
+.documentation.restapi h2,
+.documentation.application h3,
+.documentation.restapi h3,
+.documentation.application h4,
+.documentation.restapi h4 {
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+  font-weight: normal;
+  margin: 0;
+  white-space: nowrap;
+}
+.documentation.application h1,
+.documentation.restapi h1 {
+  font-size: 2.25rem;
+  font-weight: 200;
+  letter-spacing: -0.125rem;
+  margin: 0.75rem 1.5rem 1.25rem;
+}
+.documentation.application h1.index,
+.documentation.restapi h1.index {
+  margin: 0.75rem 1rem 1.25rem 0;
+}
+.documentation.application h2,
+.documentation.restapi h2 {
+  font-size: 2rem;
+  font-weight: var(--font-weight-h2);
+  letter-spacing: -0.0625rem;
+  margin-bottom: 0.75rem;
+}
+.documentation.application h3,
+.documentation.restapi h3 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.03125rem;
+  margin-bottom: 0.75rem;
+}
+.documentation.application h4,
+.documentation.restapi h4 {
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: -0.0208rem;
+  margin-bottom: 0.5rem;
+}
+.documentation.application h5,
+.documentation.restapi h5 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  letter-spacing: -0.01rem;
+  margin: 0.5rem 0 0.25rem 0;
+}
+.documentation.application .argument-list,
+.documentation.restapi .argument-list,
+.documentation.application .contents-list,
+.documentation.restapi .contents-list {
+  background: var(--bg-light);
+  border: 1px solid gray;
+  border-radius: 5px;
+  border-spacing: 0.5rem;
+  text-align: left;
+  margin-bottom: 0.5rem;
+}
+.documentation.application .contents-list td,
+.documentation.restapi .contents-list td {
+  min-width: 5.5rem;
+}
+.documentation.application .entity,
+.documentation.restapi .entity {
+  padding-left: 0.5rem;
+  margin-left: var(--index-width);
+  max-width: calc(100% - var(--index-width));
+}
+.documentation.application .entity h1,
+.documentation.restapi .entity h1 {
+  margin-left: 0;
+  margin-top: 1.25rem;
+}
+.documentation.application .entity .package,
+.documentation.restapi .entity .package {
+  width: calc(100vw - 24rem);
+  overflow: hidden;
+}
+.documentation.application .entity-index,
+.documentation.restapi .entity-index {
+  max-height: 100%;
+  max-width: var(--index-width);
+  overflow-y: auto;
+  padding: 0 0.5rem;
+  position: fixed;
+}
+.documentation.application .entity-index h1,
+.documentation.restapi .entity-index h1 {
+  margin-left: 0;
+  margin-right: 0;
+}
+.documentation.application .entity-index .contents-list,
+.documentation.restapi .entity-index .contents-list {
+  width: 100%;
+}
+.documentation.application .index-label,
+.documentation.restapi .index-label {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+.documentation.application .index-label h3,
+.documentation.restapi .index-label h3 {
+  margin-top: 0;
+}
+.documentation.application .method,
+.documentation.restapi .method {
+  border-bottom: 1px solid gray;
+  padding-top: 1.4375rem;
+}
+.documentation.application .method:last-child,
+.documentation.restapi .method:last-child {
+  border-bottom: 0;
+}
+.documentation.application .method code,
+.documentation.restapi .method code,
+.documentation.application .method p,
+.documentation.restapi .method p {
+  display: inline-block;
+  margin-bottom: 0.75rem;
 }
 .file-preview p,
 .file-preview pre {
   font-size: 0.8rem;
   line-height: 1.25rem;
   margin: 0;
+}
+.jsdocumentation {
+  border: 0;
+  border-radius: 10px;
+  height: calc(100vh - 7rem);
+  width: calc(100vw - 7rem);
 }
 .main .exception,
 .modal .exception {
@@ -1308,10 +1523,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.15
+ * @version 0.2.22
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.46
+ * @version 0.13.51
  */
 /* Breaks */
 /* Colours */
@@ -1435,7 +1650,7 @@ form.classic.droplets .droplet .tooltip {
 }
 form.classic.droplets .form-wrapper {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
-  padding: 2.75rem 2.5rem 0 2.5rem;
+  padding: 2.75rem 2.5rem 0 3.5rem;
   text-align: right;
 }
 form.classic.droplets .form-wrapper legend {
@@ -2210,6 +2425,27 @@ form.classic .input-button.right {
 form.classic .input-button button {
   padding: 0.1875rem 0.75rem 0.3125rem;
 }
+form.classic .input-captcha {
+  align-items: flex-start !important;
+}
+form.classic .input-captcha img {
+  background-repeat: no-repeat;
+  background-size: cover;
+  font-style: italic;
+  shape-margin: 1rem;
+  vertical-align: middle;
+}
+form.classic .input-captcha label {
+  padding-top: 0.4375rem;
+}
+form.classic .input-captcha span {
+  display: block;
+  grid-area: selector;
+  line-height: 1.5rem;
+}
+form.classic .input-captcha .g-recaptcha {
+  grid-area: input;
+}
 form.classic .input-colour {
   align-items: center !important;
 }
@@ -2556,10 +2792,10 @@ form.classic .tooltip {
   box-shadow: 3px 3px 3px gray;
   color: whitesmoke;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
-  font-size: 1rem;
+  font-size: 0.8rem;
   left: 8.5rem;
-  min-width: 10rem;
-  padding: 0.5rem;
+  min-width: 5rem;
+  padding: 0.25rem 0.5rem;
   pointer-events: none;
   position: absolute;
   top: 0;
@@ -2747,7 +2983,7 @@ form.classic .tooltip p a {
  * @version 0.1.23
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.46
+ * @version 0.13.51
  */
 /* Breaks */
 /* Colours */
@@ -3265,10 +3501,10 @@ form.classic .tooltip p a {
   right: 0.25rem;
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.31
+ * @version 0.2.35
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.46
+ * @version 0.13.51
  */
 /* Breaks */
 /* Colours */
@@ -3317,15 +3553,6 @@ body {
 }
 .state-table.object-view .caption {
   margin-left: 0.5rem;
-}
-.state-table.object-view .credit-control {
-  flex-direction: row;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  position: relative;
-}
-.state-table.object-view .credit-control .table-button .right {
-  right: 0;
 }
 .state-table.object-view .state-table th:first-child a {
   color: black;
@@ -3399,7 +3626,6 @@ body {
 }
 .state-table table:not(.object-view, .preference-columns) th a.filter-control {
   color: gray;
-  opacity: 50%;
   position: absolute;
   right: 0;
 }
@@ -3791,6 +4017,7 @@ body {
 }
 .state-table .filter-label {
   display: inline-block;
+  opacity: 50%;
   padding-right: 0.25rem;
 }
 .state-table .filter-label.text {
@@ -3878,6 +4105,7 @@ body {
 .state-table .preference-link {
   cursor: pointer;
   display: inline-block;
+  position: relative;
 }
 .state-table .preference-link .preference-control {
   display: inline-block;
@@ -4108,19 +4336,6 @@ body {
 .state-table .table-form a.table-button {
   padding: 0.0625rem 0.75rem 0.25rem;
 }
-.state-table .table-form .table-button.left {
-  position: absolute;
-}
-.state-table .table-form .table-button.left:nth-child(1) {
-  left: 0;
-}
-.state-table .table-form .table-button.left:nth-child(2) {
-  left: 5rem;
-}
-.state-table .table-form .table-button.right {
-  position: absolute;
-  right: 0.5rem;
-}
 .state-table .table-form .table-button[disabled=disabled],
 .state-table .table-form .table-button[disabled=disabled]::after,
 .state-table .table-form button[disabled=disabled],
@@ -4135,6 +4350,35 @@ body {
   display: inline-flex;
   gap: 0.5rem;
   justify-content: flex-start;
+}
+.state-table .tooltip {
+  background: var(--bg-darker);
+  border: 1px solid gray;
+  border-radius: 5px;
+  box-shadow: 3px 3px 3px gray;
+  color: whitesmoke;
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-style: normal;
+  left: 0;
+  min-width: 5rem;
+  padding: 0.25rem 0.5rem;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  text-align: center;
+  transform: translate(-100%, -100%);
+  z-index: 10;
+}
+.state-table .tooltip.hide {
+  display: none;
+}
+.state-table .tooltip p {
+  margin: 0;
+}
+.state-table .tooltip p a {
+  color: whitesmoke;
+  text-decoration: none;
 }
 @media (max-width: 680px) {
   .state-table table:not(.object-view, .preference-columns) th,

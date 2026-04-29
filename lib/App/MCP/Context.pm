@@ -82,6 +82,34 @@ sub get_attributes {
    return attributes::get($coderef) // {};
 }
 
+=item C<is_authorised>
+
+   $bool = $self->is_authorised($action);
+
+Returns true of false depending on whether the user has access to the action.
+The C<action> should be an action path (moniker/method)
+
+=cut
+
+sub is_authorised {
+   my ($self, $actionp) = @_;
+
+   return FALSE unless $actionp;
+
+   my ($moniker) = split m{ / }mx, $actionp;
+
+   return FALSE unless $moniker;
+
+   my $model = $self->models->{$moniker};
+
+   return FALSE unless $model;
+
+   my $authorised = $model->is_authorised($self, $actionp);
+
+   $self->clear_redirect;
+   return $authorised;
+}
+
 sub method_chain {
    my ($self, $action) = @_;
 

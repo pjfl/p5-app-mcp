@@ -3,6 +3,7 @@ package App::MCP::Model::Job;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types      qw( HashRef );
 use App::MCP::Util         qw( redirect redirect2referer );
+use Class::Usul::Cmd::Util qw( includes );
 use Unexpected::Functions  qw( UnauthorisedAccess UnknownJob );
 use Moo;
 use App::MCP::Attributes;  # Will do cleaning
@@ -173,7 +174,8 @@ sub _can_update {
    my $identity = { owner => $session->id, group => $role_id };
 
    return FALSE if $role eq 'view';
-   return TRUE  if $role eq 'admin' || $role eq 'manager';
+   return TRUE  if $role eq 'admin';
+   return TRUE  if includes 'manager', $session->groups;
    return TRUE  if $job->is_writable_by($identity);
    return FALSE;
 }

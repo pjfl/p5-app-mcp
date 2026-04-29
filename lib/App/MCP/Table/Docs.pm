@@ -56,7 +56,7 @@ has '_action' => is => 'lazy', isa => Str, default => sub {
    my $self    = shift;
    my $moniker = $self->moniker;
 
-   return $self->selectonly ? "${moniker}/select" : "${moniker}/list";
+   return $self->selectonly ? "${moniker}/select" : "${moniker}/application";
 };
 
 has '_directory' => is => 'ro', isa => Str, init_arg => 'directory';
@@ -94,15 +94,15 @@ has_column 'name' =>
       'trigger-modal' => 'modal',
    };
 
-has_column 'size' =>
-   cell_traits => ['Numeric'],
-   value       => sub {
-      my $cell = shift;
+# has_column 'size' =>
+#    cell_traits => ['Numeric'],
+#    value       => sub {
+#       my $cell = shift;
 
-      return $cell->table->_format_number->base2($cell->result->size);
-   };
+#       return $cell->table->_format_number->base2($cell->result->size);
+#    };
 
-has_column 'modified' => cell_traits => ['DateTime'], sortable => TRUE;
+# has_column 'modified' => cell_traits => ['DateTime'], sortable => TRUE;
 
 after 'BUILD' => sub {
    my $self = shift;
@@ -157,14 +157,14 @@ sub _build_name_link {
       return $self->context->uri_for_action($self->_action, [], $params);
    }
    elsif ($result->type eq 'file') {
-      my $action = $self->moniker . '/view';
-      my $args   = [$result->uri_arg];
+      my $action = $self->moniker . '/application';
       my $dir    = $self->_qualified_directory;
+      my $file   = $result->uri_arg;
 
-      $params->{directory} = $dir if $dir;
-      $params->{modal} = 'true';
+      $params->{directory} = $dir  if $dir;
+      $params->{selected}  = $file if $file;
 
-      return $self->context->uri_for_action($action, $args, $params);
+      return $self->context->uri_for_action($action, [], $params);
    }
 
    return;

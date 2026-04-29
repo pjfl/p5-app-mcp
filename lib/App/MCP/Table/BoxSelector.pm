@@ -41,12 +41,8 @@ has_column 'group_rel' => label => 'Group';
 has_column 'check' =>
    cell_traits => ['Checkbox'],
    label       => 'Select',
-   options     => { select_one => TRUE },
-   value       => sub {
-      my $cell = shift;
-
-      return $cell->result->job_name;
-   };
+   options     => { 'select-one' => TRUE },
+   value       => sub { shift->result->job_name };
 
 use namespace::autoclean -except => TABLE_META;
 
