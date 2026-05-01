@@ -276,11 +276,13 @@ sub push_worker : Auth('none') {
 sub validate : Auth('none') {
    my ($self, $context) = @_;
 
-   my $form  = $context->stash('form');
-   my $field = $context->stash('field');
-   my $value = $context->request->query_parameters->{value};
+   my $form    = $context->stash('form');
+   my $field   = $context->stash('field');
+   my $params  = $context->request->query_parameters;
+   my $value   = $params->{'value'};
+   my $item_id = $params->{'item-id'};
 
-   $form->setup_form({ $field->name => $value });
+   $form->setup_form(params => { $field->name => $value }, item_id => $item_id);
    $field->validate_field;
    $self->_stash_response($context, { reason => [$field->result->all_errors] });
    return;

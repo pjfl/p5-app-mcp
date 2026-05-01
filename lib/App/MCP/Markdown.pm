@@ -77,7 +77,7 @@ sub localise_markdown {
    #   $markdown =~ s{ \\ }{}gmx;
    $markdown =~ s{ \\(\[) }{$1}gmx;
    $markdown =~ s{ \\(\]) }{$1}gmx;
-   $markdown =~ s{ [ ]_(\w+) }{ $1}gmx;
+   $markdown =~ s{ ([\` ])_(\w+) }{$1$2}gmx;
 
    return '<h1>Nothing Found</h1>' unless length $markdown > 2;
 

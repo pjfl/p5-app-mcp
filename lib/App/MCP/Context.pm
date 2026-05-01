@@ -14,7 +14,41 @@ use Moo;
 
 extends 'Web::Components::Context';
 
+=pod
+
+=encoding utf-8
+
+=head1 Name
+
+App::MCP::Context - Per request context object
+
+=head1 Synopsis
+
+   use App::MCP::Context;
+
+=head1 Description
+
+Per request context object
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<config>
+
+A required reference to the L<configuration|App::MCP::Config> object
+
+=cut
+
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
+
+=item C<icons_uri>
+
+URI for the C<icons.svg> symbols file
+
+=cut
 
 has 'icons_uri' =>
    is      => 'lazy',
@@ -25,15 +59,34 @@ has 'icons_uri' =>
       return $self->request->uri_for($self->config->icons);
    };
 
+=item C<response>
+
+An instance of the L<response|App::MCP::Response> object
+
+=cut
+
 has 'response' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Response'),
    default => sub { App::MCP::Response->new };
 
+=item C<time_zone>
+
+The user's time zone. Taken from the L<session|Web::ComposableRequest::Session>
+object
+
+=cut
+
 has 'time_zone' =>
    is      => 'lazy',
    isa     => Str,
    default => sub { shift->session->timezone };
+
+=item C<token_lifetime>
+
+How long in seconds should the CSRF last for
+
+=cut
 
 has 'token_lifetime' =>
    is      => 'lazy',
@@ -62,6 +115,37 @@ has '+_stash' =>
 
 with 'App::MCP::Role::Schema';
 with 'App::MCP::Role::Authentication';
+
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<feature>
+
+   $name = $self->feature($name);
+
+Returns the feature C<name> iff the user has the feature turned on
+
+=cut
+
+sub feature {
+   my ($self, $feature) = @_;
+
+   return includes $feature, $self->session->features;
+}
+
+=item C<get_attributes>
+
+   $attribute_hash = $self->get_attributes($action);
+
+Returns the subroutine attributes associated with the given action. The
+C<action> can be either an action path (moniker/method) or a code reference
+
+=cut
 
 sub get_attributes {
    my ($self, $action) = @_;
@@ -110,11 +194,27 @@ sub is_authorised {
    return $authorised;
 }
 
+=item C<method_chain>
+
+   $chain = $self->method_chain($action);
+
+Returns the moniker/method_dispatch_chain for the given action
+
+=cut
+
 sub method_chain {
    my ($self, $action) = @_;
 
    return $self->_action_path2methods($action);
 }
+
+=item C<model>
+
+   $resultset = $self->model($name);
+
+Returns the resultset form the given name
+
+=cut
 
 sub model {
    my ($self, $rs_name) = @_;
@@ -122,7 +222,25 @@ sub model {
    return $rs_name ? $self->schema->resultset($rs_name) : undef;
 }
 
+=item C<res>
+
+   $response = $self->res;
+
+Returns the response object
+
+=cut
+
 sub res { shift->response }
+
+=item C<uri_for_action>
+
+   $uri = $self->uri_for_action($action, \@args?, \%params?);
+
+Returns the URI for the given action. Optional array reference of positional
+arguments should be provided if required. Options hash reference of query
+string keys and values may be provided
+
+=cut
 
 sub uri_for_action {
    my ($self, $action, $args, @params) = @_;
@@ -164,11 +282,28 @@ sub uri_for_action {
    return $self->request->uri_for($uri, $args, $params);
 }
 
+=item C<verification_token>
+
+   $token = $self->verification_token;
+
+Returns a freshly minted CSRF token
+
+=cut
+
 sub verification_token {
    my $self = shift;
 
    return get_token $self->token_lifetime, $self->session->serialise;
 }
+
+=item C<verify_form_post>
+
+   $reason = $self->verify_form_post;
+
+Returns the reason why the form post CSRF token was rejected. Returns undefined
+if the token is good
+
+=cut
 
 sub verify_form_post {
    my $self  = shift;
@@ -208,38 +343,19 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=encoding utf-8
-
-=head1 Name
-
-App::MCP::Context - Master Control Program - Dependency and time based job scheduler
-
-=head1 Synopsis
-
-   use App::MCP::Context;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Moo>
+=item L<attributes>
+
+=item L<Web::Components::Context>
 
 =back
 

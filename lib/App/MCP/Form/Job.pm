@@ -1,7 +1,10 @@
 package App::MCP::Form::Job;
 
+use utf8;
+
 use HTML::Forms::Constants qw( FALSE META NUL SPC TRUE );
-use HTML::Forms::Types     qw( ArrayRef HashRef Str );
+use HTML::Forms::Types     qw( ArrayRef HashRef Int Str );
+use Class::Usul::Cmd::Util qw( includes );
 use Moo;
 use HTML::Forms::Moo;
 
@@ -17,6 +20,8 @@ has '+name'               => default => 'Job';
 has '+title'              => default => 'Create Job';
 
 has 'default_group' => is => 'ro', isa => Str, default => 'edit';
+
+has 'min_job_name_len' => is => 'ro', isa => Int, default => 3;
 
 has '_groups' =>
    is      => 'lazy',
@@ -36,8 +41,22 @@ has '_icons' =>
    default => sub { shift->context->icons_uri->as_string };
 
 has_field 'job_name' =>
-   required => TRUE,
-   title    => 'Job names must be unique';
+   required        => TRUE,
+   title           => 'Job names must be unique',
+   validate_inline => TRUE;
+
+sub validate_job_name {
+   my $self = shift;
+   my $name = $self->field('job_name');
+
+   $name->add_error("Job name '[_1]' too short", $name->value || '<empty>')
+      if length $name->value < $self->min_job_name_len;
+
+   $name->add_error("Job name '[_1]' not unique", $name->value || '<empty>')
+      if !$self->item_id && $self->resultset->find({ job_name => $name->value});
+
+   return;
+}
 
 has_field '_g1' => type => 'Group';
 
@@ -61,7 +80,7 @@ has_field 'parent_name' =>
    label       => 'Parent Box',
    field_group => '_g1',
    noupdate    => TRUE,
-   title       => 'Select parent box';
+   title       => 'Select the parent box';
 
 has_field '_g2' => type => 'Group';
 
@@ -90,15 +109,18 @@ sub options_group_rel {
       return { label => ucfirst $_[0]->role_name, value => $_[0]->id };
    };
 
-   return [ map { $option->($_) } @{$self->_groups} ];
+   return [ map  { $option->($_) }
+            grep { !includes $_->role_name, [qw(admin edit view)] }
+            @{$self->_groups}
+   ];
 }
 
 has_field 'permissions' =>
-   type        => 'PosInteger',
-   default     => '0750',
+   type        => 'Permission',
+   default     => '488',
+   display_as  => '±',
    field_group => '_g2',
-   size        => 4,
-   title       => 'User/Group/Other read/write/execute permissions';
+   title       => 'Select permissions';
 
 has_field 'condition' =>
    type  => 'TextArea',
@@ -112,13 +134,13 @@ has_field 'crontab_min' =>
    label       => 'Minute',
    field_group => '_g5',
    size        => 3,
-   title       => "Digits 0-59 or '*'. Comma separated lists";
+   title       => "Digits 0-59 or '*'. Comma separated list";
 
 has_field 'crontab_hour' =>
    label       => 'Hour',
    field_group => '_g5',
    size        => 3,
-   title       => "Digits 0-23 or '*'. Comma separated lists";
+   title       => "Digits 0-23 or '*'. Comma separated list";
 
 has_field '_g6' => type => 'Group';
 
@@ -126,18 +148,18 @@ has_field 'crontab_mday' =>
    label       => 'Day of Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Digits 1-31 or '*'. Comma separated lists";
+   title       => "Digits 1-31 or '*'. Comma separated list";
 
 has_field 'crontab_mon' =>
    label       => 'Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Digits 1-12 or names or '*'. Comma separated lists";
+   title       => "Digits 1-12 or names or '*'. Comma separated list";
 
 has_field 'crontab_wday' =>
    label => 'Day of Week',
    size  => 3,
-   title => "Digits 0-7 or names or '*'. Zero is Sunday. Comma separated lists";
+   title => "Digits 0-7 or names or '*'. Zero is Sunday. Comma separated list";
 
 has_field '_g4' =>
    type => 'Group',
@@ -148,7 +170,7 @@ has_field 'user_name' =>
    field_group   => '_g4',
    required      => TRUE,
    size          => 8,
-   title         => 'Name of remote user to execute command';
+   title         => 'Execute command as this remote user';
 
 has_field 'host' =>
    default     => 'localhost',
@@ -217,12 +239,19 @@ after 'after_build_fields' => sub {
       $self->field('view')->inactive(TRUE);
    }
 
-   my $selector = $context->uri_for_action('job/select', [], {});
-   my $parent   = $self->field('parent_name');
+   my $resources = $context->config->wcom_resources;
+   my $selector  = $context->uri_for_action('job/select', [], {});
+   my $parent    = $self->field('parent_name');
 
    $parent->icons($self->_icons);
-   $parent->modal($context->config->wcom_resources->{modal});
+   $parent->modal($resources->{modal});
    $parent->selector_url("${selector}");
+
+   my $perms = $self->field('permissions');
+
+   $perms->form_util($resources->{form_util});
+   $perms->icons($self->_icons);
+   $perms->modal($resources->{modal});
    return;
 };
 
@@ -238,10 +267,6 @@ before 'update_model' => sub {
 
       $self->field('parent_id')->value($parent->id) if $parent;
    }
-
-   my $perms = $self->field('permissions');
-
-   $perms->value(oct $perms->value);
 
    return;
 };

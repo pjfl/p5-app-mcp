@@ -1,5 +1,5 @@
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.51
+ * @version 0.13.57
  */
 /* Breaks */
 /* Colours */
@@ -11,7 +11,7 @@
  * @version 0.13.56
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.51
+ * @version 0.13.57
  */
 /* Breaks */
 /* Colours */
@@ -1523,10 +1523,10 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.22
+ * @version 0.2.24
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.51
+ * @version 0.13.57
  */
 /* Breaks */
 /* Colours */
@@ -1627,7 +1627,7 @@ form.classic.droplets .droplet:hover {
 form.classic.droplets .droplet:nth-child(1 of .droplet) {
   left: 18rem;
   top: -4rem;
-  z-index: 6;
+  z-index: 8;
 }
 form.classic.droplets .droplet:nth-child(2 of .droplet) {
   left: 21rem;
@@ -1637,7 +1637,7 @@ form.classic.droplets .droplet:nth-child(2 of .droplet) {
 form.classic.droplets .droplet:nth-child(3 of .droplet) {
   left: 19rem;
   top: 11rem;
-  z-index: 8;
+  z-index: 6;
 }
 form.classic.droplets .droplet:nth-child(4 of .droplet) {
   left: -10rem;
@@ -1645,8 +1645,7 @@ form.classic.droplets .droplet:nth-child(4 of .droplet) {
   z-index: 7;
 }
 form.classic.droplets .droplet .tooltip {
-  left: 0;
-  transform: translateY(calc(1.25rem - 100%));
+  transform: translate(calc(-100% + 2rem), 2rem);
 }
 form.classic.droplets .form-wrapper {
   border-radius: 62% 38% 24% 76% / 59% 60% 40% 41%;
@@ -2086,8 +2085,7 @@ form.classic .checkbox-wrapper input[type=checkbox] {
   z-index: 3;
 }
 form.classic .data-structure,
-form.classic .input-button,
-form.classic .input-selector {
+form.classic .input-button {
   isolation: isolate;
 }
 form.classic .data-structure a.form-button,
@@ -2711,6 +2709,9 @@ form.classic .input-selector button {
   grid-area: selector;
   padding: 0.1875rem 0.75rem 0.3125rem;
 }
+form.classic .input-selector button span {
+  font-size: 1rem;
+}
 form.classic .input-selector .selectmany-group {
   background: var(--btn-bg);
   border: 2px inset gainsboro;
@@ -2735,6 +2736,9 @@ form.classic .input-selector .selectmany-group .item-label {
   min-width: 5rem;
   white-space: nowrap;
   width: 100%;
+}
+form.classic .input-selector .permissions-display {
+  font-family: 'Cascadia Code', 'Menlo', 'DejaVu Sans Mono', ui-monospace, monospace;
 }
 form.classic .input-textarea:has(.field-label) {
   align-items: flex-start !important;
@@ -2789,17 +2793,18 @@ form.classic .tooltip {
   background: var(--bg-darker);
   border: 1px solid gray;
   border-radius: 5px;
+  bottom: 0;
   box-shadow: 3px 3px 3px gray;
   color: whitesmoke;
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
   font-size: 0.8rem;
-  left: 8.5rem;
-  min-width: 5rem;
+  left: calc(var(--label-width) + 0.5rem);
+  max-width: 18rem;
+  min-width: 10rem;
   padding: 0.25rem 0.5rem;
   pointer-events: none;
   position: absolute;
-  top: 0;
-  transform: translateY(calc(-0.25rem - 100%));
+  transform: translateY(100%);
   z-index: 10;
 }
 form.classic .tooltip.hide {
@@ -2983,7 +2988,7 @@ form.classic .tooltip p a {
  * @version 0.1.23
  * Colours */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.51
+ * @version 0.13.57
  */
 /* Breaks */
 /* Colours */
@@ -3504,7 +3509,7 @@ form.classic .tooltip p a {
  * @version 0.2.35
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.13.51
+ * @version 0.13.57
  */
 /* Breaks */
 /* Colours */

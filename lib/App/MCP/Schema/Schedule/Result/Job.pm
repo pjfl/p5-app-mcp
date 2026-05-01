@@ -14,6 +14,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
                                truncate varchar_data_type );
+use HTML::Forms::Util      qw( int2rwx );
 use Ref::Util              qw( is_arrayref is_plain_hashref );
 use Scalar::Util           qw( blessed );
 use Unexpected::Functions  qw( throw UnknownJob );
@@ -56,7 +57,7 @@ $class->add_columns(
       accessor      => '_permissions',
       data_type     => 'smallint',
       default_value => 488,
-      display       => sub { sprintf '0%o', shift->result->_permissions },
+      display       => sub { int2rwx shift->result->_permissions },
       is_nullable   => FALSE,
    },
    condition    => {
@@ -197,14 +198,6 @@ sub namespace {
    my $ns    = join $sep, @parts; $ns //= NUL;
 
    return $ns;
-}
-
-sub permissions {
-   my ($self, $perms) = @_;
-
-   $self->_permissions($perms) if defined $perms;
-
-   return sprintf '0%o', $self->_permissions;
 }
 
 sub should_start_now {

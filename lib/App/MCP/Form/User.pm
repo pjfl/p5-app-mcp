@@ -1,8 +1,10 @@
 package App::MCP::Form::User;
 
 use HTML::Forms::Constants qw( FALSE META TRUE );
-use HTML::Forms::Types     qw( Int Str );
+use HTML::Forms::Types     qw( ArrayRef Int Str );
+use Class::Usul::Cmd::Util qw( includes );
 use Data::Validate::IP     qw( is_ip );
+use List::Util             qw( pairs );
 use Moo;
 use HTML::Forms::Moo;
 
@@ -11,6 +13,7 @@ with    'HTML::Forms::Role::Defaults';
 with    'App::MCP::Role::JSONParser';
 
 has '+item_class' => default => 'User';
+has '+name'       => default => 'User';
 has '+title'      => default => 'User';
 
 has 'config' => is => 'lazy', default => sub { shift->context->config };
@@ -38,7 +41,19 @@ has '_icons' =>
    isa     => Str,
    default => sub { shift->context->icons_uri->as_string };
 
-has_field 'user_name', required => TRUE;
+has '_roles' =>
+   is      => 'lazy',
+   isa     => ArrayRef,
+   default => sub {
+      my $self  = shift;
+      my $field = $self->field('role');
+
+      my $accessor; $accessor = $field->parent->full_accessor if $field->parent;
+
+      return $self->lookup_options($field, $accessor);
+   };
+
+has_field 'user_name', required => TRUE, validate_inline => TRUE;
 
 sub validate_user_name {
    my $self = shift;
@@ -48,7 +63,7 @@ sub validate_user_name {
       if length $name->value < $self->config->user->{min_name_len};
 
    $name->add_error("User name '[_1]' not unique", $name->value || '<empty>')
-      if !$self->item && $self->resultset->find({ user_name => $name->value });
+      if !$self->item_id && $self->resultset->find({user_name => $name->value});
 
    return;
 }
@@ -68,14 +83,16 @@ sub validate_email {
 has_field 'role' => type => 'Select', default => 2, label_column => 'role_name';
 
 sub options_role {
-   my $self  = shift;
-   my $field = $self->field('role');
+   my $self    = shift;
+   my $options = [];
 
-   my $accessor; $accessor = $field->parent->full_accessor if $field->parent;
+   for my $pair (pairs @{$self->_roles}) {
+      next unless includes $pair->value, [qw(admin edit view)];
 
-   my $options = $self->lookup_options($field, $accessor);
+      push @{$options}, { label => ucfirst $pair->value, value => $pair->key };
+   }
 
-   return [ map { ucfirst } @{$options} ];
+   return $options;
 }
 
 has_field 'active' => type => 'Boolean', default => TRUE;
@@ -111,13 +128,20 @@ has_field 'groups' =>
    type             => 'Select',
    auto_widget_size => 5,
    multiple         => TRUE,
-   tags             => { page_break => TRUE },
-   options          => [
-      { label => 'API',      value => 'api' },
-      { label => 'Accounts', value => 'accounts' },
-      { label => 'Manager',  value => 'manager' },
-      { label => 'Support',  value => 'support' },
-   ];
+   tags             => { page_break => TRUE };
+
+sub options_groups {
+   my $self    = shift;
+   my $options = [];
+
+   for my $pair (pairs @{$self->_roles}) {
+      next if includes $pair->value, [qw(admin edit view)];
+
+      push @{$options}, { label => ucfirst $pair->value, value => $pair->value};
+   }
+
+   return $options;
+}
 
 has_field 'submit2' => type => 'Button', value => '2';
 

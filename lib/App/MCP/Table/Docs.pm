@@ -13,6 +13,16 @@ with    'HTML::StateTable::Role::HighlightRow';
 with    'HTML::StateTable::Role::Tag';
 with    'App::MCP::Role::FileMeta';
 
+has 'action' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub { my $moniker = shift->moniker; "${moniker}/application" };
+
+has 'action_view' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub { my $moniker = shift->moniker; "${moniker}/application" };
+
 has 'directory' =>
    is       => 'lazy',
    isa      => Directory,
@@ -52,18 +62,13 @@ has '+tag_names' => default => sub { shift->_build_tag_names };
 
 has '+title_location' => default => 'outer';
 
-has '_action' => is => 'lazy', isa => Str, default => sub {
-   my $self    = shift;
-   my $moniker = $self->moniker;
-
-   return $self->selectonly ? "${moniker}/select" : "${moniker}/application";
-};
-
 has '_directory' => is => 'ro', isa => Str, init_arg => 'directory';
 
 has '_format_number' => is => 'ro', default => sub {
    return Format::Human::Bytes->new;
 };
+
+set_table_name 'documentation';
 
 setup_resultset sub {
    my $self = shift;
@@ -78,20 +83,12 @@ setup_resultset sub {
    );
 };
 
-set_table_name 'documentation';
-
 has_column 'icon' => cell_traits => ['Icon'], label => 'Type';
 
 has_column 'name' =>
-   cell_traits => ['Modal'],
-   sortable    => TRUE,
-   link        => sub {
+   sortable => TRUE,
+   link     => sub {
       my $cell = shift; return $cell->table->_build_name_link($cell);
-   },
-   options => {
-      'constraints'   => { top => 36, left => 56 },
-      'title'         => 'Documentation',
-      'trigger-modal' => 'modal',
    };
 
 # has_column 'size' =>
@@ -103,14 +100,6 @@ has_column 'name' =>
 #    };
 
 # has_column 'modified' => cell_traits => ['DateTime'], sortable => TRUE;
-
-after 'BUILD' => sub {
-   my $self = shift;
-
-   $self->get_column('name')->add_option('modal-icons', $self->icons);
-
-   return;
-};
 
 sub highlight_row {
    my ($self, $row) = @_;
@@ -148,23 +137,19 @@ sub _build_name_link {
    my $params = {};
 
    if ($result->type eq 'directory') {
-      my $selected = $self->context->request->query_parameters->{selected};
-
       $params->{directory}  = $self->_qualified_directory($result);
       $params->{extensions} = $self->extensions if $self->extensions;
-      $params->{selected}   = $selected if $selected;
 
-      return $self->context->uri_for_action($self->_action, [], $params);
+      return $self->context->uri_for_action($self->action, [], $params);
    }
    elsif ($result->type eq 'file') {
-      my $action = $self->moniker . '/application';
-      my $dir    = $self->_qualified_directory;
-      my $file   = $result->uri_arg;
+      my $dir  = $self->_qualified_directory;
+      my $file = $result->uri_arg;
 
       $params->{directory} = $dir  if $dir;
       $params->{selected}  = $file if $file;
 
-      return $self->context->uri_for_action($action, [], $params);
+      return $self->context->uri_for_action($self->action_view, [], $params);
    }
 
    return;
@@ -191,7 +176,7 @@ sub _build_tag_names {
       $params->{extensions} = $self->extensions if $self->extensions;
       $params->{selected} = $self->selected if $self->has_selected;
 
-      my $uri = $self->context->uri_for_action($self->_action, [], $params);
+      my $uri = $self->context->uri_for_action($self->action, [], $params);
 
       push @{$tuples}, [$name, $uri];
    }

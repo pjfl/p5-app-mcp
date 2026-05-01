@@ -11,7 +11,6 @@ use Moo;
 
 extends 'App::MCP::Authentication::Realms::DBIC';
 with    'App::MCP::Role::JSONParser';
-with    'App::MCP::Role::Redis';
 
 =pod
 
@@ -82,6 +81,8 @@ has '_ua' =>
    is      => 'lazy',
    isa     => class_type('HTTP::Tiny'),
    default => sub { HTTP::Tiny->new(timeout => shift->ua_timeout) };
+
+with 'App::MCP::Role::Redis';
 
 =back
 

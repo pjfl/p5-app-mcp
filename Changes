@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Add application and server documentation
           - Copies recent updates from other app
           - Adds OAuth for Github
           - Added password validity options to Config

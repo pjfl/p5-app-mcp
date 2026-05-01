@@ -24,7 +24,7 @@ has '+title' => default => 'Configuration';
 has '_formatter' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Markdown'),
-   default => sub { App::MCP::Markdown->new };
+   default => sub { App::MCP::Markdown->new( tab_width => 3 ) };
 
 has_field 'configuration' =>
    type          => 'NonEditable',
@@ -71,7 +71,9 @@ sub _pod2markdown {
    $parser->output_string(\my $markdown);
    $parser->parse_string_document("=pod\n\n${pod}\n\n=cut\n");
 
-   return $markdown;
+   $markdown = $self->_formatter->localise_markdown($self->context, $markdown);
+
+   return "${markdown}\n";
 }
 
 sub _shuffle {

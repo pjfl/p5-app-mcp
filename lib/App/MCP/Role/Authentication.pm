@@ -80,7 +80,7 @@ sub _find_realm {
    weaken $self;
 
    my $attr = {
-      %{$config->{$realm} // {}},
+      %{$config->{realms}->{$realm}},
       config         => $self->config,
       realm          => $realm,
       schema         => $self->schema,

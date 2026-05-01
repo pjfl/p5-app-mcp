@@ -49,6 +49,7 @@ sub dispatch_request { build_routes
    'GET      + /user + ?*'              => 'user/root/base/list',
 
    'GET      + /doc/configuration + ?*' => 'doc/root/base/configuration',
+   'GET      + /doc/server + ?*'        => 'doc/root/base/server',
    'GET      + /doc + ?*'               => 'doc/root/base/application',
 
    'GET      + /logfile/*.* + ?*'     => 'logfile/root/base/view',

@@ -84,8 +84,6 @@ after 'after_build_fields' => sub {
    my $config  = $context->config;
    my $session = $context->session;
 
-   $self->set_form_element_attr('novalidate', 'novalidate');
-
    $self->add_form_element_class('radar')
       if includes 'radar', $session->features;
 

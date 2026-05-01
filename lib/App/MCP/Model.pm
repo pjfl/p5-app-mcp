@@ -51,9 +51,11 @@ sub root : Auth('none') {
    my $nav     = Web::Components::Navigation->new($options);
    my $session = $context->session;
 
-   $nav->list('_control');
-
    if ($session->authenticated) {
+      $nav->list('Documentation')->item('doc/application')->item('doc/server');
+
+      $nav->list('_control');
+      $nav->menu('Documentation', TRUE);
       $nav->item('misc/changes');
       $nav->item('misc/password', [$session->id]);
       $nav->item('user/profile', [$session->id]);
@@ -61,6 +63,7 @@ sub root : Auth('none') {
       $nav->item(formpost, 'misc/logout');
    }
    else {
+      $nav->list('_control');
       $nav->item('misc/login');
       $nav->item('misc/register', []) if $self->config->registration;
       $nav->item('misc/password', [$session->id]);

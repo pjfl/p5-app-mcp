@@ -109,7 +109,7 @@ has '_github_provider_config' =>
       };
    };
 
-=item _github_client_id
+=item C<_github_client_id>
 
 Provided by the Github Developer Settings. The registered identity for this
 application
@@ -122,7 +122,7 @@ has '_github_client_id' =>
    init_arg => 'github_client_id',
    default  => 'overide_in_local_config';
 
-=item _github_client_secret
+=item C<_github_client_secret>
 
 Provided by the Github Developer Settings. Secret used to obtain an access
 token from the identity provider
@@ -283,7 +283,7 @@ has 'db_attributes' =>
    isa     => HashRef,
    default => sub { { AutoCommit => TRUE } };
 
-=item db_connect_extra
+=item C<db_connect_extra>
 
 Extra database connection parameters
 
@@ -423,11 +423,23 @@ has 'fonts' =>
       };
    };
 
+=item C<_google_fonts>
+
+List of fonts loaded from Google
+
+=cut
+
 has '_google_fonts' =>
    is       => 'ro',
    isa      => ArrayRef,
    init_arg => 'google_fonts',
    default  => sub { [] };
+
+=item C<_local_fonts>
+
+List of fonts served locally
+
+=cut
 
 has '_local_fonts' =>
    is       => 'ro',
@@ -498,7 +510,7 @@ has 'lock_attributes' =>
    isa     => HashRef,
    default => sub { { redis => shift->redis, type => 'redis' } };
 
-=item log_message_maxlen
+=item C<log_message_maxlen>
 
 Maximum length of a logfile message in characters. If zero (the default) no
 limit is applied
@@ -1117,7 +1129,9 @@ has 'web_components' =>
 
 Defines the following methods;
 
-=item DumpExcept
+=over 3
+
+=item C<DumpExcept>
 
 An immutable class attribute. Returns an array reference of symbols that
 should be skipped when introspecting this class

@@ -10,7 +10,7 @@ sub get {
    my $parser = Pod::Markdown::Github->new;
 
    $parser->output_string(\my $markdown);
-   $parser->parse_file($path->as_string);
+   $parser->parse_file($path->as_string) if $path->exists;
 
    my $formatter = App::MCP::Markdown->new( tab_width => 3 );
 

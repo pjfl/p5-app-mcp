@@ -67,8 +67,7 @@ has 'assetdir' =>
 
 =item C<formatter>
 
-An instance of the application subclass of L<Text::MultiMarkdown>. A markdown
-formatter
+An instance of the L<markdown formatter|App::MCP::Markdown>
 
 =cut
 
