@@ -756,6 +756,7 @@ has 'request' =>
       my $self = shift;
 
       return {
+         appclass       => $self->appclass,
          max_messages   => $self->max_messages,
          max_sess_time  => $self->max_web_session_time,
          prefix         => $self->prefix,
@@ -1097,7 +1098,7 @@ has 'wcom_resources' =>
       };
    };
 
-=item web_components
+=item C<web_components>
 
 Configuration hash reference for the MVC L<Components|Web::Components>
 framework loaded from the F<Contoller>, F<Model>, and F<View> subdirectories of

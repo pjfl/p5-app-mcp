@@ -54,10 +54,9 @@ $class->add_columns(
       label   => 'Group'
    },
    permissions  => {
-      accessor      => '_permissions',
       data_type     => 'smallint',
       default_value => 488,
-      display       => sub { int2rwx shift->result->_permissions },
+      display       => sub { int2rwx shift->result->permissions },
       is_nullable   => FALSE,
    },
    condition    => {
@@ -324,7 +323,7 @@ sub _eval_condition {
 sub _is_permitted {
    my ($self, $id_or_user, $mask) = @_;
 
-   my $perms = $self->_permissions;
+   my $perms = $self->permissions;
 
    return TRUE if $perms & $mask->[2];
 

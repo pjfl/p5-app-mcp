@@ -1,4 +1,4 @@
 {
    "fields": "role_name",
-   "rows": [ "view", "edit", "admin", "api", "accounts", "manager", "support" ]
+   "rows": [ "view", "edit", "admin", "api", "batch", "cron", "poll", "queue" ]
 }

@@ -9,7 +9,7 @@ requires qw( config );
 has 'log' =>
    is      => 'lazy',
    isa     => Logger,
-   default => sub { App::MCP::Log->new(config => shift->config) };
+   default => sub { App::MCP::Log->new(builder => shift) };
 
 use namespace::autoclean;
 

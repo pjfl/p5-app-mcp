@@ -13,7 +13,39 @@ extends 'Web::Components::Model';
 with    'App::MCP::Role::Authorisation';
 with    'App::MCP::Role::Schema';
 
-has 'form_manager' =>
+=pod
+
+=encoding utf8
+
+=head1 Name
+
+App::MCP::Model - Model base class
+
+=head1 Synopsis
+
+   package App::MCP::Model::MyModel;
+
+   use Moo;
+
+   extends 'App::MCP::Model';
+
+=head1 Description
+
+Model base class
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<form_factory>
+
+An instance of the L<form factory|HTML::Forms::Manager> class
+
+=cut
+
+has 'form_factory' =>
    is      => 'lazy',
    isa     => class_type('HTML::Forms::Manager'),
    handles => { new_form => 'new_with_context' },
@@ -28,7 +60,13 @@ has 'form_manager' =>
       });
    };
 
-has 'table_manager' =>
+=item C<table_factory>
+
+An instance of the L<table factory|HTML::StateTable::Manager> class
+
+=cut
+
+has 'table_factory' =>
    is      => 'lazy',
    isa     => class_type('HTML::StateTable::Manager'),
    handles => { new_table => 'new_with_context' },
@@ -43,7 +81,40 @@ has 'table_manager' =>
       });
    };
 
-# Public methods
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<new_form>
+
+   $form = $self->new_form('MyForm', { context => $context });
+
+Creates new L<forms|HTML::Forms>
+
+=item C<new_table>
+
+   $table = $self->new_table('MyTable', { context => $context });
+
+Creates new L<tables|HTML::StateTable>
+
+=item C<root>
+
+   $self->root($context);
+
+Creates and stashes an instance of the
+L<navigation|Web::Components::Navigation> object
+
+Navigation methods C<menu>, C<list>, and C<item> are used to build the
+context sensitive menu data
+
+This method adds menu items for the C<Application> menu
+
+=cut
+
 sub root : Auth('none') {
    my ($self, $context) = @_;
 
@@ -77,38 +148,21 @@ sub root : Auth('none') {
 
 __END__
 
-=pod
-
-=encoding utf8
-
-=head1 Name
-
-App::MCP::Model - One-line description of the modules purpose
-
-=head1 Synopsis
-
-   use App::MCP::Model;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Web::Components>
+=item L<App::MCP::Role::Authorisation>
+
+=item L<App::MCP::Role::Schema>
+
+=item L<Web::Components::Model>
 
 =back
 

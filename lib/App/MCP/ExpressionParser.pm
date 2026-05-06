@@ -10,7 +10,34 @@ use Marpa::R2;
 
 my $_grammar_cache;
 
-# Construction
+=pod
+
+=head1 Name
+
+App::MCP::ExpressionParser - Evaluate the condition field of the job object
+
+=head1 Synopsis
+
+   use App::MCP::ExpressionParser;
+
+=head1 Description
+
+Evaluate the condition field of the job object
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<new>
+
+=cut
+
 sub new {
    my ($self, @args) = @_;
 
@@ -21,7 +48,10 @@ sub new {
    return bless $attr, blessed $self || $self;
 }
 
-# Public methods
+=item C<parse>
+
+=cut
+
 sub parse {
    my ($self, $line, $ns) = @_;
 
@@ -203,34 +233,17 @@ sub subrule2 {
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::ExpressionParser - Evaluate the condition field of the Job table
-
-=head1 Synopsis
-
-   use App::MCP::ExpressionParser;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
-
-=head2 new
-
-=head2 parse
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul::Cmd>
+=item L<Marpa::R2>
 
 =back
 

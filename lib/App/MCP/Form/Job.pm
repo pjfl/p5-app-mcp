@@ -19,7 +19,7 @@ has '+item_class'         => default => 'Job';
 has '+name'               => default => 'Job';
 has '+title'              => default => 'Create Job';
 
-has 'default_group' => is => 'ro', isa => Str, default => 'edit';
+has 'default_group' => is => 'ro', isa => Str, default => 'batch';
 
 has 'min_job_name_len' => is => 'ro', isa => Int, default => 3;
 
@@ -61,13 +61,13 @@ sub validate_job_name {
 has_field '_g1' => type => 'Group';
 
 has_field 'type' =>
-   type          => 'Select',
-   html_name     => 'job_type',
-   input_param   => 'job_type',
-   field_group   => '_g1',
-   toggle        => { job => [qw(command directory _g3 _g4)] },
-   toggle_event  => 'change',
-   options       => [
+   type         => 'Select',
+   html_name    => 'job_type',
+   input_param  => 'job_type',
+   field_group  => '_g1',
+   toggle       => { job => [qw(command directory _g3 _g4)] },
+   toggle_event => 'change',
+   options      => [
       { label => 'Job', value => 'job' },
       { label => 'Box', value => 'box' },
    ];
@@ -76,7 +76,7 @@ has_field 'parent_id' => type => 'Hidden', field_group => '_g1';
 
 has_field 'parent_name' =>
    type        => 'SelectOne',
-   display_as  => '...',
+   display_as  => '…',
    label       => 'Parent Box',
    field_group => '_g1',
    noupdate    => TRUE,
@@ -87,14 +87,14 @@ has_field '_g2' => type => 'Group';
 has_field 'owner' => type => 'Hidden', field_group => '_g2';
 
 has_field 'owner_name' =>
-   type          => 'Text',
-   field_group   => '_g2',
-   label         => 'Owner',
-   noupdate      => TRUE,
-   readonly      => TRUE,
-   size          => 8,
-   value         => 'owner_rel.user_name',
-   title         => 'User owner of the job';
+   type        => 'Text',
+   field_group => '_g2',
+   label       => 'Owner',
+   noupdate    => TRUE,
+   readonly    => TRUE,
+   size        => 8,
+   value       => 'owner_rel.user_name',
+   title       => 'User owner of the job';
 
 has_field 'group_rel' =>
    type        => 'Select',
@@ -109,15 +109,16 @@ sub options_group_rel {
       return { label => ucfirst $_[0]->role_name, value => $_[0]->id };
    };
 
-   return [ map  { $option->($_) }
-            grep { !includes $_->role_name, [qw(admin edit view)] }
-            @{$self->_groups}
+   return [
+      map  { $option->($_) }
+      grep { !includes $_->role_name, [qw(admin edit view)] }
+      @{$self->_groups}
    ];
 }
 
 has_field 'permissions' =>
    type        => 'Permission',
-   default     => '488',
+   default     => 488,
    display_as  => '±',
    field_group => '_g2',
    title       => 'Select permissions';
@@ -134,13 +135,13 @@ has_field 'crontab_min' =>
    label       => 'Minute',
    field_group => '_g5',
    size        => 3,
-   title       => "Digits 0-59 or '*'. Comma separated list";
+   title       => "Comma separated list. Digits 0-59 or '*'";
 
 has_field 'crontab_hour' =>
    label       => 'Hour',
    field_group => '_g5',
    size        => 3,
-   title       => "Digits 0-23 or '*'. Comma separated list";
+   title       => "Comma separated list. Digits 0-23 or '*'";
 
 has_field '_g6' => type => 'Group';
 
@@ -148,29 +149,29 @@ has_field 'crontab_mday' =>
    label       => 'Day of Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Digits 1-31 or '*'. Comma separated list";
+   title       => "Comma separated list. Digits 1-31 or '*'";
 
 has_field 'crontab_mon' =>
    label       => 'Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Digits 1-12 or names or '*'. Comma separated list";
+   title       => "Comma separated list. Digits 1-12 or names or '*'";
 
 has_field 'crontab_wday' =>
    label => 'Day of Week',
    size  => 3,
-   title => "Digits 0-7 or names or '*'. Zero is Sunday. Comma separated list";
+   title => "Comma separated list. Digits 0-7 or names or '*'. Zero is Sunday";
 
 has_field '_g4' =>
    type => 'Group',
    info => 'These fields are not needed if job type is box';
 
 has_field 'user_name' =>
-   default       => 'mcp',
-   field_group   => '_g4',
-   required      => TRUE,
-   size          => 8,
-   title         => 'Execute command as this remote user';
+   default     => 'mcp',
+   field_group => '_g4',
+   required    => TRUE,
+   size        => 8,
+   title       => 'Execute command as this remote user';
 
 has_field 'host' =>
    default     => 'localhost',

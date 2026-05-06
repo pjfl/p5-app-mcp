@@ -8,9 +8,51 @@ use Moo;
 
 with 'App::MCP::Role::CSVParser';
 
+=pod
+
+=encoding utf-8
+
+=head1 Name
+
+App::MCP::File - Interface between web application and file system
+
+=head1 Synopsis
+
+   use App::MCP::File;
+
+=head1 Description
+
+Interface between web application and file system
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<home>
+
+=cut
+
 has 'home' => is => 'lazy', isa => Directory, required => TRUE;
 
+=item C<share>
+
+=cut
+
 has 'share' => is => 'lazy', isa => Path, required => TRUE;
+
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<add_meta>
+
+=cut
 
 sub add_meta {
    my ($self, $path, $filename, $meta) = @_;
@@ -33,6 +75,10 @@ sub add_meta {
    return;
 }
 
+=item C<directory>
+
+=cut
+
 sub directory {
    my ($self, $path) = @_;
 
@@ -40,6 +86,10 @@ sub directory {
 
    return $self->home->catdir($self->to_path($path));
 }
+
+=item C<get_files>
+
+=cut
 
 sub get_files { # Unused
    my ($self, $extensions) = @_;
@@ -60,6 +110,10 @@ sub get_files { # Unused
 
    return $files;
 }
+
+=item C<get_csv_header>
+
+=cut
 
 sub get_csv_header {
    my ($self, $selected) = @_;
@@ -82,6 +136,10 @@ sub get_csv_header {
    return [ map { { name => $_ } } $self->csv_parser->fields ];
 }
 
+=item C<get_owner>
+
+=cut
+
 sub get_owner {
    my ($self, $path, $filename) = @_;
 
@@ -90,6 +148,10 @@ sub get_owner {
    return $meta ? $meta->{owner} : NUL;
 }
 
+=item C<get_shared>
+
+=cut
+
 sub get_shared {
    my ($self, $path, $filename) = @_;
 
@@ -97,6 +159,10 @@ sub get_shared {
 
    return $meta ? $meta->{shared} : NUL;
 }
+
+=item C<move_meta>
+
+=cut
 
 sub move_meta {
    my ($self, $from, $path, $filename, $default) = @_;
@@ -110,6 +176,10 @@ sub move_meta {
    $self->add_meta($path, $filename, $meta);
    return;
 }
+
+=item C<remove_meta>
+
+=cut
 
 sub remove_meta {
    my ($self, $from) = @_;
@@ -134,6 +204,10 @@ sub remove_meta {
    return;
 }
 
+=item C<scrub>
+
+=cut
+
 sub scrub {
    my ($self, $filename) = @_;
 
@@ -141,6 +215,10 @@ sub scrub {
 
    return $filename;
 }
+
+=item C<set_shared>
+
+=cut
 
 sub set_shared {
    my ($self, $path, $filename, $default) = @_;
@@ -159,6 +237,10 @@ sub set_shared {
    return $meta->{shared};
 }
 
+=item C<share_file>
+
+=cut
+
 sub share_file {
    my ($self, $path) = @_;
 
@@ -169,13 +251,25 @@ sub share_file {
    return;
 }
 
+=item C<to_path>
+
+=cut
+
 sub to_path {
    my ($self, $uri_arg) = @_; return _to_path($uri_arg);
 }
 
+=item C<to_uri>
+
+=cut
+
 sub to_uri {
    my ($self, @args) = @_; return _to_uri(join '!', grep { $_ } @args);
 }
+
+=item C<unshare_file>
+
+=cut
 
 sub unshare_file {
    my ($self, $path) = @_;
@@ -264,37 +358,19 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=encoding utf-8
-
-=head1 Name
-
-App::MCP::File - Interface between web application and file system
-
-=head1 Synopsis
-
-   use App::MCP::File;
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Moo>
+=item L<App::MCP::Role::CSVParser>
+
+=item L<File::DataClass::Types>
 
 =back
 

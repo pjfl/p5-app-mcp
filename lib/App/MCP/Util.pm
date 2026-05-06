@@ -30,6 +30,30 @@ our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
    terminate text_data_type trigger_input_handler trigger_output_handler
    truncate updated_timestamp_data_type varchar_data_type );
 
+=pod
+
+=encoding utf8
+
+=head1 Name
+
+App::MCP::Util - Utility functions
+
+=head1 Synopsis
+
+   use App::MCP::Util qw( create_token );
+
+=head1 Description
+
+Utility functions
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=over 3
+
+=cut
+
 my $digest_cache;
 my $reserved   = q(;/?:@&=+$,[]);
 my $mark       = q(-_.!~*'());
@@ -57,6 +81,20 @@ my $index64 = sub { [
       XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX
       XX XX XX XX  XX XX XX XX  XX XX XX XX  XX XX XX XX)
 ]};
+
+=back
+
+=head1 Subroutines/Methods
+
+Exports the following functions;
+
+=over 3
+
+=item C<base64_decode>
+
+   $decoded = base64_decode $encoded;
+
+=cut
 
 sub base64_decode ($) {
    my $x = shift;
@@ -103,6 +141,12 @@ sub base64_decode ($) {
    return join q(), map { chr $_ } @y;
 }
 
+=item C<base64_encode>
+
+   $encoded = base64_encode $decoded;
+
+=cut
+
 sub base64_encode (;$) {
    my $x = shift;
 
@@ -139,36 +183,41 @@ sub base64_encode (;$) {
    return join q(), @y;
 }
 
-sub boolean_data_type {
-   return {
-      cell_traits   => ['Bool'],
-      data_type     => 'boolean',
-      default_value => $_[0] ? SQL_TRUE : SQL_FALSE,
-      is_nullable   => FALSE,
-   };
-}
+=item C<concise_duration>
+
+   $string = consise_duration $elapsed;
+
+=cut
 
 sub concise_duration ($) {
    return concise(duration($_[0]));
 }
 
+=item C<create_token>
+
+   $token = create_token;
+
+=cut
+
 sub create_token () {
    return substr digest(urandom())->hexdigest, 0, 32;
 }
+
+=item C<create_totp_token>
+
+   $token = create_totp_token;
+
+=cut
 
 sub create_totp_token () {
    return substr digest(urandom())->b64digest, 0, 16;
 }
 
-sub created_timestamp_data_type {
-   return {
-      cell_traits   => ['DateTime'],
-      data_type     => 'timestamp',
-      is_nullable   => FALSE,
-      set_on_create => TRUE,
-      timezone      => 'UTC',
-   };
-}
+=item C<digest>
+
+   $object = digest $seed;
+
+=cut
 
 sub digest ($) {
    my $seed = shift;
@@ -191,11 +240,23 @@ sub digest ($) {
    return $digest;
 }
 
+=item C<distname>
+
+   $string = distname $package;
+
+=cut
+
 sub distname (;$) {
    (my $v = $_[0] // NUL) =~ s{ :: }{-}gmx;
 
    return $v;
 }
+
+=item C<dt_from_epoch>
+
+   $dt = dt_from_epoch $epoch, $timezone?;
+
+=cut
 
 sub dt_from_epoch ($;$) {
    my ($epoch, $tz) = @_;
@@ -205,6 +266,12 @@ sub dt_from_epoch ($;$) {
    );
 }
 
+=item C<dt_human>
+
+   $dt = dt_human $dt;
+
+=cut
+
 sub dt_human ($) {
    my $dt  = shift;
    my $fmt = DateTime::Format::Human->new(evening => 19, night => 23);
@@ -213,42 +280,43 @@ sub dt_human ($) {
    return $dt;
 }
 
+=item C<encode_for_html>
+
+   $encoded = encode_for_html $data_structure;
+
+=cut
+
 sub encode_for_html ($) {
    return encode_entities(encode_json(shift));
 }
 
-sub enumerated_data_type ($;$) {
-   return {
-      data_type     => 'enum',
-      default_value => $_[1],
-      extra         => { list => $_[0] },
-      is_enum       => TRUE,
-   };
-}
+=item C<formpost>
 
-sub foreign_key_data_type (;$$) {
-   my $type_info = {
-      data_type     => 'integer',
-      default_value => $_[0],
-      extra         => { unsigned => TRUE },
-      is_nullable   => FALSE,
-      is_numeric    => TRUE,
-   };
+   $hash_ref = formpost;
 
-   $type_info->{accessor} = $_[1] if defined $_[1];
-
-   return $type_info;
-}
+=cut
 
 sub formpost () {
    return { method => 'post' };
 }
+
+=item C<get_hashed_pw>
+
+   $string = get_hashed_pw $encrypted_password;
+
+=cut
 
 sub get_hashed_pw ($) {
    my @parts = split m{ [\$] }mx, $_[0];
 
    return substr $parts[-1], 22;
 }
+
+=item C<get_salt>
+
+   $string = get_salt $encrypted_password;
+
+=cut
 
 sub get_salt ($) {
    my @parts = split m{ [\$] }mx, $_[0];
@@ -258,11 +326,23 @@ sub get_salt ($) {
    return join '$', @parts;
 }
 
+=item C<new_salt>
+
+   $string = new_salt $type, $load_factor;
+
+=cut
+
 sub new_salt ($$) {
    my ($type, $lf) = @_;
 
    return "\$${type}\$${lf}\$" . (en_base64(pack('H*', create_token)));
 }
+
+=item C<new_uri>
+
+   $object = new_uri $scheme, $path_info;
+
+=cut
 
 sub new_uri ($$) {
    my $v = uri_escape($_[1]);
@@ -270,45 +350,21 @@ sub new_uri ($$) {
    return bless \$v, 'URI::'.$_[0];
 }
 
-sub nullable_foreign_key_data_type () {
-   return {
-      data_type   => 'integer',
-      extra       => { unsigned => TRUE },
-      is_nullable => TRUE,
-      is_numeric  => TRUE,
-   };
-}
+=item C<redirect>
 
-sub nullable_varchar_data_type (;$$) {
-   return {
-      data_type     => 'varchar',
-      default_value => $_[1],
-      is_nullable   => TRUE,
-      size          => $_[0] || VARCHAR_MAX_SIZE,
-   };
-}
+   $key_value = redirect $location, $message, \%options?;
 
-sub numerical_data_type (;$) {
-   return {
-      data_type     => 'integer',
-      default_value => $_[0],
-      is_nullable   => FALSE,
-      is_numeric    => TRUE,
-   };
-}
-
-sub numerical_id_data_type (;$) {
-   return {
-      data_type     => 'smallint',
-      default_value => $_[0],
-      is_nullable   => FALSE,
-      is_numeric    => TRUE,
-   };
-}
+=cut
 
 sub redirect ($$;$) {
    return redirect => { %{$_[2] // {}}, location => $_[0], message => $_[1] };
 }
+
+=item C<redirect2referer>
+
+   $key_value = redirect2referer $context, $message?;
+
+=cut
 
 sub redirect2referer ($;$) {
    my ($context, $message) = @_;
@@ -318,22 +374,11 @@ sub redirect2referer ($;$) {
    return redirect $referer, $message;
 }
 
-sub serial_data_type () {
-   return {
-      data_type         => 'integer',
-      extra             => { unsigned => TRUE },
-      is_auto_increment => TRUE,
-      is_nullable       => FALSE,
-      is_numeric        => TRUE,
-   };
-}
+=item C<strip_parent_name>
 
-sub set_on_create_datetime_data_type () {
-   return {
-      data_type     => 'datetime',
-      set_on_create => TRUE,
-   };
-}
+   $stripped = string_parent_name $job_name;
+
+=cut
 
 sub strip_parent_name ($) {
    my $v   = shift;
@@ -344,6 +389,12 @@ sub strip_parent_name ($) {
    return $v;
 }
 
+=item C<terminate>
+
+   $true = terminate $async_object_ref;
+
+=cut
+
 sub terminate ($) {
    $_[0]->unwatch_signal('QUIT');
    $_[0]->unwatch_signal('TERM');
@@ -351,21 +402,31 @@ sub terminate ($) {
    return TRUE;
 }
 
-sub text_data_type (;$) {
-   return {
-      data_type     => 'text',
-      default_value => $_[0],
-      is_nullable   => FALSE,
-   };
-}
+=item C<trigger_input_handler>
+
+   $bool = trigger_input_handler $pid;
+
+=cut
 
 sub trigger_input_handler ($) {
-   return $_[ 0 ] ? CORE::kill 'USR1', $_[ 0 ] : FALSE;
+   return $_[0] ? CORE::kill 'USR1', $_[0] : FALSE;
 }
 
+=item C<trigger_output_handler>
+
+   $bool = trigger_output_handler $pid;
+
+=cut
+
 sub trigger_output_handler ($) {
-   return $_[ 0 ] ? CORE::kill 'USR2', $_[ 0 ] : FALSE;
+   return $_[0] ? CORE::kill 'USR2', $_[0] : FALSE;
 }
+
+=item C<truncate>
+
+   $string = truncate $string, $length?;
+
+=cut
 
 sub truncate ($;$) {
    my ($string, $length) = @_;
@@ -374,14 +435,11 @@ sub truncate ($;$) {
    return substr($string, 0, $length - 1) . '…';
 }
 
-sub updated_timestamp_data_type {
-   return {
-      cell_traits => ['DateTime'],
-      data_type   => 'timestamp',
-      is_nullable => TRUE,
-      timezone    => 'UTC',
-   };
-}
+=item C<urandom>
+
+   $bytes = urandom $wanted?, \%options?;
+
+=cut
 
 sub urandom (;$$) {
    my ($wanted, $opts) = @_;
@@ -402,14 +460,192 @@ sub urandom (;$$) {
    return substr $res, 0, $wanted;
 }
 
+=item C<uri_escape>
+
+   $escaped = uri_escape $uri, $pattern?;
+
+=cut
+
 sub uri_escape ($;$) {
    my ($v, $pattern) = @_;
 
    $pattern //= $uric;
    $v =~ s{([^$pattern])}{ URI::Escape::uri_escape_utf8($1) }ego;
-   utf8::downgrade( $v );
+   utf8::downgrade($v);
    return $v;
 }
+
+=back
+
+=head1 Data Types
+
+Exports the following data types;
+
+=over 3
+
+=item C<boolean_data_type>
+
+=cut
+
+sub boolean_data_type {
+   return {
+      cell_traits   => ['Bool'],
+      data_type     => 'boolean',
+      default_value => $_[0] ? SQL_TRUE : SQL_FALSE,
+      is_nullable   => FALSE,
+   };
+}
+
+=item C<created_timestamp_data_type>
+
+=cut
+
+sub created_timestamp_data_type {
+   return {
+      cell_traits   => ['DateTime'],
+      data_type     => 'timestamp',
+      is_nullable   => FALSE,
+      set_on_create => TRUE,
+      timezone      => 'UTC',
+   };
+}
+
+=item C<enumerated_data_type>
+
+=cut
+
+sub enumerated_data_type ($;$) {
+   return {
+      data_type     => 'enum',
+      default_value => $_[1],
+      extra         => { list => $_[0] },
+      is_enum       => TRUE,
+   };
+}
+
+=item C<foreign_key_data_type>
+
+=cut
+
+sub foreign_key_data_type (;$$) {
+   my $type_info = {
+      data_type     => 'integer',
+      default_value => $_[0],
+      extra         => { unsigned => TRUE },
+      is_nullable   => FALSE,
+      is_numeric    => TRUE,
+   };
+
+   $type_info->{accessor} = $_[1] if defined $_[1];
+
+   return $type_info;
+}
+
+=item C<nullable_foreign_key_data_type>
+
+=cut
+
+sub nullable_foreign_key_data_type () {
+   return {
+      data_type   => 'integer',
+      extra       => { unsigned => TRUE },
+      is_nullable => TRUE,
+      is_numeric  => TRUE,
+   };
+}
+
+=item C<nullable_varchar_data_type>
+
+=cut
+
+sub nullable_varchar_data_type (;$$) {
+   return {
+      data_type     => 'varchar',
+      default_value => $_[1],
+      is_nullable   => TRUE,
+      size          => $_[0] || VARCHAR_MAX_SIZE,
+   };
+}
+
+=item C<numerical_data_type>
+
+=cut
+
+sub numerical_data_type (;$) {
+   return {
+      data_type     => 'integer',
+      default_value => $_[0],
+      is_nullable   => FALSE,
+      is_numeric    => TRUE,
+   };
+}
+
+=item C<numerical_id_data_type>
+
+=cut
+
+sub numerical_id_data_type (;$) {
+   return {
+      data_type     => 'smallint',
+      default_value => $_[0],
+      is_nullable   => FALSE,
+      is_numeric    => TRUE,
+   };
+}
+
+=item C<serial_data_type>
+
+=cut
+
+sub serial_data_type () {
+   return {
+      data_type         => 'integer',
+      extra             => { unsigned => TRUE },
+      is_auto_increment => TRUE,
+      is_nullable       => FALSE,
+      is_numeric        => TRUE,
+   };
+}
+
+=item C<set_on_create_datetime_data_type>
+
+=cut
+
+sub set_on_create_datetime_data_type () {
+   return {
+      data_type     => 'datetime',
+      set_on_create => TRUE,
+   };
+}
+
+=item C<text_data_type>
+
+=cut
+
+sub text_data_type (;$) {
+   return {
+      data_type     => 'text',
+      default_value => $_[0],
+      is_nullable   => FALSE,
+   };
+}
+
+=item C<updated_timestamp_data_type>
+
+=cut
+
+sub updated_timestamp_data_type {
+   return {
+      cell_traits => ['DateTime'],
+      data_type   => 'timestamp',
+      is_nullable => TRUE,
+      timezone    => 'UTC',
+   };
+}
+
+=item C<varchar_data_type>
+
+=cut
 
 sub varchar_data_type (;$$) {
    return {
@@ -429,47 +665,35 @@ sub _pseudo_random {
 
 __END__
 
-=pod
-
-=encoding utf8
-
-=head1 Name
-
-App::MCP::Util - One-line description of the modules purpose
-
-=head1 Synopsis
-
-   use App::MCP::Util;
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
-=head2 job_type_enum
-
-=head2 nullable_varchar_data_type
-
-=head2 numerical_id_data_type
-
-=head2 serial_data_type
-
-=head2 varchar_data_type
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Crypt::Eksblowfish::Bcrypt>
+
+=item L<Digest>
+
+=item L<Exporter::Tiny>
+
+=item L<File::DataClass::IO>
+
+=item L<HTML::Entities>
+
+=item L<JSON::MaybeXS>
+
+=item L<Time::Duration>
+
+=item L<URI>
+
+=item L<DateTime>
+
+=item L<DateTime::Format::Human>
 
 =back
 

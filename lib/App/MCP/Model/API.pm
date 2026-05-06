@@ -117,6 +117,13 @@ sub sessionid : Auth('none') Capture(1) {
    return;
 }
 
+sub user : Auth('none') Capture(1) {
+   my ($self, $context, $arg) = @_;
+
+   $context->stash(username => $arg);
+   return;
+}
+
 sub action : Auth('view') {
    my ($self, $context) = @_;
 
@@ -139,7 +146,7 @@ sub collect_messages : Auth('none') {
    my $session  = $context->session;
    my $messages = $session->collect_status_messages($context->request);
 
-   $self->_stash_response($context, [ reverse @{$messages} ]);
+   $self->_stash_response($context, [HTTP_OK, [ reverse @{$messages} ]]);
    return;
 }
 
@@ -147,29 +154,32 @@ sub create_event : Auth('none') {
    my ($self, $context) = @_;
 
    my $request = $context->request;
+   my $result;
 
-   $request->authenticate_headers;
+   try   { $request->authenticate_headers }
+   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
+
+   return $self->_stash_response($context, $result) if $result;
 
    my $schema = $self->schema;
    my $run_id = $context->stash('runid');
    my $pe_rs  = $schema->resultset('ProcessedEvent')->search(
-      { runid => $run_id }, { columns => ['token'] }
+      { runid => $run_id }, { columns => ['token'], rows => 1 }
    );
    my $pevent = $pe_rs->single
       or throw 'Runid [_1] not found', [$run_id, rv => HTTP_NOT_FOUND];
-   my $params = $self->authenticate_params(
-      $run_id, $pevent->token, $request->body_params->('event')
-   );
-   my $event;
+   my $event  = $request->body_params->('event');
+   my $params = $self->authenticate_params($run_id, $pevent->token, $event);
+   my $pid    = $self->config->appclass->env_var('daemon_pid');
 
-   try    { $event = $schema->resultset('Event')->create($params) }
-   catch  { throw $_, rv => HTTP_BAD_REQUEST };
+   try {
+      $event = $schema->resultset('Event')->create($params);
+      trigger_input_handler $pid;
+      $result = [HTTP_CREATED, { message => 'Event '.$event->id.' created' }];
+   }
+   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
 
-   trigger_input_handler $self->config->appclass->env_var('daemon_pid');
-
-   my $result = { message => 'Event ' . $event->id . ' created' };
-
-   $context->stash(code => HTTP_CREATED, json => $result, view => 'json');
+   $self->_stash_response($context, $result);
    return;
 }
 
@@ -177,25 +187,30 @@ sub create_job : Auth('none') {
    my ($self, $context) = @_;
 
    my $request = $context->request;
+   my $result;
 
-   $request->authenticate_headers;
+   try   { $request->authenticate_headers }
+   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
+
+   return $self->_stash_response($context, $result) if $result;
 
    my $session_id = $context->stash('session_id');
    my $session    = $self->get_session($session_id);
-   my $params     = $self->authenticate_params(
-      $session->{key}, $session->{shared_secret}, $request->body_params->('job')
-   );
-   my $job;
+   my $key        = $session->{key};
+   my $secret     = $session->{shared_secret};
+   my $job        = $request->body_params->('job');
+   my $params     = $self->authenticate_params($key, $secret, $job);
 
    $params->{owner_id} = $session->{user_id};
    $params->{group_id} = $session->{role_id};
 
-   try    { $job = $self->schema->resultset('Job')->create($params) }
-   catch  { throw $_, rv => HTTP_BAD_REQUEST };
+   try {
+      $job = $self->schema->resultset('Job')->create($params);
+      $result = [HTTP_CREATED, { message => 'Job ' . $job->id . ' created' } ];
+   }
+   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
 
-   my $result = { message => 'Job ' . $job->id . ' created' };
-
-   $context->stash(code => HTTP_CREATED, json => $result, view => 'json');
+   $self->_stash_response($context, $result);
    return;
 }
 
@@ -212,7 +227,7 @@ sub fetch : Auth('none') {
    }
    else { $self->log->error("Object ${name} unknown", $context) }
 
-   $self->_stash_response($context, $result);
+   $self->_stash_response($context, [HTTP_OK, $result]);
    return;
 }
 
@@ -233,11 +248,12 @@ sub logger : Auth('none') {
 sub preference : Auth('view') {
    my ($self, $context) = @_;
 
-   my $name  = $self->_preference_name($context);
-   my $value = $context->body_parameters->{data} if $context->posted;
-   my $pref  = $self->_preference($context, $name, $value);
+   my $name   = $self->_preference_name($context);
+   my $value  = $context->body_parameters->{data} if $context->posted;
+   my $pref   = $self->_preference($context, $name, $value);
+   my $result = $pref ? $pref->value : {};
 
-   $self->_stash_response($context, $pref ? $pref->value : {});
+   $self->_stash_response($context, [HTTP_OK, $result]);
    return;
 }
 
@@ -245,8 +261,9 @@ sub push_publickey : Auth('view') {
    my ($self, $context) = @_;
 
    my $public = $self->_ecc->export_key_raw('public');
+   my $result = { publickey => encode_base64url $public };
 
-   $self->_stash_response($context, { publickey => encode_base64url $public });
+   $self->_stash_response($context, [HTTP_OK, $result]);
    return;
 }
 
@@ -258,7 +275,10 @@ sub push_register : Auth('view') {
 
    $subscription = $self->json_parser->encode($subscription);
    $self->redis_client->set("service-worker-${key}", $subscription);
-   $self->_stash_response($context, { text => 'Service worker registered' });
+
+   my $result = { text => 'Service worker registered' };
+
+   $self->_stash_response($context, [HTTP_OK, $result]);
    return;
 }
 
@@ -269,7 +289,7 @@ sub push_worker : Auth('none') {
    my $jsdir   = $self->config->rootdir->catdir('js');
    my $content = $jsdir->catfile('service-worker.js')->slurp;
 
-   $context->stash(response => [200, [@headers], [$content]]);
+   $context->stash(response => [HTTP_OK, [@headers], [$content]]);
    return;
 }
 
@@ -284,7 +304,10 @@ sub validate : Auth('none') {
 
    $form->setup_form(params => { $field->name => $value }, item_id => $item_id);
    $field->validate_field;
-   $self->_stash_response($context, { reason => [$field->result->all_errors] });
+
+   my $result = [HTTP_OK, { reason => [$field->result->all_errors] }];
+
+   $self->_stash_response($context, $result);
    return;
 }
 
@@ -356,8 +379,12 @@ sub _preference_name {
 sub _stash_response {
    my ($self, $context, $result) = @_;
 
-   $result //= {};
-   $context->stash(code => HTTP_OK, json => $result, view => 'json');
+   $result //= [];
+
+   my $code = $result->[0] // HTTP_OK;
+   my $json = $result->[1] // {};
+
+   $context->stash(code => $code, json => $json, view => 'json');
    return;
 }
 

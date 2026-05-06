@@ -10,6 +10,34 @@ use Moo;
 
 extends 'Class::Workflow';
 
+=pod
+
+=head1 Name
+
+App::MCP::Workflow - Finite state automata
+
+=head1 Synopsis
+
+   use App::MCP::Workflow;
+
+=head1 Description
+
+Finite state automata
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<BUILDARGS>
+
+=cut
+
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_;
 
@@ -19,6 +47,10 @@ around 'BUILDARGS' => sub {
 
    return $attr;
 };
+
+=item C<BUILD>
+
+=cut
 
 sub BUILD {
    my $self = shift;
@@ -83,6 +115,10 @@ sub BUILD {
    return;
 }
 
+=item C<process_event>
+
+=cut
+
 sub process_event {
    my ($self, $state_name, $event) = @_;
 
@@ -101,7 +137,10 @@ sub process_event {
          $instance   = $transition->apply($instance, $event);
          $state_name = $instance->state->name;
       }
-      catch_class ['Retry' => sub { $trigger = TRUE }, '*' => sub { throw $_ }];
+      catch_class [
+         'Retry' => sub { $trigger = TRUE },
+         '*'     => sub { throw "${_}" },
+      ];
    }
 
    return $state_name;
@@ -113,24 +152,11 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::Workflow - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::Workflow;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
@@ -146,9 +172,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
-Patches are welcome
+There are no known bugs in this module.  Please report problems to the address
+below.  Patches are welcome
 
 =head1 Acknowledgements
 

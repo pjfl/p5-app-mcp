@@ -182,26 +182,51 @@ __END__
 
 =head1 Name
 
-App::MCP::SSHLibrary - <One-line description of module's purpose>
+App::MCP::SSHLibrary - SSH Library functions
 
 =head1 Synopsis
 
    use App::MCP::SSHLibrary;
-   # Brief but working code examples
 
 =head1 Description
 
+SSH Library functions
+
 =head1 Configuration and Environment
+
+Defines no attributes
 
 =head1 Subroutines/Methods
 
+Defines the following remote functions;
+
+=over 3
+
+=item C<dispatch>
+
+=item C<distclean>
+
+=item C<install_cpan_minus>
+
+=item C<install_distribution>
+
+=item C<provision>
+
+=item C<remove_env>
+
+=item C<writefile>
+
+=back
+
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<IPC::PerlSSH::Library>
 
 =back
 
@@ -211,9 +236,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
-Patches are welcome
+There are no known bugs in this module.  Please report problems to the address
+below.  Patches are welcome
 
 =head1 Acknowledgements
 

@@ -23,7 +23,7 @@ App::MCP::Authentication::Realms::DBIC - Authenticate with a DBIC user object
 
 =head1 Description
 
-Authenticate with a L<DBIx::Class> user object
+Authenticate with a L<user|App::MCP::Schema::Schedule::Result::User> object
 
 =head1 Configuration and Environment
 
@@ -60,8 +60,7 @@ has 'realm' => is => 'ro', isa => Str, required => TRUE;
 
 =item C<result_class>
 
-The L<result class|DBIx::Class::Core> name for the user object. Defaults to
-C<User>
+The result class name for the user object. Defaults to C<User>
 
 =cut
 
@@ -69,7 +68,7 @@ has 'result_class' => is => 'ro', isa => Str, default => 'User';
 
 =item C<schema>
 
-A required instance of L<DBIx::Class::Schema>
+A required instance of the L<schema|App::MCP::Schema::Schedule> class
 
 =cut
 
@@ -123,7 +122,8 @@ Will add C<< prefetch => 'role' >> if no other C<prefetch> has been set
 
 Calls C<resultset>.C<$find_user_method> to get the user object
 
-Returns a L<user object|DBIx::Class::Core> or undefined if not found
+Returns a L<user|App::MCP::Schema::Schedule::Result::User> object or undefined
+if not found
 
 =cut
 
@@ -256,7 +256,7 @@ None
 
 =over 3
 
-=item L<Moo>
+=item L<App::MCP::Role::UpdatingSession>
 
 =back
 

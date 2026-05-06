@@ -19,6 +19,8 @@ sub dispatch_request { build_routes
    'GET      + /service-worker'                   => 'api/push_worker',
    'POST     + /api/run/*/create_event + ?*'      => 'api/runid/create_event',
    'POST     + /api/session/*/create_job + ?*'    => 'api/sessionid/create_job',
+   'GET      + /api/user/*/exchange_keys'         => 'api/user/exchange_keys',
+   'POST     + /api/user/*/authenticate'          => 'api/user/authenticate',
    'POST     + /api/table/*/action + ?*'          => 'api/table/action',
    'GET|POST + /api/table/*/preference + ?*'      => 'api/table/preference',
 

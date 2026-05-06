@@ -101,7 +101,7 @@ sub update_model {
    if ($signal ne 'start') {
       my $last_pev = $context->schema->resultset('ProcessedEvent')->search(
          { job_id  => $self->item->id, transition => 'start' },
-         { columns => ['runid'], order_by => { -desc => 'created' } }
+         { columns => ['runid'], order_by => { -desc => 'created' }, rows => 1 }
       )->single;
 
       $args->{runid} = $last_pev->runid if $last_pev;

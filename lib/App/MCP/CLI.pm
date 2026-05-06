@@ -109,7 +109,8 @@ has 'templatedir' =>
 
 =item C<ua_timeout>
 
-Defaults to 30seconds. How long should the HTTP user agent wait for responses
+Defaults to thirty seconds. How long should the HTTP user agent wait for
+responses
 
 =cut
 
@@ -144,6 +145,10 @@ has '_ua' =>
 Defines the following methods;
 
 =over 3
+
+=item C<BUILD>
+
+Does nothing
 
 =cut
 
@@ -295,10 +300,23 @@ sub send_message : method {
    return $self->$method() ? OK : FAILED;
 }
 
+=item wait_for_awhile - Waits for some time then finishes
+
+=cut
+
+sub wait_for_awhile : method {
+   my $self     = shift;
+   my $lifetime = $self->next_argv // 10;
+   my $rv       = $self->next_argv ? FAILED : OK;
+
+   sleep $lifetime;
+   return $rv;
+}
+
 =item wait_for_file - Waits for the file specified by option 'path'
 
 Polling frequency defaults to once every five seconds and is set by the option
-'rate'. If option 'timeout' is set and the elapsed runtime exceeds this,
+C<rate>. If option C<timeout> is set and the elapsed runtime exceeds this,
 exit with a non zero return code (fail)
 
 =cut

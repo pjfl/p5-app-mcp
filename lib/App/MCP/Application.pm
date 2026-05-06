@@ -24,7 +24,32 @@ with 'App::MCP::Role::Schema';
 
 Async::IPC::Constants->Log_Key_Width( LOG_KEY_WIDTH );
 
-# Public attributes
+=pod
+
+=encoding utf8
+
+=head1 Name
+
+App::MCP::Application - Enterprise scheduling application
+
+=head1 Synopsis
+
+   use App::MCP::Application;
+
+=head1 Description
+
+Enterprise scheduling application
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<app>
+
+=cut
+
 has 'app' =>
    is       => 'ro',
    isa      => Object,
@@ -32,20 +57,40 @@ has 'app' =>
    init_arg => 'builder',
    required => TRUE;
 
+=item C<port>
+
+=cut
+
 has 'port' =>
    is      => 'lazy',
    isa     => NonZeroPositiveInt,
-   default => sub { shift->config->port };
+   default => sub { shift->app->port };
+
+=item C<worker>
+
+=cut
 
 has 'worker' =>
    is      => 'lazy',
    isa     => NonEmptySimpleStr,
    default => sub { shift->config->appclass.'::Worker' };
 
-# Private attributes
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
 
-# Public methods
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<cron_job_handler>
+
+   $exit_code = $self->cron_job_handler($name, $pid);
+
+=cut
+
 sub cron_job_handler {
    my ($self, $name, $sig_hndlr_pid) = @_;
 
@@ -75,6 +120,12 @@ sub cron_job_handler {
    trigger_output_handler $sig_hndlr_pid if $trigger;
    return OK;
 }
+
+=item C<input_handler>
+
+   $exit_code = $self->input_handler($name, $pid);
+
+=cut
 
 sub input_handler {
    my ($self, $name, $sig_hndlr_pid) = @_;
@@ -109,6 +160,24 @@ sub input_handler {
    return OK;
 }
 
+=item C<ipc_ssh_add_provisioning>
+
+   $self->ipc_ssh_add_provisioning(\%options);
+
+The keys of the C<options> hash reference are;
+
+=over 3
+
+=item C<calls>
+
+=item C<host>
+
+=item C<user>
+
+=back
+
+=cut
+
 sub ipc_ssh_add_provisioning {
    my ($self, $args) = @_;
 
@@ -125,6 +194,24 @@ sub ipc_ssh_add_provisioning {
    unshift @{$calls}, ['provision', [$appclass, $worker], $installer];
    return;
 }
+
+=item C<ipc_ssh_caller>
+
+   $hash_ref = $self->ipc_ssh_caller($name, $notifier, $runid, \%options);
+
+The keys of the C<options> hash reference are;
+
+=over 3
+
+=item C<calls>
+
+=item C<host>
+
+=item C<user>
+
+=back
+
+=cut
 
 sub ipc_ssh_caller {
    my ($self, $name, $notifier, $runid, $args) = @_;
@@ -164,6 +251,22 @@ sub ipc_ssh_caller {
    return $results;
 }
 
+=item C<ipc_ssh_callback>
+
+   $self->ipc_ssh_calback($name, $notifier, \@args?);
+
+The C<args> array reference should contain;
+
+=over 3
+
+=item C<runid>
+
+=item C<results>
+
+=back
+
+=cut
+
 sub ipc_ssh_callback {
    my ($self, $name, $notifier, $args) = @_;
 
@@ -180,6 +283,12 @@ sub ipc_ssh_callback {
 
    return;
 }
+
+=item C<ipc_ssh_install_worker>
+
+   $self->ipc_ssh_install_worker($logger, $results, $call, $result, $args);
+
+=cut
 
 sub ipc_ssh_install_worker {
    my ($self, $logger, $results, $call, $result, $args) = @_;
@@ -214,6 +323,12 @@ sub ipc_ssh_install_worker {
    $self->_install_cpan_minus  ($args->{calls}, 'App-cpanminus.tar.gz');
    return;
 }
+
+=item C<output_handler>
+
+   $exit_code = $self->output_handler($name, $pid, $ipc_ssh);
+
+=cut
 
 sub output_handler {
    my ($self, $name, $sig_hndlr_pid, $ipc_ssh) = @_;
@@ -410,36 +525,17 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=encoding utf8
-
-=head1 Name
-
-App::MCP::Application - One-line description of the modules purpose
-
-=head1 Synopsis
-
-   use App::MCP::Application;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
+
+=item L<Async::IPC>
 
 =item L<IPC::PerlSSH>
 

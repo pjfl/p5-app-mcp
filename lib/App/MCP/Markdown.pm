@@ -19,6 +19,8 @@ App::MCP::Markdown - Markdown formatter
 
    my $formatter = App::MCP::Markdown->new( tab_width => 3 );
 
+   my $markup = $formatter->markdown($markdown);
+
 =head1 Description
 
 Markdown formatter. A subclass of L<Text::MultiMarkdown> which adds support
@@ -42,8 +44,8 @@ has 'local_docs' =>
    is      => 'ro',
    default => sub {
       return [
-         qw(App::Burp App::Job Class::Usul::Cmd HTML::Forms HTML::StateTable
-            App::MCP Web::Components Web::ComposableRequest)
+         qw(App::Burp App::Job Async::IPC Class::Usul::Cmd HTML::Forms
+            HTML::StateTable App::MCP Web::Components Web::ComposableRequest)
       ];
    };
 
@@ -87,6 +89,8 @@ sub localise_markdown {
       $markdown =~ s{ \(($remote[^\)]*)\) }{_substitute($self,$context,$1)}gemx;
    }
 
+   $markdown =~ s{ (http://rt\.cpan\.org .* MCP) }{[RT]($1)}gmx;
+
    return $markdown;
 }
 
@@ -119,8 +123,8 @@ sub _DoCodeBlocks { # Add support for triple graves
 sub _H12Hash {
    my ($self, $block) = @_;
 
-   $block =~ s{ &lt; h1 [^\&]* &gt; }{\n# }mx;
-   $block =~ s{ &lt; /h1 &gt; }{}mx;
+   $block =~ s{ &lt; h1 [^\&]* &gt; }{# }gmx;
+   $block =~ s{ &lt; /h1 &gt; }{}gmx;
 
    return $block;
 }

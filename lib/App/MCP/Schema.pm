@@ -26,20 +26,27 @@ with    'App::MCP::Role::Log';
 
 =head1 Name
 
-App::MCP::Schema - <One-line description of module's purpose>
+App::MCP::Schema - Command line database utility methods
 
 =head1 Synopsis
 
+   #!/usr/bin/env perl
+
    use App::MCP::Schema;
-   # Brief but working code examples
+
+   exit App::MCP::Schema->new_with_options->run;
 
 =head1 Description
+
+Command line database utility methods
 
 =head1 Configuration and Environment
 
 Defines the following attributes;
 
 =over 3
+
+=item C<admin_password>
 
 =cut
 
@@ -54,19 +61,39 @@ has 'admin_password' =>
       return $ENV{PGPASSWORD} = $password;
    };
 
+=item C<config_extension>
+
+=cut
+
 has 'config_extension' => is => 'ro', default => '.json';
+
+=item C<deploy_classes>
+
+=cut
 
 has 'deploy_classes' =>
    is      => 'ro',
    default => sub { [shift->config->schema_class] };
 
+=item C<host>
+
+=cut
+
 has 'host' => is => 'ro', default => 'localhost';
+
+=item C<producers>
+
+=cut
 
 has 'producers' =>
    is      => 'ro',
    default => sub {
       return { mysql => 'MySQL', pg => 'PostgreSQL', sqlite => 'SQLite' };
    };
+
+=item C<schema>
+
+=cut
 
 has 'schema' =>
    is      => 'lazy',
@@ -83,6 +110,10 @@ has 'schema' =>
 
       return $schema;
    };
+
+=item C<user_password>
+
+=cut
 
 has 'user_password' =>
    is      => 'lazy',
@@ -163,6 +194,10 @@ has '_type' =>
 Defines the following methods;
 
 =over 3
+
+=item C<BUILD>
+
+Does nothing
 
 =cut
 
@@ -323,7 +358,8 @@ sub send_event : method {
 
    $event_rs->create({ job_id => $job->id, transition => $trans });
 
-   my $pid_file = $self->config->rundir->catfile('daemon.pid');
+   my $name     = lc distname $config->appclass;
+   my $pid_file = $self->config->rundir->catfile("${name}.pid");
 
    trigger_input_handler $pid_file->chomp->getline if $pid_file->exists;
 

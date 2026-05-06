@@ -6,7 +6,38 @@ use Sub::Install qw( install_sub );
 
 my $Code_Attr = {};
 
-# Public
+=pod
+
+=encoding utf-8
+
+=head1 Name
+
+App::MCP::Attributes - Subroutine attributes
+
+=head1 Synopsis
+
+   use App::MCP::Attributes;
+
+=head1 Description
+
+Subroutine attributes
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=cut
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<import>
+
+=cut
+
 sub import {
    my ($class, @wanted) = @_;
 
@@ -22,9 +53,17 @@ sub import {
    return;
 }
 
+=item C<fetch>
+
+=cut
+
 sub fetch {
    my ($class, $code) = @_; return $Code_Attr->{ 0 + $code } // {};
 }
+
+=item C<modify>
+
+=cut
 
 sub modify {
    my ($class, $code, @attrs) = @_;
@@ -53,38 +92,17 @@ use namespace::autoclean ();
 
 __END__
 
-=pod
-
-=encoding utf-8
-
-=head1 Name
-
-App::MCP::Attributes - One-line description of the modules purpose
-
-=head1 Synopsis
-
-   use App::MCP::Attributes;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Sub::Install>
 
 =back
 

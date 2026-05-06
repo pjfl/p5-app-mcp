@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Executing jobs on localhost
           - Add application and server documentation
           - Copies recent updates from other app
           - Adds OAuth for Github

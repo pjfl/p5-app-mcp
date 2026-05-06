@@ -54,8 +54,9 @@ sub create_and_or_update {
    catch {
       my $e = $_;
 
-      $e = exception class => Unknown, error => $e
-         unless blessed $e and $e->can('class');
+      $e = exception class => Unknown, error => "${e}"
+         unless blessed $e and $e->can('class')
+         and $e->class ne 'App::MCP::Exception';
 
       $res = [$job->job_name, $event->transition->value, $e];
    };

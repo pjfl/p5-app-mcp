@@ -158,7 +158,8 @@ sub _find_or_create_session {
 sub _find_user_from {
    my ($self, $context) = @_;
 
-   my $user = $context->find_user({ username => $self->name });
+   my $name = $context->stash('username');
+   my $user = $context->find_user({ username => $name });
 
    throw AccountInactive, [$self->name] unless $user->active;
 

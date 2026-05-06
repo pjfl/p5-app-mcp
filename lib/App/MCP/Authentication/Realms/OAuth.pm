@@ -41,7 +41,7 @@ Defines the following attributes;
 
 =item C<config>
 
-A required reference to L<App::MCP::Config>
+A required reference to the L<configuration|App::MCP::Config> object
 
 =cut
 
@@ -110,7 +110,8 @@ to C<find_user> in the parent class
 
 =back
 
-Returns a L<user object|DBIx::Class::Core> iff it exists or undefined otherwise
+Returns a L<user|App::MCP::Schema::Schedule::Result::User> object iff it exists
+or undefined otherwise
 
 =cut
 
@@ -156,8 +157,8 @@ provider. Used as a key to store the username in the local object store
 
 =item user
 
-An instance of the L<user object|DBIx::Class::Core>. Returned by calling
-C<find_user>
+An instance of the L<user|App::MCP::Schema::Schedule::Result::User>
+object. Returned by calling C<find_user>
 
 =back
 

@@ -1,8 +1,9 @@
 package App::MCP::Listener;
 
-use App::MCP::Constants    qw( FALSE NUL TRUE );
-use HTTP::Status           qw( HTTP_FOUND );
-use Class::Usul::Cmd::Util qw( ensure_class_loaded );
+use App::MCP::Constants     qw( FALSE NUL TRUE );
+use HTTP::Status            qw( HTTP_FOUND );
+use Class::Usul::Cmd::Types qw( Bool );
+use Class::Usul::Cmd::Util  qw( ensure_class_loaded );
 use Plack::Builder;
 use Web::Simple;
 
@@ -11,7 +12,47 @@ with 'App::MCP::Role::Log';
 with 'App::MCP::Role::Session';
 with 'Web::Components::Loader';
 
-# Construction
+=pod
+
+=head1 Name
+
+App::MCP::Listener - Web application server
+
+=head1 Synopsis
+
+   use App::MCP::Listener;
+
+=head1 Description
+
+Web application server
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=item C<debug>
+
+Set from the application class environment debug variable
+
+=cut
+
+has 'debug' =>
+   is      => 'lazy',
+   ia      => Bool,
+   default => sub { shift->config->appclass->env_var('debug') ? TRUE : FALSE };
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<to_psgi_app>
+
+Called by L<Plack::Runner>. The web server
+
+=cut
+
 around 'to_psgi_app' => sub {
    my ($orig, $self, @args) = @_;
 
@@ -42,6 +83,12 @@ around 'to_psgi_app' => sub {
    };
 };
 
+=item C<BUILD>
+
+Logs that the server has started
+
+=cut
+
 sub BUILD {
    my $self  = shift;
    my $class = $self->config->appclass;
@@ -49,13 +96,15 @@ sub BUILD {
    ensure_class_loaded $class;
 
    my $server = ucfirst($ENV{PLACK_ENV} // NUL);
+   my $debug  = $self->debug ? 'on' : 'off';
    my $port   = $class->env_var('server_port') // 5_000;
-   my $info   = 'v' . $class->VERSION . " started on port ${port}";
+   my $info   = 'v' . $class->VERSION . " port ${port} debug ${debug}";
 
-   $self->log->info("WebServer: ${class} ${server} ${info}");
+   $self->log->info("WebServer: Started ${class} ${server} ${info}");
    return;
 }
 
+# Private
 sub _build__factory {
    my $self = shift;
 
@@ -71,30 +120,27 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::Listener - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::Listener;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<App::MCP::Role::Config>
+
+=item L<App::MCP::Role::Log>
+
+=item L<App::MCP::Role::Session>
+
+=item L<Plack::Builder>
+
+=item L<Web::Components::Loader>
+
+=item L<Web::Simple>
 
 =back
 

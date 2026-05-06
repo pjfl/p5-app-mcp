@@ -11,7 +11,42 @@ use Moo;
 
 with 'App::MCP::Role::CSVParser';
 
+=pod
+
+=encoding utf-8
+
+=head1 Name
+
+App::MCP::Log - Logging class
+
+=head1 Synopsis
+
+   use App::MCP::Log;
+
+=head1 Description
+
+Logs messages in CSV format to the specified logfile
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<config>
+
+A required reference to the L<configuration|App::MCP::Config> object
+
+=cut
+
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
+
+=item C<logfile>
+
+L<File object|File::DataClass::IO> for the log file. Provided by the C<config>
+object. If undefined then will warn to C<stderr> instead
+
+=cut
 
 has 'logfile' =>
    is      => 'lazy',
@@ -34,22 +69,67 @@ has '_debug' =>
       return defined $debug ? !!$debug : FALSE;
    };
 
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<BUILDARGS>
+
+Sets C<config> and C<debug> from the C<builder> attribute
+
+=cut
+
 around 'BUILDARGS' => sub {
    my ($orig, $self, @args) = @_;
 
    my $attr = $orig->($self, @args);
 
-   if (my $builder = delete $attr->{builder}) {
-      $attr->{config} //= $builder->config;
-      $attr->{debug} //= $builder->debug;
+   if (my $builder = $attr->{builder}) {
+      $attr->{config} = $builder->config;
+      $attr->{debug}  = $builder->debug;
    }
 
    return $attr;
 };
 
+=item C<alert>
+
+   $true = $self->alert($message, $context?);
+
+Logs C<message> at the C<alert> level
+
+Attributes of the C<context> object are;
+
+=over 3
+
+=item C<leader>
+
+=item C<action>
+
+=item C<name>
+
+=back
+
+The first of these with a value will be used as the leader for the log message
+
+=cut
+
 sub alert {
    return shift->_log('ALERT', NUL, @_);
 }
+
+=item C<debug>
+
+   $true = $self->debug($message, $context?);
+
+Logs C<message> at the C<debug> level iff debug is enabled. Debug is enabled by
+setting the environment variable C<APP_MCP_DEBUG> to true
+
+=cut
 
 sub debug {
    my $self = shift;
@@ -59,17 +139,61 @@ sub debug {
    return $self->_log('DEBUG', NUL, @_);
 }
 
+=item C<error>
+
+   $true = $self->error($message, $context?);
+
+Logs C<message> at the C<error> level
+
+=cut
+
 sub error {
    return shift->_log('ERROR', NUL, @_);
 }
+
+=item C<fatal>
+
+   $true = $self->fatal($message, $context?);
+
+Logs C<message> at the C<fatal> level
+
+=cut
 
 sub fatal {
    return shift->_log('FATAL', NUL, @_);
 }
 
+=item C<info>
+
+    $true = $self->info($message, $context?);
+
+Logs C<message> at the C<info> level
+
+=cut
+
 sub info {
    return shift->_log('INFO', NUL, @_);
 }
+
+=item C<warn>
+
+    $true = $self->warn($message, $context?);
+
+Logs C<message> at the C<warn> level
+
+=cut
+
+sub warn {
+   return shift->_log('WARNING', NUL, @_);
+}
+
+=item C<log>
+
+   $true = $self->log(%args);
+
+For the benefit of L<Plack::Middleware::LogDispatch>
+
+=cut
 
 sub log { # For benefit of P::M::LogDispatch
    my ($self, %args) = @_;
@@ -84,10 +208,6 @@ sub log { # For benefit of P::M::LogDispatch
    $message = is_arrayref $message ? $message->[0] : $message;
 
    return $self->_log($level, $leader, $message);
-}
-
-sub warn {
-   return shift->_log('WARNING', NUL, @_);
 }
 
 # Private methods
@@ -162,38 +282,17 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=encoding utf-8
-
-=head1 Name
-
-App::MCP::Log - Master Control Program - Dependency and time based job scheduler
-
-=head1 Synopsis
-
-   use App::MCP::Log;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines the following attributes;
-
-=over 3
-
 =back
 
-=head1 Subroutines/Methods
-
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<App::MCP::Role::CSVParser>
 
 =back
 

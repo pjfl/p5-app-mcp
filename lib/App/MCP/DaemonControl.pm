@@ -3,6 +3,36 @@ package App::MCP::DaemonControl;
 use strictures;
 use parent 'Daemon::Control';
 
+=pod
+
+=head1 Name
+
+App::MCP::DaemonControl - Custom subclass of Daemon::Control
+
+=head1 Synopsis
+
+   use App::MCP::DaemonControl;
+
+=head1 Description
+
+Custom subclass of L<Daemon::Control>
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=cut
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<new>
+
+=cut
+
 sub new {
    my ($self, $args) = @_;
 
@@ -13,6 +43,10 @@ sub new {
 
    return $new;
 }
+
+=item C<do_stop>
+
+=cut
 
 sub do_stop {
    my $self = shift;
@@ -53,6 +87,10 @@ sub do_stop {
    return;
 }
 
+=item C<stop_signals>
+
+=cut
+
 sub stop_signals {
    return $_[0]->{stop_signals};
 }
@@ -61,24 +99,11 @@ sub stop_signals {
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::DaemonControl - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::DaemonControl;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 

@@ -20,6 +20,39 @@ our @EXPORT = qw( CRONTAB_FIELD_NAMES DOTS HASH_CHAR LOG_KEY_WIDTH
                   JOB_TYPE_ENUM SEPARATOR SQL_FALSE SQL_NOW SQL_TRUE STATE_ENUM
                   TRANSITION_ENUM VARCHAR_MAX_SIZE );
 
+=pod
+
+=encoding utf8
+
+=head1 Name
+
+App::MCP::Constants - Application constants
+
+=head1 Synopsis
+
+   use App::MCP::Constants;
+
+=head1 Description
+
+Application constants
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=head1 Subroutines/Methods
+
+Exports the following methods;
+
+=over 3
+
+=item C<import>
+
+Handles the importing of locally defined constants. Hands any others off to
+the L<parent|Class::Usul::Cmd::Constants> class
+
+=cut
+
 sub import {
    my $class       = shift;
    my $global_opts = { $_[0] && ref $_[0] eq 'HASH' ? %{+ shift } : () };
@@ -35,58 +68,104 @@ sub import {
    return;
 }
 
-sub HASH_CHAR () { chr 35     }
-sub DOTS      () { "\x{2026}" }
-sub SEPARATOR () { '/'        }
+=back
+
+Exports the following constants;
+
+=over 3
+
+=item C<HASH_CHAR>
+
+=cut
+
+sub HASH_CHAR () { chr 35 }
+
+=item C<DOTS>
+
+=cut
+
+sub DOTS () { "\x{2026}" }
+
+=item C<SEPARATOR>
+
+The forward slash character. Used by the L<materialised
+path|App::MCP::MaterialisedPath> role
+
+=cut
+
+sub SEPARATOR () { '/' }
+
+=item C<CRONTAB_FIELD_NAMES>
+
+=cut
 
 sub CRONTAB_FIELD_NAMES () { qw( min hour mday mon wday ) }
-sub LOG_KEY_WIDTH       () { 13 }
-sub JOB_TYPE_ENUM       () { [ 'box', 'job' ] }
-sub SQL_FALSE           () { \q{false} }
-sub SQL_NOW             () { \q{NOW()} }
-sub SQL_TRUE            () { \q{true} }
-sub STATE_ENUM          () { [ qw( active hold failed finished inactive running
-                                   starting terminated unknown ) ] }
-sub TRANSITION_ENUM     () { [ qw( activate deactivate fail finish off_hold
-                                   on_hold start started terminate ) ] }
-sub VARCHAR_MAX_SIZE    () { 255 }
+
+=item C<LOG_KEY_WIDTH>
+
+=cut
+
+sub LOG_KEY_WIDTH () { 13 }
+
+=item C<JOB_TYPE_ENUM>
+
+=cut
+
+sub JOB_TYPE_ENUM () { [ 'box', 'job' ] }
+
+=item C<SQL_FALSE>
+
+=cut
+
+sub SQL_FALSE () { \q{false} }
+
+=item C<SQL_NOW>
+
+=cut
+
+sub SQL_NOW () { \q{NOW()} }
+
+=item C<SQL_TRUE>
+
+=cut
+
+sub SQL_TRUE () { \q{true} }
+
+=item C<STATE_ENUM>
+
+=cut
+
+sub STATE_ENUM () { [ qw( active hold failed finished inactive running
+                          starting terminated unknown ) ] }
+=item C<TRANSITION_ENUM>
+
+=cut
+
+sub TRANSITION_ENUM () { [ qw( activate deactivate fail finish off_hold
+                               on_hold start started terminate ) ] }
+=item C<VARCHAR_MAX_SIZE>
+
+=cut
+
+sub VARCHAR_MAX_SIZE () { 255 }
 
 1;
 
 __END__
 
-=pod
-
-=encoding utf8
-
-=head1 Name
-
-App::MCP::Constants - One-line description of the modules purpose
-
-=head1 Synopsis
-
-   use App::MCP::Constants;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-Defines no attributes
-
-=head1 Subroutines/Methods
-
-=head2 SEPARATOR
-
-The forward slash character. Used by L<App::MCP::MaterialisedPath>
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Class::Usul::Cmd::Constants>
+
+=item L<Exporter::Tiny>
 
 =back
 

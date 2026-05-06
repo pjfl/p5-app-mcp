@@ -20,25 +20,62 @@ extends 'Class::Usul::Cmd';
 with    'App::MCP::Role::Config';
 with    'App::MCP::Role::Log';
 
+=pod
+
+=head1 Name
+
+App::MCP::Daemon - Daemon process
+
+=head1 Synopsis
+
+   use App::MCP::Daemon;
+
+=head1 Description
+
+Daemon process
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<port>
+
+The web application server listens on this port for requests. Defaults from the
+configuration object
+
+=cut
+
 # Object attributes (public)
 # Visible to the command line
 option 'port' =>
    is            => 'lazy',
    isa           => NonZeroPositiveInt,
    format        => 'i',
-   documentation => 'Port number for the input event listener',
+   documentation => 'Port number for the web application server',
    default       => sub { shift->config->port },
    short         => 'p';
+
+=item C<app>
+
+An instance of the L<application|App::MCP::Application> class
+
+=cut
 
 # Ignored by the command line
 has 'app' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Application'),
-   default => sub {
-      my $self = shift;
+   default => sub { App::MCP::Application->new(builder => shift) };
 
-      return App::MCP::Application->new(builder => $self, port => $self->port);
-   };
+=item C<async_factory>
+
+An instance of the L<async factory|Async::IPC> class
+
+An L<async factory|Async::IPC> notifier process
+
+=cut
 
 has 'async_factory' =>
    is      => 'lazy',
@@ -46,33 +83,103 @@ has 'async_factory' =>
    default => sub { Async::IPC->new(builder => shift) },
    handles => ['loop'];
 
+=item C<clock_tick>
+
+An L<async factory|Async::IPC> notifier process
+
+=cut
+
 has 'clock_tick' => is => 'lazy', isa => Object;
+
+=item C<cron>
+
+=cut
 
 has 'cron' => is => 'lazy', isa => Object;
 
+=item C<ip_ev_hndlr>
+
+An L<async factory|Async::IPC> notifier process for the input event handler
+
+=cut
+
 has 'ip_ev_hndlr' => is => 'lazy', isa => Object;
+
+=item C<ipc_ssh>
+
+An L<async factory|Async::IPC> notifier process
+
+=cut
 
 has 'ipc_ssh' => is => 'lazy', isa => Object;
 
-# Required by Async::IPC
+=item C<lock>
+
+An instance of the L<lock|IPC::SRLock> class. Required by the
+L<async|Async::IPC> class
+
+=cut
+
 has 'lock' =>
    is      => 'lazy',
    isa     => class_type('IPC::SRLock'),
    default => sub { IPC::SRLock->new(builder => shift) };
 
+=item C<name>
+
+Used for logging by the L<async|Async::IPC> class
+
+=cut
+
 has 'name' =>
    is      => 'lazy',
    isa     => NonEmptySimpleStr,
-   default => 'DAEMON';
+   default => 'Daemon';
+
+=item C<op_ev_hndlr>
+
+An L<async factory|Async::IPC> notifier process for the output event handler
+
+=cut
 
 has 'op_ev_hndlr' => is => 'lazy', isa => Object;
 
+=item C<server>
+
+An L<async factory|Async::IPC> notifier process for the Web application server
+
+=cut
+
 has 'server' => is => 'lazy', isa => Object;
 
-# Construction
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<run>
+
+Before the C<run> method in the parent class is called set the C<quiet>
+attribute to C<TRUE>
+
+=cut
+
 before 'run' => sub {
    my $self = shift; $self->quiet(TRUE); return;
 };
+
+=item C<run_chain>
+
+Decorates the C<run_chain> method in the L<parent|Class::Usul::Cmd> class.
+Instantiates an instance of the L<daemon control|App::MCP::DaemonControl> class
+and calls it's C<run_command> method
+
+Returns zero upon success non zero otherwise
+
+=cut
 
 around 'run_chain' => sub {
    my ($orig, $self, @args) = @_;
@@ -102,7 +209,14 @@ around 'run_chain' => sub {
    exit defined $rv ? $rv : OK;
 };
 
-# Public methods
+=item C<pid>
+
+   $pid = pid;
+
+Returns the current process ID
+
+=cut
+
 sub pid {
    return $PID;
 }
@@ -296,27 +410,6 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::Daemon - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::Daemon;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
-
-=over 3
-
-=item C<daemon>
-
 =back
 
 =head1 Diagnostics
@@ -341,9 +434,8 @@ There are no known incompatibilities in this module
 
 =head1 Bugs and Limitations
 
-There are no known bugs in this module.
-Please report problems to the address below.
-Patches are welcome
+There are no known bugs in this module.  Please report problems to the address
+below.  Patches are welcome
 
 =head1 Acknowledgements
 
