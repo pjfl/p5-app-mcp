@@ -1,7 +1,6 @@
 package App::MCP::Schema::Schedule::ResultSet::JobState;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS NUL );
-use HTTP::Status           qw( HTTP_NOT_FOUND );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types      qw( ArrayRef HashRef );
 use Unexpected::Functions  qw( Unknown );
 use Class::Usul::Cmd::Util qw( includes );
@@ -19,15 +18,28 @@ has 'event_propagation' =>
    isa     => HashRef,
    default => sub {
       return {
-         'activate'   => 'activate',
-         'deactivate' => 'deactivate',
-         'fail'       => NUL,
-         'finish'     => 'start',
-         'off_hold'   => 'activate',
-         'on_hold'    => 'deactivate',
-         'start'      => NUL,
-         'started'    => 'start',
-         'terminate'  => 'start',
+         'forward' => {
+            'activate'   => 'activate',
+            'deactivate' => 'deactivate',
+            'fail'       => 'start',
+            'finish'     => 'start',
+            'off_hold'   => 'activate',
+            'on_hold'    => 'deactivate',
+            'start'      => NUL,
+            'started'    => 'start',
+            'terminate'  => 'start',
+         },
+         'reverse' => {
+            'activate'   => NUL,
+            'deactivate' => NUL,
+            'fail'       => 'finish',
+            'finish'     => 'finish',
+            'off_hold'   => NUL,
+            'on_hold'    => NUL,
+            'start'      => NUL,
+            'started'    => NUL,
+            'terminate'  => 'finish',
+         }
       };
    };
 
@@ -108,25 +120,35 @@ sub find_or_create {
 sub _trigger_update_cascade {
    my ($self, $event) = @_;
 
-   my $ev_trans   = $event->transition->value;
-   my $transition = $self->event_propagation->{$ev_trans} or return;
-   my $schema     = $self->result_source->schema;
-   my $ev_rs      = $schema->resultset('Event');
-   my $job_rs     = $schema->resultset('Job');
-   my $jc_rs      = $schema->resultset('JobCondition');
-   my $where      = {
-      condition => { '=' => undef },
-      parent_id => $event->job->id,
-   };
+   my $ev_trans = $event->transition->value;
+   my $schema   = $self->result_source->schema;
+   my $ev_rs    = $schema->resultset('Event');
+   my $job_rs   = $schema->resultset('Job');
+   my $jc_rs    = $schema->resultset('JobCondition');
 
-   for my $job ($job_rs->search($where)->all) {
-      $ev_rs->create({ job_id => $job->id, transition => $transition });
+   if (my $for_trans = $self->event_propagation->{forward}->{$ev_trans}) {
+      my $where = { parent_id => $event->job->id };
+
+      for my $job ($job_rs->search($where)->all) {
+         $ev_rs->create({ job_id => $job->id, transition => $for_trans });
+      }
+
+      if ($for_trans eq 'start') {
+         for my $jc ($jc_rs->search({ job_id => $event->job->id })->all) {
+            my $options = { job_id => $jc->reverse_id, transition => 'start' };
+
+            $ev_rs->create($options);
+         }
+      }
    }
 
-   return unless $transition eq 'start';
+   if (my $rev_trans = $self->event_propagation->{reverse}->{$ev_trans}) {
+      my $options = {
+         job_id     => $event->job->parent_id,
+         transition => $rev_trans
+      };
 
-   for my $jc ($jc_rs->search({ job_id => $event->job->id })->all) {
-      $ev_rs->create({ job_id => $jc->reverse_id, transition => $transition });
+      $ev_rs->create($options);
    }
 
    return;

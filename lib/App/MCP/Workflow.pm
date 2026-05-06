@@ -88,7 +88,10 @@ sub BUILD {
 
          my $job = $event->job;
 
+         throw Illegal if $job->type eq 'box' && $job->has_active_jobs;
+
          return if $event->rv <= $job->expected_rv;
+
          $event->transition->set_fail;
          throw Retry, [ $event->rv, $job->expected_rv ];
       }, ] );

@@ -187,8 +187,9 @@ has_field 'command' =>
    title    => 'Command to execute on the given host';
 
 has_field 'directory' =>
-   size  => 32,
-   title => 'Make this the working directory when executing the command';
+   autocomplete => TRUE,
+   size         => 32,
+   title        => 'Make this the working directory when executing the command';
 
 has_field '_g3' => type => 'Group';
 
@@ -256,7 +257,7 @@ after 'after_build_fields' => sub {
    return;
 };
 
-before 'update_model' => sub {
+sub validate {
    my $self = shift;
 
    if ($self->item) { $self->field('owner')->value($self->item->owner) }
@@ -270,7 +271,7 @@ before 'update_model' => sub {
    }
 
    return;
-};
+}
 
 use namespace::autoclean -except => META;
 

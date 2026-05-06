@@ -149,6 +149,9 @@ sub input_handler {
 
             $pev_rs->create($p_ev);
             $event->delete;
+
+            $event->job->delete if $event->job->delete_after
+               && $event->transition eq 'finished';
          });
       }
 

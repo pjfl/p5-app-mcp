@@ -300,48 +300,6 @@ sub send_message : method {
    return $self->$method() ? OK : FAILED;
 }
 
-=item wait_for_awhile - Waits for some time then finishes
-
-=cut
-
-sub wait_for_awhile : method {
-   my $self     = shift;
-   my $lifetime = $self->next_argv // 10;
-   my $rv       = $self->next_argv ? FAILED : OK;
-
-   sleep $lifetime;
-   return $rv;
-}
-
-=item wait_for_file - Waits for the file specified by option 'path'
-
-Polling frequency defaults to once every five seconds and is set by the option
-C<rate>. If option C<timeout> is set and the elapsed runtime exceeds this,
-exit with a non zero return code (fail)
-
-=cut
-
-sub wait_for_file : method {
-   my $self = shift;
-
-   throw Unspecified, ['option path'] unless exists $self->options->{path};
-
-   my $path = io $self->options->{path};
-
-   $path = $path->absolute($self->config->vardir) unless $path->is_absolute;
-
-   my $rate    = $self->options->{rate} // 5;
-   my $timeout = $self->options->{timeout} // 0;
-
-   while (!$path->exists) {
-      throw Timedout, [$timeout, $path] if $timeout and elapsed > $timeout;
-
-      sleep $rate;
-   }
-
-   return OK;
-}
-
 # Private methods
 sub _create_profile {
    my $self = shift;

@@ -467,7 +467,7 @@ has 'job_states' =>
    isa     => ArrayRef,
    default => sub {
       return [
-         qw(active hold failed finished inactive running started terminated)
+         qw(inactive active hold starting running finished failed terminated)
       ];
    };
 

@@ -14,6 +14,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
                                truncate varchar_data_type );
+use Class::Usul::Cmd::Util qw( includes );
 use HTML::Forms::Util      qw( int2rwx );
 use Ref::Util              qw( is_arrayref is_plain_hashref );
 use Scalar::Util           qw( blessed );
@@ -143,6 +144,20 @@ sub delete {
    $self->_delete_conditions if $self->condition;
 
    return $self->next::method;
+}
+
+sub has_active_jobs {
+   my $self     = shift;
+   my $schema   = $self->result_source->schema;
+   my $job_rs   = $schema->resultset('Job');
+   my $options  = { prefetch => 'state' };
+   my $children = [$job_rs->search({ parent_id => $self->id }, $options)->all];
+
+   for my $name (map { $_->state->name } @{$children}) {
+      return TRUE if includes $name, [qw(active starting running)];
+   }
+
+   return FALSE;
 }
 
 sub insert {
