@@ -10,7 +10,7 @@ has '+caption' => default => 'View Job';
 has '+form_buttons' => default => sub {
    my $self    = shift;
    my $context = $self->context;
-
+   my $id      = $self->result->id;
    return [{
       action    => $context->uri_for_action('job/list'),
       classes   => 'left',
@@ -18,7 +18,19 @@ has '+form_buttons' => default => sub {
       selection => 'disable_on_select',
       value     => 'Jobs',
    },{
-      action    => $context->uri_for_action('job/edit', [$self->result->id]),
+      action    => $context->uri_for_action('history/runlist', [$id]),
+      classes   => 'left',
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Runs',
+   },{
+      action    => $context->uri_for_action('history/view', [$id]),
+      classes   => 'left',
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Events',
+   },{
+      action    => $context->uri_for_action('job/edit', [$id]),
       method    => 'get',
       selection => 'disable_on_select',
       value     => 'Edit',

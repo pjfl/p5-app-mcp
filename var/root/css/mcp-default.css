@@ -1523,7 +1523,7 @@ footer .footer-container .session-time {
   }
 }
 /* @author  pjfl@cpan.org (Peter Flanigan)
- * @version 0.2.24
+ * @version 0.2.25
  */
 /* @author  pjfl@cpan.org (Peter Flanigan)
  * @version 0.13.57
@@ -4441,10 +4441,11 @@ body {
 }
 .state-container .diagram-container .box-table.open,
 .state-container .diagram-container .box-row {
+  align-items: flex-start;
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  max-width: 30rem;
+  max-width: 75vw;
 }
 .state-container .diagram-container .box-tile,
 .state-container .diagram-container .job-tile {
@@ -4474,6 +4475,10 @@ body {
 }
 .state-container .diagram-container .box-tile > .title .box-toggle.reversed {
   transform: rotate(180deg);
+}
+.state-container .diagram-container .title {
+  font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;
+  font-size: 0.8rem;
 }
 .state-container .diagram-container .title a {
   cursor: pointer;

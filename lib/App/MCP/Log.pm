@@ -235,7 +235,7 @@ sub _get_leader {
 
    $leader = "${leader}[${PID}]" unless $leader =~ m{ \[ .+ \] }mx;
 
-   return (trim($leader), trim($message));
+   return (ucfirst(trim($leader)), trim($message));
 }
 
 sub _log {

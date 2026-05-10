@@ -3,6 +3,7 @@ package App::MCP::Schema::Schedule::ResultSet::Job;
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL SEPARATOR TRUE );
 use HTTP::Status          qw( HTTP_NOT_FOUND );
 use App::MCP::Util        qw( strip_parent_name );
+use HTML::Forms::Util     qw( json_bool );
 use Unexpected::Functions qw( throw Unspecified UnknownJob UnknownUser );
 use Moo;
 
@@ -53,24 +54,30 @@ sub dump {
    my @jobs;
 
    my $rs = $self->search({ 'me.job_name' => { like => $job_spec } }, {
-      order_by     => 'id',
+      order_by     => [\q{parent_id NULLS FIRST}, 'me.id'],
       result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+      prefetch     => ['owner_rel', 'group_rel'],
    });
 
-   for my $job ($rs->all) {
-      delete $job->{group_id};
-      delete $job->{owner_id};
-      delete $job->{parent_path};
+   for my $job (grep { length $_->{job_name} } $rs->all) {
       $index->{ delete $job->{id} } = $job->{job_name};
+      $job->{job_name} = strip_parent_name $job->{job_name};
+      $job->{owner} = $job->{owner_rel}->{user_name};
+      $job->{group} = $job->{group_rel}->{role_name};
+      $job->{delete_after} = json_bool $job->{delete_after};
+      delete $job->{dependencies};
+      delete $job->{group_id};
+      delete $job->{group_rel};
+      delete $job->{owner_id};
+      delete $job->{owner_rel};
+      delete $job->{parent_path};
+      delete $job->{path_depth};
 
       my $parent_id = delete $job->{parent_id};
 
       $job->{parent_name} = $index->{$parent_id} if $parent_id;
 
-      if (length $job->{job_name}) {
-         $job->{job_name} = strip_parent_name $job->{job_name};
-         push @jobs, $job;
-      }
+      push @jobs, $job;
    }
 
    return \@jobs;
@@ -93,23 +100,6 @@ sub finished {
    return $_[0]->_get_job_state($_[1]) eq 'finished' ? TRUE : FALSE;
 }
 
-sub writable_box_id_by_name {
-   my ($self, $job_key, $user_key) = @_;
-
-   my $job = $self->find_by_key($job_key);
-
-   throw 'Job [_1] is not a box', [$job->job_name] unless $job->type eq 'box';
-
-   my $user_rs = $self->result_source->schema->resultset('User');
-   my $user    = $user_rs->find_by_key($user_key // 0, { prefetch => 'role' });
-
-   throw UnknownUser, [$user_key] unless $user;
-   throw 'Box [_1] write permission denied to [_1]',
-      [$job->job_name, $user->user_name] unless $job->is_writable_by($user);
-
-   return $job->id;
-}
-
 sub job_id_by_name {
    my ($self, $job_key) = @_;
 
@@ -124,8 +114,12 @@ sub load {
    my $count = 0;
 
    for my $job (@{ $jobs // [] }) {
-      $job->{owner_id} = $auth->{user}->id;
-      $job->{group_id} = $auth->{role}->id;
+      # TODO: Lookup job->{owner/group}->id
+      my $owner_id = $auth->{user}->id;
+      my $group_id = $auth->{role}->id;
+
+      $job->{owner_id} = $owner_id;
+      $job->{group_id} = $group_id;
       $self->create($job);
       $count++;
    }
@@ -143,6 +137,23 @@ sub running {
 
 sub terminated {
    return $_[0]->_get_job_state($_[1]) eq 'terminated' ? TRUE : FALSE;
+}
+
+sub writable_box_id_by_name {
+   my ($self, $job_key, $user_key) = @_;
+
+   my $job = $self->find_by_key($job_key);
+
+   throw 'Job [_1] is not a box', [$job->job_name] unless $job->type eq 'box';
+
+   my $user_rs = $self->result_source->schema->resultset('User');
+   my $user    = $user_rs->find_by_key($user_key // 0, { prefetch => 'role' });
+
+   throw UnknownUser, [$user_key] unless $user;
+   throw 'Box [_1] write permission denied to [_1]',
+      [$job->job_name, $user->user_name] unless $job->is_writable_by($user);
+
+   return $job->id;
 }
 
 # Private methods

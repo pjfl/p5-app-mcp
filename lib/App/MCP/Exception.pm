@@ -273,6 +273,13 @@ has_exception 'PasswordExpired' => parents => ['Authentication'],
 
 has_exception 'Workflow'  => parents => [$class];
 
+=item C<ActiveJobs>
+
+=cut
+
+has_exception 'ActiveJobs' => parents => ['Workflow'],
+   error => 'Contains active jobs';
+
 =item C<Condition>
 
 =cut

@@ -55,13 +55,7 @@ has_field 'submit' =>
 has_field 'view' =>
    type          => 'Link',
    label         => 'View',
-   element_class => ['form-button pageload'],
-   wrapper_class => ['input-button', 'inline'];
-
-has_field 'history' =>
-   type          => 'Link',
-   label         => 'History',
-   element_class => ['form-button pageload'],
+   element_class => ['form-button', 'pageload'],
    wrapper_class => ['input-button', 'inline'];
 
 after 'after_build_fields' => sub {
@@ -85,10 +79,6 @@ after 'after_build_fields' => sub {
    my $view = $self->context->uri_for_action('job/view', [$job->id]);
 
    $self->field('view')->href($view->as_string);
-
-   my $history = $self->context->uri_for_action('history/view', [$job->id]);
-
-   $self->field('history')->href($history->as_string);
    return;
 };
 

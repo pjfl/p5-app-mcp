@@ -1,7 +1,7 @@
 package App::MCP::Schema::Schedule::Result::Role;
 
-use overload '""' => sub { $_[0]->_as_string },
-             '+'  => sub { $_[0]->_as_number }, fallback => 1;
+use overload '""' => sub { shift->_as_string },
+             '+'  => sub { shift->_as_number }, fallback => 1;
 
 use App::MCP::Util qw( serial_data_type text_data_type );
 use DBIx::Class::Moo::ResultClass;
@@ -14,8 +14,8 @@ my $result = 'App::MCP::Schema::Schedule::Result';
 $class->table('roles');
 
 $class->add_columns(
-   id        => { %{serial_data_type()}, label => 'Role ID' },
-   role_name => text_data_type(),
+   id        => { %{serial_data_type()}, label => 'ID' },
+   role_name => { %{text_data_type()}, label => 'Role Name' },
 );
 
 $class->set_primary_key('id');
@@ -26,11 +26,11 @@ $class->has_many('users' => "${result}::User", 'role_id');
 
 # Private methods
 sub _as_number {
-   return $_[0]->id;
+   return shift->id;
 }
 
 sub _as_string {
-   return $_[0]->role_name;
+   return shift->role_name;
 }
 
 1;

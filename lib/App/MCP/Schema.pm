@@ -253,7 +253,7 @@ sub dump_jobs : method {
    my $self     = shift;
    my $job_spec = $self->next_argv // '%';
    my $path     = io $self->next_argv // 'jobs.json';
-   my $data     = $self->schema->resultset( 'Job' )->dump( $job_spec );
+   my $data     = $self->schema->resultset('Job')->dump($job_spec);
    my $count    = @{ $data };
 
    dump_file($path, { jobs => $data });
@@ -358,7 +358,7 @@ sub send_event : method {
 
    $event_rs->create({ job_id => $job->id, transition => $trans });
 
-   my $name     = lc distname $config->appclass;
+   my $name     = lc distname $self->config->appclass;
    my $pid_file = $self->config->rundir->catfile("${name}.pid");
 
    trigger_input_handler $pid_file->chomp->getline if $pid_file->exists;
@@ -417,18 +417,18 @@ sub _add_backup_files {
 }
 
 sub _authenticated_user_info {
-   my $self    = shift;
-   my $info    = {};
-   my $schema  = $self->schema;
-   my $user_rs = $schema->resultset('User');
-   my $user    = $info->{user} = $user_rs->find_by_key($self->user_name);
+   my $self     = shift;
+   my $info     = {};
+   my $schema   = $self->schema;
+   my $user_rs  = $schema->resultset('User');
+   my $options  = { prefetch => 'role' };
+   my $username = $self->user_name;
+   my $user     = $info->{user} = $user_rs->find_by_key($username, $options);
+   my $role     = $info->{role} = $user->role;
 
-   $user->authenticate($self->get_user_password($user->username));
-   $self->log->debug('User ' . $user->username . ' authenticated');
+   $user->authenticate($self->get_user_password($user->user_name));
+   $self->log->debug('User ' . $user->user_name . ' authenticated');
 
-#   my $role = $info->{role} = $user->role->role_name;
-
-#   $user->assert_member_of($role);
    return $info;
 }
 

@@ -126,8 +126,10 @@ has_field 'permissions' =>
 has_field 'condition' =>
    type  => 'TextArea',
    cols  => 32,
+   no_value_if_empty => TRUE,
    tags  => { nospellcheck => TRUE },
-   title => 'Run the command when this condition evaluates to true';
+   title => 'Run the command when this condition evaluates to true',
+   validate_when_empty => TRUE;
 
 has_field '_g5' => type => 'Group';
 
@@ -135,13 +137,15 @@ has_field 'crontab_min' =>
    label       => 'Minute',
    field_group => '_g5',
    size        => 3,
-   title       => "Comma separated list. Digits 0-59 or '*'";
+   title       => "Comma separated list. Digits 0-59 or '*'",
+   validate_when_empty => TRUE;
 
 has_field 'crontab_hour' =>
    label       => 'Hour',
    field_group => '_g5',
    size        => 3,
-   title       => "Comma separated list. Digits 0-23 or '*'";
+   title       => "Comma separated list. Digits 0-23 or '*'",
+   validate_when_empty => TRUE;
 
 has_field '_g6' => type => 'Group';
 
@@ -149,18 +153,21 @@ has_field 'crontab_mday' =>
    label       => 'Day of Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Comma separated list. Digits 1-31 or '*'";
+   title       => "Comma separated list. Digits 1-31 or '*'",
+   validate_when_empty => TRUE;
 
 has_field 'crontab_mon' =>
    label       => 'Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Comma separated list. Digits 1-12 or names or '*'";
+   title       => "Comma separated list. Digits 1-12 or names or '*'",
+   validate_when_empty => TRUE;
 
 has_field 'crontab_wday' =>
    label => 'Day of Week',
    size  => 3,
-   title => "Comma separated list. Digits 0-7 or names or '*'. Zero is Sunday";
+   title => "Comma separated list. Digits 0-7 or names or '*'. Zero is Sunday",
+   validate_when_empty => TRUE;
 
 has_field '_g4' =>
    type => 'Group',
@@ -184,12 +191,14 @@ has_field 'command' =>
    cols     => 32,
    required => TRUE,
    tags     => { nospellcheck => TRUE },
-   title    => 'Command to execute on the given host';
+   title    => 'Command to execute on the given host',
+   validate_when_empty => TRUE;
 
 has_field 'directory' =>
    autocomplete => TRUE,
    size         => 32,
-   title        => 'Make this the working directory when executing the command';
+   title        => 'Make this the working directory when executing the command',
+   validate_when_empty => TRUE;
 
 has_field '_g3' => type => 'Group';
 

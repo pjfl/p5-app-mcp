@@ -2,27 +2,22 @@ package App::MCP::Application;
 
 use version;
 
-use App::MCP::Constants          qw( COMMA FALSE LOG_KEY_WIDTH
-                                     NUL TRUE OK SPC TRANSITION_ENUM );
-use Unexpected::Types            qw( HashRef LoadableClass NonEmptySimpleStr
-                                     NonZeroPositiveInt Object );
-use App::MCP::Util               qw( concise_duration create_token distname
-                                     trigger_input_handler
-                                     trigger_output_handler );
-use Async::IPC::Functions        qw( log_debug log_error log_info log_warn );
-use Class::Usul::Cmd::Util       qw( elapsed ensure_class_loaded );
-use English                      qw( -no_match_vars );
-use List::Util                   qw( first );
-use Scalar::Util                 qw( weaken );
-use Web::ComposableRequest::Util qw( bson64id );
-use Async::IPC::Constants        qw( );
+use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK SPC TRANSITION_ENUM );
+use Unexpected::Types      qw( HashRef LoadableClass NonEmptySimpleStr
+                               NonZeroPositiveInt Object );
+use App::MCP::Util         qw( concise_duration create_token distname
+                               trigger_input_handler trigger_output_handler );
+use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
+use English                qw( -no_match_vars );
+use List::Util             qw( first );
+use Scalar::Util           qw( weaken );
+use Web::ComposableRequest::Util
+                           qw( bson64id );
 use IPC::PerlSSH;
 use Try::Tiny;
 use Moo;
 
 with 'App::MCP::Role::Schema';
-
-Async::IPC::Constants->Log_Key_Width( LOG_KEY_WIDTH );
 
 =pod
 
@@ -46,25 +41,15 @@ Defines the following attributes;
 
 =over 3
 
-=item C<app>
+=item C<builder>
 
 =cut
 
-has 'app' =>
+has 'builder' =>
    is       => 'ro',
    isa      => Object,
-   handles  => ['config', 'debug', 'log'],
-   init_arg => 'builder',
+   handles  => [qw(config debug log port)],
    required => TRUE;
-
-=item C<port>
-
-=cut
-
-has 'port' =>
-   is      => 'lazy',
-   isa     => NonZeroPositiveInt,
-   default => sub { shift->app->port };
 
 =item C<worker>
 
@@ -73,7 +58,7 @@ has 'port' =>
 has 'worker' =>
    is      => 'lazy',
    isa     => NonEmptySimpleStr,
-   default => sub { shift->config->appclass.'::Worker' };
+   default => sub { shift->config->appclass . '::Worker' };
 
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
 
@@ -87,7 +72,7 @@ Defines the following methods;
 
 =item C<cron_job_handler>
 
-   $exit_code = $self->cron_job_handler($name, $pid);
+   $exit_code = $self->cron_job_handler($notifier_name, $pid);
 
 =cut
 
@@ -123,7 +108,7 @@ sub cron_job_handler {
 
 =item C<input_handler>
 
-   $exit_code = $self->input_handler($name, $pid);
+   $exit_code = $self->input_handler($notifier_name, $pid);
 
 =cut
 
@@ -143,7 +128,7 @@ sub input_handler {
 
       for my $event ($events->all) {
          $schema->txn_do(sub {
-            my $p_ev = $self->_process_event($name, $event, 'warn');
+            my $p_ev = $self->_process_event($name, $event);
 
             $trigger = TRUE unless $p_ev->{rejected};
 
@@ -163,44 +148,9 @@ sub input_handler {
    return OK;
 }
 
-=item C<ipc_ssh_add_provisioning>
-
-   $self->ipc_ssh_add_provisioning(\%options);
-
-The keys of the C<options> hash reference are;
-
-=over 3
-
-=item C<calls>
-
-=item C<host>
-
-=item C<user>
-
-=back
-
-=cut
-
-sub ipc_ssh_add_provisioning {
-   my ($self, $args) = @_;
-
-   my $host = $args->{host};
-   my $user = $args->{user};
-
-   return if $self->_remote_provisioned("${user}\@${host}");
-
-   my $appclass  = $self->config->appclass;
-   my $calls     = $args->{calls};
-   my $installer = 'ipc_ssh_install_worker';
-   my $worker    = $self->worker;
-
-   unshift @{$calls}, ['provision', [$appclass, $worker], $installer];
-   return;
-}
-
 =item C<ipc_ssh_caller>
 
-   $hash_ref = $self->ipc_ssh_caller($name, $notifier, $runid, \%options);
+   $hash_ref = $self->ipc_ssh_caller($notifier, $runid, \%options);
 
 The keys of the C<options> hash reference are;
 
@@ -217,20 +167,23 @@ The keys of the C<options> hash reference are;
 =cut
 
 sub ipc_ssh_caller {
-   my ($self, $name, $notifier, $runid, $args) = @_;
+   my ($self, $notifier, $runid, $args) = @_;
 
+   my $name    = $notifier->name;
+   my $leader  = "${name}[${runid}]";
    my @options = (Host => $args->{host}, User => $args->{user});
    my $file    = $self->_get_identity_file($args);
 
    push @options, 'SshOptions', ['-i', $file] if $file;
 
    my $ips    = IPC::PerlSSH->new(@options);
-   my $log    = $self->log;
-   my $logger = sub { $log, $name, $runid };
    my $failed = FALSE;
 
    try   { $ips->use_library($self->config->library_class) }
-   catch { log_error $logger, "Use library - ${_}"; $failed = TRUE };
+   catch {
+      $self->log->error("${leader}: Use library - ${_}");
+      $failed = TRUE;
+   };
 
    return FALSE if $failed;
 
@@ -240,15 +193,18 @@ sub ipc_ssh_caller {
       my $resp;
 
       try   { $resp = $ips->call($call->[0], @{$call->[1]}) }
-      catch { log_error $logger, "Call failed - ${_}"; $failed = TRUE };
+      catch {
+         $self->log->error("${leader}: Call failed - ${_}");
+         $failed = TRUE;
+      };
 
       return FALSE if $failed;
 
-      log_debug $logger, "Call succeeded - ${resp}";
+      $self->log->debug("${leader}: Call succeeded - ${resp}");
 
       my $cb = $call->[2];
 
-      $self->$cb($logger, $results, $call, $resp, $args) if defined $cb;
+      $self->$cb($leader, $results, $call, $resp, $args) if defined $cb;
    }
 
    return $results;
@@ -256,7 +212,7 @@ sub ipc_ssh_caller {
 
 =item C<ipc_ssh_callback>
 
-   $self->ipc_ssh_calback($name, $notifier, \@args?);
+   $self->ipc_ssh_calback($notifier, \@args?);
 
 The C<args> array reference should contain;
 
@@ -271,59 +227,19 @@ The C<args> array reference should contain;
 =cut
 
 sub ipc_ssh_callback {
-   my ($self, $name, $notifier, $args) = @_;
+   my ($self, $notifier, $args) = @_;
 
    my ($runid, $results) = @{$args // []};
 
    return unless $results;
 
-   my $prov = $results->{provisioned};
-   my $key  = $prov->{key};
-   my $val  = $prov->{value};
+   my $key  = $results->{provisioned}->{key};
+   my $val  = $results->{provisioned}->{value};
+   my $name = $notifier->name;
 
-   log_info $self->log, $name, $PID, "Provisioned ${runid} ${key} ${val}"
+   $self->log->info("${name}[${runid}]: Provisioned ${key} ${val}")
       if $self->_remote_provisioned($key, $val);
 
-   return;
-}
-
-=item C<ipc_ssh_install_worker>
-
-   $self->ipc_ssh_install_worker($logger, $results, $call, $result, $args);
-
-=cut
-
-sub ipc_ssh_install_worker {
-   my ($self, $logger, $results, $call, $result, $args) = @_;
-
-   my $dist      = distname $self->worker;
-   my $share     = $self->config->sharedir;
-   my $filter    = qr{ \b $dist - ([0-9\.]+) \.tar\.gz \z }mx;
-   my $our_ver   = (sort map { $_ =~ $filter; qv($1) } map { $_->basename }
-                    $share->filter(sub { $_ =~ $filter })->all_files)[-1];
-   my ($rem_ver) = $result =~ m{ \A version= (.+) \z }mx;
-   my $key       = $args->{user}.'@'.$args->{host};
-
-   $our_ver //= qv('0.0.0');
-   $rem_ver = qv($rem_ver // '0.0.0');
-   log_debug $logger, "Worker current - ${key} ${rem_ver}";
-
-   if ($rem_ver >= $our_ver) {
-      $results->{provisioned} = { key => $key, value => "${rem_ver}" };
-      return;
-   }
-
-   my $tarball = $share->catfile(my $file = "${dist}-${our_ver}.tar.gz");
-
-   return log_warn $logger, "File ${tarball} not found" unless $tarball->exists;
-
-   log_debug $logger, "Worker upgrade - from ${rem_ver} to ${our_ver}";
-   unshift @{$args->{calls}}, ['distclean', [$self->config->appclass]];
-
-   # TODO: Need to force reload of worker after upgrade
-   $self->_install_distribution($args->{calls}, $file);
-   $self->_install_distribution($args->{calls}, 'local::lib');
-   $self->_install_cpan_minus  ($args->{calls}, 'App-cpanminus.tar.gz');
    return;
 }
 
@@ -372,10 +288,27 @@ sub _cron_log_interval {
    my $rem     = $elapsed % $log_int;
    my $spread  = $self->config->clock_tick_interval / 2;
 
-   log_info $self->log, $name, $PID, 'Elapsed ' . concise_duration($elapsed)
+   $self->log->info("${name}: Elapsed " . concise_duration($elapsed))
       if ($rem > $log_int - $spread or $rem < $spread);
 
    return;
+}
+
+sub _dispatch_args {
+   my ($self, $job, $runid, $token) = @_;
+
+   return {
+      appclass  => $self->config->appclass,
+      command   => $job->command,
+      debug     => $self->debug,
+      directory => $job->directory,
+      job_id    => $job->id,
+      port      => $self->port,
+      runid     => $runid,
+      servers   => (join COMMA, @{$self->config->servers}),
+      token     => $token,
+      worker    => $self->worker,
+   };
 }
 
 my $identity_file_cache = {};
@@ -406,6 +339,14 @@ sub _get_identity_file {
    return;
 }
 
+sub _install_cpan_minus {
+   return shift->_install_remote('install_cpan_minus', @_);
+}
+
+sub _install_distribution {
+   return shift->_install_remote('install_distribution', @_);
+}
+
 sub _install_remote {
    my ($self, $method, $calls, $file) = @_;
 
@@ -422,26 +363,80 @@ sub _install_remote {
    return;
 }
 
+sub _ipc_ssh_add_provisioning {
+   my ($self, $args) = @_;
+
+   my $host = $args->{host};
+   my $user = $args->{user};
+
+   return if $self->_remote_provisioned("${user}\@${host}");
+
+   my $appclass  = $self->config->appclass;
+   my $calls     = $args->{calls};
+   my $installer = '_ipc_ssh_install_worker';
+   my $worker    = $self->worker;
+
+   unshift @{$calls}, ['provision', [$appclass, $worker], $installer];
+   return;
+}
+
+sub _ipc_ssh_install_worker {
+   my ($self, $leader, $results, $call, $result, $args) = @_;
+
+   my $dist      = distname $self->worker;
+   my $share     = $self->config->sharedir;
+   my $filter    = qr{ \b $dist - ([0-9\.]+) \.tar\.gz \z }mx;
+   my $our_ver   = (sort map { $_ =~ $filter; qv($1) } map { $_->basename }
+                    $share->filter(sub { $_ =~ $filter })->all_files)[-1];
+   my ($rem_ver) = $result =~ m{ \A version= (.+) \z }mx;
+   my $key       = $args->{user}.'@'.$args->{host};
+
+   $our_ver //= qv('0.0.0');
+   $rem_ver = qv($rem_ver // '0.0.0');
+   $self->log->debug("${leader}: Worker current - ${key} ${rem_ver}");
+
+   if ($rem_ver >= $our_ver) {
+      $results->{provisioned} = { key => $key, value => "${rem_ver}" };
+      return;
+   }
+
+   my $tarball = $share->catfile(my $file = "${dist}-${our_ver}.tar.gz");
+
+   return $self->log->error("${leader}: File ${tarball} not found")
+      unless $tarball->exists;
+
+   $self->log->debug("${leader}: Worker upgrade - ${rem_ver} to ${our_ver}");
+   unshift @{$args->{calls}}, ['distclean', [$self->config->appclass]];
+
+   # TODO: Need to force reload of worker after upgrade
+   $self->_install_distribution($args->{calls}, $file);
+   $self->_install_distribution($args->{calls}, 'local::lib');
+   $self->_install_cpan_minus  ($args->{calls}, 'App-cpanminus.tar.gz');
+   return;
+}
+
 sub _process_event {
-   my ($self, $name, $event, $log_method) = @_;
+   my ($self, $name, $event) = @_;
 
    my $cols  = { $event->get_inflated_columns };
    my $js_rs = $self->schema->resultset('JobState');
-   my $fail  = $js_rs->create_and_or_update($event) or return $cols;
-   my $mesg  = 'Job ' . $fail->[0] . ' event ' . $fail->[1]
-             . ' rejected - ' . $fail->[2]->class;
+   my $fail  = $js_rs->create_and_or_update($event);
 
-   if ($log_method eq 'info') { log_info $self->log, $name, $PID, $mesg }
-   else { log_warn $self->log, $name, $PID, $mesg }
+   return $cols unless $fail;
 
-   $cols->{rejected} = $fail->[2]->class;
+   my $mesg = 'Job ' . $fail->[0] . ' event ' . $fail->[1] .
+              ' rejected - ' . $fail->[2]->class;
+
+   $self->log->debug("${name}: ${mesg}");
+   $cols->{rejected} = length $fail->[2]->class > 16
+      ? 'Exception' : $fail->[2]->class;
    return $cols;
 }
 
 sub _process_start_event {
    my ($self, $name, $event, $ipc_ssh) = @_;
 
-   my $p_ev    = $self->_process_event($name, $event, 'info');
+   my $p_ev    = $self->_process_event($name, $event);
    my $success = $p_ev->{rejected} ? FALSE : TRUE;
 
    if ($success && $event->job->type eq 'job') {
@@ -472,32 +467,21 @@ sub _remote_provisioned {
 sub _start_job {
    my ($self, $ipc_ssh, $job) = @_;
 
-   my $runid = bson64id;
-   my $token = substr create_token, 0, 32;
-   my $host  = $job->host;
-   my $user  = $job->user_name;
-   my $cmd   = $job->command;
+   my $runid  = bson64id;
+   my $token  = substr create_token, 0, 32;
+   my $host   = $job->host;
+   my $user   = $job->user_name;
+   my $cmd    = $job->command;
+   my $leader = $job->job_name . "[${runid}]";
+   my $args   = $self->_dispatch_args($job, $runid, $token);
 
-   log_info $self->log, $job->job_name, $runid, "Start ${user}\@${host} ${cmd}";
-
-   my $args  = {
-      appclass  => $self->config->appclass,
-      command   => $cmd,
-      debug     => $self->debug,
-      directory => $job->directory,
-      job_id    => $job->id,
-      port      => $self->port,
-      runid     => $runid,
-      servers   => (join COMMA, @{$self->config->servers}),
-      token     => $token,
-      worker    => $self->worker,
-   };
+   $self->log->info("${leader}: Starting ${user}\@${host} ${cmd}");
 
    if ($host ne 'localhost') {
       my $calls   = [['dispatch', [%{$args}]]];
       my $options = { calls => $calls, host => $host, user => $user, };
 
-      $self->ipc_ssh_add_provisioning($options);
+      $self->_ipc_ssh_add_provisioning($options);
       $ipc_ssh->call($runid, $options); # Calls ipc_ssh_caller
    }
    else {
@@ -506,20 +490,12 @@ sub _start_job {
       $args->{config} = $self->config;
       $args->{log} = $self->log;
 
-      my $out = $self->worker->new($args)->dispatch;
+      my $response = $self->worker->new($args)->dispatch;
 
-      log_debug $self->log, $job->job_name, $runid, $out;
+      $self->log->debug("${leader}: ${response}");
    }
 
    return ($runid, $token);
-}
-
-sub _install_cpan_minus {
-   return shift->_install_remote('install_cpan_minus', @_);
-}
-
-sub _install_distribution {
-   return shift->_install_remote('install_distribution', @_);
 }
 
 use namespace::autoclean;
@@ -537,8 +513,6 @@ None
 =head1 Dependencies
 
 =over 3
-
-=item L<Async::IPC>
 
 =item L<IPC::PerlSSH>
 

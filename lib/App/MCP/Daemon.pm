@@ -64,7 +64,7 @@ An instance of the L<application|App::MCP::Application> class
 =cut
 
 # Ignored by the command line
-has 'app' =>
+has 'application' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Application'),
    default => sub { App::MCP::Application->new(builder => shift) };
@@ -85,13 +85,16 @@ has 'async_factory' =>
 
 =item C<clock_tick>
 
-An L<async factory|Async::IPC> notifier process
+An L<periodical|Async::IPC::Periodcal> notifier
 
 =cut
 
 has 'clock_tick' => is => 'lazy', isa => Object;
 
 =item C<cron>
+
+A L<semaphore|Async::IPC::Semaphore> notifier process. This is triggered
+by the C<clock_tick> notifier
 
 =cut
 
@@ -116,7 +119,7 @@ has 'ipc_ssh' => is => 'lazy', isa => Object;
 =item C<lock>
 
 An instance of the L<lock|IPC::SRLock> class. Required by the
-L<async|Async::IPC> class
+L<async factory|Async::IPC> class
 
 =cut
 
@@ -127,7 +130,7 @@ has 'lock' =>
 
 =item C<name>
 
-Used for logging by the L<async|Async::IPC> class
+Used for logging by the L<log|App::MCP::Log> class
 
 =cut
 
@@ -146,7 +149,7 @@ has 'op_ev_hndlr' => is => 'lazy', isa => Object;
 
 =item C<server>
 
-An L<async factory|Async::IPC> notifier process for the Web application server
+The web application L<process|Async::IPC::Process>
 
 =cut
 
@@ -222,7 +225,7 @@ sub pid {
 }
 
 # Private methods
-sub _build_clock_tick {
+sub _build_clock_tick { # Runs in the daemon process event loop
    my $self = shift;
    my $cron = $self->cron;
 
@@ -236,36 +239,36 @@ sub _build_clock_tick {
 }
 
 sub _build_cron {
-   my $self       = shift;
-   my $app        = $self->app;
-   my $daemon_pid = $self->pid;
-   my $name       = 'cron';
+   my $self = shift;
+   my $app  = $self->application;
+   my $pid  = $self->pid;
+   my $name = 'cron';
 
    return $self->async_factory->new_notifier(
       type    => 'semaphore',
       desc    => 'cron job handler',
       name    => $name,
-      on_recv => sub { $app->cron_job_handler($name, $daemon_pid) },
+      on_recv => sub { $app->cron_job_handler($name, $pid) },
    );
 }
 
 sub _build_ip_ev_hndlr {
-   my $self       = shift;
-   my $app        = $self->app;
-   my $daemon_pid = $self->pid;
-   my $name       = 'input';
+   my $self = shift;
+   my $app  = $self->application;
+   my $pid  = $self->pid;
+   my $name = 'input';
 
    return $self->async_factory->new_notifier(
       type    => 'semaphore',
       desc    => 'input event handler',
       name    => $name,
-      on_recv => sub { $app->input_handler($name, $daemon_pid) },
+      on_recv => sub { $app->input_handler($name, $pid) },
    );
 }
 
 sub _build_ipc_ssh {
    my $self = shift;
-   my $app  = $self->app;
+   my $app  = $self->application;
    my $name = 'ssh';
 
    return $self->async_factory->new_notifier(
@@ -274,16 +277,16 @@ sub _build_ipc_ssh {
       name        => $name,
       max_calls   => $self->config->max_ssh_worker_calls,
       max_workers => $self->config->max_ssh_workers,
-      on_recv     => sub { $app->ipc_ssh_caller($name, @_) },
-      on_return   => sub { $app->ipc_ssh_callback($name, @_) },
+      on_recv     => sub { $app->ipc_ssh_caller(@_) },
+      on_return   => sub { $app->ipc_ssh_callback(@_) },
   );
 }
 
 sub _build_op_ev_hndlr {
-   my $self       = shift;
-   my $app        = $self->app;
-   my $daemon_pid = $self->pid;
-   my $name       = 'output';
+   my $self = shift;
+   my $app  = $self->application;
+   my $pid  = $self->pid;
+   my $name = 'output';
    my $ipc_ssh;
 
    return $self->async_factory->new_notifier(
@@ -293,15 +296,15 @@ sub _build_op_ev_hndlr {
       call_ch_mode => 'async',
       before       => sub { $ipc_ssh = $self->ipc_ssh },
       after        => sub { $ipc_ssh->close },
-      on_recv      => [
-         sub { $app->output_handler($name, $daemon_pid, $ipc_ssh) }
-      ],
+      on_recv      => [ sub { $app->output_handler($name, $pid, $ipc_ssh) } ],
    );
 }
 
 sub _get_server_sub {
    my $self     = shift;
    my $config   = $self->config;
+   my $debug    = $self->debug;
+   my $pid      = $self->pid;
    my $port     = $self->port;
    my $appclass = $config->appclass;
    my $prefix   = lc distname $appclass;
@@ -312,12 +315,10 @@ sub _get_server_sub {
       '--access-log' => $config->logsdir->catfile($logfile),
       '--app'        => $config->bin->catfile('mcp-server'),
    };
-   my $daemon_pid = $self->pid;
-   my $debug      = $self->debug;
 
    return sub {
       ensure_class_loaded $appclass;
-      $appclass->env_var('daemon_pid', $daemon_pid);
+      $appclass->env_var('daemon_pid', $pid);
       $appclass->env_var('debug', $debug);
       $appclass->env_var('server_port', $port);
       Plack::Runner->run(%{$args});
@@ -325,13 +326,11 @@ sub _get_server_sub {
    };
 }
 
-sub _reload {
+sub _restart {
    my $self = shift;
    my $path = $self->config->pathname;
 
-   $self->run_cmd([ "${path}", 'stop' ]);
-   sleep 5;
-   $self->run_cmd([ "${path}", '-D', 'start' ]);
+   $self->run_cmd(["${path}", 'restart']);
    return OK;
 }
 
@@ -361,10 +360,10 @@ sub _build_server {
    );
 }
 
-sub _hangup_handler { # TODO: Fix this
+sub _hangup_handler {
    my $self = shift;
 
-   $self->run_cmd([ sub { $self->_reload } ], { detach => TRUE });
+   $self->run_cmd([ sub { $self->_restart } ], { detach => TRUE });
 
    return;
 }

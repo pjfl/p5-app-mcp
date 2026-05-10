@@ -28,7 +28,10 @@ sub jobid : Auth('view') Capture(1) {
    return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
    $context->stash(job => $job);
-   $context->stash('nav')->list('history')->item('history/view', [$job->id]);
+
+   my $nav = $context->stash('nav')->list('history');
+
+   $nav->item('history/view', [$job->id])->item('history/runlist', [$job->id]);
    return;
 }
 
@@ -37,24 +40,22 @@ sub runid : Auth('view') Capture(1) {
 
    $context->stash(runid => $runid);
 
-   my $args = [$context->stash('job')->id, $runid];
-   my $nav  = $context->stash('nav')->list('history');
+   my $jobid = $context->stash('job')->id;
+   my $nav   = $context->stash('nav');
 
-   $nav->item('history/runview', $args)->finalise;
+   $nav->list('history')->item('history/runview', [$jobid, $runid]);
    return;
-}
-
-sub joblist : Auth('view') {
-   my ($self, $context) = @_; return $self->list($context);
 }
 
 sub list : Auth('view') Nav('History|img/history.svg') {
    my ($self, $context) = @_;
 
    my $options = { context => $context };
-   my $job     = $context->stash('job');
 
-   $options->{job} = $job if $job;
+   if (my $job = $context->stash('job')) {
+      $options->{caption} = 'List Job History';
+      $options->{job} = $job;
+   }
 
    $context->stash(
       page  => { layout => 'history/list' },
@@ -64,11 +65,15 @@ sub list : Auth('view') Nav('History|img/history.svg') {
    return;
 }
 
+sub runlist : Auth('view') Nav('Job History') {
+   my ($self, $context) = @_; return $self->list($context);
+}
+
 sub runview : Auth('view') Nav('Run History') {
    my ($self, $context) = @_; return $self->view($context);
 }
 
-sub view : Auth('view') Nav('Job History') {
+sub view : Auth('view') Nav('Job Events') {
    my ($self, $context) = @_;
 
    my $job = $context->stash('job');
@@ -81,12 +86,12 @@ sub view : Auth('view') Nav('Job History') {
       $options->{caption} = 'View Run History';
       $options->{runid} = $runid;
    }
-   else { $context->stash('nav')->finalise }
 
    $context->stash(
       page  => { layout => 'history/view' },
       table => $self->new_table('View::History', $options),
    );
+   $context->stash('nav')->finalise;
    return;
 }
 

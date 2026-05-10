@@ -14,7 +14,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                numerical_id_data_type serial_data_type
                                set_on_create_datetime_data_type
                                truncate varchar_data_type );
-use Class::Usul::Cmd::Util qw( includes );
+use Class::Usul::Cmd::Util qw( includes trim );
 use HTML::Forms::Util      qw( int2rwx );
 use Ref::Util              qw( is_arrayref is_plain_hashref );
 use Scalar::Util           qw( blessed );
@@ -103,7 +103,7 @@ has '_parser' =>
       );
    };
 
-# Public method
+# Public methods
 sub condition {
    my ($self, $value) = @_;
 
@@ -218,7 +218,7 @@ sub should_start_now {
    my $self      = shift;
    my $crontab   = $self->crontab or return TRUE;
    my $last_time = $self->state ? $self->state->updated->epoch : 0;
-   my $cron      = Algorithm::Cron->new(base => 'utc', crontab => $crontab);
+   my $cron      = Algorithm::Cron->new(base => 'local', crontab => $crontab);
 
    return time >= $cron->next_time($last_time) ? TRUE : FALSE;
 }
@@ -311,9 +311,9 @@ sub _crontab {
 
    if (defined $v) {
       $self->{_crontab}->{$k} = $v;
-      $self->crontab(join SPC, map {
-         $self->{_crontab}->{$names[$_]}
-      } 0 .. 4);
+      my $crontab = join SPC, map { $self->{_crontab}->{$names[$_]} } 0 .. 4;
+
+      $self->crontab(trim($crontab));
    }
 
    return $self->{_crontab}->{$k};
@@ -338,33 +338,31 @@ sub _eval_condition {
 sub _is_permitted {
    my ($self, $id_or_user, $mask) = @_;
 
-   my $perms = $self->permissions;
-
-   return TRUE if $perms & $mask->[2];
-
-   my ($group, $owner);
+   my ($groups, $owner);
 
    if (blessed $id_or_user) {
-      $owner = $id_or_user->id;
-      $group = $id_or_user->role_id;
+      $owner  = $id_or_user->id;
+      $groups = $id_or_user->groups;
    }
    elsif (is_plain_hashref $id_or_user) {
-      $owner = $id_or_user->{owner};
-      $group = $id_or_user->{group};
+      $owner  = $id_or_user->{owner};
+      $groups = $id_or_user->{groups};
    }
    else {
       my $user_rs = $self->result_source->schema->resultset('User');
       my $user    = $user_rs->find_by_key($id_or_user, { prefetch => 'role' });
 
-      $owner = $user->id;
-      $group = $user->role_id;
+      $owner  = $user->id;
+      $groups = $user->groups;
    }
 
-   return TRUE if $perms & $mask->[1] and $self->group == $group;
+   my $perms = $self->permissions;
 
-   return TRUE if $perms & $mask->[0] and $self->owner == $owner;
+   return $perms & $mask->[0] ? TRUE : FALSE if $self->owner == $owner;
 
-   return FALSE;
+   return $perms & $mask->[1] ? TRUE : FALSE if includes $self->group, $groups;
+
+   return $perms & $mask->[2] ? TRUE : FALSE;
 }
 
 sub _update_conditions {
@@ -381,7 +379,10 @@ sub _update_dependent_fields {
    my $job_rs    = $self->result_source->resultset;
    my $dep_names = $self->_eval_condition->[1];
 
-   return unless $dep_names->[0];
+   unless ($dep_names->[0]) {
+      $self->dependencies(NUL);
+      return;
+   }
 
    my $where        = { job_name => { -in => $dep_names } };
    my $dependencies = [];
