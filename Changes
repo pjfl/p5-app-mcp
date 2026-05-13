@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Additions columns for the jobs table
           - Splits routes into multiple controllers
           - Exposes user roles
           - Forward and reverse state propagation

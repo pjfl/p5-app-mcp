@@ -178,6 +178,7 @@ $class->load_components('+App::MCP::MaterialisedPath');
 $class->add_columns(
    id           => { %{serial_data_type()}, hidden => TRUE },
    job_name     => { %{varchar_data_type()}, label => 'Job Name' },
+   description  => nullable_text_data_type,
    parent_id    => {
       %{nullable_foreign_key_data_type()},
       display => 'parent_box.job_name',
@@ -219,16 +220,18 @@ $class->add_columns(
    expected_rv  => { %{integer_id_data_type(0)}, label => 'Expected RV' },
    delete_after => { %{boolean_data_type()}, label => 'Delete After' },
    dependencies => { %{nullable_varchar_data_type()}, hidden => TRUE },
+   auto_hold    => { %{boolean_data_type()}, label => 'Auto. Hold' },
+   max_runtime  => { %{integer_data_type(0)}, label => 'Max. Runtime' },
+   nretrys      => { %{integer_id_data_type(0)}, label => 'Num. Retrys' },
+   err_file     => { %{nullable_varchar_data_type()}, label => 'Error File' },
+   out_file     => { %{nullable_varchar_data_type()}, label => 'Output File' },
+   load_limit   => {
+      data_type     => 'numeric',
+      default_value => 0,
+      label         => 'Load Limit',
+   },
 );
 
-# TODO: Schema upgrade
-# auto_hold   => { %{boolean_data_type()}, label => 'Auto. Hold' },
-# description => nullable_text_data_type,
-# max_runtime => { %{integer_data_type(0)}, label => 'Max. Runtime' },
-# nretrys     => { %{integer_id_data_type(0)}, label => 'Num. Retrys' },
-# load_limit  => { data_type => 'numeric', default_value => 0, label => 'Load Limit'},
-# err_file    => { nullable_varchar_data_type, label => 'Error File' },
-# out_file    => { nullable_varchar_data_type, label => 'Output File' },
 
 $class->set_primary_key('id');
 
