@@ -48,6 +48,9 @@ Defines the following attributes;
 
 =item C<admin_password>
 
+Database administration password. Unsed to create the database user and the
+schema. This is not stored
+
 =cut
 
 has 'admin_password' =>
@@ -56,18 +59,41 @@ has 'admin_password' =>
       my $self     = shift;
       my $password = $self->get_line('+Enter DB admin password', AS_PASSWORD);
 
-      throw 'No database admin password supplied' unless $password;
+      throw Unspecified, ['admin password'] unless $password;
 
       return $ENV{PGPASSWORD} = $password;
    };
 
 =item C<config_extension>
 
+Defaults to C<.json>. The expected format of the files used to populate the
+schema when it is created
+
 =cut
 
 has 'config_extension' => is => 'ro', default => '.json';
 
+=item C<db_password>
+
+This should be in the local configuration file. See C<store_password>
+
+=cut
+
+has 'db_password' =>
+   is      => 'lazy',
+   default => sub {
+      my $self     = shift;
+      my $password = $self->_local_config->{db_password};
+
+      throw Unspecified, ['db_password'] unless $password;
+
+      return decrypt NUL, $password;
+   };
+
 =item C<deploy_classes>
+
+Defaults to the C<schema_class>. This is used to select the files that will
+populate the schema when it is created
 
 =cut
 
@@ -77,11 +103,15 @@ has 'deploy_classes' =>
 
 =item C<host>
 
+Defaults to C<localhost>
+
 =cut
 
 has 'host' => is => 'ro', default => 'localhost';
 
 =item C<producers>
+
+A hash reference keyed by DSN driver names
 
 =cut
 
@@ -92,6 +122,8 @@ has 'producers' =>
    };
 
 =item C<schema>
+
+An instance of L<DBIx::Class::Schema>
 
 =cut
 
@@ -111,31 +143,46 @@ has 'schema' =>
       return $schema;
    };
 
+=item C<user_name>
+
+Defaults from configuration to the application prefix C<mcp>
+
+=cut
+
+# TODO: Make these options. Should be able to supply encrypted/unencrypted
+# password from the command line
+
+has 'user_name' => is => 'lazy', default => sub { shift->config->prefix };
+
 =item C<user_password>
+
+This should be in the local configuration file. See C<store_password>
 
 =cut
 
 has 'user_password' =>
    is      => 'lazy',
    default => sub {
-      my $self = shift;
-      my $password = $self->_local_config->{db_password};
+      my $self     = shift;
+      my $name     = $self->user_name;
+      my $password = $self->_local_config->{"${name}_password"};
 
-      throw 'No database user password in local config file' unless $password;
+      throw Unspecified, ["${name} password"] unless $password;
 
       return decrypt NUL, $password;
    };
 
+# Private attributes
 has '_dbname' =>
    is      => 'lazy',
    default => sub {
       my $self = shift;
       my $dbname;
 
-      if ($self->config->dsn =~ m{ dbname[=] }mx) {
+      if ($self->config->db_dsn =~ m{ dbname[=] }mx) {
          $dbname = (map  { s{ \A dbname [=] }{}mx; $_ }
                     grep { m{ \A dbname [=] }mx }
-                    split  m{           [:] }mx, $self->config->dsn)[0];
+                    split  m{           [:] }mx, $self->config->db_dsn)[0];
       }
 
       return $dbname;
@@ -157,7 +204,7 @@ has '_driver' =>
    is      => 'lazy',
    default => sub {
       my $self   = shift;
-      my $driver = (split m{ : }mx, $self->config->dsn)[1];
+      my $driver = (split m{ : }mx, $self->config->db_dsn)[1];
 
       return lc $driver;
    };
@@ -169,10 +216,10 @@ has '_host' =>
       my $host = $self->host;
 
       unless ($self->options && $self->options->{bootstrap}) {
-         if ($self->config->dsn =~ m{ host[=] }mx) {
+         if ($self->config->db_dsn =~ m{ host[=] }mx) {
             $host = (map  { s{ \A host [=] }{}mx; $_ }
                      grep { m{ \A host [=] }mx }
-                     split  m{         [;] }mx, $self->config->dsn)[0];
+                     split  m{         [;] }mx, $self->config->db_dsn)[0];
          }
       }
 
@@ -203,7 +250,7 @@ Does nothing
 
 sub BUILD {}
 
-=item backup - Backs up the database
+=item C<backup> - Backs up the database
 
 Backs up the database
 
@@ -213,7 +260,7 @@ sub backup : method {
    my $self = shift;
    my $now  = now_dt;
    my $db   = $self->_dbname;
-   my $date = $now->ymd(NUL).'-'.$now->hms(NUL);
+   my $date = $now->ymd(NUL) . '-' . $now->hms(NUL);
    my $file = "${db}-${date}.sql";
    my $conf = $self->config;
    my $path = $conf->tempdir->catfile($file);
@@ -245,7 +292,9 @@ sub backup : method {
    return OK;
 }
 
-=item dump_jobs - Dump selected job definitions to a file
+=item C<dump_jobs> - Dump selected job definitions to a file
+
+The default dump file name is C<jobs.json>
 
 =cut
 
@@ -262,7 +311,7 @@ sub dump_jobs : method {
    return OK;
 }
 
-=item install - Creates the database and deploys the schema
+=item C<install> - Creates the database and deploys the schema
 
 Creates the database and deploys the schema
 
@@ -277,7 +326,7 @@ sub install : method {
    $self->output($text, AS_PARA);
    $self->yorn('+Create database', TRUE, TRUE, 0) or return OK;
    $self->admin_password;
-   $self->store_password;
+   $self->_store_password('db');
    $self->_drop_database;
    $self->_drop_user;
    $self->_create_user;
@@ -286,7 +335,9 @@ sub install : method {
    return OK;
 }
 
-=item load_jobs - Load job table dump file
+=item C<load_jobs> - Load job table dump file
+
+The default load file name is C<jobs.json>
 
 =cut
 
@@ -301,7 +352,7 @@ sub load_jobs : method {
    return OK;
 }
 
-=item restore - Restores the database from a backup
+=item C<restore> - Restores the database from a backup
 
 Restores the database from a backup
 
@@ -341,7 +392,9 @@ sub restore : method {
    return OK;
 }
 
-=item send_event - Create a job state transition event
+=item C<send_event> - Create a job state transition event
+
+The default event transition is C<start>
 
 =cut
 
@@ -367,21 +420,21 @@ sub send_event : method {
    return OK;
 }
 
-=item store_password - Stores the application users database password
+=item C<store_password> - Stores application users passwords
 
-It will write an encrypted copy of the database password to the local
+Defaults to storing the password for the application user. Can also store the
+database user password by setting the next command line argument to C<db>
+
+It will write an encrypted copy of the password to the local
 configuration file
 
 =cut
 
 sub store_password : method {
-   my $self     = shift;
-   my $password = $self->get_line('+Enter DB user password', AS_PASSWORD);
-   my $data     = $self->_local_config;
+   my $self = shift;
 
-   $data->{db_password} = encrypt NUL, $password;
-   $self->_local_config($data);
-   $self->info('Updated user password', { name => 'Admin.store_password' });
+   $self->_store_password($self->next_argv // $self->user_name);
+
    return OK;
 }
 
@@ -426,9 +479,8 @@ sub _authenticated_user_info {
    my $user     = $info->{user} = $user_rs->find_by_key($username, $options);
    my $role     = $info->{role} = $user->role;
 
-   $user->authenticate($self->get_user_password($user->user_name));
-   $self->log->debug('User ' . $user->user_name . ' authenticated');
-
+   $user->authenticate($self->user_password, NUL, TRUE);
+   $self->log->debug("User ${username} authenticated");
    return $info;
 }
 
@@ -442,7 +494,7 @@ sub _backup_command {
    my $cmd;
 
    if ($driver eq 'pg') {
-      $ENV{PGPASSWORD} = $self->user_password;
+      $ENV{PGPASSWORD} = $self->db_password;
       $cmd = "pg_dump --file=${path} -h ${host} -U ${user} ${dbname}";
    }
 
@@ -460,9 +512,10 @@ sub _create_database {
    my $cmd;
 
    if ($driver eq 'pg') {
-      my $sql = "create database ${dbname} owner ${user} encoding 'UTF8'; "
-         . "alter database ${dbname} set TIMEZONE = 'UTC'; "
-         . "create extension if not exists tablefunc";
+      my $sql =
+         "create database ${dbname} owner ${user} encoding 'UTF8'; " .
+         "alter database ${dbname} set TIMEZONE = 'UTC'; " .
+         "create extension if not exists tablefunc;";
 
       $cmd = qq{psql -h ${host} -q -t -U postgres -w -c "${sql}"};
    }
@@ -488,15 +541,16 @@ sub _create_user {
    my $host    = $self->_host;
    my $dbname  = $self->_dbname;
    my $user    = $self->config->db_username;
-   my $upasswd = $self->user_password;
+   my $upasswd = $self->db_password;
    my $driver  = $self->_driver;
    my $cmd;
 
    throw 'Must set a user password' unless length $upasswd;
 
    if ($driver eq 'pg') {
-      $cmd = "psql -h ${host} -q -t -U postgres -w -c "
-           . "\"create role ${user} with login password '${upasswd}';\"";
+      my $sql = "create role ${user} with login password '${upasswd}';";
+
+      $cmd = qq{psql -h ${host} -q -t -U postgres -w -c "${sql}"};
    }
 
    throw 'No create user command for driver [_1]', [$driver] unless $cmd;
@@ -552,8 +606,9 @@ sub _drop_database {
    my $cmd;
 
    if ($driver eq 'pg') {
-      $cmd = "psql -h ${host} -q -t -U postgres -w -c "
-           . "\"drop database if exists ${dbname};\"";
+      my $sql = "drop database if exists ${dbname};";
+
+      $cmd = qq{psql -h ${host} -q -t -U postgres -w -c "${sql}"};
    }
 
    throw 'No drop database command for driver [_1]', [$driver] unless $cmd;
@@ -569,8 +624,9 @@ sub _drop_user {
    my $cmd;
 
    if ($driver eq 'pg') {
-      $cmd = "psql -h ${host} -q -t -U postgres -w -c "
-           . "\"drop user if exists ${user};\"";
+      my $sql = "drop user if exists ${user};";
+
+      $cmd = qq{psql -h ${host} -q -t -U postgres -w -c "${sql}"};
    }
 
    throw 'No drop user command for driver [_1]', [$driver] unless $cmd;
@@ -657,13 +713,32 @@ sub _restore_command {
    my $cmd;
 
    if ($driver eq 'pg') {
-      $ENV{PGPASSWORD} = $self->user_password;
+      $ENV{PGPASSWORD} = $self->db_password;
       $cmd = "pg_restore -C -d postgres -h ${host} -U ${user} ${sql}";
    }
 
    throw 'No restore command for driver [_1]', [$driver] unless $cmd;
 
    return $cmd;
+}
+
+sub _store_password {
+   my ($self, $username) = @_;
+
+   my $password = $self->get_line("+Enter ${username} password", AS_PASSWORD);
+   my $again    = $self->get_line("+Again", AS_PASSWORD);
+
+   throw 'Passwords do no match' unless $password eq $again;
+
+   my $data = $self->_local_config;
+
+   $data->{"${username}_password"} = encrypt NUL, $password;
+   $self->_local_config($data);
+
+   my $options = { name => 'Schema.store_password' };
+
+   $self->info("Updated ${username} password", $options);
+   return;
 }
 
 use namespace::autoclean;

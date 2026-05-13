@@ -1,9 +1,7 @@
 package App::MCP::Model::API;
 
 use App::MCP::Constants   qw( DOT EXCEPTION_CLASS FALSE TRUE );
-use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_CREATED
-                              HTTP_NOT_FOUND HTTP_OK);
-use App::MCP::Util        qw( trigger_input_handler );
+use HTTP::Status          qw( HTTP_OK );
 use HTML::Forms::Util     qw( json_bool );
 use MIME::Base64          qw( decode_base64url encode_base64url );
 use Type::Utils           qw( class_type );
@@ -18,7 +16,6 @@ extends 'App::MCP::Model';
 with    'Web::Components::Role';
 with    'App::MCP::Role::Redis';
 with    'App::MCP::Role::JSONParser';
-with    'App::MCP::Role::APIAuthentication';
 
 has '+moniker' => default => 'api';
 
@@ -99,28 +96,7 @@ sub object : Auth('none') Capture(1) {
 sub table : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
-   $context->stash(table_name => $arg);
-   return;
-}
-
-sub runid : Auth('none') Capture(1) {
-   my ($self, $context, $arg) = @_;
-
-   $context->stash(runid => $arg);
-   return;
-}
-
-sub sessionid : Auth('none') Capture(1) {
-   my ($self, $context, $arg) = @_;
-
-   $context->stash(sessionid => $arg);
-   return;
-}
-
-sub user : Auth('none') Capture(1) {
-   my ($self, $context, $arg) = @_;
-
-   $context->stash(username => $arg);
+   $context->stash(entity_name => $arg);
    return;
 }
 
@@ -150,70 +126,6 @@ sub collect_messages : Auth('none') {
    return;
 }
 
-sub create_event : Auth('none') {
-   my ($self, $context) = @_;
-
-   my $request = $context->request;
-   my $result;
-
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $schema = $self->schema;
-   my $run_id = $context->stash('runid');
-   my $pe_rs  = $schema->resultset('ProcessedEvent')->search(
-      { runid => $run_id }, { columns => ['token'], rows => 1 }
-   );
-   my $pevent = $pe_rs->single
-      or throw 'Runid [_1] not found', [$run_id, rv => HTTP_NOT_FOUND];
-   my $event  = $request->body_params->('event');
-   my $params = $self->authenticate_params($run_id, $pevent->token, $event);
-   my $pid    = $self->config->appclass->env_var('daemon_pid');
-
-   try {
-      $event = $schema->resultset('Event')->create($params);
-      trigger_input_handler $pid;
-      $result = [HTTP_CREATED, { message => 'Event '.$event->id.' created' }];
-   }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   $self->_stash_response($context, $result);
-   return;
-}
-
-sub create_job : Auth('none') {
-   my ($self, $context) = @_;
-
-   my $request = $context->request;
-   my $result;
-
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $session_id = $context->stash('session_id');
-   my $session    = $self->get_session($session_id);
-   my $key        = $session->{key};
-   my $secret     = $session->{shared_secret};
-   my $job        = $request->body_params->('job');
-   my $params     = $self->authenticate_params($key, $secret, $job);
-
-   $params->{owner_id} = $session->{user_id};
-   $params->{group_id} = $session->{role_id};
-
-   try {
-      $job = $self->schema->resultset('Job')->create($params);
-      $result = [HTTP_CREATED, { message => 'Job ' . $job->id . ' created' } ];
-   }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   $self->_stash_response($context, $result);
-   return;
-}
-
 sub fetch : Auth('none') {
    my ($self, $context) = @_;
 
@@ -228,6 +140,25 @@ sub fetch : Auth('none') {
    else { $self->log->error("Object ${name} unknown", $context) }
 
    $self->_stash_response($context, [HTTP_OK, $result]);
+   return;
+}
+
+sub footer : Auth('none') {
+   my ($self, $context, $moniker, $method) = @_;
+
+   $context->stash(page => { layout => 'site/footer' });
+
+   my $action    = "${moniker}/footer";
+   my $session   = $context->session;
+   my $templates = $context->views->{html}->templates;
+   my $footer    = $templates->catdir($session->skin)->catfile("${action}.tt");
+
+   $context->stash(page => { layout => $action }) if $footer->exists;
+
+   $action = "${moniker}/${method}_footer";
+   $footer = $templates->catdir($session->skin)->catfile("${action}.tt");
+
+   $context->stash(page => { layout => $action }) if $footer->exists;
    return;
 }
 
@@ -248,9 +179,8 @@ sub logger : Auth('none') {
 sub preference : Auth('view') {
    my ($self, $context) = @_;
 
-   my $name   = $self->_preference_name($context);
    my $value  = $context->body_parameters->{data} if $context->posted;
-   my $pref   = $self->_preference($context, $name, $value);
+   my $pref   = $self->_preference($context, 'table', $value);
    my $result = $pref ? $pref->value : {};
 
    $self->_stash_response($context, [HTTP_OK, $result]);
@@ -290,6 +220,19 @@ sub push_worker : Auth('none') {
    my $content = $jsdir->catfile('service-worker.js')->slurp;
 
    $context->stash(response => [HTTP_OK, [@headers], [$content]]);
+   return;
+}
+
+sub tabs_preference : Auth('view') {
+   my ($self, $context) = @_;
+
+   $context->stash(entity_name => 'tabs');
+
+   my $value  = $context->body_parameters->{data} if $context->posted;
+   my $pref   = $self->_preference($context, 'navigation', $value);
+   my $result = $pref ? $pref->value : {};
+
+   $self->_stash_response($context, [HTTP_OK, $result]);
    return;
 }
 
@@ -348,11 +291,11 @@ sub _fetch_timezones {
 }
 
 sub _preference { # Accessor/mutator with builtin clearer. Store "" to delete
-   my ($self, $context, $name, $value) = @_;
+   my ($self, $context, $entity, $value) = @_;
 
-   return unless $name;
-
-   my $rs = $context->model('Preference');
+   my $entity_name = $context->stash('entity_name') or return;
+   my $name        = $entity . DOT . $entity_name . DOT . 'preference';
+   my $rs          = $context->model('Preference');
 
    return $rs->update_or_create({ # Mutator
       name => $name, user_id => $context->session->id, value => $value
@@ -365,15 +308,6 @@ sub _preference { # Accessor/mutator with builtin clearer. Store "" to delete
    return $pref->delete if defined $pref && defined $value; # Clearer
 
    return $pref; # Accessor
-}
-
-sub _preference_name {
-   my ($self, $context) = @_;
-
-   return 'diagram' . DOT . $context->stash('diagram_name') . DOT . 'preference'
-      if $context->stash('diagram_name');
-
-   return 'table' . DOT . $context->stash('table_name') . DOT . 'preference';
 }
 
 sub _stash_response {

@@ -5,7 +5,7 @@ use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( TRANSITION_ENUM );
 use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
-                            numerical_data_type numerical_id_data_type
+                            integer_data_type integer_id_data_type
                             serial_data_type set_on_create_datetime_data_type
                             varchar_data_type );
 
@@ -18,10 +18,10 @@ $class->add_columns(
    id         => serial_data_type,
    created    => { %{set_on_create_datetime_data_type()}, timezone => 'UTC' },
    job_id     => foreign_key_data_type,
-   transition => enumerated_data_type( TRANSITION_ENUM ),
-   runid      => varchar_data_type( 20, NUL ),
-   pid        => numerical_data_type( 0 ),
-   rv         => numerical_id_data_type( 0 ),
+   transition => enumerated_data_type(TRANSITION_ENUM),
+   runid      => varchar_data_type(20, NUL),
+   pid        => integer_data_type(0),
+   rv         => integer_id_data_type(0),
 );
 
 $class->set_primary_key('id');

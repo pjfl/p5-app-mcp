@@ -44,12 +44,13 @@
         }
         .box-tile, .job-tile {
             border: 1px solid @line-border; border-radius: 5px;
-            box-shadow: 3px 3px 3px @panel-shadow; padding: 0.25rem;
+            box-shadow: 3px 3px 3px @panel-shadow;
             &:has(> .box-table.open) {
                 padding: 0.25rem 0.25rem 0.5rem 0.25rem;
             }
         }
         .box-tile {
+            padding: 0.125rem 0.25rem;
             & > .title {
                 align-items: center; display: flex;
                 gap: 1rem; justify-content: space-between;
@@ -64,6 +65,9 @@
                     }
                 }
             }
+        }
+        .job-tile {
+            padding: 0.25rem;
         }
         .title {
             font-family: #fonts[sans]; font-size: @title-font-size;

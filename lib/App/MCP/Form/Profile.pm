@@ -115,13 +115,14 @@ has_field 'advanced_options' => type => 'Group', info => 'Advanced Options';
 
 has_field 'features' =>
    type             => 'Select',
-   auto_widget_size => 6,
+   auto_widget_size => 7,
    field_group      => 'advanced_options',
    multiple         => TRUE,
    size             => 4,
    options          => [
       { label => 'Animation',        value => 'animation' },
       { label => 'Droplets',         value => 'droplets' },
+      { label => 'Navigation Tabs',  value => 'tabs' },
       { label => 'Notifications',    value => 'notifications' },
       { label => 'Radar',            value => 'radar' },
       { label => 'Relative Colours', value => 'relative' },

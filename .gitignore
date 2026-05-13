@@ -35,6 +35,7 @@ share/js/wcom-2*
 share/js/wcom-3*
 share/js/wcom-4*
 t/ipc_srlock*
+var/backup
 var/bugs
 var/etc/app-mcp-local.json
 var/log

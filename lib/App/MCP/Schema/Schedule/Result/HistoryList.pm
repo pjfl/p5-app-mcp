@@ -2,8 +2,8 @@ package App::MCP::Schema::Schedule::Result::HistoryList;
 
 use App::MCP::Constants qw( EXCEPTION_CLASS FALSE TRUE );
 use App::MCP::Util      qw( concise_duration foreign_key_data_type
-                            nullable_varchar_data_type numerical_data_type
-                            numerical_id_data_type varchar_data_type );
+                            nullable_varchar_data_type integer_data_type
+                            integer_id_data_type varchar_data_type );
 use DBIx::Class::Moo::ResultClass;
 
 extends 'App::MCP::Schema::Base';
@@ -47,8 +47,8 @@ $class->result_source_instance->view_definition(qq{
 $class->add_columns(
    job_id   => foreign_key_data_type,
    runid    => varchar_data_type(20),
-   pid      => numerical_data_type,
-   rv       => numerical_id_data_type,
+   pid      => integer_data_type(0),
+   rv       => integer_id_data_type(0),
    rejected => nullable_varchar_data_type(16),
    started  => { data_type => 'timestamp', timezone => 'UTC' },
    finished => { data_type => 'timestamp', timezone => 'UTC' },

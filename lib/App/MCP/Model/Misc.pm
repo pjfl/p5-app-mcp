@@ -69,26 +69,6 @@ sub default : Auth('none') {
    return;
 }
 
-sub footer : Auth('none') {
-   my ($self, $context, $moniker, $method) = @_;
-
-   $context->stash(page => { layout => 'site/footer' });
-
-   my $action    = "${moniker}/footer";
-   my $session   = $context->session;
-   my $templates = $context->views->{html}->templates;
-   my $footer    = $templates->catdir($session->skin)->catfile("${action}.tt");
-
-   $context->stash(page => { layout => $action }) if $footer->exists;
-
-   $action = "${moniker}/${method}_footer";
-   $footer = $templates->catdir($session->skin)->catfile("${action}.tt");
-
-   $context->stash(page => { layout => $action }) if $footer->exists;
-
-   return;
-}
-
 sub login : Auth('none') Nav('Sign In') {
    my ($self, $context) = @_;
 

@@ -4452,11 +4452,13 @@ body {
   border: 1px solid gray;
   border-radius: 5px;
   box-shadow: 3px 3px 3px gray;
-  padding: 0.25rem;
 }
 .state-container .diagram-container .box-tile:has(> .box-table.open),
 .state-container .diagram-container .job-tile:has(> .box-table.open) {
   padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+}
+.state-container .diagram-container .box-tile {
+  padding: 0.125rem 0.25rem;
 }
 .state-container .diagram-container .box-tile > .title {
   align-items: center;
@@ -4475,6 +4477,9 @@ body {
 }
 .state-container .diagram-container .box-tile > .title .box-toggle.reversed {
   transform: rotate(180deg);
+}
+.state-container .diagram-container .job-tile {
+  padding: 0.25rem;
 }
 .state-container .diagram-container .title {
   font-family: 'Roboto', 'Segoe UI', 'Helvetica', system-ui, sans-serif;

@@ -557,16 +557,21 @@ has '_logfile' =>
       return "${name}.csv"
    };
 
+=item C<max_api_session_time>
+
+A positive integer that defaults to B<300>.
+
+=cut
+
+has 'max_api_session_time' => is => 'ro', isa => PositiveInt, default => 300;
+
 =item C<max_asset_size>
 
 A positive integer that defaults to B<4_194_304>.
 
 =cut
 
-has 'max_asset_size' =>
-   is      => 'ro',
-   isa     => PositiveInt,
-   default => 4_194_304;
+has 'max_asset_size' => is => 'ro', isa => PositiveInt, default => 4_194_304;
 
 =item C<max_messages>
 
@@ -575,22 +580,6 @@ A non zero positive integer that defaults to B<3>.
 =cut
 
 has 'max_messages' => is => 'ro', isa => NonZeroPositiveInt, default => 3;
-
-=item C<max_web_session_time>
-
-A positive integer that defaults to B<3_600>.
-
-=cut
-
-has 'max_web_session_time' => is => 'ro', isa => PositiveInt, default => 3_600;
-
-=item C<max_api_session_time>
-
-A positive integer that defaults to B<300>.
-
-=cut
-
-has 'max_api_session_time' => is => 'ro', isa => PositiveInt, default => 300;
 
 =item C<max_ssh_worker_calls>
 
@@ -612,6 +601,14 @@ has 'max_ssh_workers' =>
    isa           => NonZeroPositiveInt,
    documentation => 'Maximum number of SSH worker processes',
    default       => 3;
+
+=item C<max_web_session_time>
+
+A positive integer that defaults to B<3_600>.
+
+=cut
+
+has 'max_web_session_time' => is => 'ro', isa => PositiveInt, default => 3_600;
 
 =item C<mount_point>
 
@@ -644,16 +641,15 @@ has 'navigation' =>
       my $self = shift;
 
       return {
-         footer_action  => 'misc/footer',
+         footer_action  => 'api/footer',
          logger_action  => 'api/logger',
          message_action => 'api/collect_messages',
          messages       => { 'buffer-limit' => $self->max_messages },
+         tabs_action    => 'api/tabs_preference',
          title          => $self->name,
          title_abbrev   => uc $self->prefix,
          %{$self->_navigation},
-         global => [
-            qw( job/list state/view history/list admin/menu )
-         ],
+         global         => [qw( job/list state/view history/list admin/menu )],
       };
    };
 

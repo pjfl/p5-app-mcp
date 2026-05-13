@@ -62,17 +62,23 @@ has_field '_g1' => type => 'Group';
 
 has_field 'type' =>
    type         => 'Select',
+   default      => 'box',
    html_name    => 'job_type',
    input_param  => 'job_type',
    field_group  => '_g1',
-   toggle       => { job => [qw(command directory _g3 _g4)] },
+   toggle       => {
+      job => [qw(command directory _g3 _g4)],
+   },
    toggle_event => 'change',
    options      => [
       { label => 'Job', value => 'job' },
       { label => 'Box', value => 'box' },
    ];
 
-has_field 'parent_id' => type => 'Hidden', field_group => '_g1';
+has_field 'parent_id' =>
+   type                => 'Hidden',
+   validate_when_empty => FALSE,
+   field_group         => '_g1';
 
 has_field 'parent_name' =>
    type        => 'SelectOne',
@@ -104,13 +110,20 @@ has_field 'group_rel' =>
    title       => 'Group owner of the job';
 
 sub options_group_rel {
-   my $self   = shift;
-   my $option = sub {
-      return { label => ucfirst $_[0]->role_name, value => $_[0]->id };
+   my $self       = shift;
+   my $get_option = sub {
+      my $self   = shift;
+      my $option = { label => ucfirst $self->role_name, value => $self->id };
+
+      return $option unless $self->role_name eq 'mcp';
+
+      $option->{label} = 'MCP';
+      $option->{selected} = 'selected';
+      return $option;
    };
 
    return [
-      map  { $option->($_) }
+      map  { $get_option->($_) }
       grep { !includes $_->role_name, [qw(admin edit view)] }
       @{$self->_groups}
    ];
@@ -124,12 +137,11 @@ has_field 'permissions' =>
    title       => 'Select permissions';
 
 has_field 'condition' =>
-   type  => 'TextArea',
-   cols  => 32,
+   type              => 'TextArea',
+   cols              => 32,
    no_value_if_empty => TRUE,
-   tags  => { nospellcheck => TRUE },
-   title => 'Run the command when this condition evaluates to true',
-   validate_when_empty => TRUE;
+   tags              => { nospellcheck => TRUE },
+   title             => 'Run the command when this condition evaluates to true';
 
 has_field '_g5' => type => 'Group';
 
@@ -137,15 +149,13 @@ has_field 'crontab_min' =>
    label       => 'Minute',
    field_group => '_g5',
    size        => 3,
-   title       => "Comma separated list. Digits 0-59 or '*'",
-   validate_when_empty => TRUE;
+   title       => "Comma separated list. Digits 0-59 or '*'";
 
 has_field 'crontab_hour' =>
    label       => 'Hour',
    field_group => '_g5',
    size        => 3,
-   title       => "Comma separated list. Digits 0-23 or '*'",
-   validate_when_empty => TRUE;
+   title       => "Comma separated list. Digits 0-23 or '*'";
 
 has_field '_g6' => type => 'Group';
 
@@ -153,21 +163,18 @@ has_field 'crontab_mday' =>
    label       => 'Day of Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Comma separated list. Digits 1-31 or '*'",
-   validate_when_empty => TRUE;
+   title       => "Comma separated list. Digits 1-31 or '*'";
 
 has_field 'crontab_mon' =>
    label       => 'Month',
    field_group => '_g6',
    size        => 3,
-   title       => "Comma separated list. Digits 1-12 or names or '*'",
-   validate_when_empty => TRUE;
+   title       => "Comma separated list. Digits 1-12 or names or '*'";
 
 has_field 'crontab_wday' =>
    label => 'Day of Week',
    size  => 3,
-   title => "Comma separated list. Digits 0-7 or names or '*'. Zero is Sunday",
-   validate_when_empty => TRUE;
+   title => "Comma separated list. Digits 0-7 or names or '*'. Zero is Sunday";
 
 has_field '_g4' =>
    type => 'Group',
@@ -191,27 +198,24 @@ has_field 'command' =>
    cols     => 32,
    required => TRUE,
    tags     => { nospellcheck => TRUE },
-   title    => 'Command to execute on the given host',
-   validate_when_empty => TRUE;
+   title    => 'Command to execute on the given host';
 
 has_field 'directory' =>
    autocomplete => TRUE,
    size         => 32,
-   title        => 'Make this the working directory when executing the command',
-   validate_when_empty => TRUE;
+   title        => 'Make this the working directory when executing the command';
 
 has_field '_g3' => type => 'Group';
 
 has_field 'expected_rv' =>
-   type                => 'PosInteger',
-   default             => 0,
-   field_group         => '_g3',
-   label               => 'Expected RV',
-   size                => 3,
-   title               => 'The expected return value of the command. '
-                        . 'Higher values trigger an error condition',
-   validate_inline     => TRUE,
-   validate_when_empty => TRUE;
+   type            => 'PosInteger',
+   default         => 0,
+   field_group     => '_g3',
+   label           => 'Expected RV',
+   size            => 3,
+   title           => 'The expected return value of the command. '
+                   . 'Higher values trigger an error condition',
+   validate_inline => TRUE;
 
 has_field 'delete_after' =>
    type        => 'Boolean',
@@ -229,6 +233,13 @@ has_field 'submit' => type => 'Button';
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
+
+   if ($self->field('type')->value eq 'box') {
+      $self->field('_g3')->add_wrapper_class('hide');
+      $self->field('_g4')->add_wrapper_class('hide');
+      $self->field('command')->add_wrapper_class('hide');
+      $self->field('directory')->add_wrapper_class('hide');
+   }
 
    if (my $item = $self->item) {
       my $view = $self->context->uri_for_action('job/view', [$item->id]);

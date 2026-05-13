@@ -66,6 +66,8 @@ sub BUILD {
    $self->state('starting',   transitions => [qw(fail started)]);
    $self->state('terminated', transitions => [qw(activate)]);
 
+   # TODO: Que_wait for load average balencing
+   # TODO: Force start job. Ignore conditions
 
    $self->transition('activate',   to_state   => 'active');
    $self->transition('deactivate', to_state   => 'inactive');
@@ -134,7 +136,7 @@ sub _validate_start {
    my $job = $event->job;
 
    throw Crontab   unless $job->should_start_now;
-   throw Condition unless $job->current_condition;
+   throw Condition unless $job->start_condition;
 
    return;
 }

@@ -41,6 +41,7 @@ has_field 'auth_code' =>
    label_top     => TRUE,
    size          => 6,
    title         => 'Enter the Authenticator code',
+   validate_when_empty => FALSE,
    wrapper_class => ['input-integer'];
 
 has_field 'login' =>

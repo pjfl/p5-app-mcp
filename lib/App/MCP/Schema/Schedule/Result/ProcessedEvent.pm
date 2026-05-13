@@ -5,8 +5,8 @@ use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( TRANSITION_ENUM NUL );
 use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
-                            nullable_varchar_data_type numerical_data_type
-                            numerical_id_data_type serial_data_type
+                            nullable_varchar_data_type integer_data_type
+                            integer_id_data_type serial_data_type
                             set_on_create_datetime_data_type
                             varchar_data_type );
 
@@ -24,8 +24,8 @@ $class->add_columns(
    rejected   => nullable_varchar_data_type(16),
    runid      => varchar_data_type(20),
    token      => varchar_data_type(32, NUL),
-   pid        => numerical_data_type,
-   rv         => numerical_id_data_type,
+   pid        => integer_data_type(0),
+   rv         => integer_id_data_type(0),
 );
 
 $class->set_primary_key('id');

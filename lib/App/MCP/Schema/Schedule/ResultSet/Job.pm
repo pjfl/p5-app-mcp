@@ -127,6 +127,9 @@ sub load {
    return $count;
 }
 
+# TODO: Originally success failure done terminated
+# TODO: Predicates should take a look back time duration value
+# TODO: Globals condition: success(BACKUP) AND value(TODAY)=Friday
 sub predicates {
    return [ qw( finished running terminated ) ];
 }
