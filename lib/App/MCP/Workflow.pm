@@ -2,8 +2,8 @@ package App::MCP::Workflow;
 
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
 use Scalar::Util          qw( blessed );
-use Unexpected::Functions qw( throw catch_class ActiveJobs Condition Crontab
-                              Illegal Retry );
+use Unexpected::Functions qw( throw catch_class ActiveJobs AutoHold Condition
+                              Crontab ExpectedRV Illegal );
 use App::MCP::Workflow::Transition;
 use Try::Tiny;
 use Moo;
@@ -36,6 +36,9 @@ Defines the following methods;
 
 =item C<BUILDARGS>
 
+Sets the L<< C<transition_class>|App::MCP::Workflow::Transition >> attribute in
+the constructor call
+
 =cut
 
 around 'BUILDARGS' => sub {
@@ -50,40 +53,55 @@ around 'BUILDARGS' => sub {
 
 =item C<BUILD>
 
+Initialises the workflow object. Defines states and transitions
+
 =cut
+
+# TODO: Que_wait for load average balencing
 
 sub BUILD {
    my $self = shift;
 
    $self->initial_state('inactive');
 
-   $self->state('active',   transitions => [qw(deactivate fail on_hold start)]);
+   my $active_transitions  = [qw(deactivate fail force_start on_hold start)];
+   my $running_transitions = [qw(fail finish kill_job terminate)];
+
+   $self->state('active',     transitions => $active_transitions);
    $self->state('hold',       transitions => [qw(off_hold)]);
-   $self->state('failed',     transitions => [qw(activate)]);
-   $self->state('finished',   transitions => [qw(activate)]);
-   $self->state('inactive',   transitions => [qw(activate)]);
-   $self->state('running',    transitions => [qw(fail finish terminate)]);
+   $self->state('failed',     transitions => [qw(activate on_hold)]);
+   $self->state('finished',   transitions => [qw(activate on_hold)]);
+   $self->state('inactive',   transitions => [qw(activate on_hold)]);
+   $self->state('running',    transitions => $running_transitions);
    $self->state('starting',   transitions => [qw(fail started)]);
-   $self->state('terminated', transitions => [qw(activate)]);
+   $self->state('terminated', transitions => [qw(activate on_hold)]);
 
-   # TODO: Que_wait for load average balencing
-   # TODO: Force start job. Ignore conditions
-
-   $self->transition('activate',   to_state   => 'active');
-   $self->transition('deactivate', to_state   => 'inactive');
-   $self->transition('fail',       to_state   => 'failed');
-   $self->transition('finish',     to_state   => 'finished',
-                                   validators => [\&_validate_finish]);
-   $self->transition('off_hold',   to_state   => 'active');
-   $self->transition('on_hold',    to_state   => 'hold');
-   $self->transition('start',      to_state   => 'starting',
-                                   validators => [\&_validate_start]);
-   $self->transition('started',    to_state   => 'running');
-   $self->transition('terminate',  to_state   => 'terminated');
+   $self->transition('activate',    to_state   => 'active',
+                                    validators => [\&_validate_activate]);
+   $self->transition('deactivate',  to_state   => 'inactive');
+   $self->transition('fail',        to_state   => 'failed');
+   $self->transition('finish',      to_state   => 'finished',
+                                    validators => [\&_validate_finish]);
+   $self->transition('force_start', to_state   => 'starting');
+   $self->transition('kill_job',    to_state   => 'failed');
+   $self->transition('off_hold',    to_state   => 'active');
+   $self->transition('on_hold',     to_state   => 'hold');
+   $self->transition('start',       to_state   => 'starting',
+                                    validators => [\&_validate_start]);
+   $self->transition('started',     to_state   => 'running');
+   $self->transition('terminate',   to_state   => 'terminated');
    return;
 }
 
 =item C<process_event>
+
+   $state_name = $self->process_event($state_name, $event);
+
+Applies the C<event>.C<transition> to a workflow instance initialised with the
+given C<state_name>
+
+Returns the new C<state_name> if the C<transition> is valid, raises an
+exception otherwise
 
 =cut
 
@@ -115,6 +133,16 @@ sub process_event {
 }
 
 # Private methods
+sub _validate_activate {
+   my ($self, $instance, $event) = @_;
+
+   return unless $event->job->auto_hold;
+
+   $event->transition->set_on_hold;
+
+   throw AutoHold;
+}
+
 sub _validate_finish {
    my ($self, $instance, $event) = @_;
 
@@ -126,7 +154,7 @@ sub _validate_finish {
 
    $event->transition->set_fail;
 
-   throw Retry, [ $event->rv, $job->expected_rv ];
+   throw ExpectedRV, [$event->rv, $job->expected_rv];
 }
 
 

@@ -28,6 +28,8 @@ $class->set_primary_key('id');
 
 $class->belongs_to('job' => "${schema}::Result::Job", 'job_id' );
 
+# TODO: Implement the event stream
+
 sub insert {
    my $self = shift; $self->validate; return $self->next::method;
 }

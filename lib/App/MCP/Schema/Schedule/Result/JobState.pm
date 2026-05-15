@@ -85,7 +85,6 @@ sub _last_finish_event {
 
    return $self->{_last_finish_event} if exists $self->{_last_finish_event};
 
-   # TODO: Use of first?
    return $self->{_last_finish_event} = $self->processed_events->search(
       { transition => 'finish' },
       { order_by   => { -desc => 'runid' }, rows => 1 }

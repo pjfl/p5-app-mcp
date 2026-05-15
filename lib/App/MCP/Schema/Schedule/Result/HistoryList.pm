@@ -20,8 +20,10 @@ $class->result_source_instance->is_virtual(TRUE);
 $class->result_source_instance->view_definition(qq{
    select crosstab.job_id, crosstab.runid, crosstab.pid, crosstab.rv,
       crosstab.rejected, crosstab.start as started,
-      coalesce(crosstab.finish, crosstab.terminate, crosstab.fail) as finished,
-      coalesce(crosstab.terminate, crosstab.fail) as failed
+      coalesce(
+         crosstab.fail, crosstab.finish, crosstab.kill_job, crosstab.terminate
+      ) as finished,
+      coalesce(crosstab.fail, crosstab.kill_job, crosstab.terminate) as failed
    from crosstab('
       select runid, job_id, pid, rv, rejected, transition, created
       from processed_events
@@ -29,7 +31,9 @@ $class->result_source_instance->view_definition(qq{
       order by runid, created desc','
       select distinct transition
       from processed_events
-      where transition in (''fail'', ''finish'', ''start'', ''terminate'')
+      where transition in (
+         ''fail'', ''finish'', ''kill_job'',''start'', ''terminate''
+      )
       order by transition'
    ) crosstab(
       runid varchar(20) collate "C",
@@ -39,6 +43,7 @@ $class->result_source_instance->view_definition(qq{
       rejected text,
       fail timestamp,
       finish timestamp,
+      kill_job timestamp,
       start timestamp,
       terminate timestamp
    )

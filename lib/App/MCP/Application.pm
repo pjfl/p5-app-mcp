@@ -3,11 +3,11 @@ package App::MCP::Application;
 use version;
 
 use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK SPC TRANSITION_ENUM );
-use Unexpected::Types      qw( HashRef LoadableClass NonEmptySimpleStr
+use Unexpected::Types      qw( ArrayRef HashRef LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object );
 use App::MCP::Util         qw( concise_duration create_token distname
                                trigger_input_handler trigger_output_handler );
-use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
+use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded includes );
 use English                qw( -no_match_vars );
 use List::Util             qw( first );
 use Scalar::Util           qw( weaken );
@@ -60,6 +60,20 @@ has 'worker' =>
    isa     => NonEmptySimpleStr,
    default => sub { shift->config->appclass . '::Worker' };
 
+has '_input_transitions' =>
+   is      => 'lazy',
+   isa     => ArrayRef,
+   default => sub {
+      my $transitions = shift->_output_transitions;
+
+      return [ grep { !includes $_, $transitions } @{TRANSITION_ENUM()} ];
+   };
+
+has '_output_transitions' =>
+   is      => 'ro',
+   isa     => ArrayRef,
+   default => sub { ['force_start', 'kill_job', 'start'] };
+
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
 
 =back
@@ -88,7 +102,9 @@ sub cron_job_handler {
    my $jobs    = $job_rs->search({
       'state.name'        => 'active',
       'me.crontab'        => { '!=' => NUL },
-      'events.transition' => [ undef, { '!=' => 'start' } ],
+      'events.transition' => [
+         undef, { '!=' => [ -and => $self->_output_transitions ] }
+      ],
    }, {
       'columns' => [qw( condition crontab events.transition
                         id state.name state.updated )],
@@ -116,11 +132,10 @@ sub input_handler {
    my ($self, $name, $sig_hndlr_pid) = @_;
 
    my $schema  = $self->schema;
+   my $where   = { transition => $self->_input_transitions };
+   my $options = { order_by => { -asc => 'me.id' }, prefetch => 'job' };
+   my $events  = $schema->resultset('Event')->search($where, $options);
    my $pev_rs  = $schema->resultset('ProcessedEvent');
-   my $events  = $schema->resultset('Event')->search(
-      { transition => [ grep { $_ ne 'start' } @{TRANSITION_ENUM()} ] },
-      { order_by   => { -asc => 'me.id' }, prefetch => 'job' }
-   );
    my $trigger = TRUE;
 
    while ($trigger) {
@@ -128,11 +143,11 @@ sub input_handler {
 
       for my $event ($events->all) {
          $schema->txn_do(sub {
-            my $p_ev = $self->_process_event($name, $event);
+            my $pev = $self->_process_event($name, $event);
 
-            $trigger = TRUE unless $p_ev->{rejected};
+            $trigger = TRUE unless $pev->{rejected};
 
-            $pev_rs->create($p_ev);
+            $pev_rs->create($pev);
             $event->delete;
 
             $event->job->delete if $event->job->delete_after
@@ -253,18 +268,21 @@ sub output_handler {
    my ($self, $name, $sig_hndlr_pid, $ipc_ssh) = @_;
 
    my $schema  = $self->schema;
-   my $where   = { transition => 'start' };
-   my $ev_rs   = $schema->resultset('Event');
-   my $events  = $ev_rs->search($where, { prefetch => 'job' });
+   my $options = { prefetch => 'job' };
+   my $where   = { transition => $self->_output_transitions };
+   my $events  = $schema->resultset('Event')->search($where, $options);
    my $trigger = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
 
       for my $event ($events->all) {
-         my $job_id  = $event->job->id;
+         my $method = '_process_start_event';
+
+         $method = '_process_kill_event' if $event->transition eq 'kill_job';
+
          my $success = $schema->txn_do(sub {
-            return $self->_process_start_event($name, $event, $ipc_ssh);
+            return $self->$method($name, $event, $ipc_ssh);
          });
 
          if ($success) {
@@ -295,11 +313,14 @@ sub _cron_log_interval {
 }
 
 sub _dispatch_args {
-   my ($self, $job, $runid, $token) = @_;
+   my ($self, $job, $command) = @_;
+
+   my $runid = bson64id;
+   my $token = substr create_token, 0, 32;
 
    return {
       appclass  => $self->config->appclass,
-      command   => $job->command,
+      command   => $command,
       debug     => $self->debug,
       directory => $job->directory,
       job_id    => $job->id,
@@ -309,6 +330,44 @@ sub _dispatch_args {
       token     => $token,
       worker    => $self->worker,
    };
+}
+
+sub _dispatch_message {
+   my ($self, $job, $adjective, $runid) = @_;
+
+   my $cmd  = $job->command;
+   my $host = $job->host;
+   my $name = $job->job_name;
+   my $user = $job->user_name;
+
+   return "${name}[${runid}]: ${adjective} ${user}\@${host} ${cmd}";
+}
+
+sub _dispatch_job {
+   my ($self, $ipc_ssh, $job, $args) = @_;
+
+   if ($job->host ne 'localhost') {
+      my $user    = $job->user_name;
+      my $calls   = [['dispatch', [%{$args}]]];
+      my $options = { calls => $calls, host => $job->host, user => $user };
+
+      $self->_ipc_ssh_add_provisioning($options);
+      $ipc_ssh->call($args->{runid}, $options); # Calls ipc_ssh_caller
+   }
+   else {
+      ensure_class_loaded $self->worker;
+
+      $args->{config} = $self->config;
+      $args->{log} = $self->log;
+
+      my $response = $self->worker->new($args)->dispatch;
+      my $name     = $job->job_name;
+      my $runid    = $args->{runid};
+
+      $self->log->debug("${name}[${runid}]: ${response}");
+   }
+
+   return;
 }
 
 my $identity_file_cache = {};
@@ -433,25 +492,53 @@ sub _process_event {
    return $cols;
 }
 
+sub _process_kill_event {
+   my ($self, $name, $event, $ipc_ssh) = @_;
+
+   my $pev      = $self->_process_event($name, $event);
+   my $success  = $pev->{rejected} ? FALSE : TRUE;
+   my $job      = $event->job;
+   my $pev_rs   = $self->schema->resultset('ProcessedEvent');
+   my $last_pev = $pev_rs->find_last($job);
+
+   if ($success && $last_pev) {
+      my $args    = $self->_dispatch_args($job, 'kill_job');
+      my $message = $self->_dispatch_message($job, 'Killing', $last_pev->runid);
+
+      $self->log->info($message);
+      $args->{runid} = $pev->{runid} = $last_pev->runid;
+      $args->{token} = $pev->{token} = $last_pev->token;
+      $self->_dispatch_job($ipc_ssh, $job, $args);
+   }
+
+   $pev_rs->create($pev);
+   $event->delete;
+   return $success;
+}
+
 sub _process_start_event {
    my ($self, $name, $event, $ipc_ssh) = @_;
 
-   my $p_ev    = $self->_process_event($name, $event);
-   my $success = $p_ev->{rejected} ? FALSE : TRUE;
+   my $pev     = $self->_process_event($name, $event);
+   my $success = $pev->{rejected} ? FALSE : TRUE;
+   my $job     = $event->job;
 
-   if ($success && $event->job->type eq 'job') {
-      my ($runid, $token) = $self->_start_job($ipc_ssh, $event->job);
+   if ($success && $job->type eq 'job') {
+      my $args    = $self->_dispatch_args($job, $job->command);
+      my $message = $self->_dispatch_message($job, 'Starting', $args->{runid});
 
-      $p_ev->{runid} = $runid;
-      $p_ev->{token} = $token;
+      $self->log->info($message);
+      $pev->{runid} = $args->{runid};
+      $pev->{token} = $args->{token};
+      $self->_dispatch_job($ipc_ssh, $job, $args);
    }
-   elsif ($success && $event->job->type eq 'box') {
-      my $ev_rs = $self->schema->resultset('Event');
+   elsif ($success && $job->type eq 'box') {
+      my $options = { job_id => $job->id, transition => 'started' };
 
-      $ev_rs->create({ job_id => $event->job->id, transition => 'started' });
+      $self->schema->resultset('Event')->create($options);
    }
 
-   $self->schema->resultset('ProcessedEvent')->create($p_ev);
+   $self->schema->resultset('ProcessedEvent')->create($pev);
    $event->delete;
    return $success;
 }
@@ -462,40 +549,6 @@ sub _remote_provisioned {
    $self->_provisioned->{$key} = $val if defined $val;
 
    return $self->_provisioned->{$key};
-}
-
-sub _start_job {
-   my ($self, $ipc_ssh, $job) = @_;
-
-   my $runid  = bson64id;
-   my $token  = substr create_token, 0, 32;
-   my $host   = $job->host;
-   my $user   = $job->user_name;
-   my $cmd    = $job->command;
-   my $leader = $job->job_name . "[${runid}]";
-   my $args   = $self->_dispatch_args($job, $runid, $token);
-
-   $self->log->info("${leader}: Starting ${user}\@${host} ${cmd}");
-
-   if ($host ne 'localhost') {
-      my $calls   = [['dispatch', [%{$args}]]];
-      my $options = { calls => $calls, host => $host, user => $user, };
-
-      $self->_ipc_ssh_add_provisioning($options);
-      $ipc_ssh->call($runid, $options); # Calls ipc_ssh_caller
-   }
-   else {
-      ensure_class_loaded $self->worker;
-
-      $args->{config} = $self->config;
-      $args->{log} = $self->log;
-
-      my $response = $self->worker->new($args)->dispatch;
-
-      $self->log->debug("${leader}: ${response}");
-   }
-
-   return ($runid, $token);
 }
 
 use namespace::autoclean;

@@ -187,8 +187,6 @@ sub install : method {
    return OK;
 }
 
-# TODO: Implement kill job
-
 =item make_all - Run JS and CSS production methods
 
 A convienience method which calls the other three front end file production

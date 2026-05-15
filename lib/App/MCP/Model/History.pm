@@ -53,7 +53,7 @@ sub list : Auth('view') Nav('History|img/history.svg') {
    my $options = { context => $context };
 
    if (my $job = $context->stash('job')) {
-      $options->{caption} = 'List Job History';
+      $options->{caption} = 'List Job Runs';
       $options->{job} = $job;
    }
 
@@ -65,7 +65,7 @@ sub list : Auth('view') Nav('History|img/history.svg') {
    return;
 }
 
-sub runlist : Auth('view') Nav('Job History') {
+sub runlist : Auth('view') Nav('Job Runs') {
    my ($self, $context) = @_; return $self->list($context);
 }
 

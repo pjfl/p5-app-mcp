@@ -21,7 +21,7 @@ sub dispatch_request { build_routes
    'GET|POST + /api/table/*/preference + ?*'      => 'api/table/preference',
    'GET|POST + /api/tabs/preference + ?*'         => 'api/tabs_preference',
 
-   'GET + /api/diagram/*/preference + ?*' => 'api/diagram/preference',
+   'GET|POST + /api/diagram/*/preference + ?*' => 'api/diagram/diag_preference',
 
    'GET  + /worker/user/*/exchange_keys + ?*' => 'worker/user/exchange_keys',
    'POST + /worker/user/*/authenticate  + ?*' => 'worker/user/authenticate',

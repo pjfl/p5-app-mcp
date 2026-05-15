@@ -251,7 +251,7 @@ has_exception 'IncorrectPassword' => parents => ['Authentication'],
 =cut
 
 has_exception 'InvalidIPAddress' => parents => ['Authentication'],
-   error   => 'User [_1] invalid IP address';
+   error   => 'User [_1] invalid IP address', rv => HTTP_UNAUTHORIZED;
 
 =item C<PasswordDisabled>
 
@@ -271,7 +271,7 @@ has_exception 'PasswordExpired' => parents => ['Authentication'],
 
 =cut
 
-has_exception 'Workflow'  => parents => [$class];
+has_exception 'Workflow' => parents => [$class];
 
 =item C<ActiveJobs>
 
@@ -291,28 +291,40 @@ has_exception 'Condition' => parents => ['Workflow'],
 
 =cut
 
-has_exception 'Crontab'   => parents => ['Workflow'],
+has_exception 'Crontab' => parents => ['Workflow'],
    error   => 'Not at this time';
 
 =item C<Illegal>
 
 =cut
 
-has_exception 'Illegal'   => parents => ['Workflow'],
+has_exception 'Illegal' => parents => ['Workflow'],
    error   => 'Transition [_1] from state [_2] illegal';
-
-=item C<Retry>
-
-=cut
-
-has_exception 'Retry'     => parents => ['Workflow'],
-   error   => 'Rv [_1] greater than expected [_2]';
 
 =item C<Unknown>
 
 =cut
 
-has_exception 'Unknown'   => parents => ['Workflow'];
+has_exception 'Unknown' => parents => ['Workflow'];
+
+=item C<Retry>
+
+=cut
+
+has_exception 'Retry' => parents => ['Workflow'];
+
+=item C<ExpectedRV>
+
+=cut
+
+has_exception 'ExpectedRV' => parents => ['Retry'],
+   error   => 'Rv [_1] greater than expected [_2]';
+
+=item C<AutoHold>
+
+=cut
+
+has_exception 'AutoHold' => parents => ['Retry'], error => 'Auto hold true';
 
 use namespace::autoclean;
 

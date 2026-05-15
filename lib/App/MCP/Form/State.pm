@@ -58,6 +58,12 @@ has_field 'view' =>
    element_class => ['form-button', 'pageload'],
    wrapper_class => ['input-button', 'inline'];
 
+has_field 'events' =>
+   type          => 'Link',
+   label         => 'Events',
+   element_class => ['form-button', 'pageload'],
+   wrapper_class => ['input-button', 'inline'];
+
 after 'after_build_fields' => sub {
    my $self       = shift;
    my $job        = $self->item;
@@ -79,6 +85,11 @@ after 'after_build_fields' => sub {
    my $view = $self->context->uri_for_action('job/view', [$job->id]);
 
    $self->field('view')->href($view->as_string);
+
+   my $events = $self->context->uri_for_action('history/view', [$job->id]);
+
+   $self->field('events')->href($events->as_string);
+
    return;
 };
 
@@ -87,15 +98,6 @@ sub update_model {
    my $context = $self->context;
    my $signal  = $self->field('signal')->value;
    my $args    = { job_id => $self->item->id, transition => $signal };
-
-   if ($signal ne 'start') {
-      my $last_pev = $context->schema->resultset('ProcessedEvent')->search(
-         { job_id  => $self->item->id, transition => 'start' },
-         { columns => ['runid'], order_by => { -desc => 'created' }, rows => 1 }
-      )->single;
-
-      $args->{runid} = $last_pev->runid if $last_pev;
-   }
 
    $context->schema->resultset('Event')->create($args);
 

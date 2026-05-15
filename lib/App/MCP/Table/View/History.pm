@@ -5,8 +5,13 @@ use Moo;
 use HTML::StateTable::Moo;
 
 extends 'HTML::StateTable';
+with    'HTML::StateTable::Role::Configurable';
 
 has '+caption' => default => 'List Job Events';
+
+has '+configurable_action' => default => 'api/preference';
+
+has '+configurable_control_location' => default => 'TopRight';
 
 has '+icons' => default => sub { shift->context->icons_uri->as_string };
 

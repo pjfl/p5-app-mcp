@@ -52,8 +52,9 @@ sub create : Nav('Create Job') {
    my $form    = $self->new_form('Job', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $view    = $context->uri_for_action('job/view', [$form->item->id]);
-      my $message = ['Job [_1] created', $form->item->job_name];
+      my $job     = $form->item;
+      my $view    = $context->uri_for_action('job/view', [$job->id]);
+      my $message = ['Job [_1]([_2]) created', $job->job_name, $job->id];
 
       $context->stash(redirect $view, $message);
    }
@@ -73,12 +74,13 @@ sub delete : Nav('Delete Job') {
       unless $self->_can_update($context, $job);
 
    my $name = $job->job_name;
+   my $id   = $job->id;
 
    $job->delete;
 
    my $list = $context->uri_for_action('job/list');
 
-   $context->stash(redirect $list, ['Job [_1] deleted', $name]);
+   $context->stash(redirect $list, ['Job [_1]([_2]) deleted', $name, $id]);
    return;
 }
 
@@ -94,7 +96,7 @@ sub edit : Nav('Edit Job') {
 
    if ($form->process(posted => $context->posted)) {
       my $view    = $context->uri_for_action('job/view', [$job->id]);
-      my $message = ['Job [_1] updated', $form->item->job_name];
+      my $message = ['Job [_1]([_2]) updated', $job->job_name, $job->id];
 
       $context->stash(redirect $view, $message);
    }
@@ -129,7 +131,7 @@ sub remove {
       return $self->error($context, UnauthorisedAccess)
          unless $self->_can_update($context, $job);
 
-      push @{$names}, $job->job_name;
+      push @{$names}, ($job->job_name . '(' . $job->id . ')');
       $job->delete;
    }
 

@@ -141,8 +141,12 @@ sub STATE_ENUM () { [ qw( active hold failed finished inactive running
 
 =cut
 
-sub TRANSITION_ENUM () { [ qw( activate deactivate fail finish off_hold
-                               on_hold start started terminate ) ] }
+sub TRANSITION_ENUM () {
+   return [
+      qw(activate deactivate fail finish force_start kill_job off_hold on_hold
+         start started terminate)
+   ];
+}
 =item C<VARCHAR_MAX_SIZE>
 
 =cut

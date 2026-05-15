@@ -1,6 +1,7 @@
 package App::MCP::Model::API;
 
-use App::MCP::Constants   qw( DOT EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
+use Unexpected::Types     qw( Int );
 use HTTP::Status          qw( HTTP_OK );
 use HTML::Forms::Util     qw( json_bool );
 use MIME::Base64          qw( decode_base64url encode_base64url );
@@ -18,6 +19,8 @@ with    'App::MCP::Role::Redis';
 with    'App::MCP::Role::JSONParser';
 
 has '+moniker' => default => 'api';
+
+has 'service_worker_lifetime' => is => 'ro', isa => Int, default => 7_776_000;
 
 has '_ecc' =>
    is      => 'lazy',
@@ -59,7 +62,7 @@ sub BUILD {
 sub diagram : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
-   $context->stash(diagram_name => $arg);
+   $context->stash(entity_name => $arg);
    return;
 }
 
@@ -126,6 +129,15 @@ sub collect_messages : Auth('none') {
    return;
 }
 
+sub diag_preference : Auth('view') {
+   my ($self, $context) = @_;
+
+   my $result = $self->_preference($context, 'diagram');
+
+   $self->_stash_response($context, [HTTP_OK, $result]);
+   return;
+}
+
 sub fetch : Auth('none') {
    my ($self, $context) = @_;
 
@@ -179,9 +191,7 @@ sub logger : Auth('none') {
 sub preference : Auth('view') {
    my ($self, $context) = @_;
 
-   my $value  = $context->body_parameters->{data} if $context->posted;
-   my $pref   = $self->_preference($context, 'table', $value);
-   my $result = $pref ? $pref->value : {};
+   my $result = $self->_preference($context, 'table');
 
    $self->_stash_response($context, [HTTP_OK, $result]);
    return;
@@ -200,13 +210,15 @@ sub push_publickey : Auth('view') {
 sub push_register : Auth('view') {
    my ($self, $context) = @_;
 
-   my $key          = $context->session->id;
-   my $subscription = $context->body_parameters->{data}->{subscription};
+   my $session_id   = $context->session->id;
+   my $key          = "service-worker-${session_id}";
+   my $ttl          = $self->service_worker_lifetime;
+   my $data         = $context->body_parameters->{data};
+   my $subscription = $self->json_parser->encode($data->{subscription});
 
-   $subscription = $self->json_parser->encode($subscription);
-   $self->redis_client->set("service-worker-${key}", $subscription);
+   $self->redis_client->set_with_ttl($key, $subscription, $ttl);
 
-   my $result = { text => 'Service worker registered' };
+   my $result = { message => 'Service worker registered' };
 
    $self->_stash_response($context, [HTTP_OK, $result]);
    return;
@@ -228,9 +240,7 @@ sub tabs_preference : Auth('view') {
 
    $context->stash(entity_name => 'tabs');
 
-   my $value  = $context->body_parameters->{data} if $context->posted;
-   my $pref   = $self->_preference($context, 'navigation', $value);
-   my $result = $pref ? $pref->value : {};
+   my $result = $self->_preference($context, 'navigation');
 
    $self->_stash_response($context, [HTTP_OK, $result]);
    return;
@@ -291,23 +301,31 @@ sub _fetch_timezones {
 }
 
 sub _preference { # Accessor/mutator with builtin clearer. Store "" to delete
-   my ($self, $context, $entity, $value) = @_;
+   my ($self, $context, $entity) = @_;
 
    my $entity_name = $context->stash('entity_name') or return;
-   my $name        = $entity . DOT . $entity_name . DOT . 'preference';
+   my $user_id     = $context->session->id;
+   my $body_params = $context->body_parameters;
+   my $value       = $context->posted ? $body_params->{data} : undef;
    my $rs          = $context->model('Preference');
+   my $name        = "${entity}.${entity_name}.preference";
+   my $options     = { key => 'preferences_user_id_name_uniq' };
+   my $pref;
 
-   return $rs->update_or_create({ # Mutator
-      name => $name, user_id => $context->session->id, value => $value
-   }, { key => 'preferences_user_id_name_uniq' }) if $value && $value ne '""';
+   if ($value && $value ne '""') { # Mutator
+      my $params = { name => $name, user_id => $user_id, value => $value };
 
-   my $pref = $rs->find({
-      name => $name, user_id => $context->session->id
-   }, { key => 'preferences_user_id_name_uniq' });
+      $pref = $rs->update_or_create($params, $options);
+   }
+   else {
+      $pref = $rs->find({ name => $name, user_id => $user_id }, $options);
 
-   return $pref->delete if defined $pref && defined $value; # Clearer
+      return {} unless defined $pref;
 
-   return $pref; # Accessor
+      $pref->delete if defined $value; # Clearer
+   }
+
+   return $pref->value; # Accessor
 }
 
 sub _stash_response {

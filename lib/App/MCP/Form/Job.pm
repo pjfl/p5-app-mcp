@@ -58,6 +58,8 @@ sub validate_job_name {
    return;
 }
 
+has_field 'description' => type => 'TextArea', cols => 32;
+
 has_field '_g1' => type => 'Group';
 
 has_field 'type' =>
@@ -66,9 +68,7 @@ has_field 'type' =>
    html_name    => 'job_type',
    input_param  => 'job_type',
    field_group  => '_g1',
-   toggle       => {
-      job => [qw(command directory _g3 _g4)],
-   },
+   toggle       => { job => [qw(command directory _g3 _g4 _g7 _g8)] },
    toggle_event => 'change',
    options      => [
       { label => 'Job', value => 'job' },
@@ -172,9 +172,15 @@ has_field 'crontab_mon' =>
    title       => "Comma separated list. Digits 1-12 or names or '*'";
 
 has_field 'crontab_wday' =>
-   label => 'Day of Week',
-   size  => 3,
-   title => "Comma separated list. Digits 0-7 or names or '*'. Zero is Sunday";
+   label       => 'Day of Week',
+   field_group => '_g6',
+   size        => 3,
+   title       => "Comma separated list. Digits 0-7 or names or '*'. " .
+                  "Zero is Sunday";
+
+has_field 'auto_hold' =>
+   type  => 'Boolean',
+   title => 'When activated automatically go on hold';
 
 has_field '_g4' =>
    type => 'Group',
@@ -205,6 +211,12 @@ has_field 'directory' =>
    size         => 32,
    title        => 'Make this the working directory when executing the command';
 
+has_field '_g7' => type => 'Group';
+
+has_field 'out_file' => field_group => '_g7', label => 'Output File';
+
+has_field 'err_file' => field_group => '_g7', label => 'Error File';
+
 has_field '_g3' => type => 'Group';
 
 has_field 'expected_rv' =>
@@ -217,10 +229,37 @@ has_field 'expected_rv' =>
                    . 'Higher values trigger an error condition',
    validate_inline => TRUE;
 
+has_field 'nretrys' =>
+   type        => 'Integer',
+   default     => 0,
+   field_group => '_g3',
+   label       => 'Num. Retrys',
+   size        => 2,
+   title       => 'How many times to retry if the job fails';
+
 has_field 'delete_after' =>
    type        => 'Boolean',
    field_group => '_g3',
    title       => 'If true delete the job definition after completion';
+
+has_field '_g8' => type => 'Group';
+
+has_field 'max_runtime' =>
+   type        => 'Integer',
+   default     => 0,
+   field_group => '_g8',
+   label       => 'Max. Runtime',
+   size        => 6,
+   title       => 'Maximum job run time in seconds';
+
+has_field 'load_limit' =>
+   type        => 'Float',
+   default     => 0,
+   field_group => '_g8',
+   label       => 'Load Limit',
+   size        => 3,
+   title       => 'Load average must be below this number before ' .
+                  'the job starts';
 
 has_field 'view' =>
    type          => 'Link',
