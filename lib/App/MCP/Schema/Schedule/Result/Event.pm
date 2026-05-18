@@ -1,13 +1,16 @@
 package App::MCP::Schema::Schedule::Result::Event;
 
-use strictures;
-use parent 'App::MCP::Schema::Base';
-
 use App::MCP::Constants qw( TRANSITION_ENUM );
+use Unexpected::Types   qw( Object );
 use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
                             integer_data_type integer_id_data_type
                             serial_data_type set_on_create_datetime_data_type
                             varchar_data_type );
+use Web::ComposableRequest::Util
+                        qw( bson64id );
+use DBIx::Class::Moo::ResultClass;
+
+extends 'App::MCP::Schema::Base';
 
 my $class  = __PACKAGE__;
 my $schema = 'App::MCP::Schema::Schedule';
@@ -28,10 +31,21 @@ $class->set_primary_key('id');
 
 $class->belongs_to('job' => "${schema}::Result::Job", 'job_id' );
 
-# TODO: Implement the event stream
+has 'config' =>
+   is      => 'lazy',
+   isa     => Object,
+   default => sub { shift->result_source->schema->config };
+
+with 'App::MCP::Role::Redis';
+with 'App::MCP::Role::JSONParser';
 
 sub insert {
-   my $self = shift; $self->validate; return $self->next::method;
+   my $self = shift;
+
+   $self->validate;
+   $self->_cache_event;
+
+   return $self->next::method;
 }
 
 sub update {
@@ -39,6 +53,7 @@ sub update {
 
    $self->set_inflated_columns( %{ $columns } );
    $self->validate;
+   $self->_cache_event;
 
    return $self->next::method;
 }
@@ -51,6 +66,18 @@ sub validation_attributes {
          transition => { validate => 'isMandatory isValidIdentifier' },
       },
    };
+}
+
+# Private methods
+sub _cache_event {
+   my $self    = shift;
+   my $uuid    = bson64id;
+   my $key     = "event_stream-${uuid}";
+   my $encoded = $self->json_parser->encode({ $self->get_inflated_columns });
+   my $ttl     = 3 * $self->config->clock_tick_interval;
+
+   $self->redis_client->set_with_ttl($key, $encoded, $ttl);
+   return;
 }
 
 1;

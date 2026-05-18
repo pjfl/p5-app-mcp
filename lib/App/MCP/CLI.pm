@@ -1,15 +1,13 @@
 package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
-use File::DataClass::Types qw( ArrayRef Directory Int );
+use File::DataClass::Types qw( ArrayRef Directory );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( throw Timedout UnknownToken UnknownUser
                                Unspecified );
-use HTTP::Request::Webpush;
-use HTTP::Tiny;
 use App::MCP::Markdown;
 use Moo;
 use Class::Usul::Cmd::Options;
@@ -17,9 +15,10 @@ use Class::Usul::Cmd::Options;
 extends 'Class::Usul::Cmd';
 with    'App::MCP::Role::Config';
 with    'App::MCP::Role::Log';
-with    'App::MCP::Role::Schema';
 with    'App::MCP::Role::JSONParser';
 with    'App::MCP::Role::Redis';
+with    'App::MCP::Role::Schema';
+with    'App::MCP::Role::Webpush';
 with    'Web::Components::Role::Email';
 
 =pod
@@ -106,37 +105,6 @@ has 'templatedir' =>
 
       return $vardir->catdir('templates', $self->config->skin, 'site');
    };
-
-=item C<ua_timeout>
-
-Defaults to thirty seconds. How long should the HTTP user agent wait for
-responses
-
-=cut
-
-has 'ua_timeout' => is => 'ro', isa => Int, default => 30;
-
-# Private attributes
-has '_pusher' =>
-   is      => 'lazy',
-   isa     => class_type('HTTP::Request::Webpush'),
-   default => sub {
-      my $self   = shift;
-      my $pusher = HTTP::Request::Webpush->new;
-
-      if (my $json = $self->redis_client->get('service-worker-keys')) {
-         my $keys = $self->json_parser->decode($json);
-
-         $pusher->authbase64($keys->{public}, $keys->{private});
-      }
-
-      return $pusher;
-   };
-
-has '_ua' =>
-   is      => 'lazy',
-   isa     => class_type('HTTP::Tiny'),
-   default => sub { HTTP::Tiny->new(timeout => shift->ua_timeout) };
 
 =back
 
@@ -471,19 +439,18 @@ sub _send_email {
 sub _send_email_single {
    my ($self, $stash, $attaches) = @_;
 
+   my $encoding = $self->config->encoding;
+   my $attr     = { charset => $encoding, content_type => 'text/html' };
    my $content  = $stash->{content};
    my $wrapper  = $self->config->skin . '/site/wrapper/email.tt';
    my $template = "[% WRAPPER '${wrapper}' %]${content}[% END %]";
    my $post     = {
-      attributes      => {
-         charset      => $self->config->encoding,
-         content_type => 'text/html',
-      },
-      from            => $self->config->name,
-      stash           => $stash,
-      subject         => $stash->{subject} // 'No subject',
-      template        => \$template,
-      to              => $stash->{email},
+      attributes => $attr,
+      from       => $self->config->name,
+      stash      => $stash,
+      subject    => $stash->{subject} // 'No subject',
+      template   => \$template,
+      to         => $stash->{email},
    };
 
    $post->{attachments} = $attaches if $attaches;
@@ -501,42 +468,19 @@ sub _send_email_single {
 
 sub _send_notification {
    my $self      = shift;
-   my $req       = $self->_pusher;
    my $options   = $self->options;
    my $recipient = $options->{recipient} or throw Unspecified, ['recipient'];
    my $user      = $self->schema->resultset('User')->find_by_key($recipient);
 
    throw UnknownUser, [$recipient] unless $user;
 
-   my $worker_key   = 'service-worker-' . $user->id;
-   my $subscription = $self->redis_client->get($worker_key)
-      or throw 'Recipient [_1] no service worker subscription', ["${user}"];
-
-   $req->subscription($self->json_parser->decode($subscription));
-   $req->subject($options->{subject} // 'something happening');
-   $req->content($options->{content} // 'Something happened');
-   $req->header('TTL' => '90');
-   $req->encode();
-   $req->remove_header('::std_case'); # Strange artifact
-
-   my $params  = { content => $req->content, headers => $req->headers };
-   my $res     = $self->_ua->post($req->uri, $params);
+   my $res     = $self->service_worker_push($user->id, $options);
    my $args    = ["${user}", $options->{subject}];
    my $context = { args => $args, leader => 'CLI.send_notification' };
 
    return $self->info('Notified [_1] of [_2]', $context) if $res->{success};
 
-   my $message = $res->{content} // 'No response content';
-
-   if ('{' eq substr $message, 0, 1) {
-      my $decoded = $self->json_parser->decode($message);
-
-      $message = $decoded->{message} // 'No content message';
-   }
-
-   my $error = ($res->{reason} ? $res->{reason} . ': ' : NUL) . $message;
-
-   $self->error($error, $context);
+   $self->error($res->{error}, $context);
    return FALSE;
 }
 
@@ -570,6 +514,8 @@ None
 =head1 Dependencies
 
 =over 3
+
+=item L<App::MCP::Role::Webpush>
 
 =item L<Class::Usul::Cmd>
 

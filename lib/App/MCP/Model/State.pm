@@ -76,6 +76,7 @@ sub view : Auth('view') Nav('State|info') {
 
    my $params    = { 'state-data' => 'true' };
    my $data_uri  = $context->uri_for_action('state/view', [], $params);
+   my $event_uri = $context->uri_for_action('api/event_register');
    my $wcom      = $self->config->wcom_resources->{navigation};
    my $name      = 'state-diagram';
    my $prefs_uri = $context->uri_for_action('api/diag_preference', [$name]);
@@ -83,11 +84,13 @@ sub view : Auth('view') Nav('State|info') {
    $context->stash(state_config => {
       'data-uri'     => $data_uri->as_string,
       'dom-wait'     => $self->dom_wait,
+      'event-uri'    => $event_uri->as_string,
       'icons'        => $context->icons_uri->as_string,
       'max-jobs'     => $self->max_jobs,
       'name'         => $name,
       'onload'       => "${wcom}.onContentLoad()",
       'prefs-uri'    => $prefs_uri->as_string,
+      'user-id'      => $context->session->id,
       'verify-token' => $context->verification_token,
    });
    return;

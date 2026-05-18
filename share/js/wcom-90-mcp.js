@@ -11,6 +11,7 @@ WCom.MCP.StateDiagram = (function() {
    const triggerClass = 'state-container';
    const Utils        = WCom.Util;
    const Modal        = WCom.Modal;
+   const Navigation   = WCom.Navigation;
    class Job {
       constructor(diagram, result, index) {
          this.diagram   = diagram;
@@ -287,17 +288,33 @@ WCom.MCP.StateDiagram = (function() {
       constructor(container, config) {
          this.container = this.h.div({ className: 'diagram-container' });
          this.domWait   = config['dom-wait'] || 500;
+         this.eventURI  = config['event-uri'];
          this.icons     = config['icons'];
          this.maxJobs   = config['max-jobs'];
          this.name      = config['name'];
          this.onload    = config['onload'];
          this.token     = config['verify-token'];
+         this.userID    = config['user-id'];
          this.resultSet = new ResultSet(config['data-uri']);
          this.depGraph  = new DependencyGraph(this);
          this.prefs     = new Preferences(this, config['prefs-uri']);
          this.index     = 0;
          this.jobs      = [];
          container.appendChild(this.container);
+      }
+      async eventRegister() {
+         if (!this.eventURI) return;
+         const data = { 'subscription': { 'method': 'web_push' } };
+         const json = JSON.stringify({ data, '_verify': this.token });
+         const { object } = await this.bitch.blows(this.eventURI, { json });
+         Navigation.logger('info', object.message);
+      }
+      async eventUnregister() {
+         if (!this.eventURI) return;
+         const data = { 'subscription': { 'method': 'unregister' } };
+         const json = JSON.stringify({ data, '_verify': this.token });
+         try { await this.bitch.blows(this.eventURI, { json }) }
+         catch (e) { }
       }
       async nextJob(index) {
          const result = await this.resultSet.next();
@@ -322,11 +339,13 @@ WCom.MCP.StateDiagram = (function() {
       renderNoData(container) {
       }
    }
+   Object.assign(Diagram.prototype, Utils.Bitch);
    Object.assign(Diagram.prototype, Utils.Markup);
    class Factory {
       constructor() {
-         this.diagrams = {};
+         this.diagram;
          Utils.Event.registerOnload(this.scan.bind(this));
+         Utils.Event.registerOnunload(this.unload.bind(this));
       }
       isConstructing() {
          return new Promise(function(resolve) {
@@ -336,15 +355,16 @@ WCom.MCP.StateDiagram = (function() {
          }.bind(this));
       }
       async scan(content = document, options = {}) {
+         const el = content.getElementsByClassName(triggerClass)[0];
+         if (!el) return;
          this._isConstructing = true;
-         const promises = [];
-         for (const el of content.getElementsByClassName(triggerClass)) {
-            const diagram = new Diagram(el, JSON.parse(el.dataset[dsName]));
-            this.diagrams[diagram.name] = diagram;
-            promises.push(diagram.render());
-         }
-         await Promise.all(promises);
+         this.diagram = new Diagram(el, JSON.parse(el.dataset[dsName]));
+         await this.diagram.render();
+         await this.diagram.eventRegister();
          this._isConstructing = false;
+      }
+      unload() {
+         if (this.diagram) this.diagram.eventUnregister();
       }
    }
    const factory = new Factory();

@@ -31,17 +31,6 @@ setup_resultset sub {
    return $rs->search($where, { prefetch => 'job' });
 };
 
-has_column 'runid' =>
-   label    => 'Run ID',
-   sortable => TRUE,
-   link     => sub {
-      my $self    = shift;
-      my $context = $self->table->context;
-      my $args    = [$self->result->job_id, $self->result->runid];
-
-      return $context->uri_for_action('history/runview', $args);
-   };
-
 has_column 'job_name' =>
    label    => 'Job Name',
    sortable => TRUE,
@@ -52,6 +41,17 @@ has_column 'job_name' =>
       my $context = $self->table->context;
 
       return $context->uri_for_action('history/view', [$self->result->job_id]);
+   };
+
+has_column 'runid' =>
+   label    => 'Run ID',
+   sortable => TRUE,
+   link     => sub {
+      my $self    = shift;
+      my $context = $self->table->context;
+      my $args    = [$self->result->job_id, $self->result->runid];
+
+      return $context->uri_for_action('history/runview', $args);
    };
 
 has_column 'started' => cell_traits => ['DateTime'];

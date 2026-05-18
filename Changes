@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Implements event stream with Web Push
           - Implements kill job
           - Additions columns for the jobs table
           - Splits routes into multiple controllers

@@ -4,7 +4,6 @@ use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE TRUE );
 use HTTP::Status                 qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
                                      HTTP_NOT_FOUND HTTP_OK HTTP_UNAUTHORIZED );
 use App::MCP::Util               qw( get_hashed_pw get_salt );
-use Class::Usul::Cmd::Util       qw( decrypt );
 use Digest::MD5                  qw( md5_hex );
 use MIME::Base64                 qw( decode_base64 encode_base64 );
 use Unexpected::Functions        qw( throw AccountInactive Unspecified );
@@ -16,7 +15,6 @@ use App::MCP::Attributes; # Will do namespace cleaning
 
 requires qw( config log );
 
-with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::Redis';
 
 has 'session_ttl' =>
@@ -94,7 +92,7 @@ sub authenticate : Auth('none') {
 
    my $session  = $self->_find_or_create_session($user);
    my $username = $user->user_name;
-   my $m1_token = $request->body_params->('M1_token');
+   my $m1_token = $context->body_parameters->{'M1_token'};
    my $message  = "User ${username} M1 token not found";
 
    $result = [HTTP_NOT_FOUND, { message => $message }];
@@ -121,17 +119,6 @@ sub authenticate : Auth('none') {
    $result = [HTTP_OK, { id => $session->{id}, M2_token => $token }];
    $self->_stash_response($context, $result);
    return;
-}
-
-sub decode_params {
-   my ($self, $key, $encrypted) = @_;
-
-   my $params;
-
-   try   { $params = $self->json_parser->decode(decrypt $key, $encrypted) }
-   catch { $self->log->error($_) };
-
-   return $params;
 }
 
 sub get_session {

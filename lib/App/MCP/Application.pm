@@ -4,7 +4,7 @@ use version;
 
 use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK SPC TRANSITION_ENUM );
 use Unexpected::Types      qw( ArrayRef HashRef LoadableClass NonEmptySimpleStr
-                               NonZeroPositiveInt Object );
+                               NonZeroPositiveInt Object Str );
 use App::MCP::Util         qw( concise_duration create_token distname
                                trigger_input_handler trigger_output_handler );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded includes );
@@ -43,6 +43,28 @@ Defines the following attributes;
 
 =item C<builder>
 
+Injected object dependency. Handles;
+
+=over 3
+
+=item C<config>
+
+The L<configuration|App::MCP::Config> object
+
+=item C<debug>
+
+A boolean which if true turns on debug logging
+
+=item C<log>
+
+The L<logger|App::MCP::Log> object
+
+=item C<port>
+
+The port that the web server is listening on
+
+=back
+
 =cut
 
 has 'builder' =>
@@ -51,7 +73,20 @@ has 'builder' =>
    handles  => [qw(config debug log port)],
    required => TRUE;
 
+=item C<servers>
+
+A comma separated list of scheduling servers
+
+=cut
+
+has 'servers' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub { join COMMA, @{shift->config->servers} };
+
 =item C<worker>
+
+The L<worker|App::MCP::Worker> classname
 
 =cut
 
@@ -64,9 +99,9 @@ has '_input_transitions' =>
    is      => 'lazy',
    isa     => ArrayRef,
    default => sub {
-      my $transitions = shift->_output_transitions;
+      my $op_transitions = shift->_output_transitions;
 
-      return [ grep { !includes $_, $transitions } @{TRANSITION_ENUM()} ];
+      return [ grep { !includes $_, $op_transitions } @{TRANSITION_ENUM()} ];
    };
 
 has '_output_transitions' =>
@@ -75,6 +110,10 @@ has '_output_transitions' =>
    default => sub { ['force_start', 'kill_job', 'start'] };
 
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
+
+with 'App::MCP::Role::Redis';
+with 'App::MCP::Role::JSONParser';
+with 'App::MCP::Role::Webpush';
 
 =back
 
@@ -86,50 +125,83 @@ Defines the following methods;
 
 =item C<cron_job_handler>
 
-   $exit_code = $self->cron_job_handler($notifier_name, $pid);
+   $exit_code = $self->cron_job_handler($notifier_name, $daemon_pid);
 
 =cut
 
 sub cron_job_handler {
-   my ($self, $name, $sig_hndlr_pid) = @_;
+   my ($self, $name, $daemon_pid) = @_;
 
    $self->_cron_log_interval($name);
 
-   my $trigger = FALSE;
    my $schema  = $self->schema;
    my $job_rs  = $schema->resultset('Job');
+   my $jobs    = $job_rs->active_crontab($self->_output_transitions);
    my $ev_rs   = $schema->resultset('Event');
-   my $jobs    = $job_rs->search({
-      'state.name'        => 'active',
-      'me.crontab'        => { '!=' => NUL },
-      'events.transition' => [
-         undef, { '!=' => [ -and => $self->_output_transitions ] }
-      ],
-   }, {
-      'columns' => [qw( condition crontab events.transition
-                        id state.name state.updated )],
-      'join'    => ['state', 'events'],
-   });
+   my $trigger = FALSE;
 
    for my $job (grep { $_->should_start_now } $jobs->all) {
-      if (!$job->condition || $job->start_condition) {
-         $ev_rs->create({ job_id => $job->id, transition => 'start' });
-         $trigger = TRUE;
-      }
+      next if $job->condition && !$job->start_condition;
+
+      $ev_rs->create({ job_id => $job->id, transition => 'start' });
+      $trigger = TRUE;
    }
 
-   trigger_output_handler $sig_hndlr_pid if $trigger;
+   trigger_output_handler $daemon_pid if $trigger;
+   return OK;
+}
+
+=item C<event_stream_handler>
+
+   $exit_code = $self->event_stream_handler($notifier_name, $daemon_pid);
+
+=cut
+
+# TODO: Implement event stream output method for a client
+sub event_stream_handler {
+   my ($self, $name, $daemon_pid) = @_;
+
+   my $cache = $self->redis_client;
+   my @events;
+
+   for my $key ($cache->keys('event_stream-*')) {
+      push @events, $self->json_parser->decode($cache->get($key));
+      $cache->del($key);
+   }
+
+   return OK unless scalar @events;
+
+   my $events = $self->json_parser->encode([@events]);
+
+   for my $key ($cache->keys('event_subscription-*')) {
+      my $user_id = (split m{ \- }mx, $key)[1];
+      my $encoded = $cache->get($key) or next;
+      my $subscription;
+
+      try   { $subscription = $self->json_parser->decode($encoded) }
+      catch { $cache->del($key) };
+
+      next unless $subscription;
+
+      my $method = '_event_stream_' . $subscription->{method};
+
+      next unless $self->can($method);
+
+      $subscription->{user_id} = $user_id;
+      $self->$method($name, $subscription, $events);
+   }
+
    return OK;
 }
 
 =item C<input_handler>
 
-   $exit_code = $self->input_handler($notifier_name, $pid);
+   $exit_code = $self->input_handler($notifier_name, $daemon_pid);
 
 =cut
 
 sub input_handler {
-   my ($self, $name, $sig_hndlr_pid) = @_;
+   my ($self, $name, $daemon_pid) = @_;
 
    my $schema  = $self->schema;
    my $where   = { transition => $self->_input_transitions };
@@ -155,11 +227,11 @@ sub input_handler {
          });
       }
 
-      trigger_output_handler $sig_hndlr_pid if $trigger;
+      trigger_output_handler $daemon_pid if $trigger;
       $events->reset;
    }
 
-   trigger_output_handler $sig_hndlr_pid;
+   trigger_output_handler $daemon_pid;
    return OK;
 }
 
@@ -260,12 +332,12 @@ sub ipc_ssh_callback {
 
 =item C<output_handler>
 
-   $exit_code = $self->output_handler($name, $pid, $ipc_ssh);
+   $exit_code = $self->output_handler($name, $daemon_pid, $ipc_ssh);
 
 =cut
 
 sub output_handler {
-   my ($self, $name, $sig_hndlr_pid, $ipc_ssh) = @_;
+   my ($self, $name, $daemon_pid, $ipc_ssh) = @_;
 
    my $schema  = $self->schema;
    my $options = { prefetch => 'job' };
@@ -277,18 +349,14 @@ sub output_handler {
       $trigger = FALSE;
 
       for my $event ($events->all) {
-         my $method = '_process_start_event';
+         my $transition = $event->transition eq 'kill_job' ? 'kill' : 'start';
+         my $method     = "_process_${transition}_event";
+         my $code       = sub { $self->$method($name, $event, $ipc_ssh) };
 
-         $method = '_process_kill_event' if $event->transition eq 'kill_job';
+         $schema->txn_do($code) or next;
 
-         my $success = $schema->txn_do(sub {
-            return $self->$method($name, $event, $ipc_ssh);
-         });
-
-         if ($success) {
-            trigger_input_handler $sig_hndlr_pid if $event->job->type eq 'box';
-            $trigger = TRUE;
-         }
+         trigger_input_handler $daemon_pid if $event->job->type eq 'box';
+         $trigger = TRUE;
       }
 
       $events->reset;
@@ -323,10 +391,12 @@ sub _dispatch_args {
       command   => $command,
       debug     => $self->debug,
       directory => $job->directory,
+      errfile   => $job->err_file,
       job_id    => $job->id,
+      outfile   => $job->out_file,
       port      => $self->port,
       runid     => $runid,
-      servers   => (join COMMA, @{$self->config->servers}),
+      servers   => $self->servers,
       token     => $token,
       worker    => $self->worker,
    };
@@ -367,6 +437,19 @@ sub _dispatch_job {
       $self->log->debug("${name}[${runid}]: ${response}");
    }
 
+   return;
+}
+
+sub _event_stream_web_push {
+   my ($self, $name, $subscription, $events) = @_;
+
+   my $leader  = ucfirst "${name}.web_push";
+   my $user_id = $subscription->{user_id};
+   my $options = { content => { events => $events } };
+   my $res     = $self->service_worker_push($user_id, $options);
+
+   $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
+   $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
    return;
 }
 
@@ -499,7 +582,7 @@ sub _process_kill_event {
    my $success  = $pev->{rejected} ? FALSE : TRUE;
    my $job      = $event->job;
    my $pev_rs   = $self->schema->resultset('ProcessedEvent');
-   my $last_pev = $pev_rs->find_last($job);
+   my $last_pev = $pev_rs->find_last_start($job);
 
    if ($success && $last_pev) {
       my $args    = $self->_dispatch_args($job, 'kill_job');

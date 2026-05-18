@@ -40,30 +40,12 @@ Defines the following attributes;
 
 =over 3
 
-=item C<port>
-
-The web application server listens on this port for requests. Defaults from the
-configuration object
-
-=cut
-
-# Object attributes (public)
-# Visible to the command line
-option 'port' =>
-   is            => 'lazy',
-   isa           => NonZeroPositiveInt,
-   format        => 'i',
-   documentation => 'Port number for the web application server',
-   default       => sub { shift->config->port },
-   short         => 'p';
-
-=item C<app>
+=item C<application>
 
 An instance of the L<application|App::MCP::Application> class
 
 =cut
 
-# Ignored by the command line
 has 'application' =>
    is      => 'lazy',
    isa     => class_type('App::MCP::Application'),
@@ -72,8 +54,6 @@ has 'application' =>
 =item C<async_factory>
 
 An instance of the L<async factory|Async::IPC> class
-
-An L<async factory|Async::IPC> notifier process
 
 =cut
 
@@ -85,7 +65,7 @@ has 'async_factory' =>
 
 =item C<clock_tick>
 
-An L<periodical|Async::IPC::Periodcal> notifier
+A L<periodical|Async::IPC::Periodical> notifier
 
 =cut
 
@@ -147,9 +127,25 @@ An L<async factory|Async::IPC> notifier process for the output event handler
 
 has 'op_ev_hndlr' => is => 'lazy', isa => Object;
 
+=item C<port>
+
+The web application server listens on this port for requests. Defaults from the
+configuration object but can be set from the command line with either C<--port>
+or C<-p> and the port number
+
+=cut
+
+option 'port' =>
+   is            => 'lazy',
+   isa           => NonZeroPositiveInt,
+   format        => 'i',
+   documentation => 'Port number for the web application server',
+   default       => sub { shift->config->port },
+   short         => 'p';
+
 =item C<server>
 
-The web application L<process|Async::IPC::Process>
+The web server L<process|Async::IPC::Process>
 
 =cut
 
@@ -242,13 +238,15 @@ sub _build_cron {
    my $self = shift;
    my $app  = $self->application;
    my $pid  = $self->pid;
-   my $name = 'cron';
 
    return $self->async_factory->new_notifier(
       type    => 'semaphore',
       desc    => 'cron job handler',
-      name    => $name,
-      on_recv => sub { $app->cron_job_handler($name, $pid) },
+      name    => 'cron',
+      on_recv => sub {
+         $app->cron_job_handler('cron', $pid);
+         $app->event_stream_handler('events', $pid);
+      },
    );
 }
 

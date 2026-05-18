@@ -10,7 +10,7 @@ has '+moniker' => default => 'application';
 
 sub dispatch_request { build_routes
    'GET|POST + /job/create + ?*'   => 'job/root/base/create',
-   'GET      + /job/events + ?*'   => 'history/root/base/list',
+   'GET      + /job/history + ?*'  => 'history/root/base/list',
    'GET|POST + /job/select + ?*'   => 'job/root/base/select',
    'POST     + /job/*/delete + ?*' => 'job/root/jobid/delete',
    'GET|POST + /job/*/edit + ?*'   => 'job/root/jobid/edit',

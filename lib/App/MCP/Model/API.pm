@@ -7,6 +7,8 @@ use HTML::Forms::Util     qw( json_bool );
 use MIME::Base64          qw( decode_base64url encode_base64url );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw );
+use Web::ComposableRequest::Util
+                          qw( bson64id );
 use Crypt::PK::ECC;
 use DateTime::TimeZone;
 use Try::Tiny;
@@ -138,6 +140,31 @@ sub diag_preference : Auth('view') {
    return;
 }
 
+sub event_register : Auth('view') {
+   my ($self, $context) = @_;
+
+   my $user_id      = $context->session->id;
+   my $params       = $context->body_parameters->{data};
+   my $subscription = $params->{subscription};
+   my $key          = "event_subscription-${user_id}";
+
+   if ($subscription->{method} eq 'unregister') {
+      my $message = "User ${user_id} event registration deleted";
+
+      $self->redis_client->del($key);
+      $self->_stash_response($context, [HTTP_OK, { message => $message }]);
+      return;
+   }
+
+   my $encoded = $self->json_parser->encode($subscription);
+   my $ttl     = $self->service_worker_lifetime;
+   my $message = "User ${user_id} event registration created";
+
+   $self->redis_client->set_with_ttl($key, $encoded, $ttl);
+   $self->_stash_response($context, [HTTP_OK, { message => $message }]);
+   return;
+}
+
 sub fetch : Auth('none') {
    my ($self, $context) = @_;
 
@@ -210,15 +237,15 @@ sub push_publickey : Auth('view') {
 sub push_register : Auth('view') {
    my ($self, $context) = @_;
 
-   my $session_id   = $context->session->id;
-   my $key          = "service-worker-${session_id}";
+   my $user_id      = $context->session->id;
+   my $key          = "service-worker-${user_id}";
    my $ttl          = $self->service_worker_lifetime;
    my $data         = $context->body_parameters->{data};
    my $subscription = $self->json_parser->encode($data->{subscription});
 
    $self->redis_client->set_with_ttl($key, $subscription, $ttl);
 
-   my $result = { message => 'Service worker registered' };
+   my $result = { message => "User ${user_id} service worker registered" };
 
    $self->_stash_response($context, [HTTP_OK, $result]);
    return;

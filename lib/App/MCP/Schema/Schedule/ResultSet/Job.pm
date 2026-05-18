@@ -10,6 +10,20 @@ use Moo;
 extends 'DBIx::Class::ResultSet';
 
 # Public methods
+sub active_crontab {
+   my ($self, $op_transitions) = @_;
+
+   return $self->search({
+      'state.name'        => 'active',
+      'me.crontab'        => { '!=' => NUL },
+      'events.transition' => [ undef, { '!=' => [ -and => $op_transitions ] } ],
+   }, {
+      'columns' => [qw( condition crontab events.transition
+                        id state.name state.updated )],
+      'join'    => ['state', 'events'],
+   });
+}
+
 sub assert_executable {
    my ($self, $job_key, $user) = @_;
 

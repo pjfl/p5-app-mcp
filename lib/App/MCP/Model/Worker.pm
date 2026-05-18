@@ -1,16 +1,18 @@
 package App::MCP::Model::Worker;
 
-use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
-use HTTP::Status          qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
-                              HTTP_OK HTTP_UNAUTHORIZED );
-use App::MCP::Util        qw( trigger_input_handler );
-use Unexpected::Functions qw( throw );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
+                               HTTP_OK HTTP_UNAUTHORIZED is_error );
+use App::MCP::Util         qw( trigger_input_handler );
+use Class::Usul::Cmd::Util qw( decrypt );
+use Unexpected::Functions  qw( throw );
 use Try::Tiny;
 use Moo;
 use App::MCP::Attributes; # Will do namespace cleaning
 
 extends 'App::MCP::Model';
 with    'Web::Components::Role';
+with    'App::MCP::Role::JSONParser';
 with    'App::MCP::Role::APIAuthentication';
 
 has '+moniker' => default => 'worker';
@@ -47,29 +49,27 @@ sub create_event : Auth('none') {
 
    return $self->_stash_response($context, $result) if $result;
 
-   my $runid   = $context->stash('runid');
-   my $token   = $self->_get_decode_token($runid);
-   my $message = "Runid ${runid} token not found";
+   my $runid  = $context->stash('runid');
+   my $secret = $self->_get_decode_secret($runid);
 
-   $result = [HTTP_NOT_FOUND, { message => $message }] unless $token;
+   $result = [HTTP_NOT_FOUND, { message => "Runid ${runid} token not found" }];
 
-   return $self->_stash_response($context, $result) if $result;
+   return $self->_stash_response($context, $result) unless $secret;
 
-   my $event  = $request->body_params->('event');
-   my $params = $self->decode_params($token, $event);
+   my $encrypted = $context->body_parameters->{event};
+   my $params    = $self->_decode_params($context, $secret, $encrypted);
+   my $message   = "Runid ${runid} authentication failed";
 
-   $message = "Runid ${runid} authentication failed";
-   $result  = [HTTP_UNAUTHORIZED, { message => $message }] unless $params;
+   $result = [HTTP_UNAUTHORIZED, { message => $message }];
 
-   return $self->_stash_response($context, $result) if $result;
-
-   my $pid    = $self->config->appclass->env_var('daemon_pid');
-   my $schema = $self->schema;
+   return $self->_stash_response($context, $result) unless $params;
 
    try {
-      $event  = $schema->resultset('Event')->create($params);
-      $result = [HTTP_CREATED, { message => 'Event '.$event->id.' created' }];
-      trigger_input_handler $pid;
+      my $event = $self->schema->resultset('Event')->create($params);
+
+      trigger_input_handler $self->config->appclass->env_var('daemon_pid');
+      $message = 'Event ' . $event->id . ' created';
+      $result  = [HTTP_CREATED, { message => $message }];
    }
    catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
 
@@ -96,15 +96,14 @@ sub create_job : Auth('none') {
 
    return $self->_stash_response($context, $result) if $result;
 
-   my $key        = $session->{key};
-   my $secret     = $session->{shared_secret};
-   my $encrypted  = $request->body_params->('job');
-   my $params     = $self->decode_params($key, $secret, $encrypted);
-   my $message    = "Session ${session_id} authentication failed";
+   my $secret    = $session->{shared_secret};
+   my $encrypted = $context->body_parameters->{job};
+   my $params    = $self->_decode_params($context, $secret, $encrypted);
+   my $message   = "Session ${session_id} authentication failed";
 
-   $result  = [HTTP_UNAUTHORIZED, { message => $message }] unless $params;
+   $result = [HTTP_UNAUTHORIZED, { message => $message }];
 
-   return $self->_stash_response($context, $result) if $result;
+   return $self->_stash_response($context, $result) unless $params;
 
    $params->{owner_id} = $session->{user_id};
    $params->{group_id} = $session->{role_id};
@@ -121,14 +120,24 @@ sub create_job : Auth('none') {
 }
 
 # Private methods
-sub _get_decode_token {
+sub _decode_params {
+   my ($self, $context, $secret, $encrypted) = @_;
+
+   my $params;
+
+   try   { $params = $self->json_parser->decode(decrypt $secret, $encrypted) }
+   catch { $self->log->error($_, $context) };
+
+   return $params;
+}
+
+sub _get_decode_secret {
    my ($self, $runid) = @_;
 
-   my $options = { columns => ['token'], rows => 1 };
-   my $pev_rs  = $self->schema->resultset('ProcessedEvent');
-   my $pevent  = $pev_rs->search({ runid => $runid }, $options)->single;
+   my $pev_rs = $self->schema->resultset('ProcessedEvent');
+   my $pevent = $pev_rs->find_last_start($runid) or return;
 
-   return $pevent ? $pevent->token : undef;
+   return $pevent->token;
 }
 
 sub _stash_response {
@@ -137,9 +146,11 @@ sub _stash_response {
    $result //= [];
 
    my $code = $result->[0] // HTTP_OK;
-   my $json = $result->[1] // {};
+   my $body = $result->[1] // {};
 
-   $context->stash(code => $code, json => $json, view => 'json');
+   $self->log->error($body->{message}, $context) if is_error($code);
+
+   $context->stash(code => $code, json => $body, view => 'json');
    return;
 }
 

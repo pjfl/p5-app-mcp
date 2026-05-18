@@ -1,18 +1,23 @@
 package App::MCP::Schema::Schedule::ResultSet::ProcessedEvent;
 
+use Scalar::Util qw( blessed );
 use Moo;
 
 extends 'DBIx::Class::ResultSet';
 
-sub find_last {
-   my ($self, $job) = @_;
+sub find_last_start {
+   my ($self, $job_or_runid) = @_;
 
-   my $columns = ['runid', 'token'];
+   my $where = { transition => ['force_start', 'start'] };
 
-   return $self->search(
-      { job_id  => $job->id, transition => 'start' },
-      { columns => $columns, order_by   => { -desc => 'created' }, rows => 1 }
-   )->single;
+   if (blessed $job_or_runid) { $where->{job_id} = $job_or_runid->id }
+   else { $where->{runid} = $job_or_runid }
+
+   my $columns  = ['runid', 'token'];
+   my $order_by = { -desc => 'created' };
+   my $options  = { columns => $columns, order_by => $order_by, rows => 1 };
+
+   return $self->search($where, $options)->single;
 }
 
 use namespace::autoclean;
