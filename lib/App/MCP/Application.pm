@@ -174,8 +174,8 @@ sub event_stream_handler {
    my $events = $self->json_parser->encode([@events]);
 
    for my $key ($cache->keys('event_subscription-*')) {
-      my $user_id = (split m{ \- }mx, $key)[1];
       my $encoded = $cache->get($key) or next;
+      my $user_id = (split m{ \- }mx, $key)[1];
       my $subscription;
 
       try   { $subscription = $self->json_parser->decode($encoded) }
@@ -440,10 +440,10 @@ sub _dispatch_job {
    return;
 }
 
-sub _event_stream_web_push {
+sub _event_stream_webpush {
    my ($self, $name, $subscription, $events) = @_;
 
-   my $leader  = ucfirst "${name}.web_push";
+   my $leader  = ucfirst "${name}.webpush";
    my $user_id = $subscription->{user_id};
    my $options = { content => { events => $events } };
    my $res     = $self->service_worker_push($user_id, $options);

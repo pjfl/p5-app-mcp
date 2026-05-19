@@ -302,20 +302,6 @@ WCom.MCP.StateDiagram = (function() {
          this.jobs      = [];
          container.appendChild(this.container);
       }
-      async eventRegister() {
-         if (!this.eventURI) return;
-         const data = { 'subscription': { 'method': 'web_push' } };
-         const json = JSON.stringify({ data, '_verify': this.token });
-         const { object } = await this.bitch.blows(this.eventURI, { json });
-         Navigation.logger('info', object.message);
-      }
-      async eventUnregister() {
-         if (!this.eventURI) return;
-         const data = { 'subscription': { 'method': 'unregister' } };
-         const json = JSON.stringify({ data, '_verify': this.token });
-         try { await this.bitch.blows(this.eventURI, { json }) }
-         catch (e) { }
-      }
       async nextJob(index) {
          const result = await this.resultSet.next();
          if (result) return new Job(this, result, index);
@@ -339,13 +325,29 @@ WCom.MCP.StateDiagram = (function() {
       renderNoData(container) {
       }
    }
-   Object.assign(Diagram.prototype, Utils.Bitch);
    Object.assign(Diagram.prototype, Utils.Markup);
    class Factory {
       constructor() {
          this.diagram;
+         this.messageHandler = function (event) {
+            const data = event.data;
+            if (data.events && data.events.length > 0) {
+               Navigation.renderLocation(window.location.href);
+            }
+         }.bind(this);
+         this.registrationState = false;
          Utils.Event.registerOnload(this.scan.bind(this));
          Utils.Event.registerOnunload(this.unload.bind(this));
+      }
+      async eventStreamRegistration(state) {
+         const uri = this.diagram.eventURI;
+         if (!uri) return;
+         const method = state ? 'webpush' : 'unregister';
+         const data = { subscription: { method } };
+         const json = JSON.stringify({ data, '_verify': this.diagram.token });
+         const { object } = await this.bitch.blows(uri, { json });
+         this.registrationState = state;
+         Navigation.logger('debug', object.message);
       }
       isConstructing() {
          return new Promise(function(resolve) {
@@ -360,13 +362,21 @@ WCom.MCP.StateDiagram = (function() {
          this._isConstructing = true;
          this.diagram = new Diagram(el, JSON.parse(el.dataset[dsName]));
          await this.diagram.render();
-         await this.diagram.eventRegister();
+         if (!this.registrationState) await this.eventStreamRegistration(true);
+         const worker = window.navigator.serviceWorker;
+         worker.addEventListener('message', this.messageHandler);
          this._isConstructing = false;
       }
-      unload() {
-         if (this.diagram) this.diagram.eventUnregister();
+      unload(newuri) {
+         const current = new URL(window.location.href);
+         const newurl = new URL(newuri);
+         if (current.pathname.match(/^\/mcp\/state/)
+             && !newurl.pathname.match(/^\/mcp\/state/)) {
+            this.eventStreamRegistration(false);
+         }
       }
    }
+   Object.assign(Factory.prototype, Utils.Bitch);
    const factory = new Factory();
    return {
       isConstructing: factory.isConstructing.bind(factory),

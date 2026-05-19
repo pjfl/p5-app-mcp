@@ -179,15 +179,15 @@ $class->add_columns(
    id           => { %{serial_data_type()}, hidden => TRUE },
    job_name     => { %{varchar_data_type()}, label => 'Job Name' },
    description  => nullable_text_data_type,
-   parent_id    => {
-      %{nullable_foreign_key_data_type()},
-      display => 'parent_box.job_name',
-      label   => 'Parent Box'
-   },
    created      => {
       %{set_on_create_datetime_data_type()},
       cell_traits => ['DateTime'],
       timezone    => 'UTC',
+   },
+   parent_id    => {
+      %{nullable_foreign_key_data_type()},
+      display => 'parent_box.job_name',
+      label   => 'Parent Box'
    },
    type         => enumerated_data_type(JOB_TYPE_ENUM, 'box'),
    owner_id     => {

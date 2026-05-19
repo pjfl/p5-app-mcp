@@ -9,10 +9,7 @@ self.addEventListener('push', function(event) {
       event.waitUntil((async () => {
          const options = { includeUncontrolled: true };
          const allClients = await clients.matchAll(options);
-         for (const client of allClients) {
-            const url = new URL(client.url);
-            if (url.pathname == '/mcp/state') client.postMessage(data);
-         }
+         for (const client of allClients) client.postMessage(data);
       })());
    }
 });
