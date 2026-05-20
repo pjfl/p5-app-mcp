@@ -17,8 +17,6 @@ use IPC::PerlSSH;
 use Try::Tiny;
 use Moo;
 
-with 'App::MCP::Role::Schema';
-
 =pod
 
 =encoding utf8
@@ -111,8 +109,9 @@ has '_output_transitions' =>
 
 has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
 
-with 'App::MCP::Role::Redis';
 with 'App::MCP::Role::JSONParser';
+with 'App::MCP::Role::Redis';
+with 'App::MCP::Role::Schema';
 with 'App::MCP::Role::Webpush';
 
 =back
@@ -157,7 +156,6 @@ sub cron_job_handler {
 
 =cut
 
-# TODO: Implement event stream output method for a client
 sub event_stream_handler {
    my ($self, $name, $daemon_pid) = @_;
 
@@ -203,12 +201,13 @@ sub event_stream_handler {
 sub input_handler {
    my ($self, $name, $daemon_pid) = @_;
 
-   my $schema  = $self->schema;
-   my $where   = { transition => $self->_input_transitions };
-   my $options = { order_by => { -asc => 'me.id' }, prefetch => 'job' };
-   my $events  = $schema->resultset('Event')->search($where, $options);
-   my $pev_rs  = $schema->resultset('ProcessedEvent');
-   my $trigger = TRUE;
+   my $schema   = $self->schema;
+   my $prefetch = { 'job' => 'state' };
+   my $where    = { transition => $self->_input_transitions };
+   my $options  = { order_by => { -asc => 'me.id' }, prefetch => $prefetch };
+   my $events   = $schema->resultset('Event')->search($where, $options);
+   my $pev_rs   = $schema->resultset('ProcessedEvent');
+   my $trigger  = TRUE;
 
    while ($trigger) {
       $trigger = FALSE;
@@ -221,9 +220,7 @@ sub input_handler {
 
             $pev_rs->create($pev);
             $event->delete;
-
-            $event->job->delete if $event->job->delete_after
-               && $event->transition eq 'finished';
+            $self->_input_event_cleanup($event);
          });
       }
 
@@ -235,9 +232,44 @@ sub input_handler {
    return OK;
 }
 
-=item C<ipc_ssh_caller>
+=item C<output_handler>
 
-   $hash_ref = $self->ipc_ssh_caller($notifier, $runid, \%options);
+   $exit_code = $self->output_handler($name, $daemon_pid, $ipc_ssh);
+
+=cut
+
+sub output_handler {
+   my ($self, $name, $daemon_pid, $ipc_ssh) = @_;
+
+   my $schema  = $self->schema;
+   my $options = { prefetch => { 'job' => 'state' } };
+   my $where   = { transition => $self->_output_transitions };
+   my $events  = $schema->resultset('Event')->search($where, $options);
+   my $trigger = TRUE;
+
+   while ($trigger) {
+      $trigger = FALSE;
+
+      for my $event ($events->all) {
+         my $transition = $event->transition eq 'kill_job' ? 'kill' : 'start';
+         my $method     = "_process_${transition}_event";
+         my $code       = sub { $self->$method($name, $event, $ipc_ssh) };
+
+         $schema->txn_do($code) or next;
+
+         trigger_input_handler $daemon_pid if $event->job->type eq 'box';
+         $trigger = TRUE;
+      }
+
+      $events->reset;
+   }
+
+   return OK;
+}
+
+=item C<ssh_caller>
+
+   $hash_ref = $self->ssh_caller($notifier, $runid, \%options);
 
 The keys of the C<options> hash reference are;
 
@@ -253,7 +285,7 @@ The keys of the C<options> hash reference are;
 
 =cut
 
-sub ipc_ssh_caller {
+sub ssh_caller {
    my ($self, $notifier, $runid, $args) = @_;
 
    my $name    = $notifier->name;
@@ -297,9 +329,9 @@ sub ipc_ssh_caller {
    return $results;
 }
 
-=item C<ipc_ssh_callback>
+=item C<ssh_callback>
 
-   $self->ipc_ssh_calback($notifier, \@args?);
+   $self->ssh_calback($notifier, \@args?);
 
 The C<args> array reference should contain;
 
@@ -313,7 +345,7 @@ The C<args> array reference should contain;
 
 =cut
 
-sub ipc_ssh_callback {
+sub ssh_callback {
    my ($self, $notifier, $args) = @_;
 
    my ($runid, $results) = @{$args // []};
@@ -330,42 +362,23 @@ sub ipc_ssh_callback {
    return;
 }
 
-=item C<output_handler>
+# Private methods
+sub _add_provisioning {
+   my ($self, $args) = @_;
 
-   $exit_code = $self->output_handler($name, $daemon_pid, $ipc_ssh);
+   my $host = $args->{host};
+   my $user = $args->{user};
 
-=cut
+   return if $self->_remote_provisioned("${user}\@${host}");
 
-sub output_handler {
-   my ($self, $name, $daemon_pid, $ipc_ssh) = @_;
+   my $calls     = $args->{calls};
+   my $appclass  = $self->config->appclass;
+   my $worker    = $self->worker;
 
-   my $schema  = $self->schema;
-   my $options = { prefetch => 'job' };
-   my $where   = { transition => $self->_output_transitions };
-   my $events  = $schema->resultset('Event')->search($where, $options);
-   my $trigger = TRUE;
-
-   while ($trigger) {
-      $trigger = FALSE;
-
-      for my $event ($events->all) {
-         my $transition = $event->transition eq 'kill_job' ? 'kill' : 'start';
-         my $method     = "_process_${transition}_event";
-         my $code       = sub { $self->$method($name, $event, $ipc_ssh) };
-
-         $schema->txn_do($code) or next;
-
-         trigger_input_handler $daemon_pid if $event->job->type eq 'box';
-         $trigger = TRUE;
-      }
-
-      $events->reset;
-   }
-
-   return OK;
+   unshift @{$calls}, ['provision', [$appclass, $worker], '_install_worker'];
+   return;
 }
 
-# Private methods
 sub _cron_log_interval {
    my ($self, $name) = @_;
 
@@ -416,15 +429,7 @@ sub _dispatch_message {
 sub _dispatch_job {
    my ($self, $ipc_ssh, $job, $args) = @_;
 
-   if ($job->host ne 'localhost') {
-      my $user    = $job->user_name;
-      my $calls   = [['dispatch', [%{$args}]]];
-      my $options = { calls => $calls, host => $job->host, user => $user };
-
-      $self->_ipc_ssh_add_provisioning($options);
-      $ipc_ssh->call($args->{runid}, $options); # Calls ipc_ssh_caller
-   }
-   else {
+   if ($job->host eq 'localhost') {
       ensure_class_loaded $self->worker;
 
       $args->{config} = $self->config;
@@ -436,7 +441,36 @@ sub _dispatch_job {
 
       $self->log->debug("${name}[${runid}]: ${response}");
    }
+   else {
+      my $user    = $job->user_name;
+      my $calls   = [['dispatch', [%{$args}]]];
+      my $options = { calls => $calls, host => $job->host, user => $user };
 
+      $self->_add_provisioning($options);
+      $ipc_ssh->call($args->{runid}, $options); # Calls ssh_caller
+   }
+
+   return;
+}
+
+# TODO: Implement event stream output method for a callback
+sub _event_stream_callback {
+   my ($self, $name, $subscription, $events) = @_;
+
+   my $leader = ucfirst "${name}.callback";
+
+   return;
+}
+
+sub _event_stream_webpost {
+   my ($self, $name, $subscription, $events) = @_;
+
+   my $leader = ucfirst "${name}.webpost";
+   my $uri    = $subscription->{callback_uri};
+   my $res    = $self->web_server_post($uri, { events => $events });
+
+   $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
+   $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
    return;
 }
 
@@ -445,9 +479,9 @@ sub _event_stream_webpush {
 
    my $leader  = ucfirst "${name}.webpush";
    my $user_id = $subscription->{user_id};
-   my $options = { content => { events => $events } };
-   my $res     = $self->service_worker_push($user_id, $options);
+   my $res     = $self->service_worker_push($user_id, { events => $events });
 
+   $res->{message} //= 'No message';
    $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
    $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
    return;
@@ -481,6 +515,22 @@ sub _get_identity_file {
    return;
 }
 
+sub _input_event_cleanup {
+   my ($self, $event) = @_;
+
+   my $job = $event->job;
+
+   $job->delete if $job->delete_after && $event->transition eq 'finished';
+
+   if (includes $event->transition, [qw(fail finish terminate)]) {
+      my $runid = $event->runid;
+
+      $self->redis_client->del("event_token-${runid}") if $runid;
+   }
+
+   return;
+}
+
 sub _install_cpan_minus {
    return shift->_install_remote('install_cpan_minus', @_);
 }
@@ -505,24 +555,7 @@ sub _install_remote {
    return;
 }
 
-sub _ipc_ssh_add_provisioning {
-   my ($self, $args) = @_;
-
-   my $host = $args->{host};
-   my $user = $args->{user};
-
-   return if $self->_remote_provisioned("${user}\@${host}");
-
-   my $appclass  = $self->config->appclass;
-   my $calls     = $args->{calls};
-   my $installer = '_ipc_ssh_install_worker';
-   my $worker    = $self->worker;
-
-   unshift @{$calls}, ['provision', [$appclass, $worker], $installer];
-   return;
-}
-
-sub _ipc_ssh_install_worker {
+sub _install_worker {
    my ($self, $leader, $results, $call, $result, $args) = @_;
 
    my $dist      = distname $self->worker;
@@ -542,7 +575,8 @@ sub _ipc_ssh_install_worker {
       return;
    }
 
-   my $tarball = $share->catfile(my $file = "${dist}-${our_ver}.tar.gz");
+   my $file    = "${dist}-${our_ver}.tar.gz";
+   my $tarball = $share->catfile($file);
 
    return $self->log->error("${leader}: File ${tarball} not found")
       unless $tarball->exists;
@@ -566,12 +600,16 @@ sub _process_event {
 
    return $cols unless $fail;
 
-   my $mesg = 'Job ' . $fail->[0] . ' event ' . $fail->[1] .
-              ' rejected - ' . $fail->[2]->class;
+   my $job     = $fail->[0];
+   my $trans   = $fail->[1];
+   my $e       = $fail->[2];
+   my $reason  = length $e->class > 16 ? 'Exception' : $e->class;
+   my $message = "Job ${job} transition ${trans} rejected - ${reason}";
 
-   $self->log->debug("${name}: ${mesg}");
-   $cols->{rejected} = length $fail->[2]->class > 16
-      ? 'Exception' : $fail->[2]->class;
+   $cols->{rejected} = $reason;
+   $self->log->debug("${name}: ${message}");
+   $self->log->error("${name}: ${e}") if $reason eq 'Exception';
+
    return $cols;
 }
 
@@ -585,12 +623,13 @@ sub _process_kill_event {
    my $last_pev = $pev_rs->find_last_start($job);
 
    if ($success && $last_pev) {
+      my $runid   = $last_pev->runid;
       my $args    = $self->_dispatch_args($job, 'kill_job');
-      my $message = $self->_dispatch_message($job, 'Killing', $last_pev->runid);
+      my $message = $self->_dispatch_message($job, 'Killing', $runid);
 
       $self->log->info($message);
-      $args->{runid} = $pev->{runid} = $last_pev->runid;
-      $args->{token} = $pev->{token} = $last_pev->token;
+      $args->{runid} = $runid;
+      $args->{token} = $self->redis_client->get("event_token-${runid}");
       $self->_dispatch_job($ipc_ssh, $job, $args);
    }
 
@@ -609,10 +648,12 @@ sub _process_start_event {
    if ($success && $job->type eq 'job') {
       my $args    = $self->_dispatch_args($job, $job->command);
       my $message = $self->_dispatch_message($job, 'Starting', $args->{runid});
+      my $runid   = $args->{runid};
+      my $key     = "event_token-${runid}";
 
+      $pev->{runid} = $runid;
+      $self->redis_client->set_with_ttl($key, $args->{token}, 86400);
       $self->log->info($message);
-      $pev->{runid} = $args->{runid};
-      $pev->{token} = $args->{token};
       $self->_dispatch_job($ipc_ssh, $job, $args);
    }
    elsif ($success && $job->type eq 'box') {

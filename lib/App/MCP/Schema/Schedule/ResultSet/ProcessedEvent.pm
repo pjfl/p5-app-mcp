@@ -8,7 +8,9 @@ extends 'DBIx::Class::ResultSet';
 sub find_last_start {
    my ($self, $job_or_runid) = @_;
 
-   my $where = { transition => ['force_start', 'start'] };
+   my $where = {
+      transition => ['force_start', 'start'], token => { '!=' => q() }
+   };
 
    if (blessed $job_or_runid) { $where->{job_id} = $job_or_runid->id }
    else { $where->{runid} = $job_or_runid }

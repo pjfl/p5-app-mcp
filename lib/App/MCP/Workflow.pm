@@ -3,7 +3,7 @@ package App::MCP::Workflow;
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
 use Scalar::Util          qw( blessed );
 use Unexpected::Functions qw( throw catch_class ActiveJobs AutoHold Condition
-                              Crontab ExpectedRV Illegal );
+                              Crontab ExpectedRV Illegal Parent Retry );
 use App::MCP::Workflow::Transition;
 use Try::Tiny;
 use Moo;
@@ -64,15 +64,15 @@ sub BUILD {
 
    $self->initial_state('inactive');
 
-   my $active_transitions  = [qw(deactivate fail force_start on_hold start)];
-   my $running_transitions = [qw(fail finish kill_job terminate)];
+   my $active  = [qw(deactivate fail force_start on_hold start started)];
+   my $running = [qw(fail finish kill_job terminate)];
 
-   $self->state('active',     transitions => $active_transitions);
+   $self->state('active',     transitions => $active);
    $self->state('hold',       transitions => [qw(off_hold)]);
    $self->state('failed',     transitions => [qw(activate on_hold)]);
    $self->state('finished',   transitions => [qw(activate on_hold)]);
    $self->state('inactive',   transitions => [qw(activate on_hold)]);
-   $self->state('running',    transitions => $running_transitions);
+   $self->state('running',    transitions => $running);
    $self->state('starting',   transitions => [qw(fail started)]);
    $self->state('terminated', transitions => [qw(activate on_hold)]);
 
@@ -88,7 +88,8 @@ sub BUILD {
    $self->transition('on_hold',     to_state   => 'hold');
    $self->transition('start',       to_state   => 'starting',
                                     validators => [\&_validate_start]);
-   $self->transition('started',     to_state   => 'running');
+   $self->transition('started',     to_state   => 'running',
+                                    validators => [\&_validate_started]);
    $self->transition('terminate',   to_state   => 'terminated');
    return;
 }
@@ -136,11 +137,12 @@ sub process_event {
 sub _validate_activate {
    my ($self, $instance, $event) = @_;
 
-   return unless $event->job->auto_hold;
+   if ($event->transition->value ne 'off_hold' && $event->job->auto_hold) {
+      $event->transition->set_on_hold;
+      throw AutoHold;
+   }
 
-   $event->transition->set_on_hold;
-
-   throw AutoHold;
+   return;
 }
 
 sub _validate_finish {
@@ -150,21 +152,29 @@ sub _validate_finish {
 
    throw ActiveJobs if $job->type eq 'box' && $job->has_active_jobs;
 
-   return if $event->rv <= $job->expected_rv;
+   if ($event->rv > $job->expected_rv) {
+      $event->transition->set_fail;
+      throw ExpectedRV, [$event->rv, $job->expected_rv];
+   }
 
-   $event->transition->set_fail;
-
-   throw ExpectedRV, [$event->rv, $job->expected_rv];
+   return;
 }
-
 
 sub _validate_start {
    my ($self, $instance, $event) = @_;
 
-   my $job = $event->job;
+   my $job    = $event->job;
+   my $parent = $job->parent_box;
 
+   throw Parent    if $parent && $parent->state->name ne 'running';
    throw Crontab   unless $job->should_start_now;
    throw Condition unless $job->start_condition;
+
+   return;
+}
+
+sub _validate_started {
+   my ($self, $instance, $event) = @_;
 
    return;
 }

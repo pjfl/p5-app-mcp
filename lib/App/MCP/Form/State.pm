@@ -101,10 +101,8 @@ sub update_model {
 
    $context->schema->resultset('Event')->create($args);
 
-   my $daemon_pid = $context->config->appclass->env_var('daemon_pid');
-
-   if ($signal eq 'start') { trigger_output_handler $daemon_pid }
-   else { trigger_input_handler $daemon_pid }
+   if ($signal eq 'start') { trigger_output_handler $context->config }
+   else { trigger_input_handler $context->config }
 
    return;
 }

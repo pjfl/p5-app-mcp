@@ -2,7 +2,8 @@ package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
 use File::DataClass::Types qw( ArrayRef Directory );
-use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded );
+use App::MCP::Util         qw( local_config trigger_input_handler );
+use Class::Usul::Cmd::Util qw( decrypt elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
 use Type::Utils            qw( class_type );
@@ -106,6 +107,35 @@ has 'templatedir' =>
       return $vardir->catdir('templates', $self->config->skin, 'site');
    };
 
+=item C<user_name>
+
+Defaults from configuration to the application prefix C<mcp>
+
+=cut
+
+# TODO: Make these options. Should be able to supply encrypted/unencrypted
+# password from the command line
+
+has 'user_name' => is => 'lazy', default => sub { shift->config->prefix };
+
+=item C<user_password>
+
+This should be in the local configuration file. See C<store_password>
+
+=cut
+
+has 'user_password' =>
+   is      => 'lazy',
+   default => sub {
+      my $self     = shift;
+      my $name     = $self->user_name;
+      my $password = local_config($self->config)->{"${name}_password"};
+
+      throw Unspecified, ["${name} password"] unless $password;
+
+      return decrypt NUL, $password;
+   };
+
 =back
 
 =head1 Subroutines/Methods
@@ -122,7 +152,7 @@ Does nothing
 
 sub BUILD {}
 
-=item install - Creates directories and starts schema installation
+=item C<install> - Creates directories and starts schema installation
 
 Creates directories and starts schema installation. Needs to run before
 the schema admin program creates the database so that the config object
@@ -155,7 +185,7 @@ sub install : method {
    return OK;
 }
 
-=item make_all - Run JS and CSS production methods
+=item C<make_all> - Run JS and CSS production methods
 
 A convienience method which calls the other three front end file production
 methods
@@ -170,7 +200,7 @@ sub make_all : method {
    return OK;
 }
 
-=item make_css - Make concatenated CSS file
+=item C<make_css> - Make concatenated CSS file
 
 Run automatically if L<App::Burp> is running. It calls C<make-less> and then
 concatenates multiple CSS files into a single one
@@ -197,7 +227,7 @@ sub make_css : method {
    return OK;
 }
 
-=item make_js - Make concatenated JS file
+=item C<make_js> - Make concatenated JS file
 
 Run automatically if L<App::Burp> is running. It concatenates multiple JS files
 into a single one. Strips JSDoc comments
@@ -223,7 +253,7 @@ sub make_js : method {
    return OK;
 }
 
-=item make_less - Convert LESS files to CSS
+=item C<make_less> - Convert LESS files to CSS
 
 Run automatically if L<App::Burp> is running. Compiles LESS files down to CSS
 files
@@ -251,7 +281,30 @@ sub make_less : method {
    return OK;
 }
 
-=item send_message - Send an email or SMS message
+=item C<send_event> - Create a job state transition event
+
+The default event transition is C<start>
+
+=cut
+
+sub send_event : method {
+   my $self  = shift;
+   my $job_name  = $self->next_argv or throw Unspecified, ['job name'];
+   my $trans = $self->next_argv // 'start';
+   my $delay = $self->options->{delay};
+
+   if ($delay) {
+      my $code = sub { sleep $delay; $self->_send_event($job_name, $trans) };
+
+      $self->run_cmd([$code], { detach => TRUE });
+      sleep 3;
+   }
+   else { $self->_send_event($job_name, $trans) }
+
+   return OK;
+}
+
+=item C<send_message> - Send an email or SMS message
 
 Send either email or SMS messages to a list of recipients. The SMS client is
 unimplemented
@@ -269,6 +322,17 @@ sub send_message : method {
 }
 
 # Private methods
+sub _authenticated_user_info {
+   my $self     = shift;
+   my $username = $self->user_name;
+   my $user_rs  = $self->schema->resultset('User');
+   my $user     = $user_rs->authenticate($username, $self->user_password);
+
+   $self->log->debug("User ${username} authenticated");
+
+   return { user => $user, groups => $user->groups };
+}
+
 sub _create_profile {
    my $self = shift;
 
@@ -466,6 +530,26 @@ sub _send_email_single {
    return TRUE;
 }
 
+sub _send_event {
+   my ($self, $job_name, $trans) = @_;
+
+   my $job_rs  = $self->schema->resultset('Job');
+   my $user    = $self->_authenticated_user_info->{user};
+   my $job     = $job_rs->assert_executable($job_name, $user);
+   my $params  = { job_id => $job->id, transition => $trans };
+
+   $self->schema->resultset('Event')->create($params);
+
+   my $triggered = trigger_input_handler($self->config);
+   my $message   = "Job [_1] transition [_2]";
+   my $context   = { args => [$job_name, $trans] };
+
+   if ($triggered) { $self->log->debug("${message} signaled daemon", $context) }
+   else { $self->error("${message} failed to signal daemon", $context) }
+
+   return;
+}
+
 sub _send_notification {
    my $self      = shift;
    my $options   = $self->options;
@@ -474,11 +558,12 @@ sub _send_notification {
 
    throw UnknownUser, [$recipient] unless $user;
 
-   my $res     = $self->service_worker_push($user->id, $options);
-   my $args    = ["${user}", $options->{subject}];
-   my $context = { args => $args, leader => 'CLI.send_notification' };
+   my $message = $options->{message} // 'No message';
+   my $res     = $self->service_worker_push($user->id, { message => $message });
+   my $leader  = 'CLI.send_notification';
+   my $context = { args => ["${user}", $message], leader => $leader };
 
-   return $self->info('Notified [_1] of [_2]', $context) if $res->{success};
+   return $self->info('Notified [_1] - [_2]', $context) if $res->{success};
 
    $self->error($res->{error}, $context);
    return FALSE;

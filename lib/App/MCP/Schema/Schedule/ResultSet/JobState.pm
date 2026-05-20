@@ -63,7 +63,7 @@ sub create_and_or_update {
       $state_name = _workflow()->process_event($state_name, $event);
       $job_state->name($state_name);
       $job_state->update;
-      $self->_trigger_update_cascade($event);
+      $self->_trigger_update_cascade($event, $job_state);
    }
    catch {
       my $e = $_;
@@ -119,7 +119,7 @@ sub find_or_create {
 
 # Private methods
 sub _trigger_update_cascade {
-   my ($self, $event) = @_;
+   my ($self, $event, $job_state) = @_;
 
    my $ev_trans = $event->transition->value;
    my $schema   = $self->result_source->schema;
@@ -150,6 +150,16 @@ sub _trigger_update_cascade {
       };
 
       $ev_rs->create($options);
+   }
+
+   if ($job_state->name eq 'active') {
+      my $parent = $event->job->parent_box;
+
+      if (!$parent || $parent->state->name eq 'running') {
+         my $options = { job_id => $event->job_id, transition => 'start' };
+
+         $ev_rs->create($options);
+      }
    }
 
    return;

@@ -36,6 +36,8 @@ setup_resultset sub {
    return $rs->search($where, { prefetch => 'job' });
 };
 
+has_column 'id' => sortable => TRUE;
+
 has_column 'job_name' =>
    label    => 'Job Name',
    sortable => TRUE,

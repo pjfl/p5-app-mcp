@@ -1,12 +1,24 @@
 package App::MCP::Schema::Schedule::ResultSet::User;
 
-use App::MCP::Constants qw( FALSE TRUE );
+use App::MCP::Constants qw( FALSE NUL TRUE );
 use Moo;
 
 extends 'DBIx::Class::ResultSet';
 
 sub active {
    my $self = shift; return $self->search({ 'me.active' => TRUE });
+}
+
+sub authenticate {
+   my ($self, $username, $password) = @_;
+
+   my $user = $self->find_by_key($username, { prefetch => 'profile' });
+
+   return unless $user;
+
+   $user->authenticate($password, NUL, TRUE);
+
+   return $user;
 }
 
 sub find_by_key {

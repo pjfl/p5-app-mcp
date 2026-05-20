@@ -286,20 +286,21 @@ WCom.MCP.StateDiagram = (function() {
    Object.assign(Preferences.prototype, Utils.Bitch);
    class Diagram {
       constructor(container, config) {
-         this.container = this.h.div({ className: 'diagram-container' });
-         this.domWait   = config['dom-wait'] || 500;
-         this.eventURI  = config['event-uri'];
-         this.icons     = config['icons'];
-         this.maxJobs   = config['max-jobs'];
-         this.name      = config['name'];
-         this.onload    = config['onload'];
-         this.token     = config['verify-token'];
-         this.userID    = config['user-id'];
-         this.resultSet = new ResultSet(config['data-uri']);
-         this.depGraph  = new DependencyGraph(this);
-         this.prefs     = new Preferences(this, config['prefs-uri']);
-         this.index     = 0;
-         this.jobs      = [];
+         this.container  = this.h.div({ className: 'diagram-container' });
+         this.autoUpdate = config['auto-update'] || false;
+         this.domWait    = config['dom-wait'] || 500;
+         this.eventURI   = config['event-uri'];
+         this.icons      = config['icons'];
+         this.maxJobs    = config['max-jobs'];
+         this.name       = config['name'];
+         this.onload     = config['onload'];
+         this.token      = config['verify-token'];
+         this.userID     = config['user-id'];
+         this.resultSet  = new ResultSet(config['data-uri']);
+         this.depGraph   = new DependencyGraph(this);
+         this.prefs      = new Preferences(this, config['prefs-uri']);
+         this.index      = 0;
+         this.jobs       = [];
          container.appendChild(this.container);
       }
       async nextJob(index) {
@@ -345,9 +346,12 @@ WCom.MCP.StateDiagram = (function() {
          const method = state ? 'webpush' : 'unregister';
          const data = { subscription: { method } };
          const json = JSON.stringify({ data, '_verify': this.diagram.token });
-         const { object } = await this.bitch.blows(uri, { json });
-         this.registrationState = state;
-         Navigation.logger('debug', object.message);
+         try {
+            const { object } = await this.bitch.blows(uri, { json });
+            Navigation.logger('debug', object.message);
+            this.registrationState = state;
+         }
+         catch (e) {}
       }
       isConstructing() {
          return new Promise(function(resolve) {
@@ -362,7 +366,8 @@ WCom.MCP.StateDiagram = (function() {
          this._isConstructing = true;
          this.diagram = new Diagram(el, JSON.parse(el.dataset[dsName]));
          await this.diagram.render();
-         if (!this.registrationState) await this.eventStreamRegistration(true);
+         if (!this.registrationState && this.diagram.autoUpdate)
+            await this.eventStreamRegistration(true);
          const worker = window.navigator.serviceWorker;
          worker.addEventListener('message', this.messageHandler);
          this._isConstructing = false;

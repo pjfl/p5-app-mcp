@@ -272,8 +272,9 @@ has_field 'submit' => type => 'Button';
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
+   my $type    = $self->field('type')->value // NUL;
 
-   if ($self->field('type')->value eq 'box') {
+   if ($type eq 'box') {
       $self->field('_g3')->add_wrapper_class('hide');
       $self->field('_g4')->add_wrapper_class('hide');
       $self->field('command')->add_wrapper_class('hide');

@@ -275,8 +275,8 @@ sub _build_ipc_ssh {
       name        => $name,
       max_calls   => $self->config->max_ssh_worker_calls,
       max_workers => $self->config->max_ssh_workers,
-      on_recv     => sub { $app->ipc_ssh_caller(@_) },
-      on_return   => sub { $app->ipc_ssh_callback(@_) },
+      on_recv     => sub { $app->ssh_caller(@_) },
+      on_return   => sub { $app->ssh_callback(@_) },
   );
 }
 

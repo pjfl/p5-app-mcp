@@ -64,8 +64,6 @@ has '_ua' =>
    isa     => class_type('HTTP::Tiny'),
    default => sub { HTTP::Tiny->new(timeout => shift->ua_timeout) };
 
-=cut
-
 =back
 
 =head1 Subroutines/Methods
@@ -76,22 +74,10 @@ Defineds the following methods;
 
 =item C<service_worker_push>
 
-   $hash_ref = $self->service_worker_push($user_id, \%options);
+   $hash_ref = $self->service_worker_push($user_id, \%content);
 
 If a user with the given C<user_id> has registered a Web Push subscription push
-the supplied C<options> which are;
-
-=over 3
-
-=item C<subject>
-
-The subject string for the message sent to the browser
-
-=item C<content>
-
-The string content sent to the JS service worker in the browser
-
-=back
+the supplied C<content>
 
 Returns a hash reference with the C<success> attribute set to true if
 successful. Returns a hash reference containing an C<error> attribute
@@ -100,16 +86,19 @@ otherwise
 =cut
 
 sub service_worker_push {
-   my ($self, $user_id, $options) = @_;
+   my ($self, $user_id, $content) = @_;
+
+   return { error => "Parameter 'user_id' not specified" } unless $user_id;
+
+   $content //= { message => 'Something happened' };
 
    my $worker_key   = "service-worker-${user_id}";
    my $subscription = $self->redis_client->get($worker_key);
-   my $message      = "User ${user_id} no service worker subscription";
+   my $message      = "User '${user_id}' no service worker subscription";
 
    return { error => $message } unless $subscription;
 
-   my $req     = $self->_pusher;
-   my $content = $options->{content} // { message => 'Something happened' };
+   my $req = $self->_pusher;
 
    $req->subscription($self->json_parser->decode($subscription));
    $req->subject('mailto:mcp@example.com');
@@ -121,9 +110,43 @@ sub service_worker_push {
    my $params  = { content => $req->content, headers => $req->headers };
    my $res     = $self->_ua->post($req->uri, $params);
 
-   return $res if $res->{success};
+   return $self->_decode_error($res) unless $res->{success};
 
-   $message = $res->{content} // 'No response content';
+   return $res;
+}
+
+=item C<web_server_post>
+
+   $hash_ref = $self->web_server_post($uri, \%content);
+
+Returns a hash reference with the C<success> attribute set to true if
+successful. Returns a hash reference containing an C<error> attribute
+otherwise
+
+=cut
+
+sub web_server_post {
+   my ($self, $uri, $content) = @_;
+
+   return { error => "Parameter 'uri' not specified" } unless $uri;
+
+   $content //= { message => 'Something happened' };
+
+   my $encoded = $self->json_parser->encode($content);
+   my $headers = { 'Content-Type' => 'application/json' };
+   my $params  = { content => $encoded, headers => $headers };
+   my $res     =  $self->_ua->post($uri, $params);
+
+   return $self->_decode_error($res) unless $res->{success};
+
+   return $res;
+}
+
+# Private methods
+sub _decode_error {
+   my ($self, $res) = @_;
+
+   my $message = $res->{content} // 'No response content';
 
    if ('{' eq substr $message, 0, 1) {
       my $decoded = $self->json_parser->decode($message);

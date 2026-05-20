@@ -16,7 +16,7 @@ sub active_crontab {
    return $self->search({
       'state.name'        => 'active',
       'me.crontab'        => { '!=' => NUL },
-      'events.transition' => [ undef, { '!=' => [ -and => $op_transitions ] } ],
+      'events.transition' => { '!=' => [ -and => @{$op_transitions} ] },
    }, {
       'columns' => [qw( condition crontab events.transition
                         id state.name state.updated )],

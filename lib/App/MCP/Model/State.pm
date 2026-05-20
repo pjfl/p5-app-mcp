@@ -3,6 +3,7 @@ package App::MCP::Model::State;
 use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types            qw( Int );
 use App::MCP::Util               qw( redirect );
+use HTML::Forms::Util            qw( json_bool );
 use Web::ComposableRequest::Util qw( bson64id bson64id_time );
 use Unexpected::Functions        qw( throw UnknownJob );
 use Try::Tiny;
@@ -74,14 +75,16 @@ sub view : Auth('view') Nav('State|info') {
       return;
    }
 
-   my $params    = { 'state-data' => 'true' };
-   my $data_uri  = $context->uri_for_action('state/view', [], $params);
-   my $event_uri = $context->uri_for_action('api/event_register');
-   my $wcom      = $self->config->wcom_resources->{navigation};
-   my $name      = 'state-diagram';
-   my $prefs_uri = $context->uri_for_action('api/diag_preference', [$name]);
+   my $params      = { 'state-data' => 'true' };
+   my $data_uri    = $context->uri_for_action('state/view', [], $params);
+   my $event_uri   = $context->uri_for_action('api/event_register');
+   my $wcom        = $self->config->wcom_resources->{navigation};
+   my $name        = 'state-diagram';
+   my $prefs_uri   = $context->uri_for_action('api/diag_preference', [$name]);
+   my $auto_update = $context->feature('radar') ? TRUE : FALSE;
 
    $context->stash(state_config => {
+      'auto-update'  => json_bool $auto_update,
       'data-uri'     => $data_uri->as_string,
       'dom-wait'     => $self->dom_wait,
       'event-uri'    => $event_uri->as_string,

@@ -4,16 +4,18 @@ use utf8; # -*- coding: utf-8; -*-
 use strictures;
 use parent 'Exporter::Tiny';
 
-use App::MCP::Constants        qw( FALSE NUL SEPARATOR SQL_FALSE SQL_TRUE TRUE
-                                   VARCHAR_MAX_SIZE );
+use App::MCP::Constants        qw( EXCEPTION_CLASS FALSE NUL SEPARATOR
+                                   SQL_FALSE SQL_TRUE TRUE VARCHAR_MAX_SIZE );
 use Crypt::Eksblowfish::Bcrypt qw( en_base64 );
 use Digest                     qw( );
 use English                    qw( -no_match_vars );
 use File::DataClass::IO        qw( io );
 use HTML::Entities             qw( encode_entities );
 use JSON::MaybeXS              qw( encode_json );
-use Scalar::Util               qw( weaken );
+use Scalar::Util               qw( blessed weaken );
 use Time::Duration             qw( concise duration );
+use Web::Components::Util      qw( load_file dump_file );
+use Unexpected::Functions      qw( throw );
 use URI::Escape                qw( );
 use URI::http;
 use
@@ -24,12 +26,13 @@ use DateTime::Format::Human;
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
    concise_duration create_token create_totp_token created_timestamp_data_type
    distname dt_from_epoch dt_human encode_for_html enumerated_data_type
-   foreign_key_data_type formpost get_hashed_pw get_salt new_salt new_uri
-   integer_data_type integer_id_data_type nullable_foreign_key_data_type
-   nullable_text_data_type nullable_varchar_data_type redirect redirect2referer
-   serial_data_type set_on_create_datetime_data_type strip_parent_name
-   terminate text_data_type trigger_input_handler trigger_output_handler
-   truncate updated_timestamp_data_type varchar_data_type );
+   foreign_key_data_type formpost get_hashed_pw get_salt local_config new_salt
+   new_uri integer_data_type integer_id_data_type
+   nullable_foreign_key_data_type nullable_text_data_type
+   nullable_varchar_data_type redirect redirect2referer serial_data_type
+   set_on_create_datetime_data_type strip_parent_name terminate text_data_type
+   trigger_input_handler trigger_output_handler truncate
+   updated_timestamp_data_type varchar_data_type );
 
 =pod
 
@@ -327,6 +330,30 @@ sub get_salt ($) {
    return join '$', @parts;
 }
 
+=item C<local_config>
+
+   $hash_ref = local_config($config, \%data?);
+
+=cut
+
+sub local_config ($;$) {
+   my ($config, $data) = @_;
+
+   throw 'Local config file undefined' unless $config->has_local_config_file;
+
+   my $file = $config->local_config_file;
+   my $path = $file->exists ? $file : $config->config_home->child("${file}");
+
+   if ($data) {
+      dump_file($path->assert, $data);
+      return $data;
+   }
+
+   return load_file($path, TRUE) // {} if $path->exists;
+
+   return {};
+}
+
 =item C<new_salt>
 
    $string = new_salt $type, $load_factor;
@@ -410,7 +437,13 @@ sub terminate ($) {
 =cut
 
 sub trigger_input_handler ($) {
-   return $_[0] ? CORE::kill 'USR1', $_[0] : FALSE;
+   my $arg = shift;
+   my $pid;
+
+   if (blessed $arg) { $pid = _read_pid_file($arg) }
+   else { $pid = $arg }
+
+   return $pid ? CORE::kill 'USR1', $pid : FALSE;
 }
 
 =item C<trigger_output_handler>
@@ -420,7 +453,13 @@ sub trigger_input_handler ($) {
 =cut
 
 sub trigger_output_handler ($) {
-   return $_[0] ? CORE::kill 'USR2', $_[0] : FALSE;
+   my $arg = shift;
+   my $pid;
+
+   if (blessed $arg) { $pid = _read_pid_file($arg) }
+   else { $pid = $arg }
+
+   return $pid ? CORE::kill 'USR2', $pid : FALSE;
 }
 
 =item C<truncate>
@@ -672,6 +711,16 @@ sub nullable_varchar_data_type (;$$) {
 # Private methods
 sub _pseudo_random {
    return join q(), time, rand 10_000, $PID, {};
+}
+
+sub _read_pid_file {
+   my $config  = shift;
+   my $name    = lc distname $config->appclass;
+   my $pidfile = $config->rundir->catfile("${name}.pid");
+
+   return FALSE unless $pidfile->exists;
+
+   return $pidfile->chomp->getline;
 }
 
 1;

@@ -12,6 +12,7 @@ use App::MCP::Attributes; # Will do namespace cleaning
 
 extends 'App::MCP::Model';
 with    'Web::Components::Role';
+with    'App::MCP::Role::Redis';
 with    'App::MCP::Role::JSONParser';
 with    'App::MCP::Role::APIAuthentication';
 
@@ -50,7 +51,7 @@ sub create_event : Auth('none') {
    return $self->_stash_response($context, $result) if $result;
 
    my $runid  = $context->stash('runid');
-   my $secret = $self->_get_decode_secret($runid);
+   my $secret = $self->redis_client->get("event_token-${runid}");
 
    $result = [HTTP_NOT_FOUND, { message => "Runid ${runid} token not found" }];
 
@@ -64,12 +65,14 @@ sub create_event : Auth('none') {
 
    return $self->_stash_response($context, $result) unless $params;
 
+   my $daemon_pid = $self->config->appclass->env_var('daemon_pid');
+
    try {
       my $event = $self->schema->resultset('Event')->create($params);
 
-      trigger_input_handler $self->config->appclass->env_var('daemon_pid');
       $message = 'Event ' . $event->id . ' created';
       $result  = [HTTP_CREATED, { message => $message }];
+      trigger_input_handler($self->config);
    }
    catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
 
@@ -129,15 +132,6 @@ sub _decode_params {
    catch { $self->log->error($_, $context) };
 
    return $params;
-}
-
-sub _get_decode_secret {
-   my ($self, $runid) = @_;
-
-   my $pev_rs = $self->schema->resultset('ProcessedEvent');
-   my $pevent = $pev_rs->find_last_start($runid) or return;
-
-   return $pevent->token;
 }
 
 sub _stash_response {

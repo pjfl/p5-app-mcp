@@ -4,6 +4,7 @@ use attributes ();
 
 use App::MCP::Constants     qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Class::Usul::Cmd::Types qw( ConfigProvider Int Str );
+use Class::Usul::Cmd::Util  qw( includes );
 use HTML::Forms::Util       qw( get_token verify_token );
 use Ref::Util               qw( is_arrayref is_coderef is_hashref );
 use Scalar::Util            qw( blessed );

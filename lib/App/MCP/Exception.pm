@@ -301,6 +301,13 @@ has_exception 'Crontab' => parents => ['Workflow'],
 has_exception 'Illegal' => parents => ['Workflow'],
    error   => 'Transition [_1] from state [_2] illegal';
 
+=item C<Parent>
+
+=cut
+
+has_exception 'Parent' => parents => ['Workflow'],
+   error   => 'Parent box not running';
+
 =item C<Unknown>
 
 =cut

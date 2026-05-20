@@ -3,7 +3,7 @@ package App::MCP::Schema;
 use App::MCP::Constants         qw( EXCEPTION_CLASS FALSE NUL SPC TRUE );
 use Archive::Tar::Constant      qw( COMPRESS_GZIP );
 use Class::Usul::Cmd::Constants qw( AS_PARA AS_PASSWORD COMMA OK QUOTED_RE );
-use App::MCP::Util              qw( distname trigger_input_handler );
+use App::MCP::Util              qw( distname local_config );
 use Class::Usul::Cmd::Util      qw( decrypt encrypt ensure_class_loaded
                                     now_dt trim );
 use File::DataClass::IO         qw( io );
@@ -83,7 +83,7 @@ has 'db_password' =>
    is      => 'lazy',
    default => sub {
       my $self     = shift;
-      my $password = $self->_local_config->{db_password};
+      my $password = local_config($self->config)->{db_password};
 
       throw Unspecified, ['db_password'] unless $password;
 
@@ -165,7 +165,7 @@ has 'user_password' =>
    default => sub {
       my $self     = shift;
       my $name     = $self->user_name;
-      my $password = $self->_local_config->{"${name}_password"};
+      my $password = local_config($self->config)->{"${name}_password"};
 
       throw Unspecified, ["${name} password"] unless $password;
 
@@ -345,10 +345,10 @@ sub load_jobs : method {
    my $self  = shift;
    my $path  = io $self->next_argv // 'jobs.json';
    my $data  = load_file($path);
-   my $rs    = $self->schema->resultset( 'Job' );
-   my $count = $rs->load( $self->_authenticated_user_info, $data->{jobs} );
+   my $rs    = $self->schema->resultset('Job');
+   my $count = $rs->load($self->_authenticated_user_info, $data->{jobs});
 
-   $self->info( "Loaded [_1] jobs from '[_2]'", { args => [ $count, $path ] } );
+   $self->info("Loaded [_1] jobs from '[_2]'", { args => [$count, $path] });
    return OK;
 }
 
@@ -383,40 +383,11 @@ sub restore : method {
       $sql->unlink;
    }
 
-   my $ver = $self->schema->get_db_version;
+   my $ver     = $self->schema->get_db_version;
+   my $context = { args => [$file, $ver], name => 'Admin.restore' };
 
-   $self->info('Restored backup [_1] schema [_1]', {
-      args => [$file, $ver], name => 'Admin.restore'
-   });
+   $self->info('Restored backup [_1] schema [_1]', $context);
 
-   return OK;
-}
-
-=item C<send_event> - Create a job state transition event
-
-The default event transition is C<start>
-
-=cut
-
-sub send_event : method {
-   my $self     = shift;
-   my $fqjn     = $self->next_argv
-      or throw Unspecified, ['qualified job name'];
-   my $trans    = $self->next_argv // 'start';
-   my $schema   = $self->schema;
-   my $job_rs   = $schema->resultset('Job');
-   my $event_rs = $schema->resultset('Event');
-   my $user     = $self->_authenticated_user_info->{user};
-   my $job      = $job_rs->assert_executable($fqjn, $user);
-
-   $event_rs->create({ job_id => $job->id, transition => $trans });
-
-   my $name     = lc distname $self->config->appclass;
-   my $pid_file = $self->config->rundir->catfile("${name}.pid");
-
-   trigger_input_handler $pid_file->chomp->getline if $pid_file->exists;
-
-   $self->info("Job '[_1]' was sent a [_2] event", { args => [$fqjn, $trans] });
    return OK;
 }
 
@@ -433,7 +404,7 @@ configuration file
 sub store_password : method {
    my $self = shift;
 
-   $self->_store_password($self->next_argv // $self->user_name);
+   $self->_store_password($self->next_argv // 'db');
 
    return OK;
 }
@@ -471,17 +442,13 @@ sub _add_backup_files {
 
 sub _authenticated_user_info {
    my $self     = shift;
-   my $info     = {};
-   my $schema   = $self->schema;
-   my $user_rs  = $schema->resultset('User');
-   my $options  = { prefetch => 'role' };
    my $username = $self->user_name;
-   my $user     = $info->{user} = $user_rs->find_by_key($username, $options);
-   my $role     = $info->{role} = $user->role;
+   my $user_rs  = $self->schema->resultset('User');
+   my $user     = $user_rs->authenticate($username, $self->user_password);
 
-   $user->authenticate($self->user_password, NUL, TRUE);
    $self->log->debug("User ${username} authenticated");
-   return $info;
+
+   return { user => $user, groups => $user->groups };
 }
 
 sub _backup_command {
@@ -655,26 +622,6 @@ sub _list_population_classes {
    return $res;
 }
 
-sub _local_config {
-   my ($self, $data) = @_;
-
-   my $config = $self->config;
-
-   throw 'Local config file undefined' unless $config->has_local_config_file;
-
-   my $file = $config->local_config_file;
-   my $path = $file->exists ? $file : $config->config_home->child("${file}");
-
-   if ($data) {
-      dump_file($path->assert, $data);
-      return $data;
-   }
-
-   return load_file($path, TRUE) // {} if $path->exists;
-
-   return {};
-}
-
 sub _populate_class {
    my ($self, $schema, $split, $class, $path) = @_;
 
@@ -730,10 +677,10 @@ sub _store_password {
 
    throw 'Passwords do no match' unless $password eq $again;
 
-   my $data = $self->_local_config;
+   my $data = local_config($self->config);
 
    $data->{"${username}_password"} = encrypt NUL, $password;
-   $self->_local_config($data);
+   local_config($self->config, $data);
 
    my $options = { name => 'Schema.store_password' };
 
