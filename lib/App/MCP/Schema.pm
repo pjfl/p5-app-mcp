@@ -4,10 +4,9 @@ use App::MCP::Constants         qw( EXCEPTION_CLASS FALSE NUL SPC TRUE );
 use Archive::Tar::Constant      qw( COMPRESS_GZIP );
 use Class::Usul::Cmd::Constants qw( AS_PARA AS_PASSWORD COMMA OK QUOTED_RE );
 use App::MCP::Util              qw( distname local_config );
-use Class::Usul::Cmd::Util      qw( decrypt encrypt ensure_class_loaded
-                                    now_dt trim );
+use Class::Usul::Cmd::Util      qw( decrypt dump_file encrypt
+                                    ensure_class_loaded load_file now_dt trim );
 use File::DataClass::IO         qw( io );
-use Web::Components::Util       qw( load_file dump_file );
 use Unexpected::Functions       qw( throw PathNotFound Unspecified );
 use Archive::Tar;
 use Data::Record;
@@ -149,9 +148,6 @@ Defaults from configuration to the application prefix C<mcp>
 
 =cut
 
-# TODO: Make these options. Should be able to supply encrypted/unencrypted
-# password from the command line
-
 has 'user_name' => is => 'lazy', default => sub { shift->config->prefix };
 
 =item C<user_password>
@@ -267,10 +263,9 @@ sub backup : method {
    my $bdir = $conf->vardir->catdir('backup');
    my $tarb = "${db}-${date}.tgz";
    my $out  = $bdir->catfile($tarb)->assert_filepath;
-   my $opts = { args => [$tarb], name => 'Admin.backup' };
 
    ensure_class_loaded 'Archive::Tar';
-   $self->info('Generating backup [_1]', $opts);
+   $self->info('Generating backup [_1]', { args => [$tarb] });
    $self->_create_ddl_file;
    $self->run_cmd($self->_backup_command($path));
    chdir $conf->home;
@@ -286,8 +281,8 @@ sub backup : method {
    $file = $out->basename;
 
    my $size = Format::Human::Bytes->new()->base2($out->stat->{size});
+   my $opts = { args => [$file, $size] };
 
-   $opts = { args => [$file, $size], name => 'Admin.backup' };
    $self->info('Backup complete. File [_1] size [_2]', $opts);
    return OK;
 }
@@ -304,10 +299,11 @@ sub dump_jobs : method {
    my $path     = io $self->next_argv // 'jobs.json';
    my $data     = $self->schema->resultset('Job')->dump($job_spec);
    my $count    = @{ $data };
+   my $args     = [$count, $job_spec, $path];
 
    dump_file($path, { jobs => $data });
-   $self->info( "Dumped [_1] jobs matching '[_2]' to '[_3]'",
-                { args => [ $count, $job_spec, $path ] } );
+
+   $self->info("Dumped [_1] jobs matching '[_2]' to '[_3]'", { args => $args });
    return OK;
 }
 
@@ -346,9 +342,9 @@ sub load_jobs : method {
    my $path  = io $self->next_argv // 'jobs.json';
    my $data  = load_file($path);
    my $rs    = $self->schema->resultset('Job');
-   my $count = $rs->load($self->_authenticated_user_info, $data->{jobs});
+   my $count = $rs->load($self->_authenticate_user, $data->{jobs});
 
-   $self->info("Loaded [_1] jobs from '[_2]'", { args => [$count, $path] });
+   $self->info("Loaded [_1] jobs from [_2]", { args => [$count, $path] });
    return OK;
 }
 
@@ -383,10 +379,9 @@ sub restore : method {
       $sql->unlink;
    }
 
-   my $ver     = $self->schema->get_db_version;
-   my $context = { args => [$file, $ver], name => 'Admin.restore' };
+   my $ver = $self->schema->get_db_version;
 
-   $self->info('Restored backup [_1] schema [_1]', $context);
+   $self->info('Restored backup [_1] schema [_1]', { args => [$file, $ver] });
 
    return OK;
 }
@@ -440,13 +435,14 @@ sub _add_backup_files {
    return;
 }
 
-sub _authenticated_user_info {
+sub _authenticate_user {
    my $self     = shift;
    my $username = $self->user_name;
    my $user_rs  = $self->schema->resultset('User');
    my $user     = $user_rs->authenticate($username, $self->user_password);
+   my $leader   = 'Schema.authenticate_user';
 
-   $self->log->debug("User ${username} authenticated");
+   $self->log->debug("${leader}: User ${username} authenticated");
 
    return { user => $user, groups => $user->groups };
 }
@@ -533,13 +529,13 @@ sub _deploy_and_populate_classes {
 
    for my $schema_class (@{$self->deploy_classes}) {
       $self->info('Deploy and populate [_1]', {
-         args => [$schema_class], name => 'Admin.deploy' }
+         args => [$schema_class], leader => 'Admin.deploy' }
       );
       $self->yorn('+Continue', TRUE, TRUE, 0) or next;
       ensure_class_loaded $schema_class;
       $schema_class->config($self->config) if $schema_class->can('config');
       $self->info('Deploying schema [_1] and populating', {
-         args => [$schema_class], name => 'Admin.deploy' }
+         args => [$schema_class], leader => 'Admin.deploy' }
       );
       $result_objects = $self->_deploy_and_populate($schema_class, $dir);
    }
@@ -627,7 +623,7 @@ sub _populate_class {
 
    unless ($class) {
       $self->fatal('No class in [_1]', {
-         args => [$path->filename], name => 'Admin._populate_class'
+         args => [$path->filename], leader => 'Admin._populate_class'
       });
    }
 
@@ -682,7 +678,7 @@ sub _store_password {
    $data->{"${username}_password"} = encrypt NUL, $password;
    local_config($self->config, $data);
 
-   my $options = { name => 'Schema.store_password' };
+   my $options = { leader => 'Schema.store_password' };
 
    $self->info("Updated ${username} password", $options);
    return;

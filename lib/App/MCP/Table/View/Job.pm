@@ -25,6 +25,11 @@ has '+form_buttons' => default => sub {
       selection => 'disable_on_select',
       value     => 'Runs',
    },{
+      action    => $context->uri_for_action('job/create', [], { clone => $id }),
+      method    => 'get',
+      selection => 'disable_on_select',
+      value     => 'Clone',
+   },{
       action    => $context->uri_for_action('job/edit', [$id]),
       method    => 'get',
       selection => 'disable_on_select',

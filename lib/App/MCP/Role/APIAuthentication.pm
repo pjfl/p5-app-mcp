@@ -35,7 +35,7 @@ sub exchange_keys : Auth('none') {
 
    my $user;
 
-   try   { $user = $self->_find_user_from($context) }
+   try   { $user = $self->_find_active_user($context) }
    catch { $result = [HTTP_NOT_FOUND, { message => "${_}" }] };
 
    return $self->_stash_response($context, $result) if $result;
@@ -85,7 +85,7 @@ sub authenticate : Auth('none') {
 
    my $user;
 
-   try   { $user = $self->_find_user_from($context) }
+   try   { $user = $self->_find_active_user($context) }
    catch { $result = [HTTP_NOT_FOUND, { message => "${_}" }] };
 
    return $self->_stash_response($context, $result) if $result;
@@ -169,13 +169,12 @@ sub _find_or_create_session {
    return $session;
 }
 
-sub _find_user_from {
+sub _find_active_user {
    my ($self, $context) = @_;
 
-   my $name = $context->stash('username');
-   my $user = $context->find_user({ username => $name });
+   my $user = $context->stash('user');
 
-   throw AccountInactive, [$self->name] unless $user->active;
+   throw AccountInactive, [$user->user_name] unless $user->active;
 
    return $user;
 }

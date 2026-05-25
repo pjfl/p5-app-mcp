@@ -1,7 +1,7 @@
 package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
-use File::DataClass::Types qw( ArrayRef Directory );
+use File::DataClass::Types qw( ArrayRef Directory Str );
 use App::MCP::Util         qw( local_config trigger_input_handler );
 use Class::Usul::Cmd::Util qw( decrypt elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
@@ -109,18 +109,23 @@ has 'templatedir' =>
 
 =item C<user_name>
 
-Defaults from configuration to the application prefix C<mcp>
+Defaults from configuration to the application prefix C<mcp>. Can set from
+the command line with either C<--user-name> or C<-u>
 
 =cut
 
-# TODO: Make these options. Should be able to supply encrypted/unencrypted
-# password from the command line
-
-has 'user_name' => is => 'lazy', default => sub { shift->config->prefix };
+option 'user_name' =>
+   is            => 'lazy',
+   isa           => Str,
+   documentation => 'Name in the user table',
+   default       => sub { shift->config->prefix },
+   format        => 's',
+   short         => 'u';
 
 =item C<user_password>
 
-This should be in the local configuration file. See C<store_password>
+This should be in the local configuration file. See
+L<store password|App::MCP::Schema>
 
 =cut
 
@@ -164,7 +169,7 @@ sub install : method {
    my $self   = shift;
    my $config = $self->config;
 
-   for my $dir (qw( backup log run tmp )) {
+   for my $dir (qw(backup log run tmp)) {
       my $path = $config->vardir->catdir($dir);
 
       $path->mkpath(oct '0770') unless $path->exists;
@@ -218,7 +223,7 @@ sub make_css : method {
    my $skin   = $self->config->skin;
    my $prefix = $self->config->prefix;
    my $file   = "${prefix}-${skin}.css";
-   my $out    = io([qw( var root css ), $file])->assert_open('a')->truncate(0);
+   my $out    = io([qw(var root css), $file])->assert_open('a')->truncate(0);
    my $count  =()= map  { $out->append($_->slurp) }
                    sort { $a->name cmp $b->name } @files;
    my $options = { leader => 'CLI.make_css' };
@@ -244,10 +249,10 @@ sub make_js : method {
 
    my $prefix = $self->config->prefix;
    my $file   = "${prefix}.js";
-   my $out    = io([qw( var root js ), $file])->assert_open('a')->truncate(0);
+   my $out    = io([qw(var root js), $file])->assert_open('a')->truncate(0);
    my $count  =()= map  { $out->appendln($self->_strip_comments($_->slurp)) }
                    sort { $a->name cmp $b->name } @files;
-   my $options = { name => 'CLI.make_js' };
+   my $options = { leader => 'CLI.make_js' };
 
    $self->info("Concatenated ${count} files to ${file}", $options);
    return OK;
@@ -271,11 +276,11 @@ sub make_less : method {
 
    my $prefix = $self->config->prefix;
    my $file   = "${prefix}.css";
-   my $out    = io([qw( share css ), $file])->assert_open('a')->truncate(0);
+   my $out    = io([qw(share css), $file])->assert_open('a')->truncate(0);
    my $lessc  = CSS::LESS->new(include_paths => ["${dir}"]);
    my $count  =()= map  { $out->append($lessc->compile($_->all)) }
                    sort { $a->name cmp $b->name } @files;
-   my $options = { name => 'CLI.make_less' };
+   my $options = { leader => 'CLI.make_less' };
 
    $self->info("Concatenated ${count} files to ${file}", $options);
    return OK;
@@ -288,10 +293,10 @@ The default event transition is C<start>
 =cut
 
 sub send_event : method {
-   my $self  = shift;
-   my $job_name  = $self->next_argv or throw Unspecified, ['job name'];
-   my $trans = $self->next_argv // 'start';
-   my $delay = $self->options->{delay};
+   my $self     = shift;
+   my $job_name = $self->next_argv or throw Unspecified, ['job name'];
+   my $trans    = $self->next_argv // 'start';
+   my $delay    = $self->options->{delay};
 
    if ($delay) {
       my $code = sub { sleep $delay; $self->_send_event($job_name, $trans) };
@@ -322,13 +327,13 @@ sub send_message : method {
 }
 
 # Private methods
-sub _authenticated_user_info {
+sub _authenticate_user {
    my $self     = shift;
    my $username = $self->user_name;
    my $user_rs  = $self->schema->resultset('User');
    my $user     = $user_rs->authenticate($username, $self->user_password);
 
-   $self->log->debug("User ${username} authenticated");
+   $self->log->debug("CLI.authenticate_user: User ${username} authenticated");
 
    return { user => $user, groups => $user->groups };
 }
@@ -523,7 +528,7 @@ sub _send_email_single {
 
    return FALSE unless $id;
 
-   my $options = { args => [$stash->{email}, $id], name => 'CLI.send_email' };
+   my $options = { args => [$stash->{email}, $id], leader => 'CLI.send_email' };
 
    $self->info('Emailed [_1] message id. [_2]', $options);
 
@@ -533,19 +538,17 @@ sub _send_email_single {
 sub _send_event {
    my ($self, $job_name, $trans) = @_;
 
-   my $job_rs  = $self->schema->resultset('Job');
-   my $user    = $self->_authenticated_user_info->{user};
-   my $job     = $job_rs->assert_executable($job_name, $user);
-   my $params  = { job_id => $job->id, transition => $trans };
+   my $job_rs    = $self->schema->resultset('Job');
+   my $user      = $self->_authenticate_user->{user};
+   my $job       = $job_rs->assert_executable($job_name, $user);
+   my $params    = { job_id => $job->id, transition => $trans };
+   my $event     = $self->schema->resultset('Event')->create($params);
+   my $triggered = trigger_input_handler $self->config;
+   my $id        = $event->id;
+   my $message   = "Job ${job_name} transition ${trans} event id ${id}";
 
-   $self->schema->resultset('Event')->create($params);
-
-   my $triggered = trigger_input_handler($self->config);
-   my $message   = "Job [_1] transition [_2]";
-   my $context   = { args => [$job_name, $trans] };
-
-   if ($triggered) { $self->log->debug("${message} signaled daemon", $context) }
-   else { $self->error("${message} failed to signal daemon", $context) }
+   if ($triggered) { $self->log->debug("CLI.send_event: ${message}") }
+   else { $self->error("CLI.send_event: ${message} failed to signal daemon") }
 
    return;
 }
@@ -560,8 +563,8 @@ sub _send_notification {
 
    my $message = $options->{message} // 'No message';
    my $res     = $self->service_worker_push($user->id, { message => $message });
-   my $leader  = 'CLI.send_notification';
-   my $context = { args => ["${user}", $message], leader => $leader };
+   my $args    = ["${user}", $message];
+   my $context = { args => $args, leader => 'CLI.send_notification' };
 
    return $self->info('Notified [_1] - [_2]', $context) if $res->{success};
 

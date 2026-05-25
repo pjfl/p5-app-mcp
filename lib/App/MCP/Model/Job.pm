@@ -31,8 +31,8 @@ sub jobid : Auth('view') Capture(1) {
 
    return $self->error($context, UnknownJob, [$jobid]) unless $job;
 
-   my $role_id  = $self->_get_role_id($context);
-   my $identity = { owner => $context->session->id, group => $role_id };
+   my $session  = $context->session;
+   my $identity = { owner => $session->id, groups => $session->groups };
 
    return $self->error($context, UnauthorisedAccess)
       unless $job->is_readable_by($identity);
@@ -48,15 +48,19 @@ sub jobid : Auth('view') Capture(1) {
 sub create : Nav('Create Job') {
    my ($self, $context) = @_;
 
-   my $options = { context => $context };
+   my $clone = $context->request->query_parameters->{clone};
+   my $job;
+
+   $job = $context->model('Job')->find_by_key($clone) if $clone;
+
+   my $options = { clone => $job, context => $context };
    my $form    = $self->new_form('Job', $options);
 
    if ($form->process(posted => $context->posted)) {
-      my $job     = $form->item;
-      my $view    = $context->uri_for_action('job/view', [$job->id]);
-      my $message = ['Job [_1]([_2]) created', $job->job_name, $job->id];
+      my $job  = $form->item;
+      my $view = $context->uri_for_action('job/view', [$job->id]);
 
-      $context->stash(redirect $view, $message);
+      $context->stash(redirect $view, ['Job [_1] created', $job->label]);
    }
 
    $context->stash(form => $form);
@@ -73,14 +77,13 @@ sub delete : Nav('Delete Job') {
    return $self->error($context, UnauthorisedAccess)
       unless $self->_can_update($context, $job);
 
-   my $name = $job->job_name;
-   my $id   = $job->id;
+   my $label = $job->label;
 
    $job->delete;
 
    my $list = $context->uri_for_action('job/list');
 
-   $context->stash(redirect $list, ['Job [_1]([_2]) deleted', $name, $id]);
+   $context->stash(redirect $list, ['Job [_1] deleted', $label]);
    return;
 }
 
@@ -95,10 +98,9 @@ sub edit : Nav('Edit Job') {
       if $context->posted && !$self->_can_update($context, $job);
 
    if ($form->process(posted => $context->posted)) {
-      my $view    = $context->uri_for_action('job/view', [$job->id]);
-      my $message = ['Job [_1]([_2]) updated', $job->job_name, $job->id];
+      my $view = $context->uri_for_action('job/view', [$job->id]);
 
-      $context->stash(redirect $view, $message);
+      $context->stash(redirect $view, ['Job [_1] updated', $job->label]);
    }
 
    $context->stash(form => $form);
@@ -131,7 +133,7 @@ sub remove {
       return $self->error($context, UnauthorisedAccess)
          unless $self->_can_update($context, $job);
 
-      push @{$names}, ($job->job_name . '(' . $job->id . ')');
+      push @{$names}, $job->label;
       $job->delete;
    }
 
@@ -172,28 +174,12 @@ sub _can_update {
 
    my $session  = $context->session;
    my $role     = $session->role || NUL;
-   my $role_id  = $self->_get_role_id($context);
-   my $identity = { owner => $session->id, group => $role_id };
+   my $identity = { owner => $session->id, groups => $session->groups };
 
    return FALSE if $role eq 'view';
    return TRUE  if $role eq 'admin';
-   return TRUE  if includes 'manager', $session->groups;
    return TRUE  if $job->is_writable_by($identity);
    return FALSE;
-}
-
-sub _get_role_id {
-   my ($self, $context) = @_;
-
-   my $role_name = $context->session->role or return 0;
-
-   return $self->role_map->{$role_name} if exists $self->role_map->{$role_name};
-
-   my $role = $context->model('Role')->find_by_key($role_name);
-
-   $self->role_map->{$role_name} = $role->id if $role;
-
-   return $role ? $role->id : 0;
 }
 
 1;

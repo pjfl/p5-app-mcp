@@ -11,6 +11,20 @@ has 'json_parser' =>
    isa     => class_type(JSON::MaybeXS::JSON),
    default => sub { JSON::MaybeXS->new( convert_blessed => TRUE ) };
 
+sub decode_response {
+   my ($self, $res) = @_;
+
+   my $content = $res->{content} || '{}';
+   my $decoded = $self->json_parser->decode($content);
+   my $message = $decoded->{message} || 'No content message';
+   my $reason  = $res->{reason};
+
+   $res->{error} = ($reason ? "${reason}: " : NUL) . $message;
+   $res->{message} = $decoded->{message} || $reason || 'No content message';
+
+   return $res;
+}
+
 sub json_pretty_print {
    my ($self, $v) = @_;
 

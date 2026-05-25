@@ -6,8 +6,6 @@ use Plack::Session::State::Cookie;
 use Plack::Session::Store::Cache;
 use Moo;
 
-with 'App::MCP::Role::JSONParser';
-
 =pod
 
 =encoding utf-8
@@ -39,6 +37,7 @@ A required reference to the L<configuration|App::MCP::Config> object
 has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 
 with 'App::MCP::Role::Redis';
+with 'App::MCP::Role::JSONParser';
 
 has '+redis_client_name' => default => 'session_store';
 
@@ -102,7 +101,10 @@ sub remove {
 sub set {
    my ($self, $key, $value) = @_;
 
-   return $self->redis_client->set($key, $self->json_parser->encode($value));
+   my $encoded = $self->json_parser->encode($value);
+   my $ttl     = $self->config->state_cookie_lifetime;
+
+   return $self->redis_client->set_with_ttl($key, $encoded, $ttl);
 }
 
 # Private methods

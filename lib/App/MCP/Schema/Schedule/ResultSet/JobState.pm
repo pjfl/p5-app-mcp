@@ -2,7 +2,7 @@ package App::MCP::Schema::Schedule::ResultSet::JobState;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types      qw( ArrayRef HashRef );
-use Unexpected::Functions  qw( Unknown );
+use Unexpected::Functions  qw( Native Unspecified );
 use Class::Usul::Cmd::Util qw( includes );
 use English                qw( -no_match_vars );
 use Scalar::Util           qw( blessed );
@@ -54,12 +54,29 @@ has 'initially_active' =>
 sub create_and_or_update {
    my ($self, $event) = @_;
 
-   my $job        = $event->job;
-   my $job_state  = $self->find_or_create($job);
-   my $state_name = $job_state->name->value;
-   my $res;
+   my ($job, $job_name, $result, $trans_val);
+
+   try {
+      $job = $event->job;
+      $job_name = $job->job_name or throw Unspecified, ['job name'];
+      $trans_val = $event->transition->value
+         or throw Unspecified, ['transition value'];
+   }
+   catch {
+      my $e = $_;
+      my $is_exception = blessed $e and $e->can('class');
+
+      $e = exception class => Native, error => "${e}" unless $is_exception;
+
+      $result = ['unknown', 'unknown', $e];
+   };
+
+   return $result if $result;
 
    try   {
+      my $job_state  = $self->find_or_create($job);
+      my $state_name = $job_state->name->value;
+
       $state_name = _workflow()->process_event($state_name, $event);
       $job_state->name($state_name);
       $job_state->update;
@@ -67,14 +84,14 @@ sub create_and_or_update {
    }
    catch {
       my $e = $_;
+      my $is_exception = blessed $e and $e->can('class');
 
-      $e = exception class => Unknown, error => "${e}"
-         unless blessed $e and $e->can('class');
+      $e = exception class => Native, error => "${e}" unless $is_exception;
 
-      $res = [$job->job_name, $event->transition->value, $e];
+      $result = [$job_name, $trans_val, $e];
    };
 
-   return $res;
+   return $result;
 }
 
 sub find_by_key {
@@ -110,24 +127,28 @@ sub find_or_create {
 
    $initial_state = 'active' if includes $parent_state, $self->initially_active;
 
-   $initial_state = 'running' if $parent_state eq 'running'
-      and !$job->condition
-      and !$job->crontab;
+   $job_state = $self->create({ job_id => $job->id, name => $initial_state });
 
-   return $self->create({ job_id => $job->id, name => $initial_state });
+   if ($parent_state eq 'running' and !$job->condition and !$job->crontab) {
+      my $ev_rs = $self->result_source->schema->resultset('Event');
+
+      $ev_rs->create({ job_id => $job->id, transition => 'start' });
+   }
+
+   return $job_state;
 }
 
 # Private methods
 sub _trigger_update_cascade {
    my ($self, $event, $job_state) = @_;
 
-   my $ev_trans = $event->transition->value;
-   my $schema   = $self->result_source->schema;
-   my $ev_rs    = $schema->resultset('Event');
-   my $job_rs   = $schema->resultset('Job');
-   my $jc_rs    = $schema->resultset('JobCondition');
+   my $trans_val = $event->transition->value;
+   my $schema    = $self->result_source->schema;
+   my $ev_rs     = $schema->resultset('Event');
+   my $job_rs    = $schema->resultset('Job');
+   my $jc_rs     = $schema->resultset('JobCondition');
 
-   if (my $for_trans = $self->event_propagation->{forward}->{$ev_trans}) {
+   if (my $for_trans = $self->event_propagation->{forward}->{$trans_val}) {
       my $where = { parent_id => $event->job->id };
 
       for my $job ($job_rs->search($where)->all) {
@@ -143,7 +164,7 @@ sub _trigger_update_cascade {
       }
    }
 
-   if (my $rev_trans = $self->event_propagation->{reverse}->{$ev_trans}) {
+   if (my $rev_trans = $self->event_propagation->{reverse}->{$trans_val}) {
       my $options = {
          job_id     => $event->job->parent_id,
          transition => $rev_trans

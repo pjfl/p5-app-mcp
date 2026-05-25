@@ -38,6 +38,10 @@ has_field 'host' => type => 'Display';
 
 has_field 'command' => type => 'Display', element_class => ['code'];
 
+has_field 'auto_hold' => type => 'Boolean', disabled => TRUE;
+
+has_field 'delete_after' => type => 'Boolean', disabled => TRUE;
+
 has_field 'signal' => type => 'Select';
 
 sub options_signal {
@@ -71,7 +75,16 @@ after 'after_build_fields' => sub {
    my $state_name = $job->state->name;
 
    $self->add_form_element_class('narrow');
-   $self->info_message('Change the current box state') if $job->type eq 'box';
+
+   if ($job->type eq 'box') {
+      $self->info_message('Change the current box state');
+      $self->field('auto_hold')->value($job->auto_hold);
+      $self->field('delete_after')->inactive(TRUE);
+   }
+   else {
+      $self->field('auto_hold')->inactive(TRUE);
+      $self->field('delete_after')->value($job->delete_after);
+   }
 
    $self->field('job_name')->label($label);
    $self->field('state_name')->value($state_name);

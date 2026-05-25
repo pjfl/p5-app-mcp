@@ -4445,7 +4445,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  max-width: 75vw;
+  max-width: 90vw;
 }
 .state-container .diagram-container .box-tile,
 .state-container .diagram-container .job-tile {

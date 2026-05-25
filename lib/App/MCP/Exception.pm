@@ -106,6 +106,12 @@ has_exception 'APIMethodFailed', parents => [$class],
    error   => 'API class [_1] method [_2] call failed: [_3]',
    rv      => HTTP_BAD_REQUEST;
 
+=item C<Native>
+
+=cut
+
+has_exception 'Native' => parents => [$class];
+
 =item C<NoMethod>
 
 =cut
@@ -307,12 +313,6 @@ has_exception 'Illegal' => parents => ['Workflow'],
 
 has_exception 'Parent' => parents => ['Workflow'],
    error   => 'Parent box not running';
-
-=item C<Unknown>
-
-=cut
-
-has_exception 'Unknown' => parents => ['Workflow'];
 
 =item C<Retry>
 

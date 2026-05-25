@@ -2,27 +2,71 @@ package App::MCP::Schema::Schedule::ResultSet::Job;
 
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE NUL SEPARATOR TRUE );
 use HTTP::Status          qw( HTTP_NOT_FOUND );
-use App::MCP::Util        qw( strip_parent_name );
+use App::MCP::Util        qw( strip_namespace );
 use HTML::Forms::Util     qw( json_bool );
 use Unexpected::Functions qw( throw Unspecified UnknownJob UnknownUser );
 use Moo;
 
 extends 'DBIx::Class::ResultSet';
 
-# Public methods
-sub active_crontab {
-   my ($self, $op_transitions) = @_;
+=pod
 
-   return $self->search({
-      'state.name'        => 'active',
-      'me.crontab'        => { '!=' => NUL },
-      'events.transition' => { '!=' => [ -and => @{$op_transitions} ] },
-   }, {
-      'columns' => [qw( condition crontab events.transition
-                        id state.name state.updated )],
-      'join'    => ['state', 'events'],
-   });
+=head1 Name
+
+App::MCP::Schema::Schedule::ResultSet::Job - Custom collection class
+
+=head1 Synopsis
+
+   use Moo;
+
+   with 'App::MCP::Role::Schema';
+
+   my $rs = $self->schema->resultset('Job');
+
+=head1 Description
+
+Custom collection class
+
+=head1 Configuration and Environment
+
+Defines no attributes
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<active_crontab>
+
+   $rs = $self->active_crontab;
+
+Search for jobs in the C<active> state that have C<crontab> entries
+
+Returns the restricted resultset. Objects are only partially inflated
+
+=cut
+
+sub active_crontab {
+   my $self    = shift;
+   my $columns = [qw(condition crontab events.transition
+                     id state.name state.updated)];
+   my $options = { 'columns' => $columns, 'join' => ['state', 'events'] };
+   my $where   = { 'state.name' => 'active', 'me.crontab' => { '!=' => NUL } };
+
+   return $self->search($where, $options);
 }
+
+=item C<assert_executable>
+
+   $job = $self->assert_executable($job_key, $user);
+
+Finds the job using the C<job_key> and tests to see if it is executable by
+the given C<user>
+
+Returns the job if the user can execute it, raises an exception otherwise
+
+=cut
 
 sub assert_executable {
    my ($self, $job_key, $user) = @_;
@@ -35,6 +79,16 @@ sub assert_executable {
    return $job;
 }
 
+=item C<create>
+
+   $job = $self->create(\%column_data);
+
+Creates a new persisted job object using the C<column_data> provided
+
+Returns the new L<job object|App::MCP::Schema::Schedule::Result::Job>
+
+=cut
+
 sub create {
    my ($self, $col_data) = @_;
 
@@ -45,11 +99,11 @@ sub create {
 
    if (defined $parent_name and length $parent_name) {
       $prefix = (not $col_data->{type} or $col_data->{type} eq 'job')
-              ? $parent_name.$sep
-              : ((split m{ $sep }mx, $parent_name)[0]).$sep;
+              ? $parent_name . $sep
+              : ((split m{ $sep }mx, $parent_name)[0]) . $sep;
    }
 
-   $col_data->{job_name} = defined $job_name ? $prefix.$job_name : NUL;
+   $col_data->{job_name} = defined $job_name ? $prefix . $job_name : NUL;
 
    if ($parent_name) {
       $col_data->{parent_id}
@@ -61,41 +115,74 @@ sub create {
    return $self->next::method($col_data);
 }
 
+=item C<done>
+
+   $bool = $self->done($job_key);
+
+=cut
+
+sub done {
+   my ($self, $key) = @_;
+
+   my $job_state = $self->_get_job_state($key);
+
+   return TRUE if $job_state eq 'failed';
+   return TRUE if $job_state eq 'finished';
+   return TRUE if $job_state eq 'terminated';
+   return FALSE;
+}
+
+=item C<dump>
+
+   $array_ref = $self->dump($job_pattern);
+
+=cut
+
 sub dump {
    my ($self, $job_spec) = @_;
 
-   my $index = {};
    my @jobs;
 
    my $rs = $self->search({ 'me.job_name' => { like => $job_spec } }, {
-      order_by     => [\q{parent_id NULLS FIRST}, 'me.id'],
+      order_by     => [\q{me.parent_id NULLS FIRST}, 'me.id'],
       result_class => 'DBIx::Class::ResultClass::HashRefInflator',
-      prefetch     => ['owner_rel', 'group_rel'],
+      prefetch     => ['owner_rel', 'group_rel', 'parent_box'],
    });
 
    for my $job (grep { length $_->{job_name} } $rs->all) {
-      $index->{ delete $job->{id} } = $job->{job_name};
-      $job->{job_name} = strip_parent_name $job->{job_name};
-      $job->{owner} = $job->{owner_rel}->{user_name};
-      $job->{group} = $job->{group_rel}->{role_name};
+      $job->{auto_hold}    = json_bool $job->{auto_hold};
       $job->{delete_after} = json_bool $job->{delete_after};
+      $job->{group}        = $job->{group_rel}->{role_name};
+      $job->{job_name}     = strip_namespace $job->{job_name};
+      $job->{owner}        = $job->{owner_rel}->{user_name};
+      $job->{parent_name}  = strip_namespace $job->{parent_box}->{job_name};
+
       delete $job->{dependencies};
       delete $job->{group_id};
       delete $job->{group_rel};
       delete $job->{owner_id};
       delete $job->{owner_rel};
+      delete $job->{parent_id};
+      delete $job->{parent_box};
       delete $job->{parent_path};
       delete $job->{path_depth};
-
-      my $parent_id = delete $job->{parent_id};
-
-      $job->{parent_name} = $index->{$parent_id} if $parent_id;
 
       push @jobs, $job;
    }
 
    return \@jobs;
 }
+
+=item C<find_by_key>
+
+   $job = $self->find_by_key($job_key, \%options?);
+
+Finds an existing job object using the supplied C<job_key>. The C<job_key> can
+be either a C<job_id> or a C<job_name>
+
+Returns the job object if it exists, returns undefined otherwise
+
+=cut
 
 sub find_by_key {
    my ($self, $job_key, $options) = @_;
@@ -110,9 +197,23 @@ sub find_by_key {
    return $job;
 }
 
+=item C<finished>
+
+   $bool = $self->finished($job_key);
+
+=cut
+
 sub finished {
-   return $_[0]->_get_job_state($_[1]) eq 'finished' ? TRUE : FALSE;
+   my ($self, $key) = @_;
+
+   return $self->_get_job_state($key) eq 'finished' ? TRUE : FALSE;
 }
+
+=item C<job_id_by_name>
+
+   $job_id = $self->job_id_by_name($job_key);
+
+=cut
 
 sub job_id_by_name {
    my ($self, $job_key) = @_;
@@ -121,6 +222,12 @@ sub job_id_by_name {
 
    return $job ? $job->id : undef;
 }
+
+=item C<load>
+
+   $count = $self->load(\%user_details, \@jobs?);
+
+=cut
 
 sub load {
    my ($self, $auth, $jobs) = @_;
@@ -141,30 +248,59 @@ sub load {
    return $count;
 }
 
-# TODO: Originally success failure done terminated
+=item C<predicates>
+
+   $array_ref = $self->predicates;
+
+=cut
+
 # TODO: Predicates should take a look back time duration value
 # TODO: Globals condition: success(BACKUP) AND value(TODAY)=Friday
 sub predicates {
-   return [ qw( finished running terminated ) ];
+   return [ qw(done finished running terminated) ];
 }
+
+=item C<running>
+
+   $bool = $self->running($job_key);
+
+=cut
 
 sub running {
-   return $_[0]->_get_job_state($_[1]) eq 'running' ? TRUE : FALSE;
+   my ($self, $key) = @_;
+
+   return $self->_get_job_state($key) eq 'running' ? TRUE : FALSE;
 }
 
+=item C<terminated>
+
+   $bool = $self->terminated($job_key);
+
+=cut
+
 sub terminated {
-   return $_[0]->_get_job_state($_[1]) eq 'terminated' ? TRUE : FALSE;
+   my ($self, $key) = @_;
+
+   return $self->_get_job_state($key) eq 'terminated' ? TRUE : FALSE;
 }
+
+=item C<writable_box_id_by_name>
+
+   $job_id = $self->writable_box_id_by_name($job_key, $user_key?);
+
+=cut
 
 sub writable_box_id_by_name {
    my ($self, $job_key, $user_key) = @_;
+
+   $user_key // 0;
 
    my $job = $self->find_by_key($job_key);
 
    throw 'Job [_1] is not a box', [$job->job_name] unless $job->type eq 'box';
 
    my $user_rs = $self->result_source->schema->resultset('User');
-   my $user    = $user_rs->find_by_key($user_key // 0, { prefetch => 'role' });
+   my $user    = $user_rs->find_by_key($user_key, { prefetch => 'profile' });
 
    throw UnknownUser, [$user_key] unless $user;
    throw 'Box [_1] write permission denied to [_1]',
@@ -188,30 +324,17 @@ sub _get_job_state {
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::Schema::Schedule::ResultSet::Job - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::Schema::Schedule::ResultSet::Job;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Moo>
 
 =back
 

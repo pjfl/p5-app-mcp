@@ -3,7 +3,7 @@ package App::MCP::Form::Job;
 use utf8;
 
 use HTML::Forms::Constants qw( FALSE META NUL SPC TRUE );
-use HTML::Forms::Types     qw( ArrayRef HashRef Int Str );
+use HTML::Forms::Types     qw( ArrayRef HashRef Int Object Str Undef );
 use Class::Usul::Cmd::Util qw( includes );
 use Moo;
 use HTML::Forms::Moo;
@@ -18,6 +18,8 @@ has '+info_message'       => default => 'Create or edit jobs';
 has '+item_class'         => default => 'Job';
 has '+name'               => default => 'Job';
 has '+title'              => default => 'Create Job';
+
+has 'clone' => is => 'ro', isa => Object|Undef;
 
 has 'default_group' => is => 'ro', isa => Str, default => 'batch';
 
@@ -314,6 +316,8 @@ after 'after_build_fields' => sub {
    $perms->form_util($resources->{form_util});
    $perms->icons($self->_icons);
    $perms->modal($resources->{modal});
+
+   $self->_populate_with_clone if $self->clone;
    return;
 };
 
@@ -330,6 +334,24 @@ sub validate {
       $self->field('parent_id')->value($parent->id) if $parent;
    }
 
+   return;
+}
+
+# Private methods
+sub _populate_with_clone {
+   my $self   = shift;
+   # TODO: Copy these parent_id group
+   my $fields = [qw(description type parent_id owner permissions condition
+                 crontab_min crontab_hour crontab_mday crontab_mon
+                 crontab_wday auto_hold user_name host command directory
+                 out_file err_file expected_rv nretrys delete_after
+                 max_runtime load_limit)];
+
+   for my $field_name (@{$fields}) {
+      my $value = $self->clone->$field_name();
+
+      $self->field($field_name)->default($value) if defined $value;
+   }
    return;
 }
 

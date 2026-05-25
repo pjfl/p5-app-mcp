@@ -21,47 +21,52 @@ has '+moniker' => default => 'worker';
 sub runid : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
-   $context->stash(runid => $arg);
+   my $token  = $self->redis_client->get("event_token-${arg}");
+   my $result = [HTTP_NOT_FOUND, { message => "Runid ${arg} token not found" }];
+
+   $self->_stash_response($context, $result) unless $token;
+   $context->stash(runid => $arg, token => $token) if $token;
+
    return;
 }
 
 sub sessionid : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
-   $context->stash(sessionid => $arg);
+   my ($session, $result);
+
+   try   { $session = $self->get_session($arg) }
+   catch { $result = [HTTP_NOT_FOUND, { message => "${_}" } ] };
+
+   $self->_stash_response($context, $result) if $result;
+   $context->stash(session => $session) if $session;
+
    return;
 }
 
 sub user : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
-   $context->stash(username => $arg);
+   my $user   = $context->find_user({ username => $arg });
+   my $result = [HTTP_BAD_REQUEST, { message => "User ${arg} unknown" }];
+
+   $self->_stash_response($context, $result) unless $user;
+   $context->stash(user => $user) if $user;
+
    return;
 }
 
 sub create_event : Auth('none') {
    my ($self, $context) = @_;
 
-   my $request = $context->request;
-   my $result;
+   return unless $self->_authenticate_headers($context);
 
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $runid  = $context->stash('runid');
-   my $secret = $self->redis_client->get("event_token-${runid}");
-
-   $result = [HTTP_NOT_FOUND, { message => "Runid ${runid} token not found" }];
-
-   return $self->_stash_response($context, $result) unless $secret;
-
+   my $runid     = $context->stash('runid');
+   my $token     = $context->stash('token');
    my $encrypted = $context->body_parameters->{event};
-   my $params    = $self->_decode_params($context, $secret, $encrypted);
+   my $params    = $self->_decode_encrypted($context, $token, $encrypted);
    my $message   = "Runid ${runid} authentication failed";
-
-   $result = [HTTP_UNAUTHORIZED, { message => $message }];
+   my $result    = [HTTP_UNAUTHORIZED, { message => $message }];
 
    return $self->_stash_response($context, $result) unless $params;
 
@@ -83,28 +88,15 @@ sub create_event : Auth('none') {
 sub create_job : Auth('none') {
    my ($self, $context) = @_;
 
-   my $request = $context->request;
-   my $result;
+   return unless $self->_authenticate_headers($context);
 
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $session_id = $context->stash('session_id');
-   my $session;
-
-   try   { $session = $self->get_session($session_id) }
-   catch { $result = [HTTP_NOT_FOUND, { message => "${_}" } ] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $secret    = $session->{shared_secret};
-   my $encrypted = $context->body_parameters->{job};
-   my $params    = $self->_decode_params($context, $secret, $encrypted);
-   my $message   = "Session ${session_id} authentication failed";
-
-   $result = [HTTP_UNAUTHORIZED, { message => $message }];
+   my $session    = $context->stash('session');
+   my $session_id = $session->{id};
+   my $secret     = $session->{shared_secret};
+   my $encrypted  = $context->body_parameters->{job};
+   my $params     = $self->_decode_encrypted($context, $secret, $encrypted);
+   my $message    = "Session ${session_id} authentication failed";
+   my $result     = [HTTP_UNAUTHORIZED, { message => $message }];
 
    return $self->_stash_response($context, $result) unless $params;
 
@@ -123,7 +115,21 @@ sub create_job : Auth('none') {
 }
 
 # Private methods
-sub _decode_params {
+sub _authenticate_headers {
+   my ($self, $context) = @_;
+
+   my $request = $context->request;
+   my $result;
+
+   try   { $request->authenticate_headers }
+   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
+
+   $self->_stash_response($context, $result) if $result;
+
+   return $result ? FALSE : TRUE;
+}
+
+sub _decode_encrypted {
    my ($self, $context, $secret, $encrypted) = @_;
 
    my $params;
@@ -144,7 +150,8 @@ sub _stash_response {
 
    $self->log->error($body->{message}, $context) if is_error($code);
 
-   $context->stash(code => $code, json => $body, view => 'json');
+   $context->stash(code => $code, json => $body);
+   $context->stash(finalise => TRUE, view => 'json');
    return;
 }
 

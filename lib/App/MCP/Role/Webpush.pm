@@ -110,9 +110,7 @@ sub service_worker_push {
    my $params  = { content => $req->content, headers => $req->headers };
    my $res     = $self->_ua->post($req->uri, $params);
 
-   return $self->_decode_error($res) unless $res->{success};
-
-   return $res;
+   return $self->decode_response($res);
 }
 
 =item C<web_server_post>
@@ -137,25 +135,7 @@ sub web_server_post {
    my $params  = { content => $encoded, headers => $headers };
    my $res     =  $self->_ua->post($uri, $params);
 
-   return $self->_decode_error($res) unless $res->{success};
-
-   return $res;
-}
-
-# Private methods
-sub _decode_error {
-   my ($self, $res) = @_;
-
-   my $message = $res->{content} // 'No response content';
-
-   if ('{' eq substr $message, 0, 1) {
-      my $decoded = $self->json_parser->decode($message);
-
-      $message = $decoded->{message} // 'No content message';
-   }
-
-   $res->{error} = ($res->{reason} ? $res->{reason} . ': ' : NUL) . $message;
-   return $res;
+   return $self->decode_response($res);
 }
 
 use namespace::autoclean;

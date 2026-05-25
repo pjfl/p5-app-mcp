@@ -90,9 +90,11 @@ The L<worker|App::MCP::Worker> classname
 
 has 'worker' =>
    is      => 'lazy',
-   isa     => NonEmptySimpleStr,
+   isa     => LoadableClass,
+   coerce  => TRUE,
    default => sub { shift->config->appclass . '::Worker' };
 
+# Private attributes
 has '_input_transitions' =>
    is      => 'lazy',
    isa     => ArrayRef,
@@ -135,11 +137,10 @@ sub cron_job_handler {
 
    my $schema  = $self->schema;
    my $job_rs  = $schema->resultset('Job');
-   my $jobs    = $job_rs->active_crontab($self->_output_transitions);
    my $ev_rs   = $schema->resultset('Event');
    my $trigger = FALSE;
 
-   for my $job (grep { $_->should_start_now } $jobs->all) {
+   for my $job (grep { $_->should_start_now } $job_rs->active_crontab->all) {
       next if $job->condition && !$job->start_condition;
 
       $ev_rs->create({ job_id => $job->id, transition => 'start' });
@@ -163,8 +164,14 @@ sub event_stream_handler {
    my @events;
 
    for my $key ($cache->keys('event_stream-*')) {
-      push @events, $self->json_parser->decode($cache->get($key));
+      my $event = $cache->get($key);
+
       $cache->del($key);
+
+      next unless $event;
+
+      try   { push @events, $self->json_parser->decode($event) }
+      catch { $self->log->error("${name}.stream: ${_}") };
    }
 
    return OK unless scalar @events;
@@ -172,21 +179,7 @@ sub event_stream_handler {
    my $events = $self->json_parser->encode([@events]);
 
    for my $key ($cache->keys('event_subscription-*')) {
-      my $encoded = $cache->get($key) or next;
-      my $user_id = (split m{ \- }mx, $key)[1];
-      my $subscription;
-
-      try   { $subscription = $self->json_parser->decode($encoded) }
-      catch { $cache->del($key) };
-
-      next unless $subscription;
-
-      my $method = '_event_stream_' . $subscription->{method};
-
-      next unless $self->can($method);
-
-      $subscription->{user_id} = $user_id;
-      $self->$method($name, $subscription, $events);
+      $self->_dispatch_event($name, $cache, $key, $events);
    }
 
    return OK;
@@ -371,9 +364,9 @@ sub _add_provisioning {
 
    return if $self->_remote_provisioned("${user}\@${host}");
 
-   my $calls     = $args->{calls};
-   my $appclass  = $self->config->appclass;
-   my $worker    = $self->worker;
+   my $calls    = $args->{calls};
+   my $appclass = $self->config->appclass;
+   my $worker   = $self->worker;
 
    unshift @{$calls}, ['provision', [$appclass, $worker], '_install_worker'];
    return;
@@ -415,6 +408,29 @@ sub _dispatch_args {
    };
 }
 
+sub _dispatch_event {
+   my ($self, $name, $cache, $key, $events) = @_;
+
+   my $encoded = $cache->get($key) or return;
+   my $subscription;
+
+   try   { $subscription = $self->json_parser->decode($encoded) }
+   catch { $cache->del($key) };
+
+   return unless $subscription;
+
+   my $method = '_event_stream_' . $subscription->{method};
+
+   return unless $self->can($method);
+
+   $subscription->{user_id} = (split m{ \- }mx, $key)[1];
+
+   try   { $self->$method($name, $subscription, $events) }
+   catch { $self->log->error("${name}.dispatch_event: ${_}") };
+
+   return;
+}
+
 sub _dispatch_message {
    my ($self, $job, $adjective, $runid) = @_;
 
@@ -430,8 +446,6 @@ sub _dispatch_job {
    my ($self, $ipc_ssh, $job, $args) = @_;
 
    if ($job->host eq 'localhost') {
-      ensure_class_loaded $self->worker;
-
       $args->{config} = $self->config;
       $args->{log} = $self->log;
 
@@ -481,7 +495,6 @@ sub _event_stream_webpush {
    my $user_id = $subscription->{user_id};
    my $res     = $self->service_worker_push($user_id, { events => $events });
 
-   $res->{message} //= 'No message';
    $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
    $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
    return;
@@ -520,7 +533,7 @@ sub _input_event_cleanup {
 
    my $job = $event->job;
 
-   $job->delete if $job->delete_after && $event->transition eq 'finished';
+   $job->delete if $job->delete_after && $event->transition eq 'finish';
 
    if (includes $event->transition, [qw(fail finish terminate)]) {
       my $runid = $event->runid;

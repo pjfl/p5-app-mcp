@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Makes application event stream more robust
           - Moves send_event from schema to cli
           - JS (un)registers event stream handler
           - Implements event stream with Web Push

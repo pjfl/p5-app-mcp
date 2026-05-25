@@ -14,7 +14,8 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                nullable_varchar_data_type integer_data_type
                                integer_id_data_type serial_data_type
                                set_on_create_datetime_data_type
-                               truncate varchar_data_type );
+                               trigger_output_handler truncate
+                               varchar_data_type );
 use Class::Usul::Cmd::Util qw( includes trim );
 use HTML::Forms::Util      qw( int2rwx );
 use Ref::Util              qw( is_arrayref is_plain_hashref );
@@ -330,9 +331,11 @@ the related L<job condition|App::MCP::Schema::Schedule::Result::JobCondition>
 sub condition {
    my ($self, $value) = @_;
 
-   return $self->_condition unless defined $value;
+   my $condition = $self->_condition;
 
-   $self->_condition_changed(TRUE) if $self->_condition ne $value;
+   return $condition unless defined $value;
+
+   $self->_condition_changed(TRUE) if !$condition || $condition ne $value;
 
    return $self->_condition($value);
 }
@@ -521,6 +524,18 @@ sub is_writable_by {
    my ($self, $user) = @_; return $self->_is_permitted($user, [128, 16, 2]);
 }
 
+=item C<label>
+
+   $label = $self->label
+
+Returns a string suitable for use as a label to identify this job
+
+=cut
+
+sub label {
+   my $self = shift; return sprintf '%s(%s)', $self->job_name, $self->id;
+}
+
 =item C<materialised_path_columns>
 
    $hash_ref = $self->materialised_path_columns;
@@ -555,14 +570,14 @@ Splits the C<job_name> on C<SEPARATOR> (a slash). The first part is the
 C<namespace>. If the C<job_name> contains no C<SEPARATOR> the C<namspace>
 is C<NUL>
 
-This "feature" may go away
+This "feature" may go away. Could also be made private
 
 =cut
 
 sub namespace {
    my $self  = shift;
    my $sep   = SEPARATOR;
-   my @parts = split m{ $sep }mx, $self->job_name; pop @parts;
+   my @parts = split m{ $sep }mx, ($self->job_name // NUL); pop @parts;
    my $ns    = join $sep, @parts; $ns //= NUL;
 
    return $ns;
@@ -579,8 +594,16 @@ Returns true if the C<crontab> attribute evaluates to true
 sub should_start_now {
    my $self      = shift;
    my $crontab   = $self->crontab or return TRUE;
-   my $last_time = $self->state ? $self->state->updated->epoch : 0;
    my $cron      = Algorithm::Cron->new(base => 'local', crontab => $crontab);
+   my $last_time = 0;
+
+   if ($self->state) {
+      my $updated = $self->state->updated;
+      my $tz      = $self->result_source->schema->config->local_tz;
+
+      $updated->set_time_zone($tz);
+      $last_time = $updated->epoch;
+   }
 
    return time >= $cron->next_time($last_time) ? TRUE : FALSE;
 }
@@ -699,9 +722,12 @@ sub _create_conditions {
 sub _create_job_state {
    my ($self, $job) = @_;
 
-   my $schema = $self->result_source->schema;
+   my $schema    = $self->result_source->schema;
+   my $job_state = $schema->resultset('JobState')->find_or_create($job);
 
-   return $schema->resultset('JobState')->find_or_create($job);
+   trigger_output_handler $schema->config if $job_state->name eq 'active';
+
+   return $job_state;
 }
 
 sub _crontab {

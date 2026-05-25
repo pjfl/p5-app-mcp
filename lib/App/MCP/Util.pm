@@ -18,8 +18,7 @@ use Web::Components::Util      qw( load_file dump_file );
 use Unexpected::Functions      qw( throw );
 use URI::Escape                qw( );
 use URI::http;
-use
-   URI::https;
+use URI::https;
 use DateTime;
 use DateTime::Format::Human;
 
@@ -30,7 +29,7 @@ our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
    new_uri integer_data_type integer_id_data_type
    nullable_foreign_key_data_type nullable_text_data_type
    nullable_varchar_data_type redirect redirect2referer serial_data_type
-   set_on_create_datetime_data_type strip_parent_name terminate text_data_type
+   set_on_create_datetime_data_type strip_namespace terminate text_data_type
    trigger_input_handler trigger_output_handler truncate
    updated_timestamp_data_type varchar_data_type );
 
@@ -402,14 +401,14 @@ sub redirect2referer ($;$) {
    return redirect $referer, $message;
 }
 
-=item C<strip_parent_name>
+=item C<strip_namespace>
 
-   $stripped = string_parent_name $job_name;
+   $stripped = strip_namespace $job_name;
 
 =cut
 
-sub strip_parent_name ($) {
-   my $v   = shift;
+sub strip_namespace ($) {
+   my $v   = shift // q();
    my $sep = SEPARATOR;
 
    $v = (split m{ $sep }mx, $v)[-1] if $v =~ m{ $sep }mx;
@@ -443,7 +442,9 @@ sub trigger_input_handler ($) {
    if (blessed $arg) { $pid = _read_pid_file($arg) }
    else { $pid = $arg }
 
-   return $pid ? CORE::kill 'USR1', $pid : FALSE;
+   return unless $pid;
+
+   return CORE::kill 'USR1', $pid;
 }
 
 =item C<trigger_output_handler>
@@ -459,7 +460,9 @@ sub trigger_output_handler ($) {
    if (blessed $arg) { $pid = _read_pid_file($arg) }
    else { $pid = $arg }
 
-   return $pid ? CORE::kill 'USR2', $pid : FALSE;
+   return unless $pid;
+
+   return CORE::kill 'USR2', $pid;
 }
 
 =item C<truncate>

@@ -327,17 +327,7 @@ sub _redirect_oauth_provider {
 sub _throw_error {
    my ($self, $res) = @_;
 
-   my $message = $res->{content} // 'No response content';
-
-   if ('{' eq substr $message, 0, 1) {
-      my $decoded = $self->json_parser->decode($message);
-
-      $message = $decoded->{message} // 'No content message';
-   }
-
-   my $error = ($res->{reason} ? $res->{reason} . ': ' : NUL) . $message;
-
-   throw $error;
+   throw $self->decode_response($res)->{error};
 }
 
 use namespace::autoclean;

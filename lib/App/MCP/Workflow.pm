@@ -64,17 +64,18 @@ sub BUILD {
 
    $self->initial_state('inactive');
 
-   my $active  = [qw(deactivate fail force_start on_hold start started)];
+   my $active  = [qw(deactivate force_start on_hold start started)];
    my $running = [qw(fail finish kill_job terminate)];
+   my $done    = [qw(deactivate activate on_hold)];
 
    $self->state('active',     transitions => $active);
-   $self->state('hold',       transitions => [qw(off_hold)]);
-   $self->state('failed',     transitions => [qw(activate on_hold)]);
-   $self->state('finished',   transitions => [qw(activate on_hold)]);
+   $self->state('hold',       transitions => [qw(deactivate off_hold)]);
+   $self->state('failed',     transitions => $done);
+   $self->state('finished',   transitions => $done);
    $self->state('inactive',   transitions => [qw(activate on_hold)]);
    $self->state('running',    transitions => $running);
    $self->state('starting',   transitions => [qw(fail started)]);
-   $self->state('terminated', transitions => [qw(activate on_hold)]);
+   $self->state('terminated', transitions => $done);
 
    $self->transition('activate',    to_state   => 'active',
                                     validators => [\&_validate_activate]);
@@ -88,8 +89,7 @@ sub BUILD {
    $self->transition('on_hold',     to_state   => 'hold');
    $self->transition('start',       to_state   => 'starting',
                                     validators => [\&_validate_start]);
-   $self->transition('started',     to_state   => 'running',
-                                    validators => [\&_validate_started]);
+   $self->transition('started',     to_state   => 'running');
    $self->transition('terminate',   to_state   => 'terminated');
    return;
 }
@@ -115,11 +115,12 @@ sub process_event {
       $trigger = FALSE;
 
       try {
-         my $ev_t       = $event->transition;
+         my $trans_val  = $event->transition->value;
          my $state      = $self->state($state_name);
          my $instance   = $self->new_instance(state => $state);
-         my $transition = $instance->state->get_transition($ev_t->value)
-            or throw Illegal, [$ev_t->value, $state_name];
+         my $transition = $instance->state->get_transition($trans_val);
+
+         throw Illegal, [$trans_val, $state_name] unless $transition;
 
          $instance   = $transition->apply($instance, $event);
          $state_name = $instance->state->name;
@@ -169,12 +170,6 @@ sub _validate_start {
    throw Parent    if $parent && $parent->state->name ne 'running';
    throw Crontab   unless $job->should_start_now;
    throw Condition unless $job->start_condition;
-
-   return;
-}
-
-sub _validate_started {
-   my ($self, $instance, $event) = @_;
 
    return;
 }
