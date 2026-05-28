@@ -19,8 +19,8 @@ $class->table('events');
 
 $class->add_columns(
    id         => serial_data_type,
-   created    => { %{set_on_create_datetime_data_type()}, timezone => 'UTC' },
    job_id     => foreign_key_data_type,
+   created    => set_on_create_datetime_data_type,
    transition => enumerated_data_type(TRANSITION_ENUM),
    runid      => varchar_data_type(20, NUL),
    pid        => integer_data_type(0),
@@ -51,7 +51,7 @@ sub insert {
 sub update {
    my ($self, $columns) = @_;
 
-   $self->set_inflated_columns( %{ $columns } );
+   $self->set_inflated_columns(%{$columns});
    $self->validate;
    $self->_cache_event;
 

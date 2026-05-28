@@ -330,12 +330,6 @@ WCom.MCP.StateDiagram = (function() {
    class Factory {
       constructor() {
          this.diagram;
-         this.messageHandler = function (event) {
-            const data = event.data;
-            if (data.events && data.events.length > 0) {
-               Navigation.renderLocation(window.location.href);
-            }
-         }.bind(this);
          this.registrationState = false;
          Utils.Event.registerOnload(this.scan.bind(this));
          Utils.Event.registerOnunload(this.unload.bind(this));
@@ -366,11 +360,18 @@ WCom.MCP.StateDiagram = (function() {
          this._isConstructing = true;
          this.diagram = new Diagram(el, JSON.parse(el.dataset[dsName]));
          await this.diagram.render();
-         if (!this.registrationState && this.diagram.autoUpdate)
+         if (!this.registrationState && this.diagram.autoUpdate) {
             await this.eventStreamRegistration(true);
-         const worker = window.navigator.serviceWorker;
-         worker.addEventListener('message', this.messageHandler);
+            const worker = window.navigator.serviceWorker;
+            worker.addEventListener('message', this.messageHandler.bind(this));
+         }
          this._isConstructing = false;
+      }
+      messageHandler(event) {
+         const data = event.data;
+         if (data.events && data.events.length > 0) {
+            Navigation.renderLocation(window.location.href);
+         }
       }
       unload(newuri) {
          const current = new URL(window.location.href);

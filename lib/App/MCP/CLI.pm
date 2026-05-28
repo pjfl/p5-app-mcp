@@ -6,6 +6,7 @@ use App::MCP::Util         qw( local_config trigger_input_handler );
 use Class::Usul::Cmd::Util qw( decrypt elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
+use HTML::Forms::Util      qw( json_bool );
 use Type::Utils            qw( class_type );
 use Unexpected::Functions  qw( throw Timedout UnknownToken UnknownUser
                                Unspecified );
@@ -226,9 +227,9 @@ sub make_css : method {
    my $out    = io([qw(var root css), $file])->assert_open('a')->truncate(0);
    my $count  =()= map  { $out->append($_->slurp) }
                    sort { $a->name cmp $b->name } @files;
-   my $options = { leader => 'CLI.make_css' };
+   my $context = { leader => 'CLI.make_css' };
 
-   $self->info("Concatenated ${count} files to ${file}", $options);
+   $self->info("Concatenated ${count} files to ${file}", $context);
    return OK;
 }
 
@@ -252,9 +253,9 @@ sub make_js : method {
    my $out    = io([qw(var root js), $file])->assert_open('a')->truncate(0);
    my $count  =()= map  { $out->appendln($self->_strip_comments($_->slurp)) }
                    sort { $a->name cmp $b->name } @files;
-   my $options = { leader => 'CLI.make_js' };
+   my $context = { leader => 'CLI.make_js' };
 
-   $self->info("Concatenated ${count} files to ${file}", $options);
+   $self->info("Concatenated ${count} files to ${file}", $context);
    return OK;
 }
 
@@ -280,9 +281,9 @@ sub make_less : method {
    my $lessc  = CSS::LESS->new(include_paths => ["${dir}"]);
    my $count  =()= map  { $out->append($lessc->compile($_->all)) }
                    sort { $a->name cmp $b->name } @files;
-   my $options = { leader => 'CLI.make_less' };
+   my $context = { leader => 'CLI.make_less' };
 
-   $self->info("Concatenated ${count} files to ${file}", $options);
+   $self->info("Concatenated ${count} files to ${file}", $context);
    return OK;
 }
 
@@ -401,7 +402,7 @@ sub _load_stash {
    $stash->{content} = $self->formatter->markdown($stash->{content})
       if $template =~ m{ \.md \z }mx;
 
-   my $tempdir  = $self->config->tempdir;
+   my $tempdir = $self->config->tempdir;
 
    unlink $template if $tempdir eq substr $template, 0, length $tempdir;
 
@@ -413,10 +414,12 @@ sub _load_stash {
 sub _populate_share_files {
    my ($self, $dest, $extn) = @_;
 
+   my $filter = sub { m{ \.${extn} \z }mx };
    my @files  = ();
    my $mtimes = {};
 
-   $dest->filter(sub { m{ \.${extn} \z }mx })->visit(sub { push @files, shift});
+   $dest->filter($filter)->visit(sub { push @files, shift});
+
    $mtimes->{$_->basename} = $_->stat->{mtime} for (@files);
 
    for my $source ($self->_qualified_share_files($extn)) {
@@ -433,6 +436,7 @@ sub _qualified_share_files {
    my ($self, $extn) = @_;
 
    my $proj_parent = $self->config->appldir->parent->parent;
+   my $filter      = sub { m{ \.${extn} \z }mx };
    my @files       = ();
 
    for my $project (@{$self->projects}) {
@@ -444,8 +448,7 @@ sub _qualified_share_files {
 
       next unless $source->exists;
 
-      $source->filter(sub { m{ \.${extn} \z }mx })
-         ->visit(sub { push @files, shift});
+      $source->filter($filter)->visit(sub { push @files, shift });
    }
 
    return @files;
@@ -477,7 +480,7 @@ sub _send_email {
    my $attaches   = $self->_qualify_assets(delete $stash->{attachments});
    my $user_rs    = $self->schema->resultset('User');
    my $recipients = delete $stash->{recipients};
-   my $options    = { leader => 'CLI.send_email' };
+   my $context    = { leader => 'CLI.send_message' };
    my $success    = TRUE;
 
    for my $recipient (@{$recipients // []}) {
@@ -485,12 +488,12 @@ sub _send_email {
          my $user = $user_rs->find_by_key($recipient);
 
          unless ($user) {
-            $self->error("User ${recipient} unknown", $options);
+            $self->error("User ${recipient} unknown", $context);
             next;
          }
 
          unless ($user->can_email) {
-            $self->error("User ${user} bad email address", $options);
+            $self->error("User ${user} bad email address", $context);
             next;
          }
 
@@ -528,9 +531,10 @@ sub _send_email_single {
 
    return FALSE unless $id;
 
-   my $options = { args => [$stash->{email}, $id], leader => 'CLI.send_email' };
+   my $args    = [$stash->{email}, $id];
+   my $context = { args => $args, leader => 'CLI.send_message' };
 
-   $self->info('Emailed [_1] message id. [_2]', $options);
+   $self->info('Emailed [_1] message id. [_2]', $context);
 
    return TRUE;
 }
@@ -561,12 +565,21 @@ sub _send_notification {
 
    throw UnknownUser, [$recipient] unless $user;
 
+   my $beep    = json_bool $options->{beep};
+   my $class   = $options->{class} // 'info';
    my $message = $options->{message} // 'No message';
-   my $res     = $self->service_worker_push($user->id, { message => $message });
+   my $native  = json_bool $options->{native};
+   my $title   = $options->{title};
+   my $opts    = { messageClass => $class, beep => $beep, title => $title };
+   my $params  = { message => $message, native => $native, options => $opts };
+   my $res     = $self->service_worker_push($user->id, $params);
    my $args    = ["${user}", $message];
-   my $context = { args => $args, leader => 'CLI.send_notification' };
+   my $context = { args => $args, leader => 'CLI.send_message' };
 
-   return $self->info('Notified [_1] - [_2]', $context) if $res->{success};
+   if ($res->{success}) {
+      $self->info('Notified [_1] - [_2]', $context);
+      return TRUE;
+   }
 
    $self->error($res->{error}, $context);
    return FALSE;

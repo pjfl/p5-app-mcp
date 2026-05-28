@@ -107,8 +107,8 @@ sub service_worker_push {
    $req->encode();
    $req->remove_header('::std_case'); # Strange artifact
 
-   my $params  = { content => $req->content, headers => $req->headers };
-   my $res     = $self->_ua->post($req->uri, $params);
+   my $params = { content => $req->content, headers => $req->headers };
+   my $res    = $self->_ua->post($req->uri, $params);
 
    return $self->decode_response($res);
 }

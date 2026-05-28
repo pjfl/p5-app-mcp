@@ -281,7 +281,9 @@ Additional attributes passed to the database connection method
 has 'db_attributes' =>
    is      => 'ro',
    isa     => HashRef,
-   default => sub { { AutoCommit => TRUE } };
+   default => sub {
+      return { AutoCommit => TRUE, pg_enable_utf8 => TRUE };
+   };
 
 =item C<db_connect_extra>
 
@@ -644,7 +646,10 @@ has 'navigation' =>
          footer_action  => 'api/footer',
          logger_action  => 'api/logger',
          message_action => 'api/collect_messages',
-         messages       => { 'buffer-limit' => $self->max_messages },
+         messages       => {
+            'beep-uri'     => 'sounds/beep.ogg',
+            'buffer-limit' => $self->max_messages,
+         },
          tabs_action    => 'api/tabs_preference',
          title          => $self->name,
          title_abbrev   => uc $self->prefix,
@@ -941,14 +946,15 @@ has 'state_cookie_lifetime' =>
 
 =item C<static>
 
-A non empty simple string which defaults to B<css | file | font | img | js>.
+A non empty simple string which defaults to
+B<css | file | font | img | js | sounds>
 
 =cut
 
 has 'static' =>
    is      => 'ro',
    isa     => NonEmptySimpleStr,
-   default => 'css | file | fonts | img | js';
+   default => 'css | file | fonts | img | js | sounds';
 
 =item C<stop_signals>
 

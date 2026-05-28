@@ -14,7 +14,6 @@ with    'HTML::Forms::Role::ToggleRequired';
 with    'App::MCP::Role::JSONParser';
 
 has '+form_wrapper_class' => default => sub { ['narrow'] };
-has '+info_message'       => default => 'Create or edit jobs';
 has '+item_class'         => default => 'Job';
 has '+name'               => default => 'Job';
 has '+title'              => default => 'Create Job';
@@ -62,15 +61,15 @@ sub validate_job_name {
 
 has_field 'description' => type => 'TextArea', cols => 32;
 
-has_field '_g1' => type => 'Group';
+has_field '_box_properties' => type => 'Group';
 
 has_field 'type' =>
    type         => 'Select',
-   default      => 'box',
+   default      => 'job',
    html_name    => 'job_type',
    input_param  => 'job_type',
-   field_group  => '_g1',
-   toggle       => { job => [qw(command directory _g3 _g4 _g7 _g8)] },
+   field_group  => '_box_properties',
+   toggle       => { job => [qw(_box_group)] },
    toggle_event => 'change',
    options      => [
       { label => 'Job', value => 'job' },
@@ -80,23 +79,23 @@ has_field 'type' =>
 has_field 'parent_id' =>
    type                => 'Hidden',
    validate_when_empty => FALSE,
-   field_group         => '_g1';
+   field_group         => '_box_properties';
 
 has_field 'parent_name' =>
    type        => 'SelectOne',
    display_as  => '…',
    label       => 'Parent Box',
-   field_group => '_g1',
+   field_group => '_box_properties',
    noupdate    => TRUE,
    title       => 'Select the parent box';
 
-has_field '_g2' => type => 'Group';
+has_field '_ownership' => type => 'Group';
 
-has_field 'owner' => type => 'Hidden', field_group => '_g2';
+has_field 'owner' => type => 'Hidden', field_group => '_ownership';
 
 has_field 'owner_name' =>
    type        => 'Text',
-   field_group => '_g2',
+   field_group => '_ownership',
    label       => 'Owner',
    noupdate    => TRUE,
    readonly    => TRUE,
@@ -106,7 +105,7 @@ has_field 'owner_name' =>
 
 has_field 'group_rel' =>
    type        => 'Select',
-   field_group => '_g2',
+   field_group => '_ownership',
    label       => 'Group',
    value       => 'group_rel.role_name',
    title       => 'Group owner of the job';
@@ -117,10 +116,8 @@ sub options_group_rel {
       my $self   = shift;
       my $option = { label => ucfirst $self->role_name, value => $self->id };
 
-      return $option unless $self->role_name eq 'mcp';
+      $option->{label} = 'MCP' if $self->role_name eq 'mcp';
 
-      $option->{label} = 'MCP';
-      $option->{selected} = 'selected';
       return $option;
    };
 
@@ -135,7 +132,7 @@ has_field 'permissions' =>
    type        => 'Permission',
    default     => 488,
    display_as  => '±',
-   field_group => '_g2',
+   field_group => '_ownership',
    title       => 'Select permissions';
 
 has_field 'condition' =>
@@ -145,86 +142,117 @@ has_field 'condition' =>
    tags              => { nospellcheck => TRUE },
    title             => 'Run the command when this condition evaluates to true';
 
-has_field '_g5' => type => 'Group';
+has_field '_crontab_hour_min' => type => 'Group';
 
 has_field 'crontab_min' =>
    label       => 'Minute',
-   field_group => '_g5',
+   field_group => '_crontab_hour_min',
    size        => 3,
    title       => "Comma separated list. Digits 0-59 or '*'";
 
 has_field 'crontab_hour' =>
    label       => 'Hour',
-   field_group => '_g5',
+   field_group => '_crontab_hour_min',
    size        => 3,
    title       => "Comma separated list. Digits 0-23 or '*'";
 
-has_field '_g6' => type => 'Group';
+has_field '_crontab_days' => type => 'Group';
 
 has_field 'crontab_mday' =>
    label       => 'Day of Month',
-   field_group => '_g6',
+   field_group => '_crontab_days',
    size        => 3,
    title       => "Comma separated list. Digits 1-31 or '*'";
 
 has_field 'crontab_mon' =>
    label       => 'Month',
-   field_group => '_g6',
+   field_group => '_crontab_days',
    size        => 3,
    title       => "Comma separated list. Digits 1-12 or names or '*'";
 
 has_field 'crontab_wday' =>
    label       => 'Day of Week',
-   field_group => '_g6',
+   field_group => '_crontab_days',
    size        => 3,
    title       => "Comma separated list. Digits 0-7 or names or '*'. " .
                   "Zero is Sunday";
 
-has_field 'auto_hold' =>
-   type  => 'Boolean',
-   title => 'When activated automatically go on hold';
+has_field '_runtime_properties' => type => 'Group';
 
-has_field '_g4' =>
-   type => 'Group',
-   info => 'These fields are not needed if job type is box';
+has_field 'max_runtime' =>
+   type        => 'Integer',
+   default     => 0,
+   field_group => '_runtime_properties',
+   label       => 'Max. Runtime',
+   size        => 6,
+   title       => 'Maximum job run time in seconds';
+
+has_field 'load_limit' =>
+   type        => 'Float',
+   default     => 0,
+   field_group => '_runtime_properties',
+   label       => 'Load Limit',
+   size        => 3,
+   title       => 'Load average must be below this number before ' .
+                  'the job starts';
+
+has_field 'auto_hold' =>
+   type        => 'Boolean',
+   field_group => '_runtime_properties',
+   title       => 'When activated automatically go on hold';
+
+has_field '_box_group' => type => 'Group', wrapper_class => ['vertical'];
+
+has_field '_location' =>
+   type        => 'Group',
+   field_group => '_box_group',
+   info        => 'These fields are not needed if job type is box';
 
 has_field 'user_name' =>
    default     => 'mcp',
-   field_group => '_g4',
+   field_group => '_location',
    required    => TRUE,
    size        => 8,
    title       => 'Execute command as this remote user';
 
 has_field 'host' =>
    default     => 'localhost',
-   field_group => '_g4',
+   field_group => '_location',
    required    => TRUE,
    title       => 'Name of host on which to execute the command';
 
-has_field 'command' =>
-   type     => 'TextArea',
-   cols     => 32,
-   required => TRUE,
-   tags     => { nospellcheck => TRUE },
-   title    => 'Command to execute on the given host';
-
 has_field 'directory' =>
    autocomplete => TRUE,
+   field_group  => '_box_group',
    size         => 32,
    title        => 'Make this the working directory when executing the command';
 
-has_field '_g7' => type => 'Group';
+has_field 'command' =>
+   type        => 'TextArea',
+   cols        => 32,
+   field_group => '_box_group',
+   required    => TRUE,
+   tags        => { nospellcheck => TRUE },
+   title       => 'Command to execute on the given host';
 
-has_field 'out_file' => field_group => '_g7', label => 'Output File';
+has_field '_redirect_io' => type => 'Group', field_group => '_box_group';
 
-has_field 'err_file' => field_group => '_g7', label => 'Error File';
+has_field 'out_file' =>
+   field_group => '_redirect_io',
+   label       => 'Output File',
+   title       => 'Redirect stdout to this file';
 
-has_field '_g3' => type => 'Group';
+has_field 'err_file' =>
+   field_group => '_redirect_io',
+   label       => 'Error File',
+   title       => 'Redirect stderr to this file';
+
+has_field '_job_properties' => type => 'Group', field_group => '_box_group';
 
 has_field 'expected_rv' =>
    type            => 'PosInteger',
    default         => 0,
-   field_group     => '_g3',
+   field_group     => '_job_properties',
    label           => 'Expected RV',
    size            => 3,
    title           => 'The expected return value of the command. '
@@ -234,34 +262,15 @@ has_field 'expected_rv' =>
 has_field 'nretrys' =>
    type        => 'Integer',
    default     => 0,
-   field_group => '_g3',
+   field_group => '_job_properties',
    label       => 'Num. Retrys',
    size        => 2,
    title       => 'How many times to retry if the job fails';
 
 has_field 'delete_after' =>
    type        => 'Boolean',
-   field_group => '_g3',
+   field_group => '_job_properties',
    title       => 'If true delete the job definition after completion';
-
-has_field '_g8' => type => 'Group';
-
-has_field 'max_runtime' =>
-   type        => 'Integer',
-   default     => 0,
-   field_group => '_g8',
-   label       => 'Max. Runtime',
-   size        => 6,
-   title       => 'Maximum job run time in seconds';
-
-has_field 'load_limit' =>
-   type        => 'Float',
-   default     => 0,
-   field_group => '_g8',
-   label       => 'Load Limit',
-   size        => 3,
-   title       => 'Load average must be below this number before ' .
-                  'the job starts';
 
 has_field 'view' =>
    type          => 'Link',
@@ -274,16 +283,10 @@ has_field 'submit' => type => 'Button';
 after 'after_build_fields' => sub {
    my $self    = shift;
    my $context = $self->context;
-   my $type    = $self->field('type')->value // NUL;
-
-   if ($type eq 'box') {
-      $self->field('_g3')->add_wrapper_class('hide');
-      $self->field('_g4')->add_wrapper_class('hide');
-      $self->field('command')->add_wrapper_class('hide');
-      $self->field('directory')->add_wrapper_class('hide');
-   }
 
    if (my $item = $self->item) {
+      $self->info_message('Edit jobs and boxes');
+
       my $view = $self->context->uri_for_action('job/view', [$item->id]);
 
       $self->field('view')->href($view->as_string);
@@ -295,6 +298,8 @@ after 'after_build_fields' => sub {
       $self->field('owner_name')->default($item->owner_rel->user_name);
    }
    else {
+      $self->info_message('Create jobs and boxes');
+
       my $group_id = $self->_group_map->{$self->default_group};
 
       $self->field('group_rel')->default($group_id);
@@ -352,6 +357,12 @@ sub _populate_with_clone {
 
       $self->field($field_name)->default($value) if defined $value;
    }
+
+   if (my $parent_box = $self->clone->parent_box) {
+      $self->field('parent_name')->default($parent_box->job_name);
+   }
+
+   $self->field('group_rel')->default($self->clone->group);
    return;
 }
 

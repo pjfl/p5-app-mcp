@@ -180,11 +180,7 @@ $class->add_columns(
    id           => { %{serial_data_type()}, hidden => TRUE },
    job_name     => { %{varchar_data_type()}, label => 'Job Name' },
    description  => nullable_text_data_type,
-   created      => {
-      %{set_on_create_datetime_data_type()},
-      cell_traits => ['DateTime'],
-      timezone    => 'UTC',
-   },
+   created      => set_on_create_datetime_data_type,
    parent_id    => {
       %{nullable_foreign_key_data_type()},
       display => 'parent_box.job_name',
@@ -303,12 +299,11 @@ has '_condition_changed' => is => 'rw', default => FALSE;
 has '_expression_parser' =>
    is      => 'lazy',
    default => sub {
-      my $self   = shift;
-      my $job_rs = $self->result_source->resultset;
+      my $self    = shift;
+      my $job_rs  = $self->result_source->resultset;
+      my $options = { external => $job_rs, predicates => $job_rs->predicates };
 
-      return App::MCP::ExpressionParser->new(
-         external => $job_rs, predicates => $job_rs->predicates
-      );
+      return App::MCP::ExpressionParser->new($options);
    };
 
 =back
@@ -430,9 +425,8 @@ C<starting>, or C<running>. Returns false otherwise
 
 sub has_active_jobs {
    my $self     = shift;
-   my $schema   = $self->result_source->schema;
-   my $job_rs   = $schema->resultset('Job');
    my $options  = { prefetch => 'state' };
+   my $job_rs   = $self->result_source->schema->resultset('Job');
    my $children = [$job_rs->search({ parent_id => $self->id }, $options)->all];
 
    for my $name (map { $_->state->name } @{$children}) {

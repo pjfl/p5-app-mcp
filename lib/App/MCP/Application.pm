@@ -1,18 +1,19 @@
 package App::MCP::Application;
 
-use version;
-
 use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK SPC TRANSITION_ENUM );
-use Unexpected::Types      qw( ArrayRef HashRef LoadableClass NonEmptySimpleStr
+use Unexpected::Types      qw( ArrayRef LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object Str );
 use App::MCP::Util         qw( concise_duration create_token distname
                                trigger_input_handler trigger_output_handler );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded includes );
 use English                qw( -no_match_vars );
+use HTML::Forms::Util      qw( json_bool );
 use List::Util             qw( first );
 use Scalar::Util           qw( weaken );
 use Web::ComposableRequest::Util
                            qw( bson64id );
+use App::MCP::EventStream;
+use App::MCP::Provisioning;
 use IPC::PerlSSH;
 use Try::Tiny;
 use Moo;
@@ -71,6 +72,21 @@ has 'builder' =>
    handles  => [qw(config debug log port)],
    required => TRUE;
 
+=item C<provisioner>
+
+An instance of the L<remote provisioning|App::MCP::Provisioning> class
+
+=cut
+
+has 'provisioner' =>
+   is      => 'lazy',
+   default => sub {
+      my $self = shift;
+      my $args = { config => $self->config, log => $self->log };
+
+      return App::MCP::Provisioning->new($args);
+   };
+
 =item C<servers>
 
 A comma separated list of scheduling servers
@@ -81,6 +97,21 @@ has 'servers' =>
    is      => 'lazy',
    isa     => Str,
    default => sub { join COMMA, @{shift->config->servers} };
+
+=item C<streamer>
+
+An instance of the L<event stream|App::MCP::EventStream> class
+
+=cut
+
+has 'streamer' =>
+   is      => 'lazy',
+   default => sub {
+      my $self = shift;
+      my $args = { config => $self->config, log => $self->log };
+
+      return App::MCP::EventStream->new($args);
+   };
 
 =item C<worker>
 
@@ -109,12 +140,9 @@ has '_output_transitions' =>
    isa     => ArrayRef,
    default => sub { ['force_start', 'kill_job', 'start'] };
 
-has '_provisioned'  => is => 'ro', isa => HashRef, default => sub { {} };
-
 with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::Redis';
 with 'App::MCP::Role::Schema';
-with 'App::MCP::Role::Webpush';
 
 =back
 
@@ -127,6 +155,12 @@ Defines the following methods;
 =item C<cron_job_handler>
 
    $exit_code = $self->cron_job_handler($notifier_name, $daemon_pid);
+
+Creates start events for active jobs that should start now. Triggers the output
+handler if any start events are created. Called at
+C<config>.C<clock_tick_interval> seconds by the clock notifier
+
+Returns zero
 
 =cut
 
@@ -155,6 +189,11 @@ sub cron_job_handler {
 
    $exit_code = $self->event_stream_handler($notifier_name, $daemon_pid);
 
+Collects any accrued events since this method was last called. Posts/pushes
+these events to any registered clients
+
+Returns zero
+
 =cut
 
 sub event_stream_handler {
@@ -171,16 +210,14 @@ sub event_stream_handler {
       next unless $event;
 
       try   { push @events, $self->json_parser->decode($event) }
-      catch { $self->log->error("${name}.stream: ${_}") };
+      catch { $self->log->error("${name}.stream_handler: ${_}") };
    }
 
    return OK unless scalar @events;
 
-   my $events = $self->json_parser->encode([@events]);
+   my $payload = { events => $self->json_parser->encode([@events]) };
 
-   for my $key ($cache->keys('event_subscription-*')) {
-      $self->_dispatch_event($name, $cache, $key, $events);
-   }
+   $self->streamer->send_to_subscribers($name, $payload);
 
    return OK;
 }
@@ -188,6 +225,11 @@ sub event_stream_handler {
 =item C<input_handler>
 
    $exit_code = $self->input_handler($notifier_name, $daemon_pid);
+
+Processes input events updating the targeted job state. When successfully
+processed events are moved to the processed events collection
+
+Returns zero
 
 =cut
 
@@ -198,7 +240,8 @@ sub input_handler {
    my $prefetch = { 'job' => 'state' };
    my $where    = { transition => $self->_input_transitions };
    my $options  = { order_by => { -asc => 'me.id' }, prefetch => $prefetch };
-   my $events   = $schema->resultset('Event')->search($where, $options);
+   my $ev_rs    = $schema->resultset('Event');
+   my $events   = $ev_rs->search($where, $options);
    my $pev_rs   = $schema->resultset('ProcessedEvent');
    my $trigger  = TRUE;
 
@@ -213,7 +256,7 @@ sub input_handler {
 
             $pev_rs->create($pev);
             $event->delete;
-            $self->_input_event_cleanup($event);
+            $self->_input_event_cleanup($name, $ev_rs, $event);
          });
       }
 
@@ -225,9 +268,58 @@ sub input_handler {
    return OK;
 }
 
+=item C<max_runtime_handler>
+
+   $exit_code = $self->max_runtime_handler($name, $daemon_pid);
+
+Terminate any running jobs that have exceeded their maximum run time
+
+=cut
+
+# TODO: Do not kill more than once and why is kill_job illegal
+sub max_runtime_handler {
+   my ($self, $name, $daemon_pid) = @_;
+
+   my $ev_rs      = $self->schema->resultset('Event');
+   my $js_rs      = $self->schema->resultset('JobState');
+   my $options    = { prefetch => 'job' };
+   my @job_states = $js_rs->search({ name => 'running' }, $options)->all;
+   my $triggered  = FALSE;
+
+   for my $job_state (@job_states) {
+      my $job         = $job_state->job;
+      my $max_runtime = $job->max_runtime or next;
+      my $label       = $job->label;
+      my $start_time  = $job_state->last_start;
+
+      next if $start_time eq 'never';
+
+      $start_time->set_time_zone($self->config->local_tz);
+
+      next unless time > $start_time->epoch + $max_runtime;
+
+      $ev_rs->create({ job_id => $job->id, transition => 'kill_job' });
+
+      my $message = "Killing ${label} max. runtime exceeded";
+
+      $self->log->alert("${name}: ${message}");
+      $self->_alert_subscribers($name, $message);
+      $triggered = TRUE;
+   }
+
+   trigger_output_handler $daemon_pid if $triggered;
+
+   return OK;
+}
+
 =item C<output_handler>
 
    $exit_code = $self->output_handler($name, $daemon_pid, $ipc_ssh);
+
+Processes output events updating the targeted job state. When successfully
+processed events are moved to the processed events collection
+
+Returns zero
 
 =cut
 
@@ -270,11 +362,26 @@ The keys of the C<options> hash reference are;
 
 =item C<calls>
 
+An array references of tuples. Each tuple consists of;
+
+=over 3
+
+=item C<method>
+
+=item C<args>
+
+=item C<callback>
+
+=back
+
 =item C<host>
 
 =item C<user>
 
 =back
+
+Returns false on failure and a hash reference of results from calling any
+registered callbacks
 
 =cut
 
@@ -314,9 +421,9 @@ sub ssh_caller {
 
       $self->log->debug("${leader}: Call succeeded - ${resp}");
 
-      my $cb = $call->[2];
-
-      $self->$cb($leader, $results, $call, $resp, $args) if defined $cb;
+      if (my $cb = $call->[2]) {
+         $self->provisioner->$cb($leader, $call, $args, $resp, $results);
+      }
    }
 
    return $results;
@@ -326,13 +433,26 @@ sub ssh_caller {
 
    $self->ssh_calback($notifier, \@args?);
 
+Called by the C<ipc_ssh> notifier after the C<ssh_caller> has returned it's
+results
+
 The C<args> array reference should contain;
 
 =over 3
 
 =item C<runid>
 
+Combined with the notifier name this is used as a leader in the log C<info>
+call
+
 =item C<results>
+
+This should be the hash reference returned by C<ssh_caller>. It should contain
+a key C<provisioned> (another hash reference) containing C<key> and C<value>
+attributes
+
+This is used to registered the version number of the worker for a given
+host/user pair
 
 =back
 
@@ -350,25 +470,19 @@ sub ssh_callback {
    my $name = $notifier->name;
 
    $self->log->info("${name}[${runid}]: Provisioned ${key} ${val}")
-      if $self->_remote_provisioned($key, $val);
+      if $self->provisioner->remote_provisioned($key, $val);
 
    return;
 }
 
 # Private methods
-sub _add_provisioning {
-   my ($self, $args) = @_;
+sub _alert_subscribers {
+   my ($self, $name, $message) = @_;
 
-   my $host = $args->{host};
-   my $user = $args->{user};
+   my $options = { messageClass => 'error', beep => json_bool TRUE };
+   my $params  = { message => $message, options => $options };
 
-   return if $self->_remote_provisioned("${user}\@${host}");
-
-   my $calls    = $args->{calls};
-   my $appclass = $self->config->appclass;
-   my $worker   = $self->worker;
-
-   unshift @{$calls}, ['provision', [$appclass, $worker], '_install_worker'];
+   $self->streamer->send_to_subscribers($name, $params);
    return;
 }
 
@@ -408,29 +522,6 @@ sub _dispatch_args {
    };
 }
 
-sub _dispatch_event {
-   my ($self, $name, $cache, $key, $events) = @_;
-
-   my $encoded = $cache->get($key) or return;
-   my $subscription;
-
-   try   { $subscription = $self->json_parser->decode($encoded) }
-   catch { $cache->del($key) };
-
-   return unless $subscription;
-
-   my $method = '_event_stream_' . $subscription->{method};
-
-   return unless $self->can($method);
-
-   $subscription->{user_id} = (split m{ \- }mx, $key)[1];
-
-   try   { $self->$method($name, $subscription, $events) }
-   catch { $self->log->error("${name}.dispatch_event: ${_}") };
-
-   return;
-}
-
 sub _dispatch_message {
    my ($self, $job, $adjective, $runid) = @_;
 
@@ -460,43 +551,10 @@ sub _dispatch_job {
       my $calls   = [['dispatch', [%{$args}]]];
       my $options = { calls => $calls, host => $job->host, user => $user };
 
-      $self->_add_provisioning($options);
+      $self->provisioner->add_provisioning($options);
       $ipc_ssh->call($args->{runid}, $options); # Calls ssh_caller
    }
 
-   return;
-}
-
-# TODO: Implement event stream output method for a callback
-sub _event_stream_callback {
-   my ($self, $name, $subscription, $events) = @_;
-
-   my $leader = ucfirst "${name}.callback";
-
-   return;
-}
-
-sub _event_stream_webpost {
-   my ($self, $name, $subscription, $events) = @_;
-
-   my $leader = ucfirst "${name}.webpost";
-   my $uri    = $subscription->{callback_uri};
-   my $res    = $self->web_server_post($uri, { events => $events });
-
-   $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
-   $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
-   return;
-}
-
-sub _event_stream_webpush {
-   my ($self, $name, $subscription, $events) = @_;
-
-   my $leader  = ucfirst "${name}.webpush";
-   my $user_id = $subscription->{user_id};
-   my $res     = $self->service_worker_push($user_id, { events => $events });
-
-   $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
-   $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
    return;
 }
 
@@ -528,79 +586,52 @@ sub _get_identity_file {
    return;
 }
 
+sub _increment_try_count {
+   my ($self, $job) = @_;
+
+   my $jobid = $job->id;
+   my $key   = "retry_count-${jobid}";
+   my $count = $self->redis_client->get($key) // 0;
+
+   $self->redis_client->set_with_ttl($key, $count + 1, 86400);
+   return;
+}
+
 sub _input_event_cleanup {
-   my ($self, $event) = @_;
+   my ($self, $name, $ev_rs, $event) = @_;
 
-   my $job = $event->job;
+   my $job        = $event->job;
+   my $runid      = $event->runid;
+   my $transition = $event->transition;
+   my $jobid      = $job->id;
+   my $retry_key  = "retry_count-${jobid}";
 
-   $job->delete if $job->delete_after && $event->transition eq 'finish';
+   $job->delete if $job->delete_after && $transition eq 'finish';
 
-   if (includes $event->transition, [qw(fail finish terminate)]) {
-      my $runid = $event->runid;
+   $self->redis_client->del($retry_key) if $transition eq 'finish';
 
-      $self->redis_client->del("event_token-${runid}") if $runid;
+   if ($runid && includes $transition, [qw(fail finish terminate)]) {
+      $self->redis_client->del("event_token-${runid}");
    }
 
-   return;
-}
+   if (includes $transition, [qw(fail terminate)]) {
+      my $label   = $job->label;
+      my $message = "Job ${label} failed";
+      my $leader  = ucfirst "${name}.event_cleanup";
+      my $count   = $self->redis_client->get($retry_key) // 0;
 
-sub _install_cpan_minus {
-   return shift->_install_remote('install_cpan_minus', @_);
-}
-
-sub _install_distribution {
-   return shift->_install_remote('install_distribution', @_);
-}
-
-sub _install_remote {
-   my ($self, $method, $calls, $file) = @_;
-
-   my $config   = $self->config;
-   my $appclass = $config->appclass;
-
-   unshift @{$calls}, [$method, [$appclass, $file]];
-
-   return if $file =~ m{ \A [a-zA-Z0-9_]+ : }mx;
-
-   my $path = $config->sharedir->catfile($file);
-
-   unshift @{$calls}, ['writefile', [$appclass, $file, $path->all]];
-   return;
-}
-
-sub _install_worker {
-   my ($self, $leader, $results, $call, $result, $args) = @_;
-
-   my $dist      = distname $self->worker;
-   my $share     = $self->config->sharedir;
-   my $filter    = qr{ \b $dist - ([0-9\.]+) \.tar\.gz \z }mx;
-   my $our_ver   = (sort map { $_ =~ $filter; qv($1) } map { $_->basename }
-                    $share->filter(sub { $_ =~ $filter })->all_files)[-1];
-   my ($rem_ver) = $result =~ m{ \A version= (.+) \z }mx;
-   my $key       = $args->{user}.'@'.$args->{host};
-
-   $our_ver //= qv('0.0.0');
-   $rem_ver = qv($rem_ver // '0.0.0');
-   $self->log->debug("${leader}: Worker current - ${key} ${rem_ver}");
-
-   if ($rem_ver >= $our_ver) {
-      $results->{provisioned} = { key => $key, value => "${rem_ver}" };
-      return;
+      if ($job->nretrys && $job->nretrys >= $count) {
+         $self->log->warn("${leader}: ${message}");
+         $ev_rs->create({ job_id => $jobid, transition => 'activate' });
+         $ev_rs->create({ job_id => $jobid, transition => 'force_start' });
+      }
+      else {
+         $self->log->alert("${leader}: ${message}");
+         $self->redis_client->del($retry_key);
+         $self->_alert_subscribers($name, $message);
+      }
    }
 
-   my $file    = "${dist}-${our_ver}.tar.gz";
-   my $tarball = $share->catfile($file);
-
-   return $self->log->error("${leader}: File ${tarball} not found")
-      unless $tarball->exists;
-
-   $self->log->debug("${leader}: Worker upgrade - ${rem_ver} to ${our_ver}");
-   unshift @{$args->{calls}}, ['distclean', [$self->config->appclass]];
-
-   # TODO: Need to force reload of worker after upgrade
-   $self->_install_distribution($args->{calls}, $file);
-   $self->_install_distribution($args->{calls}, 'local::lib');
-   $self->_install_cpan_minus  ($args->{calls}, 'App-cpanminus.tar.gz');
    return;
 }
 
@@ -666,8 +697,9 @@ sub _process_start_event {
 
       $pev->{runid} = $runid;
       $self->redis_client->set_with_ttl($key, $args->{token}, 86400);
-      $self->log->info($message);
+      $self->_increment_try_count($job);
       $self->_dispatch_job($ipc_ssh, $job, $args);
+      $self->log->info($message);
    }
    elsif ($success && $job->type eq 'box') {
       my $options = { job_id => $job->id, transition => 'started' };
@@ -678,14 +710,6 @@ sub _process_start_event {
    $self->schema->resultset('ProcessedEvent')->create($pev);
    $event->delete;
    return $success;
-}
-
-sub _remote_provisioned {
-   my ($self, $key, $val) = @_;
-
-   $self->_provisioned->{$key} = $val if defined $val;
-
-   return $self->_provisioned->{$key};
 }
 
 use namespace::autoclean;

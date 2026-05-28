@@ -246,6 +246,7 @@ sub _build_cron {
       on_recv => sub {
          $app->cron_job_handler('cron', $pid);
          $app->event_stream_handler('events', $pid);
+         $app->max_runtime_handler('runtime', $pid);
       },
    );
 }

@@ -18,7 +18,7 @@ $class->table('processed_events');
 $class->add_columns(
    id         => serial_data_type,
    created    => { data_type => 'datetime', timezone => 'UTC' },
-   processed  => { %{set_on_create_datetime_data_type()}, timezone => 'UTC' },
+   processed  => set_on_create_datetime_data_type,
    job_id     => foreign_key_data_type,
    transition => enumerated_data_type(TRANSITION_ENUM),
    rejected   => nullable_varchar_data_type(16),
@@ -36,8 +36,10 @@ sub sqlt_deploy_hook {
   my ($self, $sqlt_table) = @_;
 
   $sqlt_table->add_index(
-     name   => 'processed_events_runid_idx',
-     fields => ['runid'],
+     name => 'processed_events_runid_idx', fields => ['runid'],
+  );
+  $sqlt_table->add_index(
+     name => 'processed_events_created_idx', fields => ['created'],
   );
 
   return;

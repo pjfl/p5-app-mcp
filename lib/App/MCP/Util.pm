@@ -23,15 +23,13 @@ use DateTime;
 use DateTime::Format::Human;
 
 our @EXPORT_OK = qw( base64_decode base64_encode boolean_data_type
-   concise_duration create_token create_totp_token created_timestamp_data_type
-   distname dt_from_epoch dt_human encode_for_html enumerated_data_type
-   foreign_key_data_type formpost get_hashed_pw get_salt local_config new_salt
-   new_uri integer_data_type integer_id_data_type
-   nullable_foreign_key_data_type nullable_text_data_type
+   concise_duration create_token create_totp_token distname dt_from_epoch
+   dt_human encode_for_html enumerated_data_type foreign_key_data_type formpost
+   get_hashed_pw get_salt local_config new_salt new_uri integer_data_type
+   integer_id_data_type nullable_foreign_key_data_type nullable_text_data_type
    nullable_varchar_data_type redirect redirect2referer serial_data_type
    set_on_create_datetime_data_type strip_namespace terminate text_data_type
-   trigger_input_handler trigger_output_handler truncate
-   updated_timestamp_data_type varchar_data_type );
+   trigger_input_handler trigger_output_handler truncate varchar_data_type );
 
 =pod
 
@@ -310,7 +308,7 @@ sub formpost () {
 =cut
 
 sub get_hashed_pw ($) {
-   my @parts = split m{ [\$] }mx, $_[0];
+   my @parts = split m{ [\$] }mx, shift;
 
    return substr $parts[-1], 22;
 }
@@ -322,7 +320,7 @@ sub get_hashed_pw ($) {
 =cut
 
 sub get_salt ($) {
-   my @parts = split m{ [\$] }mx, $_[0];
+   my @parts = split m{ [\$] }mx, shift;
 
    $parts[-1] = substr $parts[-1], 0, 22;
 
@@ -539,20 +537,6 @@ sub boolean_data_type (;$) {
    };
 }
 
-=item C<created_timestamp_data_type>
-
-=cut
-
-sub created_timestamp_data_type {
-   return {
-      cell_traits   => ['DateTime'],
-      data_type     => 'timestamp',
-      is_nullable   => FALSE,
-      set_on_create => TRUE,
-      timezone      => 'UTC',
-   };
-}
-
 =item C<enumerated_data_type>
 
 =cut
@@ -644,7 +628,9 @@ sub serial_data_type () {
 sub set_on_create_datetime_data_type () {
    return {
       data_type     => 'datetime',
+      cell_traits   => ['DateTime'],
       set_on_create => TRUE,
+      timezone      => 'UTC',
    };
 }
 
@@ -669,19 +655,6 @@ sub nullable_text_data_type (;$) {
       data_type     => 'text',
       default_value => $_[0],
       is_nullable   => TRUE,
-   };
-}
-
-=item C<updated_timestamp_data_type>
-
-=cut
-
-sub updated_timestamp_data_type {
-   return {
-      cell_traits => ['DateTime'],
-      data_type   => 'timestamp',
-      is_nullable => TRUE,
-      timezone    => 'UTC',
    };
 }
 

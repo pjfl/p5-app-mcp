@@ -10,6 +10,7 @@ with    'HTML::StateTable::Role::Configurable';
 with    'HTML::StateTable::Role::Form';
 with    'HTML::StateTable::Role::Filterable';
 with    'HTML::StateTable::Role::Downloadable';
+with    'HTML::StateTable::Role::Reorderable';
 
 has '+caption' => default => 'List Jobs';
 
@@ -72,6 +73,8 @@ has_column 'user_name' =>
 has_column 'host' => filterable => TRUE, searchable => TRUE;
 
 has_column 'command' => searchable => TRUE;
+
+has_column 'description' => searchable => TRUE;
 
 has_column 'check' =>
    cell_traits => ['Checkbox'],

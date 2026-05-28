@@ -48,13 +48,14 @@ sub jobid : Auth('view') Capture(1) {
 sub create : Nav('Create Job') {
    my ($self, $context) = @_;
 
-   my $clone = $context->request->query_parameters->{clone};
-   my $job;
+   my $clone_id = $context->request->query_parameters->{clone};
+   my $options  = { prefetch => 'parent_box' };
+   my $job_rs   = $context->model('Job');
+   my $clone;
 
-   $job = $context->model('Job')->find_by_key($clone) if $clone;
+   $clone = $job_rs->find_by_key($clone_id, $options) if $clone_id;
 
-   my $options = { clone => $job, context => $context };
-   my $form    = $self->new_form('Job', $options);
+   my $form = $self->new_form('Job', { clone => $clone, context => $context });
 
    if ($form->process(posted => $context->posted)) {
       my $job  = $form->item;
@@ -91,11 +92,12 @@ sub edit : Nav('Edit Job') {
    my ($self, $context) = @_;
 
    my $job     = $context->stash('job');
-   my $options = { context => $context, item => $job, title => 'Edit job' };
-   my $form    = $self->new_form('Job', $options);
 
    return $self->error($context, UnauthorisedAccess)
       if $context->posted && !$self->_can_update($context, $job);
+
+   my $options = { context => $context, item => $job, title => 'Edit Job' };
+   my $form    = $self->new_form('Job', $options);
 
    if ($form->process(posted => $context->posted)) {
       my $view = $context->uri_for_action('job/view', [$job->id]);
@@ -125,19 +127,19 @@ sub remove {
 
    return unless $self->verify_form_post($context);
 
-   my $value = $context->body_parameters->{data} or return;
-   my $rs    = $context->model('Job');
-   my $names = [];
+   my $value  = $context->body_parameters->{data} or return;
+   my $rs     = $context->model('Job');
+   my $labels = [];
 
    for my $job (grep { $_ } map { $rs->find($_) } @{$value->{selector}}) {
       return $self->error($context, UnauthorisedAccess)
          unless $self->_can_update($context, $job);
 
-      push @{$names}, $job->label;
+      push @{$labels}, $job->label;
       $job->delete;
    }
 
-   my $message = ['Job(s) [_1] deleted', (join ', ', @{$names}) ];
+   my $message = ['Job(s) [_1] deleted', (join ', ', @{$labels}) ];
 
    $context->stash(redirect2referer $context, $message);
    return;

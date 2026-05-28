@@ -4,8 +4,7 @@ use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( SQL_NOW STATE_ENUM );
-use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
-                            updated_timestamp_data_type );
+use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type );
 
 my $class  = __PACKAGE__;
 my $result = 'App::MCP::Schema::Schedule::Result';
@@ -14,8 +13,13 @@ $class->table('job_states');
 
 $class->add_columns(
    job_id  => foreign_key_data_type,
-   updated => updated_timestamp_data_type,
    name    => enumerated_data_type(STATE_ENUM),
+   updated => {
+      data_type   => 'timestamp',
+      cell_traits => ['DateTime'],
+      is_nullable => TRUE,
+      timezone    => 'UTC',
+   },
 );
 
 $class->set_primary_key('job_id');
@@ -87,8 +91,8 @@ sub _last_finish_event {
 
    return $self->{_last_finish_event} = $self->processed_events->search(
       { transition => 'finish' },
-      { order_by   => { -desc => 'runid' }, rows => 1 }
-   )->all;
+      { order_by   => { -desc => 'created' }, rows => 1 }
+   )->single;
 }
 
 sub _last_start_event {
@@ -97,9 +101,9 @@ sub _last_start_event {
    return $self->{_last_start_event} if exists $self->{_last_start_event};
 
    return $self->{_last_start_event} = $self->processed_events->search(
-      { transition => 'start' },
-      { order_by   => { -desc => 'runid' }, rows => 1 }
-   )->all;
+      { transition => ['force_start', 'start'] },
+      { order_by   => { -desc => 'created' }, rows => 1 }
+   )->single;
 }
 
 use namespace::autoclean;

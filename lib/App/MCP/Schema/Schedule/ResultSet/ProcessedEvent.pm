@@ -6,18 +6,12 @@ use Moo;
 extends 'DBIx::Class::ResultSet';
 
 sub find_last_start {
-   my ($self, $job_or_runid) = @_;
-
-   my $where = {
-      transition => ['force_start', 'start'], token => { '!=' => q() }
-   };
-
-   if (blessed $job_or_runid) { $where->{job_id} = $job_or_runid->id }
-   else { $where->{runid} = $job_or_runid }
+   my ($self, $job) = @_;
 
    my $columns  = ['runid', 'token'];
    my $order_by = { -desc => 'created' };
    my $options  = { columns => $columns, order_by => $order_by, rows => 1 };
+   my $where    = { job_id => $job->id, transition => ['force_start', 'start']};
 
    return $self->search($where, $options)->single;
 }

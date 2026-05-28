@@ -70,14 +70,12 @@ sub create_event : Auth('none') {
 
    return $self->_stash_response($context, $result) unless $params;
 
-   my $daemon_pid = $self->config->appclass->env_var('daemon_pid');
-
    try {
       my $event = $self->schema->resultset('Event')->create($params);
 
       $message = 'Event ' . $event->id . ' created';
       $result  = [HTTP_CREATED, { message => $message }];
-      trigger_input_handler($self->config);
+      trigger_input_handler $self->config;
    }
    catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
 

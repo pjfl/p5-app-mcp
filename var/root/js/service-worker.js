@@ -1,11 +1,12 @@
 self.addEventListener('push', function(event) {
    const data = event.data ? event.data.json() : {};
-   if (data.message) {
+   if (data['native']) {
       const body = data.message;
-      const title = data.title ? data.title : 'MCP Service Worker';
+      const options = data.options || {};
+      const title = options.title ? options.title : 'MCP Service Worker';
       event.waitUntil(self.registration.showNotification(title, { body }));
    }
-   if (data.events) {
+   else {
       event.waitUntil((async () => {
          const options = { includeUncontrolled: true };
          const allClients = await clients.matchAll(options);

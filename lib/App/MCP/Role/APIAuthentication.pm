@@ -127,8 +127,9 @@ sub get_session {
    throw Unspecified, ['session id'] unless $session_id;
 
    my $key     = $self->_session_key($session_id);
-   my $session = $self->redis_client->get($key)
+   my $encoded = $self->redis_client->get($key)
       or throw 'Session [_1] not found', [$session_id], rv => HTTP_UNAUTHORIZED;
+   my $session = $self->json_parser->decode($encoded);
    my $max_age = $session->{max_age};
    my $now     = time;
 
@@ -143,27 +144,31 @@ sub get_session {
 }
 
 # Private methods
+sub _create_session {
+   my ($self, $user) = @_;
+
+   my $session_id = $self->_session_id($user, bson64id);
+   my $session    = {
+      id        => $session_id,
+      key       => $user->user_name,
+      last_used => time,
+      max_age   => $self->session_ttl,
+      role_id   => $user->role_id,
+      user_id   => $user->id,
+   };
+
+   return $self->_set_session($session_id, $session);
+}
+
 sub _find_or_create_session {
    my ($self, $user) = @_;
 
-   my $session_id = $self->_session_id($user);
    my $session;
 
-   try   { $session = $self->get_session($session_id) }
-   catch { # Create a new session
+   try   { $session = $self->get_session($self->_session_id($user)) }
+   catch {
       $self->log->debug($_);
-      $session_id = bson64id;
-      $session    = {
-         id        => $session_id,
-         key       => $user->user_name,
-         last_used => bson64id_time($session_id),
-         max_age   => $self->session_ttl,
-         role_id   => $user->role_id,
-         user_id   => $user->id,
-      };
-
-      $self->_set_session($session_id, $session);
-      $self->_session_id($user, $session_id);
+      $session = $self->_create_session($user);
    };
 
    return $session;
@@ -198,9 +203,10 @@ sub _session_key {
 sub _set_session {
    my ($self, $session_id, $session) = @_;
 
-   my $key = $self->_session_key($session_id);
+   my $key     = $self->_session_key($session_id);
+   my $encoded = $self->json_parser->encode($session);
 
-   $self->redis_client->set_with_ttl($key, $session, $self->session_ttl);
+   $self->redis_client->set_with_ttl($key, $encoded, $self->session_ttl);
 
    return $session;
 }
