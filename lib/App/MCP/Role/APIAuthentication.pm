@@ -3,9 +3,8 @@ package App::MCP::Role::APIAuthentication;
 use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE TRUE );
 use HTTP::Status                 qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
                                      HTTP_NOT_FOUND HTTP_OK HTTP_UNAUTHORIZED );
-use App::MCP::Util               qw( get_hashed_pw get_salt );
-use Digest::MD5                  qw( md5_hex );
-use MIME::Base64                 qw( decode_base64 encode_base64 );
+use App::MCP::Util               qw( fp get_hashed_pw get_salt );
+use MIME::Base64                 qw( decode_base64url encode_base64url );
 use Unexpected::Functions        qw( throw AccountInactive Unspecified );
 use Web::ComposableRequest::Util qw( bson64id bson64id_time );
 use Crypt::SRP;
@@ -13,9 +12,7 @@ use Try::Tiny;
 use Moo::Role;
 use App::MCP::Attributes; # Will do namespace cleaning
 
-requires qw( config log );
-
-with 'App::MCP::Role::Redis';
+requires qw( config json_parser log redis_client );
 
 has 'session_ttl' =>
    is      => 'lazy',
@@ -40,34 +37,43 @@ sub exchange_keys : Auth('none') {
 
    return $self->_stash_response($context, $result) if $result;
 
-   my $session        = $self->_find_or_create_session($user);
-   my $srp            = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
-   my $client_pub_key = decode_base64 $request->query_params->('public_key');
-   my $username       = $user->user_name;
+   my $session       = $self->_find_or_create_session($user);
+   my $srp           = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
+   my $public_key    = $request->query_parameters->{public_key};
+   my $client_pubkey = decode_base64url $public_key;
+   my $username      = $user->user_name;
    my $message;
 
-   $self->log->debug('Auth client pub key ' . (md5_hex $client_pub_key));
+   $self->log->debug('Exchange_keys: Client pubkey ' . fp $client_pubkey);
+
    $message = "User ${username} client public key verification failed";
-   $result = [HTTP_UNAUTHORIZED, { message => $message }];
+   $result  = [HTTP_UNAUTHORIZED, { message => $message }];
 
    return $self->_stash_response($context, $result)
-      unless $srp->server_verify_A($client_pub_key);
+      unless $srp->server_verify_A($client_pubkey);
 
-   my $verifier = decode_base64 get_hashed_pw $user->password;
+   my $verifier = decode_base64url get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
 
-   $self->log->debug("Server init - exchange pubkeys ${username} ${salt}");
    $srp->server_init($username, $verifier, $salt);
 
-   my ($server_pub_key, $server_priv_key) = $srp->server_compute_B;
+   my ($server_pubkey, $server_privkey) = $srp->server_compute_B;
 
-   $session->{auth_keys} = [$client_pub_key, $server_pub_key, $server_priv_key];
+   $session->{auth_keys} = [
+      encode_base64url($client_pubkey),
+      encode_base64url($server_pubkey),
+      encode_base64url($server_privkey)
+   ];
+
+   $self->log->debug('Exchange_keys: Server pubkey ' . fp $server_pubkey);
+   $self->log->debug("Exchange_keys: ${username} ${salt}");
+   $self->log->debug('Exchange_keys: Session id ' . $session->{id});
 
    $self->_set_session($session->{id}, $session);
 
-   my $pub_key = encode_base64 $server_pub_key;
+   my $pubkey = encode_base64url $server_pubkey;
 
-   $result = [HTTP_OK, { public_key => $pub_key, salt => $salt }];
+   $result = [HTTP_OK, { public_key => $pubkey, salt => $salt }];
    $self->_stash_response($context, $result);
    return;
 }
@@ -100,21 +106,26 @@ sub authenticate : Auth('none') {
    return $self->_stash_response($context, $result) unless $m1_token;
 
    my $srp      = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
-   my $verifier = decode_base64 get_hashed_pw $user->password;
+   my $verifier = decode_base64url get_hashed_pw $user->password;
    my $salt     = get_salt $user->password;
-   my $token    = decode_base64 $m1_token;
+   my $token    = decode_base64url $m1_token;
+   my $keys     = [ map { decode_base64url($_) } @{$session->{auth_keys}}];
 
-   $self->log->debug("Server init - authenticate ${username} ${salt}");
-   $self->log->debug('Auth M1 token ' . (md5_hex $token));
-   $srp->server_init($username, $verifier, $salt, @{$session->{auth_keys}});
+   $self->log->debug('Authenticate: Session id ' . $session->{id});
+   $self->log->debug('Authenticate: Server pubkey ' . fp $keys->[1]);
+   $self->log->debug("Authenticate: ${username} ${salt}");
+   $self->log->debug('Authenticate: M1 token ' . fp $token);
+
+   $srp->server_init($username, $verifier, $salt, @{$keys});
+
    $message = "User ${username} M1 token verification failed";
-   $result = [HTTP_UNAUTHORIZED, { message => $message }];
+   $result  = [HTTP_UNAUTHORIZED, { message => $message }];
 
    return $self->_stash_response($context, $result)
       unless $srp->server_verify_M1($token);
 
-   $token = encode_base64 $srp->server_compute_M2;
-   $session->{shared_secret} = encode_base64 $srp->get_secret_K;
+   $token = encode_base64url $srp->server_compute_M2;
+   $session->{shared_secret} = encode_base64url $srp->get_secret_K;
    $self->_set_session($session->{id}, $session);
    $result = [HTTP_OK, { id => $session->{id}, M2_token => $token }];
    $self->_stash_response($context, $result);
@@ -124,17 +135,12 @@ sub authenticate : Auth('none') {
 sub get_session {
    my ($self, $session_id) = @_;
 
-   throw Unspecified, ['session id'] unless $session_id;
-
-   my $key     = $self->_session_key($session_id);
-   my $encoded = $self->redis_client->get($key)
-      or throw 'Session [_1] not found', [$session_id], rv => HTTP_UNAUTHORIZED;
-   my $session = $self->json_parser->decode($encoded);
+   my $session = $self->_get_session($session_id);
    my $max_age = $session->{max_age};
    my $now     = time;
 
    if ($max_age and $now - $session->{last_used} > $max_age) {
-      $self->redis_client->del($key);
+      $self->redis_client->del($self->_session_key($session_id));
       throw 'Session [_1] expired', [$session_id], rv => HTTP_UNAUTHORIZED;
    }
 
@@ -147,7 +153,7 @@ sub get_session {
 sub _create_session {
    my ($self, $user) = @_;
 
-   my $session_id = $self->_session_id($user, bson64id);
+   my $session_id = $self->_set_session_id($user, bson64id);
    my $session    = {
       id        => $session_id,
       key       => $user->user_name,
@@ -163,9 +169,11 @@ sub _create_session {
 sub _find_or_create_session {
    my ($self, $user) = @_;
 
+   throw Unspecified, ['user'] unless $user;
+
    my $session;
 
-   try   { $session = $self->get_session($self->_session_id($user)) }
+   try   { $session = $self->get_session($self->_get_session_id($user)) }
    catch {
       $self->log->debug($_);
       $session = $self->_create_session($user);
@@ -184,12 +192,32 @@ sub _find_active_user {
    return $user;
 }
 
-sub _session_id {
-   my ($self, $user, $session_id) = @_;
+sub _get_session {
+   my ($self, $session_id) = @_;
+
+   throw Unspecified, ['session id'] unless $session_id;
+
+   my $key     = $self->_session_key($session_id);
+   my $encoded = $self->redis_client->get($key)
+      or throw 'Session [_1] not found', [$session_id], rv => HTTP_UNAUTHORIZED;
+
+   return $self->json_parser->decode($encoded);
+}
+
+sub _get_session_id {
+   my ($self, $user) = @_;
 
    my $key = 'worker_session_userid-' . $user->id;
 
-   return $self->redis_client->get($key) unless $session_id;
+   return $self->redis_client->get($key);
+}
+
+sub _set_session_id {
+   my ($self, $user, $session_id) = @_;
+
+   throw Unspecified, ['session id'] unless $session_id;
+
+   my $key = 'worker_session_userid-' . $user->id;
 
    $self->redis_client->set_with_ttl($key, $session_id, $self->session_ttl);
 

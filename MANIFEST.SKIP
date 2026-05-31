@@ -62,7 +62,10 @@ Thumbs.db
 
 # Avoid archives of this distribution
 \bApp-MCP-v?[\d\.\_]+
+\bshare/css
+\bvar/backup
 \bvar/bugs
+\bvar/etc/mcp-schema.conf
 \bvar/log
 \bvar/run
 \bvar/tmp

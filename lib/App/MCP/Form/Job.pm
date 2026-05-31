@@ -345,7 +345,6 @@ sub validate {
 # Private methods
 sub _populate_with_clone {
    my $self   = shift;
-   # TODO: Copy these parent_id group
    my $fields = [qw(description type parent_id owner permissions condition
                  crontab_min crontab_hour crontab_mday crontab_mon
                  crontab_wday auto_hold user_name host command directory

@@ -1,10 +1,11 @@
 package App::MCP::Model::Worker;
 
-use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
+use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
                                HTTP_OK HTTP_UNAUTHORIZED is_error );
 use App::MCP::Util         qw( trigger_input_handler );
-use Class::Usul::Cmd::Util qw( decrypt );
+use Class::Usul::Cmd::Util qw( decrypt trim );
+use HTML::Forms::Util      qw( rwx2int );
 use Unexpected::Functions  qw( throw );
 use Try::Tiny;
 use Moo;
@@ -71,13 +72,14 @@ sub create_event : Auth('none') {
    return $self->_stash_response($context, $result) unless $params;
 
    try {
-      my $event = $self->schema->resultset('Event')->create($params);
+      my $eventid = $self->schema->resultset('Event')->create($params)->id;
 
-      $message = 'Event ' . $event->id . ' created';
-      $result  = [HTTP_CREATED, { message => $message }];
+      $result  = [HTTP_CREATED, { message => "Event ${eventid} created" }];
       trigger_input_handler $self->config;
    }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
+   catch {
+      $result = [HTTP_BAD_REQUEST, { message => $self->_error_message($_) }];
+   };
 
    $self->_stash_response($context, $result);
    return;
@@ -98,15 +100,32 @@ sub create_job : Auth('none') {
 
    return $self->_stash_response($context, $result) unless $params;
 
+   if (!$params->{group} || $params->{group} !~ m{ \A \d+ \z }mx) {
+      my $group_name = $params->{group} // $self->config->prefix;
+      my $group_rs   = $self->schema->resultset('Role');
+      my $group      = $group_rs->find_by_key($group_name);
+
+      $params->{group_id} = $group->id if $group;
+   }
+
    $params->{owner_id} = $session->{user_id};
-   $params->{group_id} = $session->{role_id};
+
+   $params->{parent_name} = delete $params->{parent} if $params->{parent};
+
+   if ($params->{permissions} && $params->{permissions} !~ m{ \A \d+ \z }mx) {
+      $params->{permissions} = rwx2int $params->{permissions};
+   }
+
+   $params->{user_name} = $self->config->prefix unless $params->{user_name};
 
    try {
-      my $job = $self->schema->resultset('Job')->create($params);
+      my $jobid = $self->schema->resultset('Job')->create($params)->id;
 
-      $result = [HTTP_CREATED, { message => 'Job ' . $job->id . ' created' } ];
+      $result = [HTTP_CREATED, { message => "Job ${jobid} created" }];
    }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
+   catch {
+      $result = [HTTP_BAD_REQUEST, { message => $self->_error_message($_) }];
+   };
 
    $self->_stash_response($context, $result);
    return;
@@ -136,6 +155,19 @@ sub _decode_encrypted {
    catch { $self->log->error($_, $context) };
 
    return $params;
+}
+
+sub _error_message {
+   my ($self, $e) = @_;
+
+   my $message = NUL;
+
+   if ($e->can('class') and $e->class eq 'ValidationErrors') {
+      $message .= ($message ? ' - ' : NUL) . trim "${_}" for (@{$e->args});
+   }
+   else { $message = trim "${e}" }
+
+   return $message;
 }
 
 sub _stash_response {

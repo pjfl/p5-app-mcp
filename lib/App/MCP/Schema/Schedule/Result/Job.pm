@@ -787,9 +787,20 @@ sub _is_permitted {
 
    return $perms & $mask->[0] ? TRUE : FALSE if $self->owner == $owner;
 
-   return $perms & $mask->[1] ? TRUE : FALSE if includes $self->group, $groups;
+   my $group = $self->_lookup_group_name($self->group);
+
+   return $perms & $mask->[1] ? TRUE : FALSE if includes $group, $groups;
 
    return $perms & $mask->[2] ? TRUE : FALSE;
+}
+
+sub _lookup_group_name {
+   my ($self, $group_id) = @_;
+
+   my $rs    = $self->result_source->schema->resultset('Role');
+   my $group = $rs->find_by_key($group_id);
+
+   return $group->role_name;
 }
 
 sub _update_conditions {

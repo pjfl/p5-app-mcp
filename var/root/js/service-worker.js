@@ -1,9 +1,9 @@
 self.addEventListener('push', function(event) {
    const data = event.data ? event.data.json() : {};
    if (data['native']) {
-      const body = data.message;
+      const body = data.message || 'No message';
       const options = data.options || {};
-      const title = options.title ? options.title : 'MCP Service Worker';
+      const title = options.title ? options.title : 'Service Worker';
       event.waitUntil(self.registration.showNotification(title, { body }));
    }
    else {

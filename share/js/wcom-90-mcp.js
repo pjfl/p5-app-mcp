@@ -33,21 +33,23 @@ WCom.MCP.StateDiagram = (function() {
          const content = [this.h.div({ className: 'title' }, title)];
          if (this.type == 'box') {
             this.boxTable = this.h.div({ className: 'box-table' });
+            content.push(this.boxTable);
             if (this._has_nodes()) {
-               this._renderNodes(this.boxTable, this.nodes);
+               this._renderNodes(this.nodes);
                this.boxTable.classList.add('open');
             }
-            content.push(this.boxTable);
          }
          const id = this.type + this.id;
          const className = (this.type == 'box') ? 'box-tile' : 'job-tile';
          const jobTile = this.h.div({ className, id }, content);
          jobTile.classList.add(this.stateName);
          this.jobTile = this.addOrReplace(container, jobTile, this.jobTile);
+         if (this.diagram.prefs.openBoxes[this.jobName]) {
+            this.toggleIcon.click();
+         }
       }
       _has_nodes() {
          return this.nodes[0] ? true : false;
-
       }
       _maxRowIndex(job2row, job) {
          let rowIndex = 0;
@@ -87,7 +89,8 @@ WCom.MCP.StateDiagram = (function() {
          link.setAttribute('clicklistener', true);
          return link;
       }
-      _renderNodes(container, results) {
+      _renderNodes(results) {
+         const container = this.boxTable;
          const job2row = {};
          const rows = [];
          let jobIndex = this.index + 1;
@@ -112,7 +115,7 @@ WCom.MCP.StateDiagram = (function() {
             while (result = await resultSet.next()) {
                this.nodes.push(result);
             }
-            this._renderNodes(this.boxTable, this.nodes);
+            this._renderNodes(this.nodes);
          }
          this.diagram.depGraph.render();
       }
@@ -124,6 +127,13 @@ WCom.MCP.StateDiagram = (function() {
                this.boxTable.classList.toggle('open');
                this.toggleIcon.classList.toggle('reversed');
                this._renderSelectedNodes();
+               const prefs = this.diagram.prefs;
+               const openBoxes = prefs.openBoxes || {};
+               if (this.boxTable.classList.contains('open')) {
+                  openBoxes[this.jobName] = true;
+               }
+               else { delete openBoxes[this.jobName] }
+               prefs.set({ openBoxes });
             }.bind(this)
          };
          const icons = this.diagram.icons;
@@ -272,13 +282,25 @@ WCom.MCP.StateDiagram = (function() {
       async get() {
          if (!this.prefsURI) return;
          const { object } = await this.bitch.sucks(this.prefsURI);
-         if (object['position-absolute'])
+         if (object['position-absolute']) {
             this.positionAbsolute = object['position-absolute'];
+         }
+         if (object['open-boxes']) {
+            this.openBoxes = object['open-boxes'];
+         }
       }
       set(values) {
-         this.positionAbsolute = values.positionAbsolute;
+         if (values.positionAbsolute) {
+            this.positionAbsolute = values.positionAbsolute;
+         }
+         if (values.openBoxes) {
+            this.openBoxes = values.openBoxes;
+         }
          if (!this.prefsURI) return;
-         const data = { 'position-absolute': this.positionAbsolute };
+         const data = {
+            'open-boxes': this.openBoxes,
+            'position-absolute': this.positionAbsolute
+         };
          const json = JSON.stringify({ data, '_verify': this.diagram.token });
          this.bitch.blows(this.prefsURI, { json });
       }
@@ -321,7 +343,7 @@ WCom.MCP.StateDiagram = (function() {
             );
          }
          else { this.renderNoData(this.container) }
-         if (this.onload) eval(this.onload);
+         if (this.onload) Utils.Modifiers.execute(this.onload);
       }
       renderNoData(container) {
       }
@@ -345,7 +367,7 @@ WCom.MCP.StateDiagram = (function() {
             Navigation.logger('debug', object.message);
             this.registrationState = state;
          }
-         catch (e) {}
+         catch (e) { Navigation.logger('error', e.message) }
       }
       isConstructing() {
          return new Promise(function(resolve) {
@@ -369,9 +391,7 @@ WCom.MCP.StateDiagram = (function() {
       }
       messageHandler(event) {
          const data = event.data;
-         if (data.events && data.events.length > 0) {
-            Navigation.renderLocation(window.location.href);
-         }
+         if (data.events && data.events.length > 0) Navigation.reload();
       }
       unload(newuri) {
          const current = new URL(window.location.href);

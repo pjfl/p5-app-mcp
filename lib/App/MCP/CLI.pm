@@ -170,16 +170,17 @@ sub install : method {
    my $self   = shift;
    my $config = $self->config;
 
-   for my $dir (qw(backup log run tmp)) {
+   for my $dir (qw(backup log root run share sql tmp)) {
       my $path = $config->vardir->catdir($dir);
 
       $path->mkpath(oct '0770') unless $path->exists;
    }
 
-   # Share directory for filemanager
-   my $path = $config->rootdir->catdir('file');
+   for my $dir (qw(css fonts img js sounds)) {
+      my $path = $config->rootdir->catdir($dir);
 
-   $path->mkpath(oct '0770') unless $path->exists;
+      $path->mkpath(oct '0770') unless $path->exists;
+   }
 
    $self->_create_profile;
 
@@ -569,7 +570,7 @@ sub _send_notification {
    my $class   = $options->{class} // 'info';
    my $message = $options->{message} // 'No message';
    my $native  = json_bool $options->{native};
-   my $title   = $options->{title};
+   my $title   = $options->{title} // 'MCP Service Worker';
    my $opts    = { messageClass => $class, beep => $beep, title => $title };
    my $params  = { message => $message, native => $native, options => $opts };
    my $res     = $self->service_worker_push($user->id, $params);

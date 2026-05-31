@@ -276,7 +276,7 @@ Terminate any running jobs that have exceeded their maximum run time
 
 =cut
 
-# TODO: Do not kill more than once and why is kill_job illegal
+# TODO: Do not kill more than once
 sub max_runtime_handler {
    my ($self, $name, $daemon_pid) = @_;
 

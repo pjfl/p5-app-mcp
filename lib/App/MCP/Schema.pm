@@ -296,7 +296,8 @@ The default dump file name is C<jobs.json>
 sub dump_jobs : method {
    my $self     = shift;
    my $job_spec = $self->next_argv // '%';
-   my $path     = io $self->next_argv // 'jobs.json';
+   my $file     = $self->next_argv // 'jobs.json';
+   my $path     = $self->config->vardir->catdir('share')->catfile($file);
    my $data     = $self->schema->resultset('Job')->dump($job_spec);
    my $count    = @{ $data };
    my $args     = [$count, $job_spec, $path];
@@ -339,7 +340,8 @@ The default load file name is C<jobs.json>
 
 sub load_jobs : method {
    my $self  = shift;
-   my $path  = io $self->next_argv // 'jobs.json';
+   my $file  = $self->next_argv // 'jobs.json';
+   my $path  = $self->config->vardir->catdir('share')->catfile($file);
    my $data  = load_file($path);
    my $rs    = $self->schema->resultset('Job');
    my $count = $rs->load($self->_authenticate_user, $data->{jobs});

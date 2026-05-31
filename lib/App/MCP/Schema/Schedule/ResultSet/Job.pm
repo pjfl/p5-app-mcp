@@ -110,8 +110,6 @@ sub create {
          = $self->writable_box_id_by_name($parent_name, $col_data->{owner_id});
    }
 
-   $col_data->{parent_id} //= 1;
-
    return $self->next::method($col_data);
 }
 

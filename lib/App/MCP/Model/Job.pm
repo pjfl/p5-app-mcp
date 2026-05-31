@@ -42,6 +42,7 @@ sub jobid : Auth('view') Capture(1) {
    my $nav = $context->stash('nav')->list('job')->item('job/create');
 
    $nav->crud('job', $job->id)->finalise;
+
    return;
 }
 
@@ -91,10 +92,10 @@ sub delete : Nav('Delete Job') {
 sub edit : Nav('Edit Job') {
    my ($self, $context) = @_;
 
-   my $job     = $context->stash('job');
+   my $job = $context->stash('job');
 
    return $self->error($context, UnauthorisedAccess)
-      if $context->posted && !$self->_can_update($context, $job);
+      unless $self->_can_update($context, $job);
 
    my $options = { context => $context, item => $job, title => 'Edit Job' };
    my $form    = $self->new_form('Job', $options);
@@ -179,7 +180,6 @@ sub _can_update {
    my $identity = { owner => $session->id, groups => $session->groups };
 
    return FALSE if $role eq 'view';
-   return TRUE  if $role eq 'admin';
    return TRUE  if $job->is_writable_by($identity);
    return FALSE;
 }

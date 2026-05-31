@@ -5,12 +5,13 @@ use overload '""' => sub { shift->_as_string },
 
 use App::MCP::Constants        qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use Unexpected::Types          qw( Bool HashRef Int Object );
-use App::MCP::Util             qw( base64_encode boolean_data_type
-                                   create_totp_token foreign_key_data_type
-                                   get_salt new_salt serial_data_type
-                                   text_data_type truncate varchar_data_type );
+use App::MCP::Util             qw( boolean_data_type create_totp_token
+                                   foreign_key_data_type get_salt new_salt
+                                   serial_data_type text_data_type truncate
+                                   varchar_data_type );
 use Class::Usul::Cmd::Util     qw( includes );
 use Crypt::Eksblowfish::Bcrypt qw( bcrypt );
+use MIME::Base64               qw( encode_base64url );
 use Net::IP::Match::Regexp     qw( create_iprange_regexp match_ip );
 use Scalar::Util               qw( blessed );
 use Unexpected::Functions      qw( throw AccountInactive IncorrectAuthCode
@@ -214,7 +215,7 @@ sub encrypt_password {
       my $srp      = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
       my $verifier = $srp->compute_verifier($username, $password, $salt);
 
-      return $salt.base64_encode($verifier);
+      return '$5054$00$' . $salt . encode_base64url($verifier);
    }
 
    my $lf   = $self->_config->user->{load_factor};
