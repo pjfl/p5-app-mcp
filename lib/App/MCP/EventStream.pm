@@ -1,7 +1,9 @@
 package App::MCP::EventStream;
 
 use App::MCP::Constants     qw( FALSE TRUE );
-use Class::Usul::Cmd::Types qw( ConfigProvider Logger );
+use Class::Usul::Cmd::Types qw( ConfigProvider HashRef Int Logger );
+use Class::Usul::Cmd::Util  qw( ensure_class_loaded );
+use Web::Components::Util   qw( load_components );
 use Try::Tiny;
 use Moo;
 
@@ -12,7 +14,6 @@ use Moo;
 =head1 Name
 
 App::MCP::EventStream - Master Control Program - Event stream
-
 
 =head1 Synopsis
 
@@ -40,6 +41,21 @@ has 'config' => is => 'ro', isa => ConfigProvider, required => TRUE;
 
 has 'log' => is => 'ro', isa => Logger, required => TRUE;
 
+=item C<plugins>
+
+=cut
+
+has 'plugins' =>
+   is      => 'lazy',
+   isa     => HashRef,
+   default => sub { load_components 'Plugin', { application => shift } };
+
+=item C<service_worker_lifetime>
+
+=cut
+
+has 'service_worker_lifetime' => is => 'ro', isa => Int, default => 7_776_000;
+
 with 'App::MCP::Role::Redis';
 with 'App::MCP::Role::JSONParser';
 with 'App::MCP::Role::Webpush';
@@ -52,6 +68,55 @@ Defineds the following methods;
 
 =over 3
 
+=cut
+
+=item C<register>
+
+   $message = $self->register($id, \%subscription);
+
+=cut
+
+sub register {
+   my ($self, $id, $subscription) = @_;
+
+   my $key = "event_subscription-${id}";
+
+   if ($subscription->{method} eq 'unregister') {
+      $self->redis_client->del($key);
+      return "User ${id} event registration deleted";
+   }
+
+   $subscription->{id} = $id;
+
+   my $encoded = $self->json_parser->encode($subscription);
+   my $ttl     = $self->service_worker_lifetime;
+
+   $self->redis_client->set_with_ttl($key, $encoded, $ttl);
+
+   return "User ${id} event registration created";
+}
+
+=item C<register_plugins>
+
+   $self->register_plugins;
+
+=cut
+
+sub register_plugins {
+   my $self = shift;
+
+   for my $moniker (keys %{$self->plugins}) {
+      next unless $self->config->plugins->{$moniker};
+
+      my $subscription = { method => 'callback', plugin => $moniker };
+      my $message      = $self->register($moniker, $subscription);
+
+      $self->log->info("EventStream: ${message}");
+   }
+
+   return;
+}
+
 =item C<send_to_subscribers>
 
    $self->send_to_subscribers($name, $payload);
@@ -61,62 +126,64 @@ Defineds the following methods;
 sub send_to_subscribers {
    my ($self, $name, $payload) = @_;
 
-   my $cache = $self->redis_client;
+   my $log = $self->log;
 
-   for my $key ($cache->keys('event_subscription-*')) {
-      my $encoded = $cache->get($key) or next;
-      my $subscription;
-
-      try   { $subscription = $self->json_parser->decode($encoded) }
-      catch { $cache->del($key) };
-
-      next unless $subscription;
-
-      my $method = '_event_stream_' . $subscription->{method};
+   for my $key ($self->redis_client->keys('event_subscription-*')) {
+      my $subscription = $self->_get_subscription($key) or next;
+      my $method       = '_event_stream_' . $subscription->{method};
 
       next unless $self->can($method);
 
-      $subscription->{user_id} = (split m{ \- }mx, $key)[1];
+      $subscription->{id} = (split m{ \- }mx, $key)[1];
 
-      try   { $self->$method($name, $subscription, $payload) }
-      catch { $self->log->error("${name}.send_to_subscribers: ${_}") };
+      try {
+         my $res    = $self->$method($name, $subscription, $payload);
+         my $leader = "${name}." . $subscription->{method};
+
+         $log->error("${leader}: " . $res->{error})   unless $res->{success};
+         $log->debug("${leader}: " . $res->{message}) if     $res->{success};
+      }
+      catch { $log->error("${name}.send_to_subscribers: ${_}") };
    }
 
    return;
 }
 
 # Private methods
+sub _get_subscription {
+   my ($self, $key) = @_;
+
+   my $cache   = $self->redis_client;
+   my $encoded = $cache->get($key) or return;
+   my $subscription;
+
+   try   { $subscription = $self->json_parser->decode($encoded) }
+   catch { $cache->del($key) };
+
+   return $subscription;
+}
+
 sub _event_stream_callback {
-   # TODO: Implement event stream output method for a callback
    my ($self, $name, $subscription, $payload) = @_;
 
-   my $leader = ucfirst "${name}.callback";
+   my $moniker  = $subscription->{plugin};
+   my $callback = $self->plugins->{$moniker};
 
-   return;
+   return $callback->post($payload);
 }
 
 sub _event_stream_webpost {
    my ($self, $name, $subscription, $payload) = @_;
 
-   my $leader = ucfirst "${name}.webpost";
-   my $uri    = $subscription->{callback_uri};
-   my $res    = $self->web_server_post($uri, $payload);
+   my $uri = $subscription->{callback_uri};
 
-   $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
-   $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
-   return;
+   return $self->web_server_post($uri, $payload);
 }
 
 sub _event_stream_webpush {
    my ($self, $name, $subscription, $payload) = @_;
 
-   my $leader  = ucfirst "${name}.webpush";
-   my $user_id = $subscription->{user_id};
-   my $res     = $self->service_worker_push($user_id, $payload);
-
-   $self->log->error("${leader}: " . $res->{error}) unless $res->{success};
-   $self->log->debug("${leader}: " . $res->{message}) if $res->{success};
-   return;
+   return $self->service_worker_push($subscription->{id}, $payload);
 }
 
 use namespace::autoclean;

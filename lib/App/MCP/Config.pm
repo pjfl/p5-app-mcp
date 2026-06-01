@@ -681,6 +681,14 @@ has 'pathname' =>
       return io((split m{ [ ][\-][ ] }mx, $name)[0])->absolute;
    };
 
+=item C<plugins>
+
+Configuration for the event stream plugins
+
+=cut
+
+has 'plugins' => is => 'ro', isa => HashRef, default => sub { {} };
+
 =item C<port>
 
 A non zero positive integer that defaults to B<2012>.

@@ -9,6 +9,7 @@ use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw );
 use Web::ComposableRequest::Util
                           qw( bson64id );
+use App::MCP::EventStream;
 use Crypt::PK::ECC;
 use DateTime::TimeZone;
 use Try::Tiny;
@@ -53,6 +54,15 @@ has '_ecc' =>
 
       return $ecc;
 };
+
+has '_streamer' =>
+   is      => 'lazy',
+   default => sub {
+      my $self = shift;
+      my $args = { config => $self->config, log => $self->log };
+
+      return App::MCP::EventStream->new($args);
+   };
 
 sub BUILD {
    my $self = shift;
@@ -146,21 +156,8 @@ sub event_register : Auth('view') {
    my $user_id      = $context->session->id;
    my $params       = $context->body_parameters->{data};
    my $subscription = $params->{subscription};
-   my $key          = "event_subscription-${user_id}";
+   my $message      = $self->_streamer->register($user_id, $subscription);
 
-   if ($subscription->{method} eq 'unregister') {
-      my $message = "User ${user_id} event registration deleted";
-
-      $self->redis_client->del($key);
-      $self->_stash_response($context, [HTTP_OK, { message => $message }]);
-      return;
-   }
-
-   my $encoded = $self->json_parser->encode($subscription);
-   my $ttl     = $self->service_worker_lifetime;
-   my $message = "User ${user_id} event registration created";
-
-   $self->redis_client->set_with_ttl($key, $encoded, $ttl);
    $self->_stash_response($context, [HTTP_OK, { message => $message }]);
    return;
 }

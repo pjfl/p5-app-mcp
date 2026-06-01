@@ -48,11 +48,15 @@ Returns the restricted resultset. Objects are only partially inflated
 =cut
 
 sub active_crontab {
-   my $self    = shift;
-   my $columns = [qw(condition crontab events.transition
-                     id state.name state.updated)];
-   my $options = { 'columns' => $columns, 'join' => ['state', 'events'] };
-   my $where   = { 'state.name' => 'active', 'me.crontab' => { '!=' => NUL } };
+   my $self     = shift;
+   my $columns  = [ qw(condition crontab id state.name state.updated) ];
+   my $prefetch = [ 'state', { parent_box => 'state' } ];
+   my $options  = { columns => $columns, prefetch => $prefetch };
+   my $where    = {
+      'state.name'   => 'active',
+      'state_2.name' => 'running',
+      'me.crontab'   => { '!=' => NUL },
+   };
 
    return $self->search($where, $options);
 }

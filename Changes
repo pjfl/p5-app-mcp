@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adds Nagios plugin for event stream callbacks
           - Create job API works again
           - Implements retrys and max. runtime
           - Makes application event stream more robust

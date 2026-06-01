@@ -2,7 +2,8 @@ package App::MCP::Role::APIAuthentication;
 
 use App::MCP::Constants          qw( EXCEPTION_CLASS FALSE TRUE );
 use HTTP::Status                 qw( HTTP_BAD_REQUEST HTTP_EXPECTATION_FAILED
-                                     HTTP_NOT_FOUND HTTP_OK HTTP_UNAUTHORIZED );
+                                     HTTP_NOT_FOUND HTTP_OK HTTP_UNAUTHORIZED
+                                     is_error );
 use App::MCP::Util               qw( fp get_hashed_pw get_salt );
 use MIME::Base64                 qw( decode_base64url encode_base64url );
 use Unexpected::Functions        qw( throw AccountInactive Unspecified );
@@ -19,37 +20,37 @@ has 'session_ttl' =>
    default => sub { shift->config->max_api_session_time };
 
 # Public methods
+sub authenticate_headers {
+   my ($self, $context) = @_;
+
+   my $result;
+
+   try   { $context->request->authenticate_headers }
+   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
+
+   $self->stash_response($context, $result) if $result;
+
+   return $result ? FALSE : TRUE;
+}
+
 sub exchange_keys : Auth('none') {
    my ($self, $context) = @_;
 
-   my $request = $context->request;
-   my $result;
+   return unless $self->authenticate_headers($context);
 
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $user;
-
-   try   { $user = $self->_find_active_user($context) }
-   catch { $result = [HTTP_NOT_FOUND, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
+   my $user          = $self->_find_active_user($context) or return;
    my $session       = $self->_find_or_create_session($user);
    my $srp           = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
-   my $public_key    = $request->query_parameters->{public_key};
+   my $public_key    = $context->request->query_parameters->{public_key};
    my $client_pubkey = decode_base64url $public_key;
    my $username      = $user->user_name;
-   my $message;
 
    $self->log->debug('Exchange_keys: Client pubkey ' . fp $client_pubkey);
 
-   $message = "User ${username} client public key verification failed";
-   $result  = [HTTP_UNAUTHORIZED, { message => $message }];
+   my $message = "User ${username} client public key verification failed";
+   my $result  = [HTTP_UNAUTHORIZED, { message => $message }];
 
-   return $self->_stash_response($context, $result)
+   return $self->stash_response($context, $result)
       unless $srp->server_verify_A($client_pubkey);
 
    my $verifier = decode_base64url get_hashed_pw $user->password;
@@ -74,36 +75,23 @@ sub exchange_keys : Auth('none') {
    my $pubkey = encode_base64url $server_pubkey;
 
    $result = [HTTP_OK, { public_key => $pubkey, salt => $salt }];
-   $self->_stash_response($context, $result);
+   $self->stash_response($context, $result);
    return;
 }
 
 sub authenticate : Auth('none') {
    my ($self, $context) = @_;
 
-   my $request = $context->request;
-   my $result;
+   return unless $self->authenticate_headers($context);
 
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
-   my $user;
-
-   try   { $user = $self->_find_active_user($context) }
-   catch { $result = [HTTP_NOT_FOUND, { message => "${_}" }] };
-
-   return $self->_stash_response($context, $result) if $result;
-
+   my $user     = $self->_find_active_user($context) or return;
    my $session  = $self->_find_or_create_session($user);
    my $username = $user->user_name;
    my $m1_token = $context->body_parameters->{'M1_token'};
    my $message  = "User ${username} M1 token not found";
+   my $result   = [HTTP_NOT_FOUND, { message => $message }];
 
-   $result = [HTTP_NOT_FOUND, { message => $message }];
-
-   return $self->_stash_response($context, $result) unless $m1_token;
+   return $self->stash_response($context, $result) unless $m1_token;
 
    my $srp      = Crypt::SRP->new('RFC5054-2048bit', 'SHA512');
    my $verifier = decode_base64url get_hashed_pw $user->password;
@@ -121,14 +109,14 @@ sub authenticate : Auth('none') {
    $message = "User ${username} M1 token verification failed";
    $result  = [HTTP_UNAUTHORIZED, { message => $message }];
 
-   return $self->_stash_response($context, $result)
+   return $self->stash_response($context, $result)
       unless $srp->server_verify_M1($token);
 
    $token = encode_base64url $srp->server_compute_M2;
    $session->{shared_secret} = encode_base64url $srp->get_secret_K;
    $self->_set_session($session->{id}, $session);
    $result = [HTTP_OK, { id => $session->{id}, M2_token => $token }];
-   $self->_stash_response($context, $result);
+   $self->stash_response($context, $result);
    return;
 }
 
@@ -147,6 +135,21 @@ sub get_session {
    $session->{last_used} = $now;
    $self->_set_session($session_id, $session);
    return $session;
+}
+
+sub stash_response {
+   my ($self, $context, $result) = @_;
+
+   $result //= [];
+
+   my $code = $result->[0] // HTTP_OK;
+   my $body = $result->[1] // {};
+
+   $self->log->error($body->{message}, $context) if is_error($code);
+
+   $context->stash(code => $code, json => $body);
+   $context->stash(finalise => TRUE, view => 'json');
+   return;
 }
 
 # Private methods
@@ -185,11 +188,18 @@ sub _find_or_create_session {
 sub _find_active_user {
    my ($self, $context) = @_;
 
-   my $user = $context->stash('user');
+   my ($result, $user);
 
-   throw AccountInactive, [$user->user_name] unless $user->active;
+   try   {
+      $user = $context->stash('user');
 
-   return $user;
+      throw AccountInactive, [$user->user_name] unless $user->active;
+   }
+   catch { $result = [HTTP_NOT_FOUND, { message => "${_}" }] };
+
+   $self->stash_response($context, $result) if $result;
+
+   return $user ? $user : undef;
 }
 
 sub _get_session {

@@ -2,7 +2,7 @@ package App::MCP::Model::Worker;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
-                               HTTP_OK HTTP_UNAUTHORIZED is_error );
+                               HTTP_UNAUTHORIZED );
 use App::MCP::Util         qw( trigger_input_handler );
 use Class::Usul::Cmd::Util qw( decrypt trim );
 use HTML::Forms::Util      qw( rwx2int );
@@ -25,7 +25,7 @@ sub runid : Auth('none') Capture(1) {
    my $token  = $self->redis_client->get("event_token-${arg}");
    my $result = [HTTP_NOT_FOUND, { message => "Runid ${arg} token not found" }];
 
-   $self->_stash_response($context, $result) unless $token;
+   $self->stash_response($context, $result) unless $token;
    $context->stash(runid => $arg, token => $token) if $token;
 
    return;
@@ -39,7 +39,7 @@ sub sessionid : Auth('none') Capture(1) {
    try   { $session = $self->get_session($arg) }
    catch { $result = [HTTP_NOT_FOUND, { message => "${_}" } ] };
 
-   $self->_stash_response($context, $result) if $result;
+   $self->stash_response($context, $result) if $result;
    $context->stash(session => $session) if $session;
 
    return;
@@ -51,7 +51,7 @@ sub user : Auth('none') Capture(1) {
    my $user   = $context->find_user({ username => $arg });
    my $result = [HTTP_BAD_REQUEST, { message => "User ${arg} unknown" }];
 
-   $self->_stash_response($context, $result) unless $user;
+   $self->stash_response($context, $result) unless $user;
    $context->stash(user => $user) if $user;
 
    return;
@@ -60,7 +60,7 @@ sub user : Auth('none') Capture(1) {
 sub create_event : Auth('none') {
    my ($self, $context) = @_;
 
-   return unless $self->_authenticate_headers($context);
+   return unless $self->authenticate_headers($context);
 
    my $runid     = $context->stash('runid');
    my $token     = $context->stash('token');
@@ -69,7 +69,7 @@ sub create_event : Auth('none') {
    my $message   = "Runid ${runid} authentication failed";
    my $result    = [HTTP_UNAUTHORIZED, { message => $message }];
 
-   return $self->_stash_response($context, $result) unless $params;
+   return $self->stash_response($context, $result) unless $params;
 
    try {
       my $eventid = $self->schema->resultset('Event')->create($params)->id;
@@ -81,14 +81,14 @@ sub create_event : Auth('none') {
       $result = [HTTP_BAD_REQUEST, { message => $self->_error_message($_) }];
    };
 
-   $self->_stash_response($context, $result);
+   $self->stash_response($context, $result);
    return;
 }
 
 sub create_job : Auth('none') {
    my ($self, $context) = @_;
 
-   return unless $self->_authenticate_headers($context);
+   return unless $self->authenticate_headers($context);
 
    my $session    = $context->stash('session');
    my $session_id = $session->{id};
@@ -98,25 +98,9 @@ sub create_job : Auth('none') {
    my $message    = "Session ${session_id} authentication failed";
    my $result     = [HTTP_UNAUTHORIZED, { message => $message }];
 
-   return $self->_stash_response($context, $result) unless $params;
+   return $self->stash_response($context, $result) unless $params;
 
-   if (!$params->{group} || $params->{group} !~ m{ \A \d+ \z }mx) {
-      my $group_name = $params->{group} // $self->config->prefix;
-      my $group_rs   = $self->schema->resultset('Role');
-      my $group      = $group_rs->find_by_key($group_name);
-
-      $params->{group_id} = $group->id if $group;
-   }
-
-   $params->{owner_id} = $session->{user_id};
-
-   $params->{parent_name} = delete $params->{parent} if $params->{parent};
-
-   if ($params->{permissions} && $params->{permissions} !~ m{ \A \d+ \z }mx) {
-      $params->{permissions} = rwx2int $params->{permissions};
-   }
-
-   $params->{user_name} = $self->config->prefix unless $params->{user_name};
+   $self->_set_job_defaults($session, $params);
 
    try {
       my $jobid = $self->schema->resultset('Job')->create($params)->id;
@@ -127,25 +111,11 @@ sub create_job : Auth('none') {
       $result = [HTTP_BAD_REQUEST, { message => $self->_error_message($_) }];
    };
 
-   $self->_stash_response($context, $result);
+   $self->stash_response($context, $result);
    return;
 }
 
 # Private methods
-sub _authenticate_headers {
-   my ($self, $context) = @_;
-
-   my $request = $context->request;
-   my $result;
-
-   try   { $request->authenticate_headers }
-   catch { $result = [HTTP_BAD_REQUEST, { message => "${_}" }] };
-
-   $self->_stash_response($context, $result) if $result;
-
-   return $result ? FALSE : TRUE;
-}
-
 sub _decode_encrypted {
    my ($self, $context, $secret, $encrypted) = @_;
 
@@ -170,18 +140,27 @@ sub _error_message {
    return $message;
 }
 
-sub _stash_response {
-   my ($self, $context, $result) = @_;
+sub _set_job_defaults {
+   my ($self, $session, $params) = @_;
 
-   $result //= [];
+   if (!$params->{group} || $params->{group} !~ m{ \A \d+ \z }mx) {
+      my $group_name = $params->{group} // $self->config->prefix;
+      my $group_rs   = $self->schema->resultset('Role');
+      my $group      = $group_rs->find_by_key($group_name);
 
-   my $code = $result->[0] // HTTP_OK;
-   my $body = $result->[1] // {};
+      $params->{group_id} = $group->id if $group;
+   }
 
-   $self->log->error($body->{message}, $context) if is_error($code);
+   $params->{owner_id} = $session->{user_id};
 
-   $context->stash(code => $code, json => $body);
-   $context->stash(finalise => TRUE, view => 'json');
+   $params->{parent_name} = delete $params->{parent} if $params->{parent};
+
+   if ($params->{permissions} && $params->{permissions} !~ m{ \A \d+ \z }mx) {
+      $params->{permissions} = rwx2int $params->{permissions};
+   }
+
+   $params->{user_name} = $self->config->prefix unless $params->{user_name};
+
    return;
 }
 

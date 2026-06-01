@@ -152,6 +152,20 @@ Defines the following methods;
 
 =over 3
 
+=item C<BUILD>
+
+Triggers contruction of the lazy C<streamer> attribute
+
+=cut
+
+sub BUILD {
+   my $self = shift;
+
+   $self->streamer->register_plugins;
+
+   return;
+}
+
 =item C<cron_job_handler>
 
    $exit_code = $self->cron_job_handler($notifier_name, $daemon_pid);
@@ -479,10 +493,11 @@ sub ssh_callback {
 sub _alert_subscribers {
    my ($self, $name, $message) = @_;
 
-   my $options = { messageClass => 'error', beep => json_bool TRUE };
-   my $params  = { message => $message, options => $options };
+   my $true    = json_bool TRUE;
+   my $options = { beep => $true, messageClass => 'error', name => $name };
+   my $payload = { message => $message, options => $options };
 
-   $self->streamer->send_to_subscribers($name, $params);
+   $self->streamer->send_to_subscribers($name, $payload);
    return;
 }
 

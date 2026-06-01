@@ -50,7 +50,8 @@ sub edit  {
    my $form = $self->new_form('State', { context => $context, item => $job });
 
    if ($form->process(posted => $context->posted)) {
-      my $view    = $context->uri_for_action('state/view');
+      my $options = { noreload => 'noreload' };
+      my $view    = $context->uri_for_action('state/view', [], $options);
       my $signal  = $form->field('signal')->value;
       my $message = 'Job [_1] event transition [_2] created';
 

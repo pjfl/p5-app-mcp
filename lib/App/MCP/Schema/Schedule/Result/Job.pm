@@ -787,9 +787,9 @@ sub _is_permitted {
 
    return $perms & $mask->[0] ? TRUE : FALSE if $self->owner == $owner;
 
-   my $group = $self->_lookup_group_name($self->group);
+   my $group_name = $self->_lookup_group_name($self->group);
 
-   return $perms & $mask->[1] ? TRUE : FALSE if includes $group, $groups;
+   return $perms & $mask->[1] ? TRUE : FALSE if includes $group_name, $groups;
 
    return $perms & $mask->[2] ? TRUE : FALSE;
 }

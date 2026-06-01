@@ -165,12 +165,14 @@ sub _trigger_update_cascade {
    }
 
    if (my $rev_trans = $self->event_propagation->{reverse}->{$trans_val}) {
-      my $options = {
-         job_id     => $event->job->parent_id,
-         transition => $rev_trans
-      };
+      if ($event->job->parent_id) {
+         my $options = {
+            job_id     => $event->job->parent_id,
+            transition => $rev_trans
+         };
 
-      $ev_rs->create($options);
+         $ev_rs->create($options);
+      }
    }
 
    if ($job_state->name eq 'active') {

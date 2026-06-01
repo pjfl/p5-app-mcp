@@ -355,6 +355,8 @@ WCom.MCP.StateDiagram = (function() {
          this.registrationState = false;
          Utils.Event.registerOnload(this.scan.bind(this));
          Utils.Event.registerOnunload(this.unload.bind(this));
+         const worker = window.navigator.serviceWorker;
+         worker.addEventListener('message', this.messageHandler());
       }
       async eventStreamRegistration(state) {
          const uri = this.diagram.eventURI;
@@ -384,14 +386,14 @@ WCom.MCP.StateDiagram = (function() {
          await this.diagram.render();
          if (!this.registrationState && this.diagram.autoUpdate) {
             await this.eventStreamRegistration(true);
-            const worker = window.navigator.serviceWorker;
-            worker.addEventListener('message', this.messageHandler.bind(this));
          }
          this._isConstructing = false;
       }
-      messageHandler(event) {
-         const data = event.data;
-         if (data.events && data.events.length > 0) Navigation.reload();
+      messageHandler() {
+         return function(event) {
+            const data = event.data;
+            if (data.events && data.events.length > 0) Navigation.reload();
+         }.bind(this);
       }
       unload(newuri) {
          const current = new URL(window.location.href);
