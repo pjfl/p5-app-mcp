@@ -30,7 +30,7 @@ our @EXPORT_OK = qw( boolean_data_type concise_duration create_token
    integer_id_data_type nullable_foreign_key_data_type nullable_text_data_type
    nullable_varchar_data_type redirect redirect2referer serial_data_type
    set_on_create_datetime_data_type strip_namespace terminate text_data_type
-   trigger_input_handler trigger_output_handler truncate varchar_data_type );
+   trigger_event_handler truncate varchar_data_type );
 
 =pod
 
@@ -343,13 +343,13 @@ sub terminate ($) {
    return TRUE;
 }
 
-=item C<trigger_input_handler>
+=item C<trigger_event_handler>
 
-   $bool = trigger_input_handler $pid;
+   $bool = trigger_event_handler $pid;
 
 =cut
 
-sub trigger_input_handler ($) {
+sub trigger_event_handler ($) {
    my $arg = shift;
    my $pid;
 
@@ -359,24 +359,6 @@ sub trigger_input_handler ($) {
    return unless $pid;
 
    return CORE::kill 'USR1', $pid;
-}
-
-=item C<trigger_output_handler>
-
-   $bool = trigger_output_handler $pid;
-
-=cut
-
-sub trigger_output_handler ($) {
-   my $arg = shift;
-   my $pid;
-
-   if (blessed $arg) { $pid = _read_pid_file($arg) }
-   else { $pid = $arg }
-
-   return unless $pid;
-
-   return CORE::kill 'USR2', $pid;
 }
 
 =item C<truncate>

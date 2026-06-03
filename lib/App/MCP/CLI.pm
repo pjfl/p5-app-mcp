@@ -2,7 +2,7 @@ package App::MCP::CLI;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FAILED FALSE NUL OK TRUE );
 use File::DataClass::Types qw( ArrayRef Directory Str );
-use App::MCP::Util         qw( local_config trigger_input_handler );
+use App::MCP::Util         qw( local_config trigger_event_handler );
 use Class::Usul::Cmd::Util qw( decrypt elapsed ensure_class_loaded );
 use English                qw( -no_match_vars );
 use File::DataClass::IO    qw( io );
@@ -548,7 +548,7 @@ sub _send_event {
    my $job       = $job_rs->assert_executable($job_name, $user);
    my $params    = { job_id => $job->id, transition => $trans };
    my $event     = $self->schema->resultset('Event')->create($params);
-   my $triggered = trigger_input_handler $self->config;
+   my $triggered = trigger_event_handler $self->config;
    my $id        = $event->id;
    my $message   = "Job ${job_name} transition ${trans} event id ${id}";
 

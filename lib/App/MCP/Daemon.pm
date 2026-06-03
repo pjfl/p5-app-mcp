@@ -88,13 +88,13 @@ An L<async factory|Async::IPC> notifier process for the event stream handler
 
 has 'event_stream' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
-=item C<ip_ev_hndlr>
+=item C<event_handler>
 
-An L<async factory|Async::IPC> notifier process for the input event handler
+An L<async factory|Async::IPC> notifier process for the event handler
 
 =cut
 
-has 'ip_ev_hndlr' => is => 'lazy', isa => class_type('Async::IPC::Base');
+has 'event_handler' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<ipc_ssh>
 
@@ -126,14 +126,6 @@ has 'name' =>
    is      => 'lazy',
    isa     => NonEmptySimpleStr,
    default => 'Daemon';
-
-=item C<op_ev_hndlr>
-
-An L<async factory|Async::IPC> notifier process for the output event handler
-
-=cut
-
-has 'op_ev_hndlr' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<port>
 
@@ -206,8 +198,8 @@ around 'run_chain' => sub {
       program_args => [],
 
       pid_file     => $config->rundir->catfile("${name}.pid"),
-      stderr_file  => $self->_stdio_file('err', $name),
-      stdout_file  => $self->_stdio_file('out', $name),
+      stderr_file  => $self->_stdio_file('err'),
+      stdout_file  => $self->_stdio_file('out'),
 
       fork         => 2,
       stop_signals => $config->stop_signals,
@@ -275,17 +267,21 @@ sub _build_event_stream {
    );
 }
 
-sub _build_ip_ev_hndlr {
+sub _build_event_handler {
    my $self = shift;
    my $app  = $self->application;
    my $pid  = $self->pid;
-   my $name = 'input';
+   my $name = 'event';
+   my $ipc_ssh;
 
    return $self->async_factory->new_notifier(
-      type    => 'semaphore',
-      desc    => 'input event handler',
-      name    => $name,
-      on_recv => sub { $app->input_handler($name, $pid) },
+      type         => 'semaphore',
+      desc         => 'event handler',
+      name         => $name,
+      call_ch_mode => 'async',
+      before       => sub { $ipc_ssh = $self->ipc_ssh },
+      after        => sub { $ipc_ssh->close },
+      on_recv      => [ sub { $app->event_handler($name, $pid, $ipc_ssh) } ],
    );
 }
 
@@ -305,21 +301,14 @@ sub _build_ipc_ssh {
   );
 }
 
-sub _build_op_ev_hndlr {
+sub _build_server {
    my $self = shift;
-   my $app  = $self->application;
-   my $pid  = $self->pid;
-   my $name = 'output';
-   my $ipc_ssh;
 
    return $self->async_factory->new_notifier(
-      type         => 'semaphore',
-      desc         => 'output event handler',
-      name         => $name,
-      call_ch_mode => 'async',
-      before       => sub { $ipc_ssh = $self->ipc_ssh },
-      after        => sub { $ipc_ssh->close },
-      on_recv      => [ sub { $app->output_handler($name, $pid, $ipc_ssh) } ],
+      type => 'process',
+      desc => 'web application server',
+      name => 'server',
+      code => $self->_get_server_sub,
    );
 }
 
@@ -349,6 +338,14 @@ sub _get_server_sub {
    };
 }
 
+sub _hangup_handler {
+   my $self = shift;
+
+   $self->run_cmd([ sub { $self->_restart } ], { detach => TRUE });
+
+   return;
+}
+
 sub _restart {
    my $self = shift;
    my $path = $self->config->pathname;
@@ -367,28 +364,9 @@ sub _set_program_name {
 sub _stdio_file {
    my ($self, $extn, $name) = @_;
 
-   $name //= lc distname $self->config->appclass;
+   $name //= lc $self->name;
 
    return $self->config->tempdir->catfile("${name}.${extn}");
-}
-
-sub _build_server {
-   my $self = shift;
-
-   return $self->async_factory->new_notifier(
-      type => 'process',
-      desc => 'web application server',
-      name => 'server',
-      code => $self->_get_server_sub,
-   );
-}
-
-sub _hangup_handler {
-   my $self = shift;
-
-   $self->run_cmd([ sub { $self->_restart } ], { detach => TRUE });
-
-   return;
 }
 
 sub _daemon {
@@ -401,26 +379,23 @@ sub _daemon {
 
    # Must fork before watching signals
    $self->server;
-   $self->op_ev_hndlr;
-   $self->ip_ev_hndlr;
+   $self->event_handler;
    $self->clock_tick;
 
-   $loop->watch_signal( HUP  => sub { $self->_hangup_handler    } );
-   $loop->watch_signal( QUIT => sub { terminate $loop           } );
-   $loop->watch_signal( TERM => sub { terminate $loop           } );
-   $loop->watch_signal( USR1 => sub { $self->ip_ev_hndlr->raise } );
-   $loop->watch_signal( USR2 => sub { $self->op_ev_hndlr->raise } );
+   $loop->watch_signal( HUP  => sub { $self->_hangup_handler      } );
+   $loop->watch_signal( QUIT => sub { terminate $loop             } );
+   $loop->watch_signal( TERM => sub { terminate $loop             } );
+   $loop->watch_signal( USR1 => sub { $self->event_handler->raise } );
 
    log_info $self, 'Event loop started';
    $loop->start; # Loops here until terminate is called
    log_info $self, 'Stopping event loop';
 
    $self->clock_tick->stop;
-   $self->server->stop;
    $self->cron->stop;
    $self->event_stream->stop;
-   $self->ip_ev_hndlr->stop;
-   $self->op_ev_hndlr->stop;
+   $self->event_handler->stop;
+   $self->server->stop;
    $loop->watch_child(0);
 
    log_info $self, 'Event loop stopped';

@@ -2,7 +2,7 @@ package App::MCP::Form::State;
 
 use App::MCP::Constants    qw( TRANSITION_ENUM );
 use HTML::Forms::Constants qw( META  );
-use App::MCP::Util         qw( trigger_input_handler trigger_output_handler );
+use App::MCP::Util         qw( trigger_event_handler );
 use English                qw( -no_match_vars );
 use Type::Utils            qw( class_type );
 use App::MCP::Workflow;
@@ -113,10 +113,7 @@ sub update_model {
    my $args    = { job_id => $self->item->id, transition => $signal };
 
    $context->schema->resultset('Event')->create($args);
-
-   if ($signal eq 'start') { trigger_output_handler $context->config }
-   else { trigger_input_handler $context->config }
-
+   trigger_event_handler $context->config;
    return;
 }
 

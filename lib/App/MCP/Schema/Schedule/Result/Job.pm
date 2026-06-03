@@ -14,7 +14,7 @@ use App::MCP::Util         qw( boolean_data_type enumerated_data_type
                                nullable_varchar_data_type integer_data_type
                                integer_id_data_type serial_data_type
                                set_on_create_datetime_data_type
-                               trigger_output_handler truncate
+                               trigger_event_handler truncate
                                varchar_data_type );
 use Class::Usul::Cmd::Util qw( includes trim );
 use HTML::Forms::Util      qw( int2rwx );
@@ -719,7 +719,7 @@ sub _create_job_state {
    my $schema    = $self->result_source->schema;
    my $job_state = $schema->resultset('JobState')->find_or_create($job);
 
-   trigger_output_handler $schema->config if $job_state->name eq 'active';
+   trigger_event_handler $schema->config if $job_state->name eq 'active';
 
    return $job_state;
 }

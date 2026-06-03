@@ -3,7 +3,7 @@ package App::MCP::Model::Worker;
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE NUL TRUE );
 use HTTP::Status           qw( HTTP_BAD_REQUEST HTTP_CREATED HTTP_NOT_FOUND
                                HTTP_UNAUTHORIZED );
-use App::MCP::Util         qw( trigger_input_handler );
+use App::MCP::Util         qw( trigger_event_handler );
 use Class::Usul::Cmd::Util qw( decrypt trim );
 use HTML::Forms::Util      qw( rwx2int );
 use Unexpected::Functions  qw( throw );
@@ -74,8 +74,8 @@ sub create_event : Auth('none') {
    try {
       my $eventid = $self->schema->resultset('Event')->create($params)->id;
 
-      $result  = [HTTP_CREATED, { message => "Event ${eventid} created" }];
-      trigger_input_handler $self->config;
+      $result = [HTTP_CREATED, { message => "Event ${eventid} created" }];
+      trigger_event_handler $self->config;
    }
    catch {
       $result = [HTTP_BAD_REQUEST, { message => $self->_error_message($_) }];

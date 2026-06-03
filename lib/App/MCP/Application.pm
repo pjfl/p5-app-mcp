@@ -1,10 +1,10 @@
 package App::MCP::Application;
 
-use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK SPC TRANSITION_ENUM );
+use App::MCP::Constants    qw( COMMA FALSE NUL TRUE OK SPC );
 use Unexpected::Types      qw( ArrayRef LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object Str );
 use App::MCP::Util         qw( concise_duration create_token distname
-                               trigger_input_handler trigger_output_handler );
+                               trigger_event_handler );
 use Class::Usul::Cmd::Util qw( elapsed ensure_class_loaded includes );
 use English                qw( -no_match_vars );
 use HTML::Forms::Util      qw( json_bool );
@@ -127,15 +127,6 @@ has 'worker' =>
    default => sub { shift->config->appclass . '::Worker' };
 
 # Private attributes
-has '_input_transitions' =>
-   is      => 'lazy',
-   isa     => ArrayRef,
-   default => sub {
-      my $op_transitions = shift->_output_transitions;
-
-      return [ grep { !includes $_, $op_transitions } @{TRANSITION_ENUM()} ];
-   };
-
 has '_output_transitions' =>
    is      => 'ro',
    isa     => ArrayRef,
@@ -171,6 +162,8 @@ sub BUILD {
 =item C<availability_handler>
 
    $exit_code = $self->availability_handler($notifier_name, $daemon_pid);
+
+Will be part of the HA clustering. Still a WIP
 
 =cut
 
@@ -233,7 +226,57 @@ sub cron_job_handler {
       $trigger = TRUE;
    }
 
-   trigger_output_handler $daemon_pid if $trigger;
+   trigger_event_handler $daemon_pid if $trigger;
+   return OK;
+}
+
+=item C<event_handler>
+
+   $exit_code = $self->event_handler($name, $daemon_pid, $ipc_ssh);
+
+Processes events updating the targeted job state. When successfully
+processed events are moved to the processed events collection
+
+Returns zero
+
+=cut
+
+sub event_handler {
+   my ($self, $name, $daemon_pid, $ipc_ssh) = @_;
+
+   my $schema   = $self->schema;
+   my $prefetch = { 'job' => 'state' };
+   my $options  = { order_by => { -asc => 'me.id' }, prefetch => $prefetch };
+   my $ev_rs    = $schema->resultset('Event');
+   my $events   = $ev_rs->search({}, $options);
+   my $pev_rs   = $schema->resultset('ProcessedEvent');
+   my $trigger  = TRUE;
+
+   while ($trigger) {
+      $trigger = FALSE;
+
+      for my $event ($events->all) {
+         my $transition = $event->transition;
+         my $code;
+
+         if (includes $transition, $self->_output_transitions) {
+            my $process = $transition eq 'kill_job' ? 'kill' : 'start';
+            my $method  = "_process_${process}_event";
+
+            $code = sub { $self->$method($name, $event, $ipc_ssh, $pev_rs) };
+         }
+         else {
+            my $method = '_process_input_event';
+
+            $code = sub { $self->$method($name, $event, $ev_rs, $pev_rs) };
+         }
+
+         $trigger = TRUE if $schema->txn_do($code);
+      }
+
+      $events->reset;
+   }
+
    return OK;
 }
 
@@ -271,52 +314,6 @@ sub event_stream_handler {
 
    $self->streamer->send_to_subscribers($name, $payload);
 
-   return OK;
-}
-
-=item C<input_handler>
-
-   $exit_code = $self->input_handler($notifier_name, $daemon_pid);
-
-Processes input events updating the targeted job state. When successfully
-processed events are moved to the processed events collection
-
-Returns zero
-
-=cut
-
-sub input_handler {
-   my ($self, $name, $daemon_pid) = @_;
-
-   my $schema   = $self->schema;
-   my $prefetch = { 'job' => 'state' };
-   my $where    = { transition => $self->_input_transitions };
-   my $options  = { order_by => { -asc => 'me.id' }, prefetch => $prefetch };
-   my $ev_rs    = $schema->resultset('Event');
-   my $events   = $ev_rs->search($where, $options);
-   my $pev_rs   = $schema->resultset('ProcessedEvent');
-   my $trigger  = TRUE;
-
-   while ($trigger) {
-      $trigger = FALSE;
-
-      for my $event ($events->all) {
-         $schema->txn_do(sub {
-            my $pev = $self->_process_event($name, $event);
-
-            $trigger = TRUE unless $pev->{rejected};
-
-            $pev_rs->create($pev);
-            $event->delete;
-            $self->_input_event_cleanup($name, $ev_rs, $event);
-         });
-      }
-
-      trigger_output_handler $daemon_pid if $trigger;
-      $events->reset;
-   }
-
-   trigger_output_handler $daemon_pid;
    return OK;
 }
 
@@ -359,47 +356,7 @@ sub max_runtime_handler {
       $triggered = TRUE;
    }
 
-   trigger_output_handler $daemon_pid if $triggered;
-
-   return OK;
-}
-
-=item C<output_handler>
-
-   $exit_code = $self->output_handler($name, $daemon_pid, $ipc_ssh);
-
-Processes output events updating the targeted job state. When successfully
-processed events are moved to the processed events collection
-
-Returns zero
-
-=cut
-
-sub output_handler {
-   my ($self, $name, $daemon_pid, $ipc_ssh) = @_;
-
-   my $schema  = $self->schema;
-   my $options = { prefetch => { 'job' => 'state' } };
-   my $where   = { transition => $self->_output_transitions };
-   my $events  = $schema->resultset('Event')->search($where, $options);
-   my $trigger = TRUE;
-
-   while ($trigger) {
-      $trigger = FALSE;
-
-      for my $event ($events->all) {
-         my $transition = $event->transition eq 'kill_job' ? 'kill' : 'start';
-         my $method     = "_process_${transition}_event";
-         my $code       = sub { $self->$method($name, $event, $ipc_ssh) };
-
-         $schema->txn_do($code) or next;
-
-         trigger_input_handler $daemon_pid if $event->job->type eq 'box';
-         $trigger = TRUE;
-      }
-
-      $events->reset;
-   }
+   trigger_event_handler $daemon_pid if $triggered;
 
    return OK;
 }
@@ -651,7 +608,7 @@ sub _increment_try_count {
 }
 
 sub _input_event_cleanup {
-   my ($self, $name, $ev_rs, $event) = @_;
+   my ($self, $name, $event, $ev_rs) = @_;
 
    my $job        = $event->job;
    my $runid      = $event->runid;
@@ -679,8 +636,8 @@ sub _input_event_cleanup {
          $ev_rs->create({ job_id => $jobid, transition => 'force_start' });
       }
       else {
-         $self->log->alert("${leader}: ${message}");
          $self->redis_client->del($retry_key);
+         $self->log->alert("${leader}: ${message}");
          $self->_alert_subscribers($name, $message);
       }
    }
@@ -710,13 +667,25 @@ sub _process_event {
    return $cols;
 }
 
+sub _process_input_event {
+   my ($self, $name, $event, $ev_rs, $pev_rs) = @_;
+
+   my $pev     = $self->_process_event($name, $event);
+   my $success = $pev->{rejected} ? FALSE : TRUE;
+
+   $pev_rs->create($pev);
+   $event->delete;
+   $self->_input_event_cleanup($name, $event, $ev_rs);
+
+   return $success;
+}
+
 sub _process_kill_event {
-   my ($self, $name, $event, $ipc_ssh) = @_;
+   my ($self, $name, $event, $ipc_ssh, $pev_rs) = @_;
 
    my $pev      = $self->_process_event($name, $event);
    my $success  = $pev->{rejected} ? FALSE : TRUE;
    my $job      = $event->job;
-   my $pev_rs   = $self->schema->resultset('ProcessedEvent');
    my $last_pev = $pev_rs->find_last_start($job);
 
    if ($success && $last_pev) {
@@ -736,7 +705,7 @@ sub _process_kill_event {
 }
 
 sub _process_start_event {
-   my ($self, $name, $event, $ipc_ssh) = @_;
+   my ($self, $name, $event, $ipc_ssh, $pev_rs) = @_;
 
    my $pev     = $self->_process_event($name, $event);
    my $success = $pev->{rejected} ? FALSE : TRUE;
@@ -760,7 +729,7 @@ sub _process_start_event {
       $self->schema->resultset('Event')->create($options);
    }
 
-   $self->schema->resultset('ProcessedEvent')->create($pev);
+   $pev_rs->create($pev);
    $event->delete;
    return $success;
 }
