@@ -4,6 +4,7 @@ use Class::Usul::Cmd::Constants qw( FALSE NUL SPC TRUE );
 use Class::Usul::Cmd::Util      qw( squeeze );
 use Type::Utils                 qw( class_type );
 use JSON::MaybeXS               qw( );
+use Try::Tiny;
 use Moo::Role;
 
 has 'json_parser' =>
@@ -15,12 +16,16 @@ sub decode_response {
    my ($self, $res) = @_;
 
    my $content = $res->{content} || '{}';
-   my $decoded = $self->json_parser->decode($content);
-   my $message = $decoded->{message} || 'No content message';
-   my $reason  = $res->{reason};
+   my $message;
 
-   $res->{error} = ($reason ? "${reason}: " : NUL) . $message;
-   $res->{message} = $decoded->{message} || $reason || 'No content message';
+   try   { $message = $self->json_parser->decode($content)->{message} }
+   catch { $message = "${_}" };
+
+   my $reason  = $res->{reason};
+   my $default = 'No content message';
+
+   $res->{error} = ($reason ? "${reason}: " : NUL) . ($message || $default);
+   $res->{message} = $message || $reason || $default;
 
    return $res;
 }

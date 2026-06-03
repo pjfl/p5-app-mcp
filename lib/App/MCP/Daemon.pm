@@ -69,7 +69,7 @@ A L<periodical|Async::IPC::Periodical> notifier
 
 =cut
 
-has 'clock_tick' => is => 'lazy', isa => Object;
+has 'clock_tick' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<cron>
 
@@ -78,7 +78,7 @@ by the C<clock_tick> notifier
 
 =cut
 
-has 'cron' => is => 'lazy', isa => Object;
+has 'cron' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<ip_ev_hndlr>
 
@@ -86,7 +86,7 @@ An L<async factory|Async::IPC> notifier process for the input event handler
 
 =cut
 
-has 'ip_ev_hndlr' => is => 'lazy', isa => Object;
+has 'ip_ev_hndlr' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<ipc_ssh>
 
@@ -94,7 +94,7 @@ An L<async factory|Async::IPC> notifier process
 
 =cut
 
-has 'ipc_ssh' => is => 'lazy', isa => Object;
+has 'ipc_ssh' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<lock>
 
@@ -125,7 +125,7 @@ An L<async factory|Async::IPC> notifier process for the output event handler
 
 =cut
 
-has 'op_ev_hndlr' => is => 'lazy', isa => Object;
+has 'op_ev_hndlr' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =item C<port>
 
@@ -149,7 +149,7 @@ The web server L<process|Async::IPC::Process>
 
 =cut
 
-has 'server' => is => 'lazy', isa => Object;
+has 'server' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
 =back
 
@@ -247,6 +247,7 @@ sub _build_cron {
          $app->cron_job_handler('cron', $pid);
          $app->event_stream_handler('events', $pid);
          $app->max_runtime_handler('runtime', $pid);
+#         $app->availability_handler('available', $pid);
       },
    );
 }

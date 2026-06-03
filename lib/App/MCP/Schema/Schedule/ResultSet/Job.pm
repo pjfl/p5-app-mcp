@@ -305,7 +305,7 @@ sub writable_box_id_by_name {
    my $user    = $user_rs->find_by_key($user_key, { prefetch => 'profile' });
 
    throw UnknownUser, [$user_key] unless $user;
-   throw 'Box [_1] write permission denied to [_1]',
+   throw 'Box [_1] write permission denied to [_2]',
       [$job->job_name, $user->user_name] unless $job->is_writable_by($user);
 
    return $job->id;

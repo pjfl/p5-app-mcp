@@ -26,7 +26,7 @@ use DateTime::Format::Human;
 our @EXPORT_OK = qw( boolean_data_type concise_duration create_token
    create_totp_token distname dt_from_epoch dt_human encode_for_html
    enumerated_data_type foreign_key_data_type formpost fp get_hashed_pw
-   get_salt local_config new_salt new_uri integer_data_type
+   get_salt jwt_hash local_config new_salt new_uri integer_data_type
    integer_id_data_type nullable_foreign_key_data_type nullable_text_data_type
    nullable_varchar_data_type redirect redirect2referer serial_data_type
    set_on_create_datetime_data_type strip_namespace terminate text_data_type
@@ -227,6 +227,18 @@ sub get_salt ($) {
    $parts[-1] = substr $parts[-1], 0, 22;
 
    return join '$', @parts;
+}
+
+=item C<jwt_hash>
+
+   $hex_string = jwt_hash($secret, $payload);
+
+=cut
+
+sub jwt_hash ($$) {
+   my ($secret, $payload) = @_;
+
+   return substr digest("${payload}${secret}")->hexdigest, 0, 32;
 }
 
 =item C<local_config>

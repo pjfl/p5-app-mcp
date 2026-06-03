@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Starts to add availability ping
           - Adds Nagios plugin for event stream callbacks
           - Create job API works again
           - Implements retrys and max. runtime

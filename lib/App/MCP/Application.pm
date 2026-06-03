@@ -154,7 +154,8 @@ Defines the following methods;
 
 =item C<BUILD>
 
-Triggers contruction of the lazy C<streamer> attribute
+Triggers contruction of the lazy C<streamer> attribute. Registers the event
+callback plugins
 
 =cut
 
@@ -164,6 +165,21 @@ sub BUILD {
    $self->streamer->register_plugins;
 
    return;
+}
+
+=item C<availability_handler>
+
+=cut
+
+sub availability_handler {
+   my ($self, $name, $daemon_pid) = @_;
+
+   my $token = $self->streamer->encode_access_token({ name => $name });
+   my $ping = "http://localhost:2012/mcp/api/ping/${token}";
+   my $res = $self->streamer->http_get($ping);
+
+   $self->log->info("${name}: " . $res->{message});
+   return OK;
 }
 
 =item C<cron_job_handler>
@@ -494,7 +510,7 @@ sub _alert_subscribers {
    my ($self, $name, $message) = @_;
 
    my $true    = json_bool TRUE;
-   my $options = { beep => $true, messageClass => 'error', name => $name };
+   my $options = { beep => $true, name => $name, status => 'alert' };
    my $payload = { message => $message, options => $options };
 
    $self->streamer->send_to_subscribers($name, $payload);

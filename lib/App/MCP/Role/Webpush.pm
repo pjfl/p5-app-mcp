@@ -1,7 +1,9 @@
 package App::MCP::Role::Webpush;
 
 use App::MCP::Constants    qw( FALSE NUL TRUE );
-use File::DataClass::Types qw( Int );
+use File::DataClass::Types qw( Int Str );
+use App::MCP::Util         qw( create_token jwt_hash );
+use MIME::Base64           qw( decode_base64url encode_base64url );
 use Type::Utils            qw( class_type );
 use HTTP::Request::Webpush;
 use HTTP::Tiny;
@@ -32,6 +34,17 @@ A client role for the browser Web Push API
 Defines the following attributes;
 
 =over 3
+
+=item C<jwt_secret>
+
+Used to create and verify JWT access tokens
+
+=cut
+
+has 'jwt_secret' =>
+   is      => 'lazy',
+   isa     => Str,
+   default => sub { shift->config->db_password };
 
 =item C<ua_timeout>
 
@@ -71,6 +84,47 @@ has '_ua' =>
 Defineds the following methods;
 
 =over 3
+
+=item C<http_get>
+
+   $hash_ref = $self->http_get($uri, \%params?);
+
+=cut
+
+sub http_get {
+   my ($self, $uri, $params) = @_;
+
+   $params //= {};
+
+   my $res = $self->_ua->get($uri, $params);
+
+   return $self->decode_response($res);
+}
+
+=item C<http_post>
+
+   $hash_ref = $self->http_post($uri, \%content);
+
+Returns a hash reference with the C<success> attribute set to true if
+successful. Returns a hash reference containing an C<error> attribute
+otherwise
+
+=cut
+
+sub http_post {
+   my ($self, $uri, $content) = @_;
+
+   return { error => "Parameter 'uri' not specified" } unless $uri;
+
+   $content //= { message => 'Something happened' };
+
+   my $encoded = $self->json_parser->encode($content);
+   my $headers = { 'Content-Type' => 'application/json' };
+   my $params  = { content => $encoded, headers => $headers };
+   my $res     =  $self->_ua->post($uri, $params);
+
+   return $self->decode_response($res);
+}
 
 =item C<service_worker_push>
 
@@ -113,29 +167,40 @@ sub service_worker_push {
    return $self->decode_response($res);
 }
 
-=item C<web_server_post>
+=item C<decode_access_token>
 
-   $hash_ref = $self->web_server_post($uri, \%content);
-
-Returns a hash reference with the C<success> attribute set to true if
-successful. Returns a hash reference containing an C<error> attribute
-otherwise
+   $claim = $self->decode_access_token($token);
 
 =cut
 
-sub web_server_post {
-   my ($self, $uri, $content) = @_;
+sub decode_access_token {
+   my ($self, $token) = @_;
 
-   return { error => "Parameter 'uri' not specified" } unless $uri;
+   my ($salt, $payload, $verify) = split m{ \. }mx, $token;
+   my $calculated = jwt_hash $self->jwt_secret, "${salt}${payload}";
 
-   $content //= { message => 'Something happened' };
+   return unless $verify eq $calculated;
 
-   my $encoded = $self->json_parser->encode($content);
-   my $headers = { 'Content-Type' => 'application/json' };
-   my $params  = { content => $encoded, headers => $headers };
-   my $res     =  $self->_ua->post($uri, $params);
+   return $self->json_parser->decode(decode_base64url($payload));
+}
 
-   return $self->decode_response($res);
+=item C<encode_access_token>
+
+   $token = $self->encode_access_token($claim);
+
+=cut
+
+sub encode_access_token {
+   my ($self, $claim) = @_;
+
+   $claim->{_refreshed} = time;
+   $claim->{_created} //= $claim->{_refreshed};
+
+   my $salt    = encode_base64url(pack('H*', create_token));
+   my $payload = encode_base64url($self->json_parser->encode($claim));
+   my $verify  = jwt_hash $self->jwt_secret, "${salt}${payload}";
+
+   return "${salt}.${payload}.${verify}";
 }
 
 use namespace::autoclean;

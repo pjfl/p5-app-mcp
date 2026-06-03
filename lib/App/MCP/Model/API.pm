@@ -2,13 +2,11 @@ package App::MCP::Model::API;
 
 use App::MCP::Constants   qw( EXCEPTION_CLASS FALSE TRUE );
 use Unexpected::Types     qw( Int );
-use HTTP::Status          qw( HTTP_OK );
+use HTTP::Status          qw( HTTP_OK HTTP_UNAUTHORIZED );
 use HTML::Forms::Util     qw( json_bool );
 use MIME::Base64          qw( decode_base64url encode_base64url );
 use Type::Utils           qw( class_type );
 use Unexpected::Functions qw( throw );
-use Web::ComposableRequest::Util
-                          qw( bson64id );
 use App::MCP::EventStream;
 use Crypt::PK::ECC;
 use DateTime::TimeZone;
@@ -105,6 +103,17 @@ sub object : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
    $context->stash(object_name => $arg);
+   return;
+}
+
+sub pong : Auth('none') Capture(1) {
+   my ($self, $context, $arg) = @_;
+
+   my $claim = $self->_streamer->decode_access_token($arg);
+
+   $self->_stash_response($context, [HTTP_UNAUTHORIZED]) unless $claim;
+
+   $self->_stash_response($context, [HTTP_OK, { message => 'pong' }]);
    return;
 }
 

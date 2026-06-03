@@ -100,7 +100,7 @@ sub create_job : Auth('none') {
 
    return $self->stash_response($context, $result) unless $params;
 
-   $self->_set_job_defaults($session, $params);
+   $self->_set_job_defaults($context, $params);
 
    try {
       my $jobid = $self->schema->resultset('Job')->create($params)->id;
@@ -135,16 +135,26 @@ sub _error_message {
    if ($e->can('class') and $e->class eq 'ValidationErrors') {
       $message .= ($message ? ' - ' : NUL) . trim "${_}" for (@{$e->args});
    }
-   else { $message = trim "${e}" }
+   else {
+      $message = trim "${e}";
+      $message = 'Duplicate key'
+         if $message =~ m{ duplicate \s+ key \s+ value }mx;
+      $message = "No such column ${1}"
+         if $message =~ m{ No \s+ such \s+ column \s+ ([\'][a-z_]+[\']) }mx;
+   }
 
    return $message;
 }
 
 sub _set_job_defaults {
-   my ($self, $session, $params) = @_;
+   my ($self, $context, $params) = @_;
+
+   my $session = $context->stash('session');
+
+   $context->session->username($session->{key});
 
    if (!$params->{group} || $params->{group} !~ m{ \A \d+ \z }mx) {
-      my $group_name = $params->{group} // $self->config->prefix;
+      my $group_name = delete $params->{group} // $self->config->prefix;
       my $group_rs   = $self->schema->resultset('Role');
       my $group      = $group_rs->find_by_key($group_name);
 

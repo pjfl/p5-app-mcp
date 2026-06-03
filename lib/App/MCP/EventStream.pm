@@ -177,7 +177,7 @@ sub _event_stream_webpost {
 
    my $uri = $subscription->{callback_uri};
 
-   return $self->web_server_post($uri, $payload);
+   return $self->http_post($uri, $payload);
 }
 
 sub _event_stream_webpush {

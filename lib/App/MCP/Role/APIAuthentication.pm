@@ -222,18 +222,6 @@ sub _get_session_id {
    return $self->redis_client->get($key);
 }
 
-sub _set_session_id {
-   my ($self, $user, $session_id) = @_;
-
-   throw Unspecified, ['session id'] unless $session_id;
-
-   my $key = 'worker_session_userid-' . $user->id;
-
-   $self->redis_client->set_with_ttl($key, $session_id, $self->session_ttl);
-
-   return $session_id;
-}
-
 sub _session_key {
    my ($self, $session_id) = @_; return "worker_session-${session_id}";
 }
@@ -247,6 +235,18 @@ sub _set_session {
    $self->redis_client->set_with_ttl($key, $encoded, $self->session_ttl);
 
    return $session;
+}
+
+sub _set_session_id {
+   my ($self, $user, $session_id) = @_;
+
+   throw Unspecified, ['session id'] unless $session_id;
+
+   my $key = 'worker_session_userid-' . $user->id;
+
+   $self->redis_client->set_with_ttl($key, $session_id, $self->session_ttl);
+
+   return $session_id;
 }
 
 1;
