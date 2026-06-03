@@ -395,6 +395,14 @@ advanced options for all users
 
 has 'enable_advanced' => is => 'ro', isa => Bool, default => FALSE;
 
+=item C<enable_availability>
+
+Boolean default C<FALSE>. If true enable the high availability clustering
+
+=cut
+
+has 'enable_availability' => is => 'ro', isa => Bool, default => FALSE;
+
 =item C<encoding>
 
 The output encoding used by the application

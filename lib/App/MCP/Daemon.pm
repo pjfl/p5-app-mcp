@@ -80,6 +80,14 @@ by the C<clock_tick> notifier
 
 has 'cron' => is => 'lazy', isa => class_type('Async::IPC::Base');
 
+=item C<event_stream>
+
+An L<async factory|Async::IPC> notifier process for the event stream handler
+
+=cut
+
+has 'event_stream' => is => 'lazy', isa => class_type('Async::IPC::Base');
+
 =item C<ip_ev_hndlr>
 
 An L<async factory|Async::IPC> notifier process for the input event handler
@@ -222,14 +230,15 @@ sub pid {
 
 # Private methods
 sub _build_clock_tick { # Runs in the daemon process event loop
-   my $self = shift;
-   my $cron = $self->cron;
+   my $self     = shift;
+   my $cron     = $self->cron;
+   my $streamer = $self->event_stream;
 
    return $self->async_factory->new_notifier(
       type     => 'periodical',
       desc     => 'clock tick handler',
       name     => 'clock',
-      code     => sub { $cron->raise },
+      code     => sub { $cron->raise; $streamer->raise },
       interval => $self->config->clock_tick_interval,
    );
 }
@@ -245,9 +254,23 @@ sub _build_cron {
       name    => 'cron',
       on_recv => sub {
          $app->cron_job_handler('cron', $pid);
-         $app->event_stream_handler('events', $pid);
          $app->max_runtime_handler('runtime', $pid);
-#         $app->availability_handler('available', $pid);
+      },
+   );
+}
+
+sub _build_event_stream {
+   my $self = shift;
+   my $app  = $self->application;
+   my $pid  = $self->pid;
+
+   return $self->async_factory->new_notifier(
+      type    => 'semaphore',
+      desc    => 'event stream handler',
+      name    => 'events',
+      on_recv => sub {
+         $app->event_stream_handler('events', $pid);
+         $app->availability_handler('available', $pid);
       },
    );
 }
@@ -395,6 +418,7 @@ sub _daemon {
    $self->clock_tick->stop;
    $self->server->stop;
    $self->cron->stop;
+   $self->event_stream->stop;
    $self->ip_ev_hndlr->stop;
    $self->op_ev_hndlr->stop;
    $loop->watch_child(0);

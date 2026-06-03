@@ -9,7 +9,7 @@ use HTTP::Request::Webpush;
 use HTTP::Tiny;
 use Moo::Role;
 
-requires qw( json_parser redis_client );
+requires qw( config json_parser redis_client );
 
 =pod
 
@@ -85,18 +85,67 @@ Defineds the following methods;
 
 =over 3
 
+=item C<decode_access_token>
+
+   $claim = $self->decode_access_token($token);
+
+=cut
+
+sub decode_access_token {
+   my ($self, $token) = @_;
+
+   return unless $token;
+
+   my ($salt, $payload, $verify) = split m{ \. }mx, $token;
+
+   return unless $salt && $payload && $verify;
+
+   my $calculated = jwt_hash $self->jwt_secret, "${salt}${payload}";
+
+   return unless $verify eq $calculated;
+
+   return $self->json_parser->decode(decode_base64url($payload));
+}
+
+=item C<encode_access_token>
+
+   $token = $self->encode_access_token(\%claim?);
+
+=cut
+
+sub encode_access_token {
+   my ($self, $claim) = @_;
+
+   $claim //= {};
+   $claim->{_refreshed} = time;
+   $claim->{_created} //= $claim->{_refreshed};
+
+   my $salt    = encode_base64url(pack('H*', create_token));
+   my $payload = encode_base64url($self->json_parser->encode($claim));
+   my $verify  = jwt_hash $self->jwt_secret, "${salt}${payload}";
+
+   return "${salt}.${payload}.${verify}";
+}
+
 =item C<http_get>
 
-   $hash_ref = $self->http_get($uri, \%params?);
+   $hash_ref = $self->http_get($uri, \%query_params?, \%options?);
 
 =cut
 
 sub http_get {
-   my ($self, $uri, $params) = @_;
+   my ($self, $uri, $params, $options) = @_;
 
    $params //= {};
+   $options //= {};
 
-   my $res = $self->_ua->get($uri, $params);
+   my $query;
+
+   $query = $self->_ua->www_form_urlencode($params) if scalar keys %{$params};
+
+   $uri = "${uri}?${query}" if $query;
+
+   my $res = $self->_ua->get($uri, $options);
 
    return $self->decode_response($res);
 }
@@ -165,42 +214,6 @@ sub service_worker_push {
    my $res    = $self->_ua->post($req->uri, $params);
 
    return $self->decode_response($res);
-}
-
-=item C<decode_access_token>
-
-   $claim = $self->decode_access_token($token);
-
-=cut
-
-sub decode_access_token {
-   my ($self, $token) = @_;
-
-   my ($salt, $payload, $verify) = split m{ \. }mx, $token;
-   my $calculated = jwt_hash $self->jwt_secret, "${salt}${payload}";
-
-   return unless $verify eq $calculated;
-
-   return $self->json_parser->decode(decode_base64url($payload));
-}
-
-=item C<encode_access_token>
-
-   $token = $self->encode_access_token($claim);
-
-=cut
-
-sub encode_access_token {
-   my ($self, $claim) = @_;
-
-   $claim->{_refreshed} = time;
-   $claim->{_created} //= $claim->{_refreshed};
-
-   my $salt    = encode_base64url(pack('H*', create_token));
-   my $payload = encode_base64url($self->json_parser->encode($claim));
-   my $verify  = jwt_hash $self->jwt_secret, "${salt}${payload}";
-
-   return "${salt}.${payload}.${verify}";
 }
 
 use namespace::autoclean;

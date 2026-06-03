@@ -15,11 +15,11 @@ has 'json_parser' =>
 sub decode_response {
    my ($self, $res) = @_;
 
-   my $content = $res->{content} || '{}';
+   my $content = $res->{content};
    my $message;
 
    try   { $message = $self->json_parser->decode($content)->{message} }
-   catch { $message = "${_}" };
+   catch { $message = substr $content, 0, 500 };
 
    my $reason  = $res->{reason};
    my $default = 'No content message';

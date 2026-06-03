@@ -10,6 +10,7 @@ use English                qw( -no_match_vars );
 use HTML::Forms::Util      qw( json_bool );
 use List::Util             qw( first );
 use Scalar::Util           qw( weaken );
+use Web::Components::Util  qw( fqdn );
 use Web::ComposableRequest::Util
                            qw( bson64id );
 use App::MCP::EventStream;
@@ -169,16 +170,37 @@ sub BUILD {
 
 =item C<availability_handler>
 
+   $exit_code = $self->availability_handler($notifier_name, $daemon_pid);
+
 =cut
 
 sub availability_handler {
    my ($self, $name, $daemon_pid) = @_;
 
-   my $token = $self->streamer->encode_access_token({ name => $name });
-   my $ping = "http://localhost:2012/mcp/api/ping/${token}";
-   my $res = $self->streamer->http_get($ping);
+   return OK unless $self->config->enable_availability;
 
-   $self->log->info("${name}: " . $res->{message});
+   my $host  = fqdn;
+   my $token = $self->streamer->encode_access_token({ host => $host });
+
+   for my $server (@{$self->config->servers}) {
+      #next if $server eq $host;
+
+      my $proto   = 'http';
+      my $port    = $self->port;
+      my $mount   = $self->config->mount_point;
+      my $uri     = "${proto}://${server}:${port}${mount}/api/ping";
+      my $res     = $self->streamer->http_get($uri, { token => $token });
+      my $message = $res->{message};
+
+      if ($res->{success}) {
+         $self->log->info("${name}: Pong from ${message}");
+      }
+      else {
+         # TODO: Do more
+         $self->log->alert("${name}: " . $res->{error});
+      }
+   }
+
    return OK;
 }
 

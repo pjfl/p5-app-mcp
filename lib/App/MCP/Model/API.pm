@@ -6,6 +6,7 @@ use HTTP::Status          qw( HTTP_OK HTTP_UNAUTHORIZED );
 use HTML::Forms::Util     qw( json_bool );
 use MIME::Base64          qw( decode_base64url encode_base64url );
 use Type::Utils           qw( class_type );
+use Web::Components::Util qw( fqdn );
 use Unexpected::Functions qw( throw );
 use App::MCP::EventStream;
 use Crypt::PK::ECC;
@@ -103,17 +104,6 @@ sub object : Auth('none') Capture(1) {
    my ($self, $context, $arg) = @_;
 
    $context->stash(object_name => $arg);
-   return;
-}
-
-sub pong : Auth('none') Capture(1) {
-   my ($self, $context, $arg) = @_;
-
-   my $claim = $self->_streamer->decode_access_token($arg);
-
-   $self->_stash_response($context, [HTTP_UNAUTHORIZED]) unless $claim;
-
-   $self->_stash_response($context, [HTTP_OK, { message => 'pong' }]);
    return;
 }
 
@@ -218,6 +208,20 @@ sub logger : Auth('none') {
    }
 
    $self->_stash_response($context);
+   return;
+}
+
+sub ping : Auth('none') {
+   my ($self, $context) = @_;
+
+   my $token = $context->request->query_parameters->{token};
+   my $claim = $self->_streamer->decode_access_token($token);
+
+   return $self->_stash_response($context, [HTTP_UNAUTHORIZED]) unless $claim;
+
+   $self->log->debug("Ping from " . $claim->{host}, $context);
+
+   $self->_stash_response($context, [HTTP_OK, { message => fqdn }]);
    return;
 }
 
