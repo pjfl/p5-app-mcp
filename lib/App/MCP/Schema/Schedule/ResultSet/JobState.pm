@@ -75,10 +75,11 @@ sub create_and_or_update {
 
    try   {
       my $job_state  = $self->find_or_create($job);
-      my $state_name = $job_state->name->value;
+      my $state_name = $job_state->name->value; # Enumerated type
 
       $state_name = _workflow()->process_event($state_name, $event);
       $job_state->name($state_name);
+      # $job_state->next_start_time($job->next_start_time($job_state->updated));
       $job_state->update;
       $self->_trigger_update_cascade($event, $job_state);
    }

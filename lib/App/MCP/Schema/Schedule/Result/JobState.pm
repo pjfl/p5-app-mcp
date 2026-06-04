@@ -20,6 +20,7 @@ $class->add_columns(
       is_nullable => TRUE,
       timezone    => 'UTC',
    },
+   # next_start_time => integer_data_type(0),
 );
 
 $class->set_primary_key('job_id');

@@ -73,8 +73,8 @@ Defineds the following methods;
 sub post {
    my ($self, $payload) = @_;
 
-   my $options  = $payload->{options} // { messageClass => 'none' };
-   my $is_error = $options->{messageClass} eq 'error' ? TRUE : FALSE;
+   my $options  = $payload->{options} // { status => 'none' };
+   my $is_error = $options->{status} eq 'error' ? TRUE : FALSE;
 
    return { message => 'Not an error', success => TRUE } unless $is_error;
 

@@ -577,6 +577,28 @@ sub namespace {
    return $ns;
 }
 
+=item C<next_start_time>
+
+   $epoch = $self->next_start_time($last_time);
+
+Returns the absolute next start time in epoch seconds
+
+=cut
+
+sub next_start_time {
+   my ($self, $last_finish) = @_;
+
+   return 0 unless $last_finish;
+
+   my $crontab = $self->crontab or return 0;
+   my $cron    = Algorithm::Cron->new(base => 'local', crontab => $crontab);
+   my $tz      = $self->result_source->schema->config->local_tz;
+
+   $last_finish->set_time_zone($tz);
+
+   return $cron->next_time($last_finish->epoch);
+}
+
 =item C<should_start_now>
 
    $bool = $self->should_start_now;
@@ -586,20 +608,16 @@ Returns true if the C<crontab> attribute evaluates to true
 =cut
 
 sub should_start_now {
-   my $self      = shift;
-   my $crontab   = $self->crontab or return TRUE;
-   my $cron      = Algorithm::Cron->new(base => 'local', crontab => $crontab);
-   my $last_time = 0;
+   my $self = shift;
 
-   if ($self->state) {
-      my $updated = $self->state->updated;
-      my $tz      = $self->result_source->schema->config->local_tz;
+   return TRUE unless $self->state;
 
-      $updated->set_time_zone($tz);
-      $last_time = $updated->epoch;
-   }
+   # my $next_time = $self->state->next_start_time;
+   my $next_time = $self->next_start_time($self->state->updated);
 
-   return time >= $cron->next_time($last_time) ? TRUE : FALSE;
+   return TRUE unless $next_time;
+
+   return time >= $next_time ? TRUE : FALSE;
 }
 
 =item C<sqlt_deploy_hook>

@@ -567,11 +567,11 @@ sub _send_notification {
    throw UnknownUser, [$recipient] unless $user;
 
    my $beep    = json_bool $options->{beep};
-   my $class   = $options->{class} // 'info';
+   my $status  = $options->{status} // 'info';
    my $message = $options->{message} // 'No message';
    my $native  = json_bool $options->{native};
    my $title   = $options->{title} // 'MCP Service Worker';
-   my $opts    = { messageClass => $class, beep => $beep, title => $title };
+   my $opts    = { status => $status, beep => $beep, title => $title };
    my $params  = { message => $message, native => $native, options => $opts };
    my $res     = $self->service_worker_push($user->id, $params);
    my $args    = ["${user}", $message];
