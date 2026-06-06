@@ -313,8 +313,8 @@ sub send_event : method {
 
 =item C<send_message> - Send an email or SMS message
 
-Send either email or SMS messages to a list of recipients. The SMS client is
-unimplemented
+Send either email, SMS messages, or WebPush API notifications to a list of
+recipients. The SMS client is unimplemented
 
 =cut
 

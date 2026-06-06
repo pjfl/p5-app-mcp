@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Added next_time column to job state
           - Checkpoint due to bad system memory
           - Merges input and output handlers
           - Splits out event_stream and availability into own notifier

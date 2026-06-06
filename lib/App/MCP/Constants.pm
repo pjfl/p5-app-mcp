@@ -135,8 +135,9 @@ sub SQL_TRUE () { \q{true} }
 
 =cut
 
-sub STATE_ENUM () { [ qw( active hold failed finished inactive running
-                          starting terminated unknown ) ] }
+sub STATE_ENUM () { [ qw(inactive active hold starting
+                         running finished failed terminated) ] }
+
 =item C<TRANSITION_ENUM>
 
 =cut

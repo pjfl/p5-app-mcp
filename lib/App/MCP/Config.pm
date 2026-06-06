@@ -466,21 +466,6 @@ symbols used when generating HTML
 
 has 'icons' => is => 'ro', isa => Str, default => 'img/icons.svg';
 
-=item C<job_states>
-
-An array reference containing the list of defined job states
-
-=cut
-
-has 'job_states' =>
-   is      => 'ro',
-   isa     => ArrayRef,
-   default => sub {
-      return [
-         qw(inactive active hold starting running finished failed terminated)
-      ];
-   };
-
 =item C<keywords>
 
 Space separated list of keywords which appear in the meta of the HTML pages
