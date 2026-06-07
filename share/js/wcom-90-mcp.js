@@ -44,7 +44,8 @@ WCom.MCP.StateDiagram = (function() {
          const jobTile = this.h.div({ className, id }, content);
          jobTile.classList.add(this.stateName);
          this.jobTile = this.addOrReplace(container, jobTile, this.jobTile);
-         if (this.diagram.prefs.openBoxes[this.jobName]) {
+         const openBoxes = this.diagram.prefs.openBoxes;
+         if (openBoxes && openBoxes[this.jobName]) {
             this.toggleIcon.click();
          }
       }

@@ -4,7 +4,8 @@ use strictures;
 use parent 'App::MCP::Schema::Base';
 
 use App::MCP::Constants qw( SQL_NOW STATE_ENUM );
-use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type );
+use App::MCP::Util      qw( enumerated_data_type foreign_key_data_type
+                            integer_data_type );
 
 my $class  = __PACKAGE__;
 my $result = 'App::MCP::Schema::Schedule::Result';

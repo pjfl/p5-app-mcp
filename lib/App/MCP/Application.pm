@@ -219,9 +219,7 @@ sub cron_job_handler {
    my $ev_rs   = $schema->resultset('Event');
    my $trigger = FALSE;
 
-   for my $job (grep { $_->should_start_now } $job_rs->active_crontab->all) {
-      next if $job->condition && !$job->start_condition;
-
+   for my $job ($job_rs->should_start_now) {
       $ev_rs->create({ job_id => $job->id, transition => 'start' });
       $trigger = TRUE;
    }

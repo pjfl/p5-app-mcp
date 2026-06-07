@@ -1,6 +1,6 @@
 package App::MCP::Config;
 
-use App::MCP::Constants    qw( FALSE NUL TRUE );
+use App::MCP::Constants    qw( FALSE NUL STATE_ENUM TRUE );
 use File::DataClass::Types qw( ArrayRef Bool CodeRef Directory File HashRef
                                LoadableClass NonEmptySimpleStr
                                NonZeroPositiveInt Object Path PositiveInt
@@ -192,7 +192,8 @@ has 'bin' =>
 
 =item C<clock_tick_interval>
 
-A non zero positive integer that defaults to B<3>.
+A non zero positive integer that defaults to B<3>. The application quantizes
+time into this number of seconds per clock tick
 
 =cut
 
@@ -363,7 +364,8 @@ has 'default_route' => is => 'ro', isa => Str, default => '/mcp/login';
 
 =item C<default_view>
 
-A simple string which defaults to B<html>.
+A simple string which defaults to B<html>. A C<moniker> for a view
+component. It is expected to produce a response with a C<text/html> mime type
 
 =cut
 
@@ -466,6 +468,18 @@ symbols used when generating HTML
 
 has 'icons' => is => 'ro', isa => Str, default => 'img/icons.svg';
 
+=item C<job_states>
+
+An array reference containing the list of defined job states. Used in state
+key custom footer template
+
+=cut
+
+has 'job_states' =>
+   is      => 'ro',
+   isa     => ArrayRef,
+   default => sub { STATE_ENUM };
+
 =item C<keywords>
 
 Space separated list of keywords which appear in the meta of the HTML pages
@@ -488,7 +502,8 @@ has 'library_class' =>
 
 =item C<local_tz>
 
-The applications local time zone
+The applications local time zone. This should be the same as the servers
+time zone
 
 =cut
 

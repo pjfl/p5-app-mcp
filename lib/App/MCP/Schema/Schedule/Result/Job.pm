@@ -335,6 +335,18 @@ sub condition {
    return $self->_condition($value);
 }
 
+=item C<condition_start_now>
+
+   $bool = $self->condition_start_now;
+
+Returns true if the expression parser evaluates the start condition true
+
+=cut
+
+sub condition_start_now {
+   return shift->_eval_condition->[0];
+}
+
 =item C<crontab_hour>
 
    $hour = $self->crontab_hour($hour?);
@@ -393,6 +405,27 @@ Accessor/mutator for the C<crontab> attribute
 
 sub crontab_wday {
    my ($self, $value) = @_; return $self->_crontab('wday', $value);
+}
+
+=item C<crontab_start_now>
+
+   $bool = $self->crontab_start_now;
+
+Returns true if the C<crontab> attribute evaluates to true. Called from
+L<workflow|App::MCP::Workflow>
+
+=cut
+
+sub crontab_start_now {
+   my $self = shift;
+
+   return TRUE unless $self->state;
+
+   my $next_time = $self->state->next_start_time;
+
+   return TRUE unless $next_time;
+
+   return time >= $next_time ? TRUE : FALSE;
 }
 
 =item C<delete>
@@ -599,27 +632,6 @@ sub next_start_time {
    return $cron->next_time($last_finish->epoch);
 }
 
-=item C<should_start_now>
-
-   $bool = $self->should_start_now;
-
-Returns true if the C<crontab> attribute evaluates to true
-
-=cut
-
-sub should_start_now {
-   my $self = shift;
-
-   return TRUE unless $self->state;
-
-   # my $next_time = $self->state->next_start_time;
-   my $next_time = $self->next_start_time($self->state->updated);
-
-   return TRUE unless $next_time;
-
-   return time >= $next_time ? TRUE : FALSE;
-}
-
 =item C<sqlt_deploy_hook>
 
    $self->sqlt_deploy_hook($statement_handle);
@@ -636,18 +648,6 @@ sub sqlt_deploy_hook {
    $st->add_index(name => 'jobs_idx_parent_id', fields => ['parent_id']);
 
   return;
-}
-
-=item C<start_condition>
-
-   $bool = $self->start_condition;
-
-Returns true if the expression parser evaluates the start condition true
-
-=cut
-
-sub start_condition {
-   return shift->_eval_condition->[0];
 }
 
 =item C<update>

@@ -168,8 +168,8 @@ sub _validate_start {
    my $parent = $job->parent_box;
 
    throw Parent    if $parent && $parent->state->name ne 'running';
-   throw Crontab   unless $job->should_start_now;
-   throw Condition unless $job->start_condition;
+   throw Crontab   unless $job->crontab_start_now;
+   throw Condition unless $job->condition_start_now;
 
    return;
 }

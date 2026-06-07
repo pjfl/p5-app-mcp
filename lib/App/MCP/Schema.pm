@@ -248,7 +248,8 @@ sub BUILD {}
 
 =item C<backup> - Backs up the database
 
-Backs up the database
+Backs up the database. Creates a timestamped compressed C<tar> file in the
+C<config>.C<vardir>.C<backup> directory
 
 =cut
 
@@ -256,7 +257,7 @@ sub backup : method {
    my $self = shift;
    my $now  = now_dt;
    my $db   = $self->_dbname;
-   my $date = $now->ymd(NUL) . '-' . $now->hms(NUL);
+   my $date = $now->ymd(NUL) . '-' . $now->strftime('%H:%M');
    my $file = "${db}-${date}.sql";
    my $conf = $self->config;
    my $path = $conf->tempdir->catfile($file);
@@ -289,7 +290,8 @@ sub backup : method {
 
 =item C<dump_jobs> - Dump selected job definitions to a file
 
-The default dump file name is C<jobs.json>
+The default dump file name is C<jobs.json> in the C<config>.C<vardir>.C<share>
+directory
 
 =cut
 
@@ -310,15 +312,16 @@ sub dump_jobs : method {
 
 =item C<install> - Creates the database and deploys the schema
 
-Creates the database and deploys the schema
+Creates the database and deploys the schema. Drops the existing database and
+user if they exist
 
 =cut
 
 sub install : method {
    my $self = shift;
    my $text = 'Schema creation requires a database, id and password. '
-            . 'For Postgres the driver is Pg and the port 5432. For '
-            . 'MySQL the driver is mysql and the port 3306';
+            . 'This method will drop the existing database and user if they '
+            . 'exist. It does not store the database admin password';
 
    $self->output($text, AS_PARA);
    $self->yorn('+Create database', TRUE, TRUE, 0) or return OK;

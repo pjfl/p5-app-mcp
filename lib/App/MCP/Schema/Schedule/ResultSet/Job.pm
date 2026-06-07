@@ -37,30 +37,6 @@ Defines the following methods;
 
 =over 3
 
-=item C<active_crontab>
-
-   $rs = $self->active_crontab;
-
-Search for jobs in the C<active> state that have C<crontab> entries
-
-Returns the restricted resultset. Objects are only partially inflated
-
-=cut
-
-sub active_crontab {
-   my $self     = shift;
-   my $columns  = [ qw(condition crontab id state.name state.updated) ];
-   my $prefetch = [ 'state', { parent_box => 'state' } ];
-   my $options  = { columns => $columns, prefetch => $prefetch };
-   my $where    = {
-      'state.name'   => 'active',
-      'state_2.name' => 'running',
-      'me.crontab'   => { '!=' => NUL },
-   };
-
-   return $self->search($where, $options);
-}
-
 =item C<assert_executable>
 
    $job = $self->assert_executable($job_key, $user);
@@ -272,6 +248,41 @@ sub running {
    my ($self, $key) = @_;
 
    return $self->_get_job_state($key) eq 'running' ? TRUE : FALSE;
+}
+
+=item C<should_start_now>
+
+   $rs = $self->should_start_now;
+
+Search for jobs in the C<active> state that have C<crontab> entries.
+If the C<crontab> and C<condition> are true (if the job has one) then include
+the job in the resultset
+
+Returns a list of qualifying jobs. Objects are only partially inflated
+
+=cut
+
+sub should_start_now {
+   my $self     = shift;
+   my $now      = time;
+   my $columns  = [ qw(condition crontab id state.name state.updated) ];
+   my $prefetch = [ 'state', { parent_box => 'state' } ];
+   my $options  = { columns => $columns, prefetch => $prefetch };
+   my $where    = {
+      'state.name'   => 'active',
+      'state_2.name' => 'running',
+      'me.crontab'   => { '!=' => NUL },
+   };
+   my @jobs;
+
+   for my $job ($self->search($where, $options)->all) {
+       next unless $now > $job->state->next_start_time;
+       next unless $job->condition_start_now;
+
+       push @jobs, $job;
+   }
+
+   return @jobs;
 }
 
 =item C<terminated>
