@@ -75,7 +75,9 @@ sub _redirect2login {
       && !includes($endpoint, [qw(login logout register)])
       && _get_nav_for_action($context, $self->can($endpoint));
 
-   $context->stash(redirect $login, ['Authentication required']);
+   my $options = { status => 'alert' };
+
+   $context->stash(redirect $login, ['Authentication required'], $options);
 
    return FALSE;
 }

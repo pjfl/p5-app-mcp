@@ -256,7 +256,7 @@ sub running {
 
 Search for jobs in the C<active> state that have C<crontab> entries.
 If the C<crontab> and C<condition> are true (if the job has one) then include
-the job in the resultset
+the job in the result
 
 Returns a list of qualifying jobs. Objects are only partially inflated
 
@@ -265,18 +265,18 @@ Returns a list of qualifying jobs. Objects are only partially inflated
 sub should_start_now {
    my $self     = shift;
    my $now      = time;
-   my $columns  = [ qw(condition crontab id state.name state.updated) ];
+   my $columns  = [ qw(condition crontab id state.name state.next_start_time) ];
    my $prefetch = [ 'state', { parent_box => 'state' } ];
    my $options  = { columns => $columns, prefetch => $prefetch };
    my $where    = {
       'state.name'   => 'active',
       'state_2.name' => 'running',
       'me.crontab'   => { '!=' => NUL },
+      'state.next_start_time' => { '<' => $now },
    };
    my @jobs;
 
    for my $job ($self->search($where, $options)->all) {
-       next unless $now > $job->state->next_start_time;
        next unless $job->condition_start_now;
 
        push @jobs, $job;

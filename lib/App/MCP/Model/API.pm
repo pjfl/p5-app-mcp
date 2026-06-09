@@ -134,7 +134,9 @@ sub collect_messages : Auth('none') {
    my ($self, $context) = @_;
 
    my $session  = $context->session;
-   my $messages = $session->collect_status_messages($context->request);
+   my $request  = $context->request;
+   my $options  = { want => 'object' };
+   my $messages = $session->collect_status_messages($request, $options);
 
    $self->_stash_response($context, [HTTP_OK, [ reverse @{$messages} ]]);
    return;

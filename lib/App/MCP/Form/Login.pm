@@ -246,14 +246,14 @@ sub _exception_handlers {
       },
       'PasswordExpired'   => sub {
          my $changep = $context->uri_for_action('misc/password', [$user->id]);
+         my $params  = { level => 'alert' };
 
          $passwd->add_error($_->original);
-         $context->stash(redirect $changep, [$_->original]);
-         $context->stash('redirect')->{level} = 'alert' if $self->has_log;
+         $context->stash(redirect $changep, [$_->original], $params);
       },
       'Authentication' => sub { $self->add_form_error($_->original) },
       'RedirectToLocation' => sub {
-         my $params = { http_headers => { 'X-Force-Reload' => 'true' }};
+         my $params = { http_headers => { 'X-Force-Reload' => 'true' } };
 
          $self->add_form_error($_->original);
          $context->stash(redirect $_->args->[0], [$_->original], $params);

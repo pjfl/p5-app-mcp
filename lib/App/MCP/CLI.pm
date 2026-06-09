@@ -290,6 +290,8 @@ sub make_less : method {
 
 =item C<send_event> - Create a job state transition event
 
+   bin/mcp-cli send-event <job_name> <transition>
+
 The default event transition is C<start>
 
 =cut
@@ -313,8 +315,48 @@ sub send_event : method {
 
 =item C<send_message> - Send an email or SMS message
 
+   bin/mcp-cli -o recipient=mcp -o message="Hello!" send-message notification
+
 Send either email, SMS messages, or WebPush API notifications to a list of
 recipients. The SMS client is unimplemented
+
+Options are;
+
+=over 3
+
+=item C<beep>
+
+If true emit an audible warning
+
+=item C<message>
+
+The message being sent
+
+=item C<native>
+
+If true deliver the message via the window managers native notification system.
+Otherwise use the messages in the JS navigation object
+
+=item C<recipient>
+
+The name of the user being sent the message. They should be logged into the
+application with a registered service worker
+
+=item C<status>
+
+Defaults to C<info>. Can be C<alert>. Controls the colour of the border on the
+application messages
+
+=item C<title>
+
+Use this as the title for native messages. The default is C<MCP Service Worker>
+
+=item C<token>
+
+When sending emails stash the parameters in the object store and pass the
+key as the token
+
+=back
 
 =cut
 
@@ -574,16 +616,13 @@ sub _send_notification {
    my $opts    = { status => $status, beep => $beep, title => $title };
    my $params  = { message => $message, native => $native, options => $opts };
    my $res     = $self->service_worker_push($user->id, $params);
-   my $args    = ["${user}", $message];
-   my $context = { args => $args, leader => 'CLI.send_message' };
+   my $context = { args => ["${user}", $message], leader => 'CLI.send_message'};
+   my $success = $res->{success} ? TRUE : FALSE;
 
-   if ($res->{success}) {
-      $self->info('Notified [_1] - [_2]', $context);
-      return TRUE;
-   }
+   $self->error($res->{error}, $context) unless $success;
+   $self->info('Notified [_1] - [_2]', $context) if $success;
 
-   $self->error($res->{error}, $context);
-   return FALSE;
+   return $success;
 }
 
 sub _send_sms { ... }

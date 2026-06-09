@@ -8,7 +8,7 @@ extends 'DBIx::Class::ResultSet';
 sub find_last_start {
    my ($self, $job) = @_;
 
-   my $columns  = ['runid', 'token'];
+   my $columns  = ['created', 'runid', 'token'];
    my $order_by = { -desc => 'created' };
    my $options  = { columns => $columns, order_by => $order_by, rows => 1 };
    my $where    = { job_id => $job->id, transition => ['force_start', 'start']};

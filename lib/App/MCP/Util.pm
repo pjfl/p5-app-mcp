@@ -6,6 +6,7 @@ use parent 'Exporter::Tiny';
 
 use App::MCP::Constants        qw( EXCEPTION_CLASS FALSE NUL SEPARATOR
                                    SQL_FALSE SQL_TRUE TRUE VARCHAR_MAX_SIZE );
+use Class::Usul::Cmd::Util     qw( includes );
 use Crypt::Eksblowfish::Bcrypt qw( en_base64 );
 use Digest                     qw( );
 use Digest::MD5                qw( md5_hex );
@@ -288,31 +289,67 @@ sub new_salt ($$) {
 sub new_uri ($$) {
    my $v = uri_escape($_[1]);
 
-   return bless \$v, 'URI::'.$_[0];
+   return bless \$v, 'URI::' . $_[0];
 }
 
 =item C<redirect>
 
    $key_value = redirect $location, $message, \%options?;
 
+Options include;
+
+=over 3
+
+=item C<http_headers>
+
+A hash reference of keys/values which is merged into the headers of the HTTP
+response
+
+=item C<level>
+
+Level at which to log. Defaults to C<info>
+
+=back
+
+Any other options are passed to C<add_status_message> on the session object
+along with the message
+
 =cut
 
 sub redirect ($$;$) {
-   return redirect => { %{$_[2] // {}}, location => $_[0], message => $_[1] };
+   my ($location, $message, $options) = @_;
+
+   my $params = { location => $location, message => $message };
+
+   if ($options) {
+      for my $key (keys %{$options}) {
+         if (includes $key, [qw(http_headers level)]) {
+            $params->{$key} = $options->{$key};
+         }
+         else {
+            $params->{message_options} //= {};
+            $params->{message_options}->{$key} = $options->{$key};
+         }
+      }
+   }
+
+   return redirect => $params;
 }
 
 =item C<redirect2referer>
 
-   $key_value = redirect2referer $context, $message?;
+   $key_value = redirect2referer $context, $message?, \%options?;
 
 =cut
 
 sub redirect2referer ($;$) {
-   my ($context, $message) = @_;
+   my ($context, $message, $options) = @_;
 
-   my $referer = new_uri 'http', $context->request->referer;
+   my $referer  = $context->request->referer;
+   my $scheme   = (split m{ : }mx, $referer)[0];
+   my $location = new_uri $scheme, $referer;
 
-   return redirect $referer, $message;
+   return redirect $location, $message, $options;
 }
 
 =item C<strip_namespace>

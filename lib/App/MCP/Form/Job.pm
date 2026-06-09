@@ -144,19 +144,26 @@ has_field 'condition' =>
 
 has_field '_crontab_hour_min' => type => 'Group';
 
-has_field 'crontab_min' =>
-   label       => 'Minute',
-   field_group => '_crontab_hour_min',
-   size        => 3,
-   title       => "Comma separated list. Digits 0-59 or '*'";
-
 has_field 'crontab_hour' =>
-   label       => 'Hour',
+   label       => 'Hours',
    field_group => '_crontab_hour_min',
    size        => 3,
    title       => "Comma separated list. Digits 0-23 or '*'";
 
+has_field 'crontab_min' =>
+   label       => 'Minutes',
+   field_group => '_crontab_hour_min',
+   size        => 3,
+   title       => "Comma separated list. Digits 0-59 or '*'";
+
 has_field '_crontab_days' => type => 'Group';
+
+has_field 'crontab_wday' =>
+   label       => 'Day of Week',
+   field_group => '_crontab_days',
+   size        => 3,
+   title       => "Comma separated list. Digits 0-7 or names or '*'. " .
+                  "Zero is Sunday";
 
 has_field 'crontab_mday' =>
    label       => 'Day of Month',
@@ -169,13 +176,6 @@ has_field 'crontab_mon' =>
    field_group => '_crontab_days',
    size        => 3,
    title       => "Comma separated list. Digits 1-12 or names or '*'";
-
-has_field 'crontab_wday' =>
-   label       => 'Day of Week',
-   field_group => '_crontab_days',
-   size        => 3,
-   title       => "Comma separated list. Digits 0-7 or names or '*'. " .
-                  "Zero is Sunday";
 
 has_field '_runtime_properties' => type => 'Group';
 
@@ -255,8 +255,8 @@ has_field 'expected_rv' =>
    field_group     => '_job_properties',
    label           => 'Expected RV',
    size            => 3,
-   title           => 'The expected return value of the command. '
-                   . 'Higher values trigger an error condition',
+   title           => 'The expected return value of the command. ' .
+                      'Higher values trigger a fail condition',
    validate_inline => TRUE;
 
 has_field 'nretrys' =>

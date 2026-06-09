@@ -45,8 +45,13 @@ WCom.MCP.StateDiagram = (function() {
          jobTile.classList.add(this.stateName);
          this.jobTile = this.addOrReplace(container, jobTile, this.jobTile);
          const openBoxes = this.diagram.prefs.openBoxes;
-         if (openBoxes && openBoxes[this.jobName]) {
-            this.toggleIcon.click();
+         if (openBoxes && openBoxes[this.jobName] != undefined) {
+            if (this._has_nodes()) {
+               if (!openBoxes[this.jobName]) this.toggleIcon.click();
+            }
+            else {
+               if (openBoxes[this.jobName]) this.toggleIcon.click();
+            }
          }
       }
       _has_nodes() {
@@ -133,7 +138,7 @@ WCom.MCP.StateDiagram = (function() {
                if (this.boxTable.classList.contains('open')) {
                   openBoxes[this.jobName] = true;
                }
-               else { delete openBoxes[this.jobName] }
+               else { openBoxes[this.jobName] = false }
                prefs.set({ openBoxes });
             }.bind(this)
          };

@@ -327,26 +327,26 @@ Terminate any running jobs that have exceeded their maximum run time
 sub max_runtime_handler {
    my ($self, $name, $daemon_pid) = @_;
 
-   my $ev_rs      = $self->schema->resultset('Event');
-   my $js_rs      = $self->schema->resultset('JobState');
-   my $options    = { prefetch => 'job' };
-   my @job_states = $js_rs->search({ name => 'running' }, $options)->all;
-   my $triggered  = FALSE;
+   my $ev_rs     = $self->schema->resultset('Event');
+   my $js_rs     = $self->schema->resultset('JobState');
+   # my $options   = { prefetch => 'job' };
+   my $options   = { prefetch => ['job', 'processed_events'] };
+   my $where     = { name => 'running', 'job.max_runtime' => { '>' => 0 } };
+   my $triggered = FALSE;
 
-   for my $job_state (@job_states) {
-      my $job         = $job_state->job;
-      my $max_runtime = $job->max_runtime or next;
-      my $label       = $job->label;
-      my $start_time  = $job_state->last_start;
+   for my $job_state ($js_rs->search($where, $options)->all) {
+      my $job        = $job_state->job;
+      my $start_time = $job_state->last_start;
 
       next if $start_time eq 'never';
 
       $start_time->set_time_zone($self->config->local_tz);
 
-      next unless time > $start_time->epoch + $max_runtime;
+      next unless time > $start_time->epoch + $job->max_runtime;
 
       $ev_rs->create({ job_id => $job->id, transition => 'kill_job' });
 
+      my $label   = $job->label;
       my $message = "Killing ${label} max. runtime exceeded";
 
       $self->log->alert("${name}: ${message}");
@@ -711,9 +711,9 @@ sub _process_start_event {
 
    if ($success && $job->type eq 'job') {
       my $args    = $self->_dispatch_args($job, $job->command);
-      my $message = $self->_dispatch_message($job, 'Starting', $args->{runid});
       my $runid   = $args->{runid};
       my $key     = "event_token-${runid}";
+      my $message = $self->_dispatch_message($job, 'Starting', $runid);
 
       $pev->{runid} = $runid;
       $self->redis_client->set_with_ttl($key, $args->{token}, 86400);

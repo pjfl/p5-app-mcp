@@ -22,6 +22,7 @@ $class->add_columns(
       timezone    => 'UTC',
    },
    next_start_time => integer_data_type(0),
+   # last_start_time => integer_data_type(0),
 );
 
 $class->set_primary_key('job_id');
@@ -73,6 +74,8 @@ sub last_start {
    my $event = shift->_last_start_event;
 
    return $event ? $event->created : 'never';
+   # my $self = shift;
+   # return $self->last_start_time ? $self->last_start_time : 'never';
 }
 
 sub update {
@@ -97,7 +100,7 @@ sub _last_finish_event {
    )->single;
 }
 
-sub _last_start_event {
+sub _last_start_event { # TODO: Remove
    my $self = shift;
 
    return $self->{_last_start_event} if exists $self->{_last_start_event};

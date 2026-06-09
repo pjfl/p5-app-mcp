@@ -3,10 +3,13 @@ package App::MCP::Role::Webpush;
 use App::MCP::Constants    qw( FALSE NUL TRUE );
 use File::DataClass::Types qw( Int Str );
 use App::MCP::Util         qw( create_token jwt_hash );
+use Crypt::JWT             qw( encode_jwt );
 use MIME::Base64           qw( decode_base64url encode_base64url );
 use Type::Utils            qw( class_type );
+use Crypt::PK::ECC;
 use HTTP::Request::Webpush;
 use HTTP::Tiny;
+use URI;
 use Moo::Role;
 
 requires qw( config json_parser redis_client );
@@ -55,6 +58,23 @@ responses
 
 has 'ua_timeout' => is => 'ro', isa => Int, default => 30;
 
+=item C<vapid_lifetime>
+
+Defaults to five minutes. The life time in seconds for the VAPID token
+
+=cut
+
+has 'vapid_lifetime' => is => 'ro', isa => Int, default => 300;
+
+=item C<webpush_request_ttl>
+
+Defaults to ninety seconds. How long should the C<TTL> in the webpush request
+header be?
+
+=cut
+
+has 'webpush_request_ttl' => is => 'ro', isa => Int, default => 90;
+
 # Private attributes
 has '_pusher' =>
    is      => 'lazy',
@@ -70,6 +90,18 @@ has '_pusher' =>
       }
 
       return $pusher;
+   };
+
+has '_pusher_priv_key' =>
+   is      => 'lazy',
+   isa     => class_type('Crypt::PK::ECC'),
+   default => sub {
+      my $self   = shift;
+      my $pk_ecc = Crypt::PK::ECC->new;
+
+      $pk_ecc->import_key_raw($self->_pusher->{'app-key'}, 'secp256r1');
+
+      return $pk_ecc;
    };
 
 has '_ua' =>
@@ -206,14 +238,38 @@ sub service_worker_push {
    $req->subscription($self->json_parser->decode($subscription));
    $req->subject('mailto:mcp@example.com');
    $req->content($self->json_parser->encode($content));
-   $req->header('TTL' => '90');
+   $req->header('TTL' => $self->webpush_request_ttl);
    $req->encode();
    $req->remove_header('::std_case'); # Strange artifact
+   $self->_set_authorisation($self->vapid_lifetime);
 
    my $params = { content => $req->content, headers => $req->headers };
    my $res    = $self->_ua->post($req->uri, $params);
 
    return $self->decode_response($res);
+}
+
+# Private methods
+sub _set_authorisation { # Because time has different zones on client and server
+   my ($self, $vapid_exp) = @_;
+
+   my $req    = $self->_pusher;
+   my $origin = URI->new($req->{subscription}->{endpoint});
+
+   $origin->path_query(NUL);
+   $vapid_exp ||= 86400;
+
+   # Hacked the exp time. VAPID token expiration is too long
+   my $payload = { aud => "${origin}", exp => time + $vapid_exp };
+
+   $payload->{'sub'} = $req->{subject} if $req->{subject};
+
+   my $key   = $self->_pusher_priv_key;
+   my $token = encode_jwt(alg => 'ES256', key => $key, payload => $payload);
+
+   $req->remove_header('Authorization');
+   $req->header('Authorization' => "WebPush ${token}");
+   return;
 }
 
 use namespace::autoclean;
