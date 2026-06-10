@@ -2,7 +2,7 @@ package App::MCP::Role::Webpush;
 
 use App::MCP::Constants    qw( FALSE NUL TRUE );
 use File::DataClass::Types qw( Int Str );
-use App::MCP::Util         qw( create_token jwt_hash );
+use App::MCP::Util         qw( create_token encode_token );
 use Crypt::JWT             qw( encode_jwt );
 use MIME::Base64           qw( decode_base64url encode_base64url );
 use Type::Utils            qw( class_type );
@@ -132,7 +132,7 @@ sub decode_access_token {
 
    return unless $salt && $payload && $verify;
 
-   my $calculated = jwt_hash $self->jwt_secret, "${salt}${payload}";
+   my $calculated = encode_token $self->jwt_secret, "${salt}${payload}";
 
    return unless $verify eq $calculated;
 
@@ -154,7 +154,7 @@ sub encode_access_token {
 
    my $salt    = encode_base64url(pack('H*', create_token));
    my $payload = encode_base64url($self->json_parser->encode($claim));
-   my $verify  = jwt_hash $self->jwt_secret, "${salt}${payload}";
+   my $verify  = encode_token $self->jwt_secret, "${salt}${payload}";
 
    return "${salt}.${payload}.${verify}";
 }
@@ -250,7 +250,9 @@ sub service_worker_push {
 }
 
 # Private methods
-sub _set_authorisation { # Because time has different zones on client and server
+# Was getting error: VAPID token expiration is too long
+# Because time has different zones on client and server
+sub _set_authorisation {
    my ($self, $vapid_exp) = @_;
 
    my $req    = $self->_pusher;
@@ -259,7 +261,6 @@ sub _set_authorisation { # Because time has different zones on client and server
    $origin->path_query(NUL);
    $vapid_exp ||= 86400;
 
-   # Hacked the exp time. VAPID token expiration is too long
    my $payload = { aud => "${origin}", exp => time + $vapid_exp };
 
    $payload->{'sub'} = $req->{subject} if $req->{subject};

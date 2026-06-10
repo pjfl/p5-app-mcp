@@ -71,11 +71,9 @@ sub last_rv {
 }
 
 sub last_start {
-   my $event = shift->_last_start_event;
+   my $self = shift;
 
-   return $event ? $event->created : 'never';
-   # my $self = shift;
-   # return $self->last_start_time ? $self->last_start_time : 'never';
+   return $self->last_start_time ? $self->last_start_time : 'never';
 }
 
 sub update {
@@ -96,17 +94,6 @@ sub _last_finish_event {
 
    return $self->{_last_finish_event} = $self->processed_events->search(
       { transition => 'finish' },
-      { order_by   => { -desc => 'created' }, rows => 1 }
-   )->single;
-}
-
-sub _last_start_event { # TODO: Remove
-   my $self = shift;
-
-   return $self->{_last_start_event} if exists $self->{_last_start_event};
-
-   return $self->{_last_start_event} = $self->processed_events->search(
-      { transition => ['force_start', 'start'] },
       { order_by   => { -desc => 'created' }, rows => 1 }
    )->single;
 }

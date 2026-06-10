@@ -323,38 +323,35 @@ Terminate any running jobs that have exceeded their maximum run time
 
 =cut
 
-# TODO: Do not kill more than once
 sub max_runtime_handler {
    my ($self, $name, $daemon_pid) = @_;
 
-   my $ev_rs     = $self->schema->resultset('Event');
-   my $js_rs     = $self->schema->resultset('JobState');
-   # my $options   = { prefetch => 'job' };
-   my $options   = { prefetch => ['job', 'processed_events'] };
-   my $where     = { name => 'running', 'job.max_runtime' => { '>' => 0 } };
-   my $triggered = FALSE;
+   my $ev_rs   = $self->schema->resultset('Event');
+   my $js_rs   = $self->schema->resultset('JobState');
+   my $runtime = \[q{?::integer - last_start_time}, time];
+   my $where   = {
+      'name'            => 'running',
+      'last_start_time' => { '>' => 0 },
+      'job.max_runtime' => { '>' => 0, '<' => $runtime },
+   };
+   my $trigger = FALSE;
 
-   for my $job_state ($js_rs->search($where, $options)->all) {
-      my $job        = $job_state->job;
-      my $start_time = $job_state->last_start;
+   for my $job_state ($js_rs->search($where, { prefetch => 'job' })->all) {
+      my $job = $job_state->job;
 
-      next if $start_time eq 'never';
-
-      $start_time->set_time_zone($self->config->local_tz);
-
-      next unless time > $start_time->epoch + $job->max_runtime;
-
-      $ev_rs->create({ job_id => $job->id, transition => 'kill_job' });
+      next if $self->_get_try_count($job, 'kill');
 
       my $label   = $job->label;
       my $message = "Killing ${label} max. runtime exceeded";
 
-      $self->log->alert("${name}: ${message}");
+      $ev_rs->create({ job_id => $job->id, transition => 'kill_job' });
       $self->_alert_subscribers($name, $message);
-      $triggered = TRUE;
+      $self->_increment_try_count($job, 'kill');
+      $self->log->alert("${name}: ${message}");
+      $trigger = TRUE;
    }
 
-   trigger_event_handler $daemon_pid if $triggered;
+   trigger_event_handler $daemon_pid if $trigger;
 
    return OK;
 }
@@ -503,7 +500,7 @@ sub _cron_log_interval {
    my $spread  = $self->config->clock_tick_interval / 2;
 
    $self->log->info("${name}: Elapsed " . concise_duration($elapsed))
-      if ($rem > $log_int - $spread or $rem < $spread);
+      if $rem > $log_int - $spread or $rem < $spread;
 
    return;
 }
@@ -594,11 +591,27 @@ sub _get_identity_file {
    return;
 }
 
-sub _increment_try_count {
-   my ($self, $job) = @_;
+sub _del_try_count {
+   my ($self, $job, $prefix) = @_;
 
    my $jobid = $job->id;
-   my $key   = "retry_count-${jobid}";
+
+   return $self->redis_client->del("${prefix}_count-${jobid}");
+}
+
+sub _get_try_count {
+   my ($self, $job, $prefix) = @_;
+
+   my $jobid = $job->id;
+
+   return $self->redis_client->get("${prefix}_count-${jobid}") // 0;
+}
+
+sub _increment_try_count {
+   my ($self, $job, $prefix) = @_;
+
+   my $jobid = $job->id;
+   my $key   = "${prefix}_count-${jobid}";
    my $count = $self->redis_client->get($key) // 0;
 
    $self->redis_client->set_with_ttl($key, $count + 1, 86400);
@@ -612,11 +625,13 @@ sub _input_event_cleanup {
    my $runid      = $event->runid;
    my $transition = $event->transition;
    my $jobid      = $job->id;
-   my $retry_key  = "retry_count-${jobid}";
 
-   $job->delete if $job->delete_after && $transition eq 'finish';
+   if ($transition eq 'finish') {
+      $job->delete if $job->delete_after;
 
-   $self->redis_client->del($retry_key) if $transition eq 'finish';
+      $self->_del_try_count($job, 'retry');
+      $self->_del_try_count($job, 'kill');
+   }
 
    if ($runid && includes $transition, [qw(fail finish terminate)]) {
       $self->redis_client->del("event_token-${runid}");
@@ -626,7 +641,7 @@ sub _input_event_cleanup {
       my $label   = $job->label;
       my $message = "Job ${label} failed";
       my $leader  = ucfirst "${name}.event_cleanup";
-      my $count   = $self->redis_client->get($retry_key) // 0;
+      my $count   = $self->_get_try_count($job, 'retry');
 
       if ($job->nretrys && $job->nretrys >= $count) {
          $self->log->warn("${leader}: ${message}");
@@ -634,7 +649,7 @@ sub _input_event_cleanup {
          $ev_rs->create({ job_id => $jobid, transition => 'force_start' });
       }
       else {
-         $self->redis_client->del($retry_key);
+         $self->_del_try_count($job, 'retry');
          $self->log->alert("${leader}: ${message}");
          $self->_alert_subscribers($name, $message);
       }
@@ -681,20 +696,24 @@ sub _process_input_event {
 sub _process_kill_event {
    my ($self, $name, $event, $ipc_ssh, $pev_rs) = @_;
 
+   my $job      = $event->job;
    my $pev      = $self->_process_event($name, $event);
    my $success  = $pev->{rejected} ? FALSE : TRUE;
-   my $job      = $event->job;
    my $last_pev = $pev_rs->find_last_start($job);
 
-   if ($success && $last_pev) {
-      my $runid   = $last_pev->runid;
-      my $args    = $self->_dispatch_args($job, 'kill_job');
-      my $message = $self->_dispatch_message($job, 'Killing', $runid);
+   if ($success && $last_pev && $last_pev->runid) {
+      my $runid = $last_pev->runid;
+      my $token = $last_pev->token;
 
-      $self->log->info($message);
-      $args->{runid} = $runid;
-      $args->{token} = $self->redis_client->get("event_token-${runid}");
-      $self->_dispatch_job($ipc_ssh, $job, $args);
+      if ($token) {
+         my $args    = $self->_dispatch_args($job, 'kill_job');
+         my $message = $self->_dispatch_message($job, 'Killing', $runid);
+
+         $args->{runid} = $runid;
+         $args->{token} = $token;
+         $self->_dispatch_job($ipc_ssh, $job, $args);
+         $self->log->info($message);
+      }
    }
 
    $pev_rs->create($pev);
@@ -705,9 +724,9 @@ sub _process_kill_event {
 sub _process_start_event {
    my ($self, $name, $event, $ipc_ssh, $pev_rs) = @_;
 
+   my $job     = $event->job;
    my $pev     = $self->_process_event($name, $event);
    my $success = $pev->{rejected} ? FALSE : TRUE;
-   my $job     = $event->job;
 
    if ($success && $job->type eq 'job') {
       my $args    = $self->_dispatch_args($job, $job->command);
@@ -716,9 +735,10 @@ sub _process_start_event {
       my $message = $self->_dispatch_message($job, 'Starting', $runid);
 
       $pev->{runid} = $runid;
+      $pev->{token} = $args->{token};
       $self->redis_client->set_with_ttl($key, $args->{token}, 86400);
-      $self->_increment_try_count($job);
       $self->_dispatch_job($ipc_ssh, $job, $args);
+      $self->_increment_try_count($job, 'retry');
       $self->log->info($message);
    }
    elsif ($success && $job->type eq 'box') {

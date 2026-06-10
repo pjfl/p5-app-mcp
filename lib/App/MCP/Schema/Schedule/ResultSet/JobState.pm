@@ -39,7 +39,8 @@ Defines the following attributes;
 
 =item C<event_propagation>
 
-Hash reference containig lookup tables for forward and reverse event propagation
+Hash reference containing lookup tables for forward and reverse event
+propagation
 
 =cut
 
@@ -99,6 +100,9 @@ Defines the following methods;
 
    $tuple = $self->create_and_or_update($event);
 
+Returns nothing if successful, otherwise returns a tuple containing the job
+name, transition value and the exception
+
 =cut
 
 sub create_and_or_update {
@@ -129,10 +133,14 @@ sub create_and_or_update {
 
       $state_name = _workflow()->process_event($state_name, $event);
       $job_state->name($state_name);
-      # if ($state_name eq 'starting') {
-      $job_state->next_start_time($job->next_start_time($job_state->updated));
-      # $job_state->last_start_time($job->last_start_time($job_state->updated));
-      # }
+
+      if ($state_name eq 'starting') {
+         my $updated = $job_state->updated;
+
+         $job_state->next_start_time($job->next_start_time($updated));
+         $job_state->last_start_time($job->local_tz_epoch($updated));
+      }
+
       $job_state->update;
       $self->_trigger_update_cascade($event, $job_state);
    }
@@ -151,6 +159,8 @@ sub create_and_or_update {
 =item C<find_by_key>
 
    $job_state = $self->find_by_key($key, \%options?);
+
+Finds a job state object by id or name. Returns undefined if not found
 
 =cut
 
@@ -171,6 +181,8 @@ sub find_by_key {
 =item C<find_or_create>
 
    $job_state = $self->find_or_create($job);
+
+Finds or creates a job state object for the supplied job which it returns
 
 =cut
 
@@ -218,7 +230,9 @@ sub _trigger_update_cascade {
       my $where = { parent_id => $event->job->id };
 
       for my $job ($job_rs->search($where)->all) {
-         $ev_rs->create({ job_id => $job->id, transition => $for_trans });
+         my $options = { job_id => $job->id, transition => $for_trans };
+
+         $ev_rs->create($options);
       }
 
       if ($for_trans eq 'start') {
@@ -232,10 +246,8 @@ sub _trigger_update_cascade {
 
    if (my $rev_trans = $self->event_propagation->{reverse}->{$trans_val}) {
       if ($event->job->parent_id) {
-         my $options = {
-            job_id     => $event->job->parent_id,
-            transition => $rev_trans
-         };
+         my $job_id  = $event->job->parent_id;
+         my $options = { job_id => $job_id, transition => $rev_trans };
 
          $ev_rs->create($options);
       }

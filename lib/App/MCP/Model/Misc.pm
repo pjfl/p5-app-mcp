@@ -146,7 +146,7 @@ sub oauth : Auth('none') {
       $self->_redirect_after_login($context);
    }
    catch {
-      my $action  = $self->config->default_actions->{login};
+      my $action  = $self->config->default_action;
       my $login   = $context->uri_for_action($action);
       my $message = blessed $_ && $_->can('original') ? $_->original : "${_}";
 
