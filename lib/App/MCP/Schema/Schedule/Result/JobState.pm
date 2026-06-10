@@ -22,7 +22,7 @@ $class->add_columns(
       timezone    => 'UTC',
    },
    next_start_time => integer_data_type(0),
-   # last_start_time => integer_data_type(0),
+   last_start_time => integer_data_type(0),
 );
 
 $class->set_primary_key('job_id');

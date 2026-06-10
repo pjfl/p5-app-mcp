@@ -1,5 +1,6 @@
 Revision history for App::MCP
 
+          - Adding last_start_time to job state result
           - Makes WebPush VAPID key expiration settable
           - Refactored code around job rs should_start_now
           - Added next_time column to job state

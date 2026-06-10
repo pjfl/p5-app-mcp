@@ -64,17 +64,17 @@ Unique index name C<jobs_job_name_uniq>
 
 Nullable text field which describes the job
 
-=item C<type>
+=item C<created>
 
-An enumerated type. Either C<box> or C<job>. Defaults to C<box>
+Date and time this job was created. Value set automatically to datebase time
 
 =item C<parent_id>
 
 The C<id> of the parent box. This can be null
 
-=item C<created>
+=item C<type>
 
-Date and time this job was created. Value set automatically to datebase time
+An enumerated type. Either C<box> or C<job>. Defaults to C<box>
 
 =item C<owner_id>
 
@@ -102,6 +102,11 @@ the OS level C<crontab> file
 Accessors/mutators are defined for each of the five values so this field is
 not set directly
 
+=item C<auto_hold>
+
+Boolean which if true causes the job to enter an C<on_hold> state when
+activated.  Defaults to false
+
 =item C<user_name>
 
 Name of the OS level user to run the command as
@@ -110,42 +115,13 @@ Name of the OS level user to run the command as
 
 Hostname on which to run the command
 
-=item C<command>
-
-The command to run
-
 =item C<directory>
 
 Directory to change to before executing the command
 
-=item C<expected_rv>
+=item C<command>
 
-The expected return value of the command. Defaults to zero
-
-=item C<delete_after>
-
-A boolean which if true causes the job definition to be deleted upon
-completion
-
-=item C<auto_hold>
-
-Boolean which if true causes the job to enter an C<on_hold> state when
-activated.  Defaults to false
-
-=item C<max_runtime>
-
-Maximum runtime for the job in seconds. Defaults to zero which means no time
-limit
-
-=item C<nretrys>
-
-If the job fails how many times should it be restarted? Defaults to zero which
-means no restart is attempted
-
-=item C<load_limit>
-
-If set this number is used to limit the number of simultaneous jobs the
-scheduler will run
+The command to run
 
 =item C<err_file>
 
@@ -154,6 +130,30 @@ If set the C<stderr> from the command will be redirected here
 =item C<out_file>
 
 If set the C<stdout> from the command will be redirected here
+
+=item C<expected_rv>
+
+The expected return value of the command. Defaults to zero
+
+=item C<nretrys>
+
+If the job fails how many times should it be restarted? Defaults to zero which
+means no restart is attempted
+
+=item C<delete_after>
+
+A boolean which if true causes the job definition to be deleted upon
+completion
+
+=item C<max_runtime>
+
+Maximum runtime for the job in seconds. Defaults to zero which means no time
+limit
+
+=item C<load_limit>
+
+If set this number is used to limit the number of simultaneous jobs the
+scheduler will run
 
 =item C<parent_path>
 
@@ -563,6 +563,26 @@ sub label {
    my $self = shift; return sprintf '%s(%s)', $self->job_name, $self->id;
 }
 
+=item C<local_tz_epoch>
+
+   $epoch = $self->local_tz_epoch($datetime);
+
+Returns the absolute time in epoch seconds for the local time zone
+
+=cut
+
+sub local_tz_epoch {
+   my ($self, $dt) = @_;
+
+   return 0 unless $dt;
+
+   my $tz = $self->result_source->schema->config->local_tz;
+
+   $dt->set_time_zone($tz);
+
+   return $dt->epoch;
+}
+
 =item C<materialised_path_columns>
 
    $hash_ref = $self->materialised_path_columns;
@@ -614,22 +634,20 @@ sub namespace {
 
    $epoch = $self->next_start_time($last_time);
 
-Returns the absolute next start time in epoch seconds
+Returns the absolute next start time in epoch seconds relative to the local
+time zone
 
 =cut
 
 sub next_start_time {
-   my ($self, $last_finish) = @_;
+   my ($self, $last_time) = @_;
 
-   return 0 unless $last_finish;
+   return 0 unless $last_time;
 
    my $crontab = $self->crontab or return 0;
    my $cron    = Algorithm::Cron->new(base => 'local', crontab => $crontab);
-   my $tz      = $self->result_source->schema->config->local_tz;
 
-   $last_finish->set_time_zone($tz);
-
-   return $cron->next_time($last_finish->epoch);
+   return $cron->next_time($self->local_tz_epoch($last_time));
 }
 
 =item C<sqlt_deploy_hook>

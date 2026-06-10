@@ -13,6 +13,36 @@ use Moo;
 
 extends 'DBIx::Class::ResultSet';
 
+=pod
+
+=head1 Name
+
+App::MCP::Schema::Schedule::ResultSet::JobState - Job state collection class
+
+=head1 Synopsis
+
+   use Moo;
+
+   with 'App::MCP::Role::Schema';
+
+   my $rs = $self->schema->resultset('JobState');
+
+=head1 Description
+
+Job state collection class
+
+=head1 Configuration and Environment
+
+Defines the following attributes;
+
+=over 3
+
+=item C<event_propagation>
+
+Hash reference containig lookup tables for forward and reverse event propagation
+
+=cut
+
 has 'event_propagation' =>
    is      => 'ro',
    isa     => HashRef,
@@ -45,12 +75,32 @@ has 'event_propagation' =>
       };
    };
 
+=item C<initially_active>
+
+An array reference of states that are initially active if their parent is
+active
+
+=cut
+
 has 'initially_active' =>
    is      => 'ro',
    isa     => ArrayRef,
    default => sub { [qw(active running starting)] };
 
-# Public methods
+=back
+
+=head1 Subroutines/Methods
+
+Defines the following methods;
+
+=over 3
+
+=item C<create_and_or_update>
+
+   $tuple = $self->create_and_or_update($event);
+
+=cut
+
 sub create_and_or_update {
    my ($self, $event) = @_;
 
@@ -79,9 +129,10 @@ sub create_and_or_update {
 
       $state_name = _workflow()->process_event($state_name, $event);
       $job_state->name($state_name);
+      # if ($state_name eq 'starting') {
       $job_state->next_start_time($job->next_start_time($job_state->updated));
-      # $job_state->last_start_time($job_state->updated->epoch)
-      #    if $state_name eq 'starting';
+      # $job_state->last_start_time($job->last_start_time($job_state->updated));
+      # }
       $job_state->update;
       $self->_trigger_update_cascade($event, $job_state);
    }
@@ -97,6 +148,12 @@ sub create_and_or_update {
    return $result;
 }
 
+=item C<find_by_key>
+
+   $job_state = $self->find_by_key($key, \%options?);
+
+=cut
+
 sub find_by_key {
    my ($self, $state_key, $options) = @_;
 
@@ -110,6 +167,12 @@ sub find_by_key {
 
    return $self->search({ 'me.name' => $state_key }, $options)->single;
 }
+
+=item C<find_or_create>
+
+   $job_state = $self->find_or_create($job);
+
+=cut
 
 sub find_or_create {
    my ($self, $job) = @_;
@@ -203,30 +266,17 @@ use namespace::autoclean;
 
 __END__
 
-=pod
-
-=head1 Name
-
-App::MCP::Schema::Schedule::ResultSet::JobState - <One-line description of module's purpose>
-
-=head1 Synopsis
-
-   use App::MCP::Schema::Schedule::ResultSet::JobState;
-   # Brief but working code examples
-
-=head1 Description
-
-=head1 Configuration and Environment
-
-=head1 Subroutines/Methods
+=back
 
 =head1 Diagnostics
+
+None
 
 =head1 Dependencies
 
 =over 3
 
-=item L<Class::Usul>
+=item L<Moo>
 
 =back
 

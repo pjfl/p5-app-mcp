@@ -232,7 +232,7 @@ sub get_salt ($) {
 
 =item C<jwt_hash>
 
-   $hex_string = jwt_hash($secret, $payload);
+   $hex_string = jwt_hash $secret, $payload;
 
 =cut
 
@@ -244,7 +244,7 @@ sub jwt_hash ($$) {
 
 =item C<local_config>
 
-   $hash_ref = local_config($config, \%data?);
+   $hash_ref = local_config $config, \%data?;
 
 =cut
 
@@ -338,11 +338,11 @@ sub redirect ($$;$) {
 
 =item C<redirect2referer>
 
-   $key_value = redirect2referer $context, $message?, \%options?;
+   $key_value = redirect2referer $context, $message, \%options?;
 
 =cut
 
-sub redirect2referer ($;$) {
+sub redirect2referer ($$;$) {
    my ($context, $message, $options) = @_;
 
    my $referer  = $context->request->referer;

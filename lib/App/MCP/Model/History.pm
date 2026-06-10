@@ -1,7 +1,7 @@
 package App::MCP::Model::History;
 
 use App::MCP::Constants    qw( EXCEPTION_CLASS FALSE TRUE );
-use App::MCP::Util         qw( redirect redirect2referer );
+use App::MCP::Util         qw( redirect );
 use Unexpected::Functions  qw( UnknownJob Unspecified );
 use Moo;
 use App::MCP::Attributes;  # Will do cleaning
